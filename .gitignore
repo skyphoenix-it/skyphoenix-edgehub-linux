@@ -1,0 +1,22 @@
+# Build output
+out/
+build/
+target/
+dist/
+
+# IntelliJ / JetBrains
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/usage.statistics.xml
+.idea/dictionaries
+.idea/shelf/
+*.iws
+*.ipr
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
