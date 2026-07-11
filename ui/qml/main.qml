@@ -46,9 +46,16 @@ ApplicationWindow {
     property string currentPage: "main"
     property int currentPageIndex: 0
 
-    // Theme object — exposed as property so child QML files can access it
+    // Reduced-motion preference (design system: all durations → 0ms)
+    property bool reduceMotion: false
+
+    // Theme object — exposed as property so child QML files can access it.
+    // Encodes the full design system from docs/product/wireframes.md:
+    // colors, spacing, radii, typography, touch targets, and motion tokens.
     QtObject {
         id: _theme
+
+        // --- Color tokens ---
         property color backgroundColor: "#0D1117"
         property color cardBackground: "#161B22"
         property color cardBorder: "#30363D"
@@ -58,6 +65,38 @@ ApplicationWindow {
         property color warning: "#D29922"
         property color error: "#F85149"
         property color success: "#3FB950"
+
+        // --- Spacing tokens (logical px) ---
+        property int spacingXs: 4
+        property int spacingSm: 8
+        property int spacingMd: 12   // grid gap
+        property int spacingLg: 16   // card internal padding (min)
+        property int spacingXl: 24   // card internal padding (max)
+
+        // --- Radius tokens ---
+        property int radiusSm: 8
+        property int radiusMd: 12
+        property int radiusLg: 16
+
+        // --- Touch-target tokens (design system: 44/48/64) ---
+        property int touchPrimary: 64     // Play, Pause, Add
+        property int touchSecondary: 48   // Settings, Close
+        property int touchTertiary: 44    // small toggles (absolute minimum)
+
+        // --- Typography tokens (logical px) ---
+        property int fontData: 40         // primary data (36–48)
+        property int fontDataLarge: 48
+        property int fontTitle: 17        // widget titles (16–18)
+        property int fontLabel: 15        // secondary labels (14–16)
+        property int fontCaption: 13
+        property string fontMono: "JetBrains Mono, Fira Code, monospace"
+
+        // --- Motion tokens (ms). Honor reduced motion. ---
+        property int motionPage: root.reduceMotion ? 0 : 250   // page transition
+        property int motionAdd: root.reduceMotion ? 0 : 200    // widget add scale-in
+        property int motionRemove: root.reduceMotion ? 0 : 150 // widget remove fade
+        property int motionEdit: root.reduceMotion ? 0 : 200   // edit enter/exit
+        property int motionFast: root.reduceMotion ? 0 : 150   // press feedback
 
         function applyTheme(mode) {
             switch(mode) {

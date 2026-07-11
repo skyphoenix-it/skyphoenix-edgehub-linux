@@ -67,9 +67,9 @@ docs/node_modules/
 *.secret
 secrets/
 
-# Core dumps
-core
-core.*
+# Core dumps (anchored to repo root so the core/ source dir is not ignored)
+/core.*
+core.[0-9]*
 
 # Logs (keep pattern but be more specific)
 *.log

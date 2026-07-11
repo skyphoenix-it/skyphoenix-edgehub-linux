@@ -2,69 +2,71 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// Premium widget card with tap-to-expand
+// Premium widget card with tap-to-expand.
+// Uses the shared design-system tokens exposed via `theme` (see main.qml).
 Rectangle {
     id: card
-    radius: 14
+    radius: theme.radiusLg
     color: theme.cardBackground
     border.width: 1
-    border.color: theme.cardBorder
+    border.color: tapArea.containsMouse ? theme.accent : theme.cardBorder
+    Behavior on border.color { ColorAnimation { duration: theme.motionFast } }
 
     property string title: ""
     property string icon: ""
     property bool expandable: true
     signal tapped()
 
-    // Default property for inline content (compact preview)
     default property alias inlineContent: contentHost.data
 
-    // Glass effect overlay
+    // Subtle glass gradient overlay
     Rectangle {
-        anchors.fill: parent; radius: parent.radius
+        anchors.fill: parent
+        radius: parent.radius
         gradient: Gradient {
-            GradientStop { position: 0.0; color: Qt.rgba(1,1,1,0.03) }
-            GradientStop { position: 1.0; color: Qt.rgba(0,0,0,0.05) }
+            GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.04) }
+            GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0.06) }
         }
     }
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 10
-        spacing: 4
+        anchors.margins: theme.spacingLg
+        spacing: theme.spacingSm
 
         // Header row
         RowLayout {
             visible: title !== "" || icon !== ""
             Layout.fillWidth: true
-            spacing: 6
-            Layout.preferredHeight: 16
+            spacing: theme.spacingSm
+            Layout.preferredHeight: 24
 
             Text {
                 visible: icon !== ""
                 text: icon
-                font.pixelSize: 13
+                font.pixelSize: 20
             }
 
             Text {
                 text: title
-                font.pixelSize: 9
+                font.pixelSize: theme.fontTitle
                 font.weight: Font.Medium
                 color: theme.textSecondary
                 elide: Text.ElideRight
                 Layout.fillWidth: true
             }
 
-            // Expand indicator
             Text {
                 visible: expandable
                 text: "↗"
-                font.pixelSize: 11
+                font.pixelSize: 16
                 color: theme.accent
-                opacity: 0.5
+                opacity: tapArea.containsMouse ? 0.9 : 0.4
+                Behavior on opacity { NumberAnimation { duration: theme.motionFast } }
             }
         }
 
-        // Content area — fill remaining space
+        // Content area — fills remaining space
         Item {
             id: contentHost
             Layout.fillWidth: true
@@ -73,18 +75,23 @@ Rectangle {
         }
     }
 
-    // Tap indicator
+    // Press / hover feedback
     Rectangle {
-        anchors.fill: parent; radius: parent.radius
+        anchors.fill: parent
+        radius: parent.radius
         color: Qt.rgba(1, 1, 1, 0.05)
         opacity: tapArea.pressed || tapArea.containsMouse ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: 150 } }
+        Behavior on opacity { NumberAnimation { duration: theme.motionFast } }
     }
+
+    scale: tapArea.pressed && expandable ? 0.98 : 1.0
+    Behavior on scale { NumberAnimation { duration: theme.motionFast; easing.type: Easing.OutCubic } }
 
     MouseArea {
         id: tapArea
         anchors.fill: parent
         hoverEnabled: true
+        cursorShape: expandable ? Qt.PointingHandCursor : Qt.ArrowCursor
         onClicked: {
             if (expandable) card.tapped()
         }

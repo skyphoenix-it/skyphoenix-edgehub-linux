@@ -127,7 +127,7 @@ Item {
                                 for (var i=0; i<25; i++) { var x=i*width/24; var y=mid+Math.sin(i*0.6+Date.now()*0.001)*20+Math.sin(i*1.3+Date.now()*0.002)*10
                                     i===0?ctx.moveTo(x,y):ctx.lineTo(x,y) }; ctx.stroke()
                             }
-                            Timer { interval: 300; running: true; repeat: true; onTriggered: parent.requestPaint() }
+                            Timer { interval: 300; running: Qt.application.active && swipeView.currentIndex === 0; repeat: true; onTriggered: parent.requestPaint() }
                         }
                         onTapped: { _expandedWidget = "Network"; _expandedComponent = pingExp }
                     }
@@ -338,7 +338,7 @@ Item {
                     WidgetCard { title: "Analog Clock"; icon: "🕰"; Layout.fillWidth: true; Layout.preferredHeight: 160
                         Canvas { anchors.fill: parent; anchors.margins: 8
                             onPaint: { var ctx=getContext('2d'); var cx=width/2,cy=height/2,r=Math.min(cx,cy)-4; ctx.clearRect(0,0,width,height); ctx.strokeStyle=theme.cardBorder;ctx.lineWidth=8;ctx.beginPath();ctx.arc(cx,cy,r,0,2*Math.PI);ctx.stroke(); var now=new Date(); var h=now.getHours()%12,m=now.getMinutes(),s=now.getSeconds(); var ha=(h+m/60)*Math.PI/6-1.57,ma=(m+s/60)*Math.PI/30-1.57; ctx.strokeStyle=theme.textPrimary;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(ha)*r*0.5,cy+Math.sin(ha)*r*0.5);ctx.stroke(); ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(ma)*r*0.75,cy+Math.sin(ma)*r*0.75);ctx.stroke(); ctx.strokeStyle=theme.accent;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(s*Math.PI/30-1.57)*r*0.85,cy+Math.sin(s*Math.PI/30-1.57)*r*0.85);ctx.stroke() }
-                            Timer { interval: 1000; running: true; repeat: true; onTriggered: parent.requestPaint() }
+                            Timer { interval: 1000; running: Qt.application.active && swipeView.currentIndex === 2; repeat: true; onTriggered: parent.requestPaint() }
                         }
                         onTapped: { _expandedWidget = "Analog Clock"; _expandedComponent = smokeExp } }
 
@@ -473,7 +473,7 @@ Item {
     }
 
     // Clock tick
-    Timer { interval: 1000; running: true; repeat: true; onTriggered: dashboard._tick++ }
+    Timer { interval: 1000; running: Qt.application.active; repeat: true; onTriggered: dashboard._tick++ }
 
     // ═══════════════════════════════
     // Expanded widget components

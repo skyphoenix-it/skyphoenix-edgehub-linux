@@ -6,6 +6,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
+# Default to an optimized Release build unless the user overrides it.
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+    message(STATUS "No build type specified — defaulting to Release")
+endif()
+
+# Enable Link-Time Optimization for Release builds when supported.
+include(CheckIPOSupported)
+check_ipo_supported(RESULT IPO_SUPPORTED OUTPUT IPO_ERROR)
+
 # Find Qt6
 find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Quick Qml)
 
@@ -70,6 +80,22 @@ add_dependencies(xeneon-edge-hub rust_core)
 target_compile_definitions(xeneon-edge-hub PRIVATE
     QT_DISABLE_DEPRECATED_BEFORE=0x060500
 )
+
+# Release optimizations: LTO + aggressive optimization + stripped symbols.
+if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    if(IPO_SUPPORTED)
+        set_target_properties(xeneon-edge-hub PROPERTIES INTERPROCEDURAL_OPTIMIZATION TRUE)
+        message(STATUS "LTO enabled for xeneon-edge-hub")
+    else()
+        message(STATUS "LTO not supported: ${IPO_ERROR}")
+    endif()
+    target_compile_options(xeneon-edge-hub PRIVATE -O3)
+endif()
+
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    # Strip symbols from the final Release binary to reduce size.
+    target_link_options(xeneon-edge-hub PRIVATE -s)
+endif()
 
 # Install
 install(TARGETS xeneon-edge-hub DESTINATION bin)
