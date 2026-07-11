@@ -49,6 +49,11 @@ ApplicationWindow {
     // Reduced-motion preference (design system: all durations → 0ms)
     property bool reduceMotion: false
 
+    // --- Runtime customization state (persisted best-effort) ---
+    property string accentName: "blue"
+    property real glassOpacity: 0.55   // 0 = solid cards, 1 = very glassy
+    property bool showWidgetGlow: true
+
     // Theme object — exposed as property so child QML files can access it.
     // Encodes the full design system from docs/product/wireframes.md:
     // colors, spacing, radii, typography, touch targets, and motion tokens.
@@ -57,14 +62,38 @@ ApplicationWindow {
 
         // --- Color tokens ---
         property color backgroundColor: "#0D1117"
+        property color backgroundColor2: "#0A0E14"   // gradient partner for bg
         property color cardBackground: "#161B22"
+        property color cardBackgroundAlt: "#1C222B"   // elevated / secondary surface
         property color cardBorder: "#30363D"
         property color textPrimary: "#E6EDF3"
         property color textSecondary: "#8B949E"
+        property color textTertiary: "#6E7681"
         property color accent: "#58A6FF"
+        property color accent2: "#7EE787"             // secondary accent for gradients
         property color warning: "#D29922"
         property color error: "#F85149"
         property color success: "#3FB950"
+
+        // --- Category accent colors (uniform visual language) ---
+        property color catSystem: "#58A6FF"       // System / hardware
+        property color catProductivity: "#A371F7" // Productivity / focus
+        property color catInfo: "#3FB950"          // Information / data
+        property color catEntertainment: "#F778BA" // Entertainment / media
+        property color catGaming: "#F0883E"        // Gaming
+        property color catServices: "#56D4DD"      // Network services
+
+        // --- Named accent presets (user-selectable) ---
+        readonly property var accentPresets: ({
+            "blue":   { a: "#58A6FF", b: "#79C0FF" },
+            "purple": { a: "#A371F7", b: "#D2A8FF" },
+            "green":  { a: "#3FB950", b: "#7EE787" },
+            "orange": { a: "#F0883E", b: "#FFA657" },
+            "pink":   { a: "#F778BA", b: "#FF9BCE" },
+            "teal":   { a: "#56D4DD", b: "#76E3EA" },
+            "red":    { a: "#F85149", b: "#FF7B72" },
+            "gold":   { a: "#E3B341", b: "#F2CC60" }
+        })
 
         // --- Spacing tokens (logical px) ---
         property int spacingXs: 4
@@ -77,6 +106,7 @@ ApplicationWindow {
         property int radiusSm: 8
         property int radiusMd: 12
         property int radiusLg: 16
+        property int radiusXl: 22
 
         // --- Touch-target tokens (design system: 44/48/64) ---
         property int touchPrimary: 64     // Play, Pause, Add
@@ -90,6 +120,16 @@ ApplicationWindow {
         property int fontLabel: 15        // secondary labels (14–16)
         property int fontCaption: 13
         property string fontMono: "JetBrains Mono, Fira Code, monospace"
+        property string fontDisplay: "Inter, Segoe UI, Roboto, sans-serif"
+
+        // --- Glass / elevation tokens ---
+        property real glass: root.glassOpacity
+        property bool glow: root.showWidgetGlow
+        // Card fill respects the glass setting (more transparent = glassier).
+        function cardFill() {
+            return Qt.rgba(cardBackground.r, cardBackground.g, cardBackground.b,
+                           0.35 + (1.0 - root.glassOpacity) * 0.65)
+        }
 
         // --- Motion tokens (ms). Honor reduced motion. ---
         property int motionPage: root.reduceMotion ? 0 : 250   // page transition
@@ -97,42 +137,60 @@ ApplicationWindow {
         property int motionRemove: root.reduceMotion ? 0 : 150 // widget remove fade
         property int motionEdit: root.reduceMotion ? 0 : 200   // edit enter/exit
         property int motionFast: root.reduceMotion ? 0 : 150   // press feedback
+        property int motionSlow: root.reduceMotion ? 0 : 500
+
+        // Apply a named accent preset at runtime.
+        function applyAccent(name) {
+            var p = accentPresets[name] || accentPresets["blue"]
+            accent = p.a
+            accent2 = p.b
+            root.accentName = name
+        }
 
         function applyTheme(mode) {
             switch(mode) {
             case "light":
                 backgroundColor = "#FFFFFF";
+                backgroundColor2 = "#EEF1F5";
                 cardBackground = "#F6F8FA";
+                cardBackgroundAlt = "#ECEFF3";
                 cardBorder = "#D0D7DE";
                 textPrimary = "#1F2328";
                 textSecondary = "#656D76";
-                accent = "#0969DA";
+                textTertiary = "#8C959F";
                 break;
             case "oled":
                 backgroundColor = "#000000";
+                backgroundColor2 = "#000000";
                 cardBackground = "#0A0A0A";
+                cardBackgroundAlt = "#121212";
                 cardBorder = "#1A1A1A";
                 textPrimary = "#E0E0E0";
                 textSecondary = "#808080";
-                accent = "#58A6FF";
+                textTertiary = "#5A5A5A";
                 break;
             case "high_contrast":
                 backgroundColor = "#000000";
+                backgroundColor2 = "#000000";
                 cardBackground = "#1A1A1A";
+                cardBackgroundAlt = "#242424";
                 cardBorder = "#FFFFFF";
                 textPrimary = "#FFFFFF";
                 textSecondary = "#CCCCCC";
-                accent = "#FFFF00";
+                textTertiary = "#AAAAAA";
                 break;
             default: // dark
                 backgroundColor = "#0D1117";
+                backgroundColor2 = "#0A0E14";
                 cardBackground = "#161B22";
+                cardBackgroundAlt = "#1C222B";
                 cardBorder = "#30363D";
                 textPrimary = "#E6EDF3";
                 textSecondary = "#8B949E";
-                accent = "#58A6FF";
+                textTertiary = "#6E7681";
                 break;
             }
+            applyAccent(root.accentName);
         }
 
         Component.onCompleted: applyTheme(root.themeMode)

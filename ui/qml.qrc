@@ -6,6 +6,12 @@
         <file>qml/Diagnostics.qml</file>
         <file>qml/ExpandedWidget.qml</file>
         <file alias="qml/WidgetCard.qml">qml/widgets/WidgetCard.qml</file>
+        <file alias="qml/WidgetChrome.qml">qml/widgets/WidgetChrome.qml</file>
+        <file alias="qml/PillButton.qml">qml/widgets/PillButton.qml</file>
+        <file alias="qml/SegmentedControl.qml">qml/widgets/SegmentedControl.qml</file>
+        <file alias="qml/RingProgress.qml">qml/widgets/RingProgress.qml</file>
+        <file alias="qml/FocusTimer.qml">qml/widgets/FocusTimer.qml</file>
+        <file alias="qml/SettingsPanel.qml">qml/widgets/SettingsPanel.qml</file>
         <file alias="qml/ClockWidget.qml">qml/widgets/ClockWidget.qml</file>
         <file alias="qml/CpuWidget.qml">qml/widgets/CpuWidget.qml</file>
         <file alias="qml/RamWidget.qml">qml/widgets/RamWidget.qml</file>

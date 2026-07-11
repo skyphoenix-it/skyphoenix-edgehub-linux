@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Widget Experience Overhaul)
+- Shared design-system foundation for a uniform, professional look across all widgets:
+  - `WidgetChrome.qml`: glass card with accent glow, category-tinted wash, and consistent header (icon + title + status)
+  - `PillButton.qml`, `SegmentedControl.qml`, `RingProgress.qml`: reusable, touch-friendly controls
+- Expanded theme in `main.qml`: 8 selectable accent presets, category colors, glass/transparency token, widget glow toggle, secondary surfaces, and gradient partners
+- `SettingsPanel.qml`: in-app appearance panel to change theme, accent color, glass/transparency, glow, and reduced motion — applied live
+- Full-featured, ADHD-friendly `FocusTimer.qml`: work/short/long phases with automatic cycling, Classic/Deep/Sprint/Custom presets, session tracking, big progress ring, Start/Pause/Reset, +5 min, Skip, rotating focus nudges, and completion flash
+- New widgets across categories: Hydration (Focus), Weather (Info), Now Playing (Entertainment), Doodle Pad (Entertainment), FPS/GPU (Gaming), Next Race (Gaming)
+- Rebuilt all existing widgets (Clock, CPU, Memory, Sensors, Network, Tasks, Habit Streak, Moon Phase, Daily Quote, Countdown, End of Day, Dice Roller, Analog) on the shared chrome with richer visuals and interactions
+- Dashboard reorganized into 5 category pages (System · Focus · Info · Play · Ambient) with a labelled, animated page indicator and gradient background
+- `ExpandedWidget.qml`: category-tinted backdrop and icon + accent underline in the title
+
 ### Added (Phase 1 — Application Shell)
 - Rust core library (`xeneon-core`) with:
   - Configuration management (TOML, XDG paths, versioned schema, atomic saves)
