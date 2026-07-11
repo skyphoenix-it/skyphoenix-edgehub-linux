@@ -18,6 +18,12 @@ pub struct AppConfig {
     pub startup: StartupConfig,
     /// Widget configurations.
     pub widgets: WidgetsConfig,
+    /// Opaque UI-state document (JSON) owned by the QML layer: the full dashboard
+    /// layout (pages → slots → widget instances), per-widget settings/state, and
+    /// runtime appearance overrides. Kept opaque so the UI schema can evolve
+    /// without churning the Rust config structs. `None` until the UI saves once.
+    #[serde(default)]
+    pub ui_state: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -137,6 +143,7 @@ impl Default for AppConfig {
                 version: 1,
                 instances: Vec::new(),
             },
+            ui_state: None,
         }
     }
 }
@@ -273,6 +280,44 @@ mod tests {
     }
 
     #[test]
+    fn test_ui_state_roundtrip_and_default_none() {
+        // Fresh config has no UI state.
+        let mut config = AppConfig::default();
+        assert!(config.ui_state.is_none());
+
+        // Round-trips through TOML as an opaque JSON string.
+        config.ui_state = Some(r#"{"pages":[{"name":"System","slots":[]}]}"#.to_string());
+        let serialized = toml::to_string_pretty(&config).unwrap();
+        let deserialized: AppConfig = toml::from_str(&serialized).unwrap();
+        assert_eq!(deserialized.ui_state, config.ui_state);
+    }
+
+    #[test]
+    fn test_old_config_without_ui_state_still_parses() {
+        // A config file written before ui_state existed must still load (serde default).
+        let legacy = r##"
+schema_version = 1
+first_run_complete = true
+[display]
+fallback_behavior = "hide"
+[theme]
+mode = "dark"
+accent_color = "#58A6FF"
+reduced_motion = false
+[startup]
+autostart = false
+reconnect_on_hotplug = true
+notify_on_disconnect = false
+[widgets]
+version = 1
+instances = []
+"##;
+        let cfg: AppConfig = toml::from_str(legacy).unwrap();
+        assert!(cfg.ui_state.is_none());
+        assert!(cfg.first_run_complete);
+    }
+
+    #[test]
     fn test_config_serialization_has_expected_keys() {
         let config = AppConfig::default();
         let toml_str = toml::to_string_pretty(&config).unwrap();
@@ -282,4 +327,3 @@ mod tests {
         assert!(toml_str.contains("[theme]"));
     }
 }
-

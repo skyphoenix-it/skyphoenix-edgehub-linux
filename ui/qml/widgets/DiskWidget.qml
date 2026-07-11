@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 
-// Memory usage — real data from the Rust core.
+// Root-filesystem usage — real data (statvfs via the Rust core).
 WidgetChrome {
     id: w
     property var metrics: ({})
@@ -11,12 +11,15 @@ WidgetChrome {
     property var store: null
     property string instanceId: ""
 
-    title: "Memory"; icon: "🧠"; accentColor: theme.catProductivity
+    title: "Disk"; icon: "💽"; accentColor: theme.catInfo
     big: expanded
 
-    property real v: metrics.ram_usage_percent || 0
-    function col(p) { return p > 90 ? theme.error : p > 75 ? theme.warning : theme.catProductivity }
-    function gb(b) { return (b / 1073741824).toFixed(1) }
+    property real v: metrics.disk_usage_percent || 0
+    function col(p) { return p > 92 ? theme.error : p > 80 ? theme.warning : theme.catInfo }
+    function human(b) {
+        if (b >= 1099511627776) return (b / 1099511627776).toFixed(2) + " TB"
+        return (b / 1073741824).toFixed(0) + " GB"
+    }
 
     ColumnLayout {
         anchors.centerIn: parent
@@ -38,7 +41,7 @@ WidgetChrome {
         }
         Text {
             Layout.alignment: Qt.AlignHCenter
-            text: w.gb(metrics.ram_used_bytes || 0) + " / " + w.gb(metrics.ram_total_bytes || 0) + " GB"
+            text: w.human(metrics.disk_used_bytes || 0) + " / " + w.human(metrics.disk_total_bytes || 0) + "  ·  /"
             font.pixelSize: w.expanded ? 18 : 11; color: theme.textSecondary
         }
     }

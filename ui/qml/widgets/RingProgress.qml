@@ -18,6 +18,10 @@ Item {
             var cx = width / 2, cy = height / 2
             var r = Math.min(cx, cy) - ring.thickness / 2 - 2
             ctx.clearRect(0, 0, width, height)
+            // Guard against zero/negative radius before the item has been laid
+            // out (Canvas.arc throws "Incorrect argument radius" for r <= 0).
+            if (r <= 0)
+                return
 
             // Track
             ctx.beginPath()
@@ -49,7 +53,11 @@ Item {
     onValueChanged: cv.requestPaint()
     onWidthChanged: cv.requestPaint()
     onHeightChanged: cv.requestPaint()
+    onThicknessChanged: cv.requestPaint()
+    onTrackColorChanged: cv.requestPaint()
     onProgressColorChanged: cv.requestPaint()
+    onProgressColor2Changed: cv.requestPaint()
+    onGlowChanged: cv.requestPaint()
     Component.onCompleted: cv.requestPaint()
 }
 

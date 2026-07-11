@@ -1,5 +1,4 @@
 use std::str::FromStr;
-use tracing_subscriber::{fmt, EnvFilter};
 
 /// Initialize structured logging for the application.
 ///

@@ -1,6 +1,7 @@
 use std::fs;
 use std::io;
 use std::sync::Mutex;
+use std::time::Instant;
 
 /// System metrics collected from /proc and /sys interfaces.
 #[derive(Debug, Clone, Default)]
@@ -17,6 +18,20 @@ pub struct SystemMetrics {
     pub ram_used_bytes: u64,
     /// Number of CPU cores (logical).
     pub cpu_core_count: u32,
+    /// GPU utilization as a percentage (0.0 - 100.0), if a GPU is discoverable.
+    pub gpu_usage_percent: Option<f64>,
+    /// GPU temperature in Celsius, if available.
+    pub gpu_temp_celsius: Option<f64>,
+    /// Network receive rate in bytes/second (summed over physical interfaces).
+    pub net_rx_bytes_per_sec: f64,
+    /// Network transmit rate in bytes/second (summed over physical interfaces).
+    pub net_tx_bytes_per_sec: f64,
+    /// Total size of the root filesystem in bytes.
+    pub disk_total_bytes: u64,
+    /// Used space on the root filesystem in bytes.
+    pub disk_used_bytes: u64,
+    /// Root filesystem usage as a percentage (0.0 - 100.0).
+    pub disk_usage_percent: f64,
 }
 
 /// Cached CPU times from the previous reading, for delta computation.
@@ -28,10 +43,18 @@ static CPU_CORE_COUNT: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
 /// Cached CPU temperature sensor path.
 static TEMP_SENSOR_PATH: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
 
+/// Cached GPU sysfs paths (busy + temperature), discovered once.
+static GPU_PATHS: std::sync::OnceLock<Option<GpuPaths>> = std::sync::OnceLock::new();
+
+/// Cached previous network counters + timestamp, for byte-rate deltas.
+static PREV_NET: Mutex<Option<NetSample>> = Mutex::new(None);
+
 /// Collect current system metrics.
 pub fn collect_metrics() -> SystemMetrics {
     // Read RAM info exactly once (previously this parsed /proc/meminfo 3×).
     let ram = read_ram_info();
+    let (net_rx, net_tx) = read_network_rates();
+    let disk = read_disk_info();
     SystemMetrics {
         cpu_usage_percent: read_cpu_usage(),
         cpu_temp_celsius: read_cpu_temperature(),
@@ -39,6 +62,54 @@ pub fn collect_metrics() -> SystemMetrics {
         ram_total_bytes: ram.total,
         ram_used_bytes: ram.used,
         cpu_core_count: get_cpu_core_count(),
+        gpu_usage_percent: read_gpu_usage(),
+        gpu_temp_celsius: read_gpu_temperature(),
+        net_rx_bytes_per_sec: net_rx,
+        net_tx_bytes_per_sec: net_tx,
+        disk_total_bytes: disk.total,
+        disk_used_bytes: disk.used,
+        disk_usage_percent: disk.percent,
+    }
+}
+
+// --- Disk usage (root filesystem via statvfs) ---
+
+struct DiskInfo {
+    total: u64,
+    used: u64,
+    percent: f64,
+}
+
+/// Read root-filesystem usage via `statvfs("/")`.
+/// Returns zeroed info if the syscall fails.
+fn read_disk_info() -> DiskInfo {
+    let default = DiskInfo {
+        total: 0,
+        used: 0,
+        percent: 0.0,
+    };
+    let path = match std::ffi::CString::new("/") {
+        Ok(p) => p,
+        Err(_) => return default,
+    };
+    // SAFETY: `stat` is a valid, zero-initialized statvfs; `path` is a valid
+    // NUL-terminated C string that outlives the call.
+    let mut stat: libc::statvfs = unsafe { std::mem::zeroed() };
+    let rc = unsafe { libc::statvfs(path.as_ptr(), &mut stat) };
+    if rc != 0 {
+        return default;
+    }
+    let frsize = stat.f_frsize as u64;
+    let total = (stat.f_blocks as u64).saturating_mul(frsize);
+    let free = (stat.f_bfree as u64).saturating_mul(frsize);
+    if total == 0 {
+        return default;
+    }
+    let used = total.saturating_sub(free);
+    DiskInfo {
+        total,
+        used,
+        percent: used as f64 / total as f64 * 100.0,
     }
 }
 
@@ -55,14 +126,8 @@ fn read_cpu_usage() -> f64 {
         Some(p) => {
             let idle1 = p.idle + p.iowait;
             let idle2 = current.idle + current.iowait;
-            let total1: u64 = p.user
-                + p.nice
-                + p.system
-                + p.idle
-                + p.iowait
-                + p.irq
-                + p.softirq
-                + p.steal;
+            let total1: u64 =
+                p.user + p.nice + p.system + p.idle + p.iowait + p.irq + p.softirq + p.steal;
             let total2: u64 = current.user
                 + current.nice
                 + current.system
@@ -132,13 +197,13 @@ fn count_cpus() -> u32 {
 
 /// Get CPU core count, cached after first call.
 fn get_cpu_core_count() -> u32 {
-    *CPU_CORE_COUNT.get_or_init(|| count_cpus())
+    *CPU_CORE_COUNT.get_or_init(count_cpus)
 }
 
 /// Read CPU temperature from hwmon interfaces.
 /// Sensor path is discovered once and cached.
 fn read_cpu_temperature() -> Option<f64> {
-    let sensor_path = TEMP_SENSOR_PATH.get_or_init(|| discover_temp_sensor());
+    let sensor_path = TEMP_SENSOR_PATH.get_or_init(discover_temp_sensor);
 
     if let Some(path) = sensor_path {
         if let Ok(content) = fs::read_to_string(path) {
@@ -239,6 +304,164 @@ fn glob_simple(pattern: &str) -> Result<Vec<std::path::PathBuf>, io::Error> {
     }
 }
 
+// --- GPU (AMD/Intel/NVIDIA via DRM sysfs) ---
+
+/// Discovered GPU sysfs file paths.
+#[derive(Debug, Clone)]
+struct GpuPaths {
+    /// `.../device/gpu_busy_percent` (integer 0-100).
+    busy: String,
+    /// `.../device/hwmon/hwmonN/temp*_input` (millidegrees C), if present.
+    temp: Option<String>,
+}
+
+/// Read GPU utilization percentage (0-100) from the discovered card.
+fn read_gpu_usage() -> Option<f64> {
+    let paths = GPU_PATHS.get_or_init(discover_gpu).as_ref()?;
+    let content = fs::read_to_string(&paths.busy).ok()?;
+    content.trim().parse::<f64>().ok()
+}
+
+/// Read GPU temperature in Celsius from the discovered card's hwmon.
+fn read_gpu_temperature() -> Option<f64> {
+    let paths = GPU_PATHS.get_or_init(discover_gpu).as_ref()?;
+    let temp_path = paths.temp.as_ref()?;
+    let content = fs::read_to_string(temp_path).ok()?;
+    content.trim().parse::<f64>().ok().map(|m| m / 1000.0)
+}
+
+/// Discover the primary GPU's sysfs paths and cache them.
+///
+/// When multiple DRM cards expose `gpu_busy_percent` (e.g. an integrated GPU
+/// plus a discrete one), the card with the largest VRAM is chosen — that is the
+/// discrete GPU users care about for a gaming/monitoring dashboard.
+fn discover_gpu() -> Option<GpuPaths> {
+    let dir = std::fs::read_dir("/sys/class/drm").ok()?;
+    let mut best: Option<(u64, GpuPaths)> = None;
+
+    for entry in dir.flatten() {
+        let name = entry.file_name().to_string_lossy().to_string();
+        // Only real cards ("card0", "card1", …) — skip "card0-DP-1" outputs.
+        if !name.starts_with("card") || name.contains('-') {
+            continue;
+        }
+        let device = entry.path().join("device");
+        let busy = device.join("gpu_busy_percent");
+        if !busy.exists() {
+            continue;
+        }
+
+        let vram = fs::read_to_string(device.join("mem_info_vram_total"))
+            .ok()
+            .and_then(|s| s.trim().parse::<u64>().ok())
+            .unwrap_or(0);
+
+        let temp = discover_gpu_temp(&device.join("hwmon"));
+        let paths = GpuPaths {
+            busy: busy.to_string_lossy().to_string(),
+            temp,
+        };
+
+        match &best {
+            Some((best_vram, _)) if *best_vram >= vram => {}
+            _ => best = Some((vram, paths)),
+        }
+    }
+
+    best.map(|(_, p)| p)
+}
+
+/// Find a temperature input under a card's `device/hwmon/hwmonN/` directory,
+/// preferring the `edge` sensor label when present.
+fn discover_gpu_temp(hwmon_dir: &std::path::Path) -> Option<String> {
+    let dirs = std::fs::read_dir(hwmon_dir).ok()?;
+    let mut fallback: Option<String> = None;
+    for hw in dirs.flatten() {
+        for idx in 1..=3 {
+            let input = hw.path().join(format!("temp{idx}_input"));
+            if !input.exists() {
+                continue;
+            }
+            let label = fs::read_to_string(hw.path().join(format!("temp{idx}_label")))
+                .unwrap_or_default()
+                .trim()
+                .to_lowercase();
+            if label == "edge" {
+                return Some(input.to_string_lossy().to_string());
+            }
+            fallback.get_or_insert_with(|| input.to_string_lossy().to_string());
+        }
+    }
+    fallback
+}
+
+// --- Network throughput ---
+
+/// Cumulative network counters at a point in time.
+struct NetSample {
+    rx: u64,
+    tx: u64,
+    at: Instant,
+}
+
+/// Read total rx/tx byte counters from /proc/net/dev, excluding loopback and
+/// virtual interfaces (docker/veth/bridge) so the rate reflects real traffic.
+fn read_net_totals() -> Option<(u64, u64)> {
+    let content = fs::read_to_string("/proc/net/dev").ok()?;
+    let mut rx_total: u64 = 0;
+    let mut tx_total: u64 = 0;
+    for line in content.lines() {
+        let (iface, rest) = match line.split_once(':') {
+            Some(parts) => parts,
+            None => continue,
+        };
+        let iface = iface.trim();
+        if iface == "lo"
+            || iface.starts_with("veth")
+            || iface.starts_with("docker")
+            || iface.starts_with("br-")
+            || iface.starts_with("virbr")
+        {
+            continue;
+        }
+        let fields: Vec<&str> = rest.split_whitespace().collect();
+        // Receive bytes = field 0, transmit bytes = field 8.
+        if fields.len() < 9 {
+            continue;
+        }
+        rx_total += fields[0].parse::<u64>().unwrap_or(0);
+        tx_total += fields[8].parse::<u64>().unwrap_or(0);
+    }
+    Some((rx_total, tx_total))
+}
+
+/// Compute rx/tx byte-rates (bytes/sec) using the cached previous sample.
+/// Returns (0.0, 0.0) on the first call or if counters are unavailable.
+fn read_network_rates() -> (f64, f64) {
+    let (rx, tx) = match read_net_totals() {
+        Some(v) => v,
+        None => return (0.0, 0.0),
+    };
+    let now = Instant::now();
+    let mut prev = PREV_NET.lock().unwrap();
+    let result = match prev.as_ref() {
+        Some(p) => {
+            let elapsed = now.duration_since(p.at).as_secs_f64();
+            if elapsed <= 0.0 {
+                (0.0, 0.0)
+            } else {
+                (
+                    rx.saturating_sub(p.rx) as f64 / elapsed,
+                    tx.saturating_sub(p.tx) as f64 / elapsed,
+                )
+            }
+        }
+        None => (0.0, 0.0),
+    };
+    *prev = Some(NetSample { rx, tx, at: now });
+    result
+}
+
 struct RamInfo {
     total: u64,
     used: u64,
@@ -335,6 +558,44 @@ mod tests {
         assert!(metrics.cpu_usage_percent >= 0.0);
         assert!(metrics.ram_total_bytes > 0);
         assert!(metrics.cpu_core_count > 0);
+        // New metrics: net rates are non-negative; GPU usage (if present) is 0-100.
+        assert!(metrics.net_rx_bytes_per_sec >= 0.0);
+        assert!(metrics.net_tx_bytes_per_sec >= 0.0);
+        if let Some(gpu) = metrics.gpu_usage_percent {
+            assert!((0.0..=100.0).contains(&gpu));
+        }
+    }
+
+    #[test]
+    fn test_read_net_totals_returns_counters() {
+        // /proc/net/dev always exists on Linux (at least the `lo` interface).
+        let totals = read_net_totals();
+        assert!(totals.is_some(), "expected /proc/net/dev to be readable");
+    }
+
+    #[test]
+    fn test_read_network_rates_first_call_is_zero_then_finite() {
+        // First observation has no prior sample → zero rates; subsequent calls
+        // must stay finite and non-negative.
+        let (_r1, _t1) = read_network_rates();
+        let (r2, t2) = read_network_rates();
+        assert!(r2.is_finite() && r2 >= 0.0);
+        assert!(t2.is_finite() && t2 >= 0.0);
+    }
+
+    #[test]
+    fn test_discover_gpu_does_not_panic() {
+        // May be None on machines/CI without a DRM GPU — must not panic either way.
+        let _ = discover_gpu();
+    }
+
+    #[test]
+    fn test_read_disk_info_root() {
+        // The root filesystem always exists and should report a non-zero total.
+        let disk = read_disk_info();
+        assert!(disk.total > 0, "root filesystem total should be > 0");
+        assert!(disk.used <= disk.total);
+        assert!((0.0..=100.0).contains(&disk.percent));
     }
 
     #[test]

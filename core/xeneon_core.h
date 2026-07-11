@@ -51,6 +51,11 @@ int xeneon_config_set_autostart(ConfigHandle* handle, int enabled);
 int xeneon_config_set_reconnect(ConfigHandle* handle, int enabled);
 int xeneon_config_set_notify_disconnect(ConfigHandle* handle, int enabled);
 int xeneon_config_set_starter_layout(ConfigHandle* handle, const char* layout_id);
+char* xeneon_config_get_starter_layout(const ConfigHandle* handle);
+
+// Opaque UI-state JSON (dashboard layout + per-widget settings + appearance).
+char* xeneon_config_get_ui_state(const ConfigHandle* handle);
+int xeneon_config_set_ui_state(ConfigHandle* handle, const char* json);
 
 // === Display Utilities ===
 char* xeneon_display_compute_edid_hash(const uint8_t* edid_data, size_t len);
@@ -68,6 +73,12 @@ double xeneon_metrics_get_ram_usage(const MetricsHandle* handle);
 uint64_t xeneon_metrics_get_ram_total(const MetricsHandle* handle);
 uint64_t xeneon_metrics_get_ram_used(const MetricsHandle* handle);
 uint32_t xeneon_metrics_get_cpu_cores(const MetricsHandle* handle);
+double xeneon_metrics_get_gpu_usage(const MetricsHandle* handle); // -1.0 if unavailable
+double xeneon_metrics_get_gpu_temp(const MetricsHandle* handle);  // -1.0 if unavailable
+double xeneon_metrics_get_net_rx(const MetricsHandle* handle);    // bytes/sec
+double xeneon_metrics_get_net_tx(const MetricsHandle* handle);    // bytes/sec
+uint64_t xeneon_metrics_get_disk_total(const MetricsHandle* handle);
+uint64_t xeneon_metrics_get_disk_used(const MetricsHandle* handle);
 char* xeneon_metrics_to_json(const MetricsHandle* handle);
 
 // === String Utilities ===

@@ -17,7 +17,7 @@ include(CheckIPOSupported)
 check_ipo_supported(RESULT IPO_SUPPORTED OUTPUT IPO_ERROR)
 
 # Find Qt6
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Quick Qml)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Quick Qml DBus)
 
 # --- Build Rust Core Library ---
 
@@ -40,11 +40,17 @@ endif()
 
 set(RUST_LIB "${RUST_LIB_DIR}/libxeneon_core.a")
 
+# Track Rust sources so the static library is rebuilt whenever they change.
+# Without this, add_custom_command has no source dependencies and would link a
+# stale libxeneon_core.a after edits to the Rust core.
+file(GLOB_RECURSE RUST_SOURCES CONFIGURE_DEPENDS "${RUST_CORE_DIR}/src/*.rs")
+
 # Custom command to build the rust library
 add_custom_command(
     OUTPUT ${RUST_LIB}
     COMMAND ${CARGO_EXECUTABLE} build ${CARGO_BUILD_FLAG} --manifest-path "${RUST_CORE_DIR}/Cargo.toml"
     WORKING_DIRECTORY "${RUST_CORE_DIR}"
+    DEPENDS ${RUST_SOURCES} "${RUST_CORE_DIR}/Cargo.toml"
     COMMENT "Building Rust core library..."
     USES_TERMINAL
 )
@@ -54,6 +60,7 @@ add_custom_target(rust_core ALL DEPENDS ${RUST_LIB})
 # --- Build C++ Application ---
 add_executable(xeneon-edge-hub
     app/src/main.cpp
+    app/src/mpris_bridge.cpp
     ${CMAKE_SOURCE_DIR}/ui/qml.qrc
 )
 
@@ -63,6 +70,7 @@ target_link_libraries(xeneon-edge-hub PRIVATE
     Qt6::Gui
     Qt6::Quick
     Qt6::Qml
+    Qt6::DBus
     ${RUST_LIB}
     pthread
     dl

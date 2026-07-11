@@ -85,10 +85,12 @@ Item {
                     Layout.fillWidth: true
                 }
 
-                // Parse screens from JSON
+                // Parse screens from the C++ context property directly (the old
+                // wizard.parent.parent traversal was fragile and could resolve to
+                // the wrong object, leaving the list empty).
                 property var screensList: {
                     try {
-                        return JSON.parse(wizard.parent.parent.screensData || "[]");
+                        return JSON.parse(_screens || "[]");
                     } catch(e) {
                         return [];
                     }

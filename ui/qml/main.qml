@@ -223,7 +223,8 @@ ApplicationWindow {
             if (stackView.depth <= 1) {
                 stackView.push("qrc:/qml/Diagnostics.qml", {
                     "metricsJson": root.metricsJson,
-                    "screensData": root.screensData
+                    "screensData": root.screensData,
+                    "configJson": (typeof configBridge !== "undefined" && configBridge) ? configBridge.configJson() : ""
                 });
             }
         }
@@ -248,7 +249,8 @@ ApplicationWindow {
             } else {
                 stackView.push("qrc:/qml/Diagnostics.qml", {
                     "metricsJson": root.metricsJson,
-                    "screensData": root.screensData
+                    "screensData": root.screensData,
+                    "configJson": (typeof configBridge !== "undefined" && configBridge) ? configBridge.configJson() : ""
                 });
             }
         }

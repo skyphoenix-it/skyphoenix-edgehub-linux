@@ -4,45 +4,38 @@
         <file>qml/FirstRunWizard.qml</file>
         <file>qml/Dashboard.qml</file>
         <file>qml/Diagnostics.qml</file>
-        <file>qml/ExpandedWidget.qml</file>
-        <file alias="qml/WidgetCard.qml">qml/widgets/WidgetCard.qml</file>
+        <file>qml/DashboardStore.qml</file>
+        <file>qml/WidgetCatalog.qml</file>
+
+        <!-- Shared framework components -->
         <file alias="qml/WidgetChrome.qml">qml/widgets/WidgetChrome.qml</file>
         <file alias="qml/PillButton.qml">qml/widgets/PillButton.qml</file>
         <file alias="qml/SegmentedControl.qml">qml/widgets/SegmentedControl.qml</file>
         <file alias="qml/RingProgress.qml">qml/widgets/RingProgress.qml</file>
-        <file alias="qml/FocusTimer.qml">qml/widgets/FocusTimer.qml</file>
         <file alias="qml/SettingsPanel.qml">qml/widgets/SettingsPanel.qml</file>
+
+        <!-- Widgets (registered in WidgetCatalog.qml) -->
         <file alias="qml/ClockWidget.qml">qml/widgets/ClockWidget.qml</file>
+        <file alias="qml/AnalogClockWidget.qml">qml/widgets/AnalogClockWidget.qml</file>
+        <file alias="qml/MoonWidget.qml">qml/widgets/MoonWidget.qml</file>
         <file alias="qml/CpuWidget.qml">qml/widgets/CpuWidget.qml</file>
+        <file alias="qml/GpuWidget.qml">qml/widgets/GpuWidget.qml</file>
         <file alias="qml/RamWidget.qml">qml/widgets/RamWidget.qml</file>
-        <file alias="qml/SensorBarWidget.qml">qml/widgets/SensorBarWidget.qml</file>
-        <file alias="qml/PomodoroWidget.qml">qml/widgets/PomodoroWidget.qml</file>
-        <file alias="qml/ChecklistWidget.qml">qml/widgets/ChecklistWidget.qml</file>
-        <file alias="qml/HabitCalendarWidget.qml">qml/widgets/HabitCalendarWidget.qml</file>
-        <file alias="qml/DailyQuoteWidget.qml">qml/widgets/DailyQuoteWidget.qml</file>
-        <file alias="qml/PingWidget.qml">qml/widgets/PingWidget.qml</file>
-        <file alias="qml/EndOfDayWidget.qml">qml/widgets/EndOfDayWidget.qml</file>
+        <file alias="qml/NetWidget.qml">qml/widgets/NetWidget.qml</file>
+        <file alias="qml/DiskWidget.qml">qml/widgets/DiskWidget.qml</file>
+        <file alias="qml/SensorsWidget.qml">qml/widgets/SensorsWidget.qml</file>
+        <file alias="qml/FocusWidget.qml">qml/widgets/FocusWidget.qml</file>
+        <file alias="qml/TasksWidget.qml">qml/widgets/TasksWidget.qml</file>
+        <file alias="qml/RightNowWidget.qml">qml/widgets/RightNowWidget.qml</file>
+        <file alias="qml/NotesWidget.qml">qml/widgets/NotesWidget.qml</file>
+        <file alias="qml/MediaWidget.qml">qml/widgets/MediaWidget.qml</file>
+        <file alias="qml/CalendarWidget.qml">qml/widgets/CalendarWidget.qml</file>
+        <file alias="qml/WeatherWidget.qml">qml/widgets/WeatherWidget.qml</file>
+        <file alias="qml/QuoteWidget.qml">qml/widgets/QuoteWidget.qml</file>
+        <file alias="qml/HabitWidget.qml">qml/widgets/HabitWidget.qml</file>
+        <file alias="qml/HydrationWidget.qml">qml/widgets/HydrationWidget.qml</file>
+        <file alias="qml/BreakWidget.qml">qml/widgets/BreakWidget.qml</file>
         <file alias="qml/CountdownWidget.qml">qml/widgets/CountdownWidget.qml</file>
-        <file alias="qml/MoonPhaseWidget.qml">qml/widgets/MoonPhaseWidget.qml</file>
-        <file alias="qml/RssFeedWidget.qml">qml/widgets/RssFeedWidget.qml</file>
-        <file alias="qml/SmokeClockWidget.qml">qml/widgets/SmokeClockWidget.qml</file>
-        <file alias="qml/RobexWidget.qml">qml/widgets/RobexWidget.qml</file>
-        <file alias="qml/CardOptimizerWidget.qml">qml/widgets/CardOptimizerWidget.qml</file>
-        <file alias="qml/BaseballWidget.qml">qml/widgets/BaseballWidget.qml</file>
-        <file alias="qml/BasketballWidget.qml">qml/widgets/BasketballWidget.qml</file>
-        <file alias="qml/FootballWidget.qml">qml/widgets/FootballWidget.qml</file>
-        <file alias="qml/HockeyWidget.qml">qml/widgets/HockeyWidget.qml</file>
-        <file alias="qml/MatchdayWidget.qml">qml/widgets/MatchdayWidget.qml</file>
-        <file alias="qml/F1Widget.qml">qml/widgets/F1Widget.qml</file>
-        <file alias="qml/DiceRollerWidget.qml">qml/widgets/DiceRollerWidget.qml</file>
-        <file alias="qml/LunchRouletteWidget.qml">qml/widgets/LunchRouletteWidget.qml</file>
-        <file alias="qml/BartWidget.qml">qml/widgets/BartWidget.qml</file>
-        <file alias="qml/LondonTubeWidget.qml">qml/widgets/LondonTubeWidget.qml</file>
-        <file alias="qml/LiveCommuteWidget.qml">qml/widgets/LiveCommuteWidget.qml</file>
-        <file alias="qml/DoodlePadWidget.qml">qml/widgets/DoodlePadWidget.qml</file>
-        <file alias="qml/LossTrackerWidget.qml">qml/widgets/LossTrackerWidget.qml</file>
-        <file alias="qml/ScrollitWidget.qml">qml/widgets/ScrollitWidget.qml</file>
-        <file alias="qml/ReaditWidget.qml">qml/widgets/ReaditWidget.qml</file>
-        <file alias="qml/ViewStatsWidget.qml">qml/widgets/ViewStatsWidget.qml</file>
+        <file alias="qml/EndOfDayWidget.qml">qml/widgets/EndOfDayWidget.qml</file>
     </qresource>
 </RCC>

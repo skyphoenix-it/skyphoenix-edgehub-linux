@@ -10,12 +10,16 @@
 #include <QDebug>
 #include <QCommandLineParser>
 #include <QObject>
+#include <QFile>
+#include <QDir>
+#include <QTextStream>
 #include <csignal>
 #include <initializer_list>
 #include <unistd.h>
 #include <QSocketNotifier>
 
 #include "xeneon_core.h"
+#include "mpris_bridge.h"
 
 // --- RAII string wrapper ---
 
@@ -209,6 +213,38 @@ static QScreen* findTargetScreen(ConfigHandle* config) {
     return QGuiApplication::primaryScreen();
 }
 
+// --- Autostart: install/remove an XDG autostart .desktop entry ---
+// Writes ~/.config/autostart/xeneon-edge-hub.desktop pointing at the current
+// binary, so "start on login" actually takes effect (previously a no-op).
+static bool applyAutostart(bool enabled) {
+    const QString dir = QDir::homePath() + "/.config/autostart";
+    const QString path = dir + "/xeneon-edge-hub.desktop";
+    if (!enabled) {
+        QFile::remove(path);
+        return true;
+    }
+    if (!QDir().mkpath(dir))
+        return false;
+    QFile f(path);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        qWarning() << "Could not write autostart entry:" << path;
+        return false;
+    }
+    QTextStream ts(&f);
+    ts << "[Desktop Entry]\n"
+       << "Type=Application\n"
+       << "Name=Xeneon Edge Linux Hub\n"
+       << "Comment=Native Linux widget platform for secondary touchscreen displays\n"
+       << "Exec=" << QCoreApplication::applicationFilePath() << "\n"
+       << "Icon=xeneon-edge-hub\n"
+       << "Categories=Utility;\n"
+       << "Terminal=false\n"
+       << "X-GNOME-Autostart-enabled=true\n";
+    f.close();
+    qInfo() << "Autostart entry written:" << path;
+    return true;
+}
+
 // --- WizardBridge: QObject exposed to QML for first-run persistence ---
 
 class WizardBridge : public QObject {
@@ -246,6 +282,9 @@ public:
         xeneon_config_set_reconnect(m_config, reconnect ? 1 : 0);
         xeneon_config_set_notify_disconnect(m_config, notifyDisconnect ? 1 : 0);
 
+        // Actually install/remove the XDG autostart entry to match the choice.
+        applyAutostart(autostart);
+
         // Mark first-run complete
         xeneon_config_set_first_run_complete(m_config);
 
@@ -258,6 +297,48 @@ public:
             qWarning() << "Wizard complete but config save failed";
         }
         return saved == 0;
+    }
+
+private:
+    ConfigHandle* m_config;
+};
+
+// --- ConfigBridge: runtime config access for QML (layout persistence, etc.) ---
+
+class ConfigBridge : public QObject {
+    Q_OBJECT
+public:
+    explicit ConfigBridge(ConfigHandle* config, QObject* parent = nullptr)
+        : QObject(parent), m_config(config) {}
+
+    // Opaque UI-state JSON (dashboard layout + per-widget settings + appearance).
+    Q_INVOKABLE QString uiState() const {
+        if (!m_config) return QString();
+        XeneonString s(xeneon_config_get_ui_state(m_config));
+        return s.qstring();
+    }
+
+    // Persist the UI-state JSON and flush to disk atomically. Returns success.
+    Q_INVOKABLE bool saveUiState(const QString& json) {
+        if (!m_config) return false;
+        xeneon_config_set_ui_state(m_config, json.toUtf8().constData());
+        bool ok = xeneon_config_save(m_config) == 0;
+        if (!ok) qWarning() << "Failed to persist UI state";
+        return ok;
+    }
+
+    // Starter layout id chosen during the wizard ("productivity"/"gaming"/…).
+    Q_INVOKABLE QString starterLayout() const {
+        if (!m_config) return QString();
+        XeneonString s(xeneon_config_get_starter_layout(m_config));
+        return s.qstring();
+    }
+
+    // Full pretty-printed config JSON (for the Diagnostics → Config tab).
+    Q_INVOKABLE QString configJson() const {
+        if (!m_config) return QString();
+        XeneonString s(xeneon_config_to_json(m_config));
+        return s.qstring();
     }
 
 private:
@@ -384,6 +465,14 @@ int main(int argc, char *argv[]) {
     // Parent to engine so it's cleaned up when the engine is destroyed
     WizardBridge* wizardBridge = new WizardBridge(config, &engine);
     engine.rootContext()->setContextProperty("wizardBridge", wizardBridge);
+
+    // Expose ConfigBridge for runtime layout/state persistence + diagnostics.
+    ConfigBridge* configBridge = new ConfigBridge(config, &engine);
+    engine.rootContext()->setContextProperty("configBridge", configBridge);
+
+    // Expose the MPRIS media bridge (Now Playing + transport control).
+    MprisBridge* mediaBridge = new MprisBridge(&engine);
+    engine.rootContext()->setContextProperty("media", mediaBridge);
 
     // Load main QML
     engine.load(QUrl(QStringLiteral("qrc:/qml/main.qml")));

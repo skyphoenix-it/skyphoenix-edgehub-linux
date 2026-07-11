@@ -65,7 +65,9 @@ pub extern "C" fn xeneon_logging_log(
     let file_str = if file.is_null() {
         "unknown"
     } else {
-        unsafe { CStr::from_ptr(file) }.to_str().unwrap_or("unknown")
+        unsafe { CStr::from_ptr(file) }
+            .to_str()
+            .unwrap_or("unknown")
     };
 
     match level {
@@ -302,26 +304,42 @@ pub extern "C" fn xeneon_config_to_json(handle: *const ConfigHandle) -> *mut c_c
 
 /// Set theme mode (e.g. "dark", "light", "oled", "high_contrast").
 #[no_mangle]
-pub extern "C" fn xeneon_config_set_theme_mode(handle: *mut ConfigHandle, mode: *const c_char) -> i32 {
-    if handle.is_null() || mode.is_null() { return -1; }
+pub extern "C" fn xeneon_config_set_theme_mode(
+    handle: *mut ConfigHandle,
+    mode: *const c_char,
+) -> i32 {
+    if handle.is_null() || mode.is_null() {
+        return -1;
+    }
     let h = unsafe { &mut *handle };
-    h.config.theme.mode = unsafe { CStr::from_ptr(mode) }.to_string_lossy().to_string();
+    h.config.theme.mode = unsafe { CStr::from_ptr(mode) }
+        .to_string_lossy()
+        .to_string();
     0
 }
 
 /// Set theme accent color (hex, e.g. "#58A6FF").
 #[no_mangle]
-pub extern "C" fn xeneon_config_set_theme_accent(handle: *mut ConfigHandle, color: *const c_char) -> i32 {
-    if handle.is_null() || color.is_null() { return -1; }
+pub extern "C" fn xeneon_config_set_theme_accent(
+    handle: *mut ConfigHandle,
+    color: *const c_char,
+) -> i32 {
+    if handle.is_null() || color.is_null() {
+        return -1;
+    }
     let h = unsafe { &mut *handle };
-    h.config.theme.accent_color = unsafe { CStr::from_ptr(color) }.to_string_lossy().to_string();
+    h.config.theme.accent_color = unsafe { CStr::from_ptr(color) }
+        .to_string_lossy()
+        .to_string();
     0
 }
 
 /// Set autostart preference.
 #[no_mangle]
 pub extern "C" fn xeneon_config_set_autostart(handle: *mut ConfigHandle, enabled: i32) -> i32 {
-    if handle.is_null() { return -1; }
+    if handle.is_null() {
+        return -1;
+    }
     unsafe { &mut *handle }.config.startup.autostart = enabled != 0;
     0
 }
@@ -329,28 +347,95 @@ pub extern "C" fn xeneon_config_set_autostart(handle: *mut ConfigHandle, enabled
 /// Set reconnect-on-hotplug preference.
 #[no_mangle]
 pub extern "C" fn xeneon_config_set_reconnect(handle: *mut ConfigHandle, enabled: i32) -> i32 {
-    if handle.is_null() { return -1; }
+    if handle.is_null() {
+        return -1;
+    }
     unsafe { &mut *handle }.config.startup.reconnect_on_hotplug = enabled != 0;
     0
 }
 
 /// Set notify-on-disconnect preference.
 #[no_mangle]
-pub extern "C" fn xeneon_config_set_notify_disconnect(handle: *mut ConfigHandle, enabled: i32) -> i32 {
-    if handle.is_null() { return -1; }
+pub extern "C" fn xeneon_config_set_notify_disconnect(
+    handle: *mut ConfigHandle,
+    enabled: i32,
+) -> i32 {
+    if handle.is_null() {
+        return -1;
+    }
     unsafe { &mut *handle }.config.startup.notify_on_disconnect = enabled != 0;
     0
 }
 
 /// Set the starter layout ID (e.g. "productivity", "gaming", "minimal", "blank").
 #[no_mangle]
-pub extern "C" fn xeneon_config_set_starter_layout(handle: *mut ConfigHandle, layout_id: *const c_char) -> i32 {
-    if handle.is_null() { return -1; }
+pub extern "C" fn xeneon_config_set_starter_layout(
+    handle: *mut ConfigHandle,
+    layout_id: *const c_char,
+) -> i32 {
+    if handle.is_null() {
+        return -1;
+    }
     let h = unsafe { &mut *handle };
     if layout_id.is_null() {
         h.config.display.starter_layout = None;
     } else {
-        h.config.display.starter_layout = Some(unsafe { CStr::from_ptr(layout_id) }.to_string_lossy().to_string());
+        h.config.display.starter_layout = Some(
+            unsafe { CStr::from_ptr(layout_id) }
+                .to_string_lossy()
+                .to_string(),
+        );
+    }
+    0
+}
+
+/// Get the starter layout ID chosen during the wizard (null if unset).
+/// Caller must free with xeneon_string_free.
+#[no_mangle]
+pub extern "C" fn xeneon_config_get_starter_layout(handle: *const ConfigHandle) -> *mut c_char {
+    if handle.is_null() {
+        return std::ptr::null_mut();
+    }
+    let h = unsafe { &*handle };
+    match &h.config.display.starter_layout {
+        Some(layout) => to_c_string(layout.as_str()),
+        None => std::ptr::null_mut(),
+    }
+}
+
+/// Get the opaque UI-state JSON document (null if never saved).
+/// Caller must free with xeneon_string_free.
+#[no_mangle]
+pub extern "C" fn xeneon_config_get_ui_state(handle: *const ConfigHandle) -> *mut c_char {
+    if handle.is_null() {
+        return std::ptr::null_mut();
+    }
+    let h = unsafe { &*handle };
+    match &h.config.ui_state {
+        Some(json) => to_c_string(json.as_str()),
+        None => std::ptr::null_mut(),
+    }
+}
+
+/// Set the opaque UI-state JSON document (pass null to clear).
+/// Does not save to disk on its own — call `xeneon_config_save`.
+#[no_mangle]
+pub extern "C" fn xeneon_config_set_ui_state(
+    handle: *mut ConfigHandle,
+    json: *const c_char,
+) -> i32 {
+    if handle.is_null() {
+        return -1;
+    }
+    let h = unsafe { &mut *handle };
+    if json.is_null() {
+        h.config.ui_state = None;
+    } else {
+        h.config.ui_state = Some(
+            unsafe { CStr::from_ptr(json) }
+                .to_string_lossy()
+                .to_string(),
+        );
     }
     0
 }
@@ -493,6 +578,63 @@ pub extern "C" fn xeneon_metrics_get_cpu_cores(handle: *const MetricsHandle) -> 
     unsafe { &*handle }.metrics.cpu_core_count
 }
 
+/// Get GPU usage percentage (0.0 - 100.0). Returns -1.0 if unavailable.
+#[no_mangle]
+pub extern "C" fn xeneon_metrics_get_gpu_usage(handle: *const MetricsHandle) -> f64 {
+    if handle.is_null() {
+        return -1.0;
+    }
+    unsafe { &*handle }
+        .metrics
+        .gpu_usage_percent
+        .unwrap_or(-1.0)
+}
+
+/// Get GPU temperature in Celsius. Returns -1.0 if unavailable.
+#[no_mangle]
+pub extern "C" fn xeneon_metrics_get_gpu_temp(handle: *const MetricsHandle) -> f64 {
+    if handle.is_null() {
+        return -1.0;
+    }
+    unsafe { &*handle }.metrics.gpu_temp_celsius.unwrap_or(-1.0)
+}
+
+/// Get network receive rate in bytes/second.
+#[no_mangle]
+pub extern "C" fn xeneon_metrics_get_net_rx(handle: *const MetricsHandle) -> f64 {
+    if handle.is_null() {
+        return 0.0;
+    }
+    unsafe { &*handle }.metrics.net_rx_bytes_per_sec
+}
+
+/// Get network transmit rate in bytes/second.
+#[no_mangle]
+pub extern "C" fn xeneon_metrics_get_net_tx(handle: *const MetricsHandle) -> f64 {
+    if handle.is_null() {
+        return 0.0;
+    }
+    unsafe { &*handle }.metrics.net_tx_bytes_per_sec
+}
+
+/// Get total root-filesystem size in bytes.
+#[no_mangle]
+pub extern "C" fn xeneon_metrics_get_disk_total(handle: *const MetricsHandle) -> u64 {
+    if handle.is_null() {
+        return 0;
+    }
+    unsafe { &*handle }.metrics.disk_total_bytes
+}
+
+/// Get used root-filesystem space in bytes.
+#[no_mangle]
+pub extern "C" fn xeneon_metrics_get_disk_used(handle: *const MetricsHandle) -> u64 {
+    if handle.is_null() {
+        return 0;
+    }
+    unsafe { &*handle }.metrics.disk_used_bytes
+}
+
 /// Get metrics as a JSON string. Caller must free.
 #[no_mangle]
 pub extern "C" fn xeneon_metrics_to_json(handle: *const MetricsHandle) -> *mut c_char {
@@ -507,6 +649,13 @@ pub extern "C" fn xeneon_metrics_to_json(handle: *const MetricsHandle) -> *mut c
         "ram_total_bytes": m.ram_total_bytes,
         "ram_used_bytes": m.ram_used_bytes,
         "cpu_core_count": m.cpu_core_count,
+        "gpu_usage_percent": m.gpu_usage_percent,
+        "gpu_temp_celsius": m.gpu_temp_celsius,
+        "net_rx_bytes_per_sec": m.net_rx_bytes_per_sec,
+        "net_tx_bytes_per_sec": m.net_tx_bytes_per_sec,
+        "disk_total_bytes": m.disk_total_bytes,
+        "disk_used_bytes": m.disk_used_bytes,
+        "disk_usage_percent": m.disk_usage_percent,
     });
     match serde_json::to_string(&json) {
         Ok(s) => to_c_string(s),
