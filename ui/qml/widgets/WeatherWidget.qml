@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 
 // Weather — real forecast from Open-Meteo (free, no API key). Location comes
@@ -75,6 +76,31 @@ WidgetChrome {
         xhr.open("GET", url); xhr.send()
     }
 
+    // Look up a city name → lat/lon via Open-Meteo's geocoding API, then persist.
+    property bool geocoding: false
+    function geocode(name) {
+        if (!name || !name.trim().length) return
+        geocoding = true
+        var url = "https://geocoding-api.open-meteo.com/v1/search?count=1&name=" + encodeURIComponent(name.trim())
+        var xhr = new XMLHttpRequest()
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState !== XMLHttpRequest.DONE) return
+            if (!w) return
+            w.geocoding = false
+            try {
+                var d = JSON.parse(xhr.responseText)
+                if (d && d.results && d.results.length) {
+                    var r = d.results[0]
+                    var label = r.name + (r.country_code ? ", " + r.country_code : "")
+                    if (w.store) w.store.patchSettings(w.instanceId, { "lat": r.latitude, "lon": r.longitude, "place": label })
+                } else {
+                    w.errorText = "City not found"
+                }
+            } catch (e) { w.errorText = "Lookup failed" }
+        }
+        try { xhr.open("GET", url); xhr.send() } catch (e) { geocoding = false }
+    }
+
     // Debounce: lat and lon both "change" as settings load — coalesce to one fetch.
     property string locKey: lat + "," + lon
     onLocKeyChanged: refreshDebounce.restart()
@@ -114,6 +140,20 @@ WidgetChrome {
                         font.pixelSize: 13; color: theme.textPrimary }
                 }
             }
+        }
+        Item { Layout.fillHeight: true; visible: w.expanded }
+        RowLayout {
+            Layout.fillWidth: true; visible: w.expanded; spacing: theme.spacingSm
+            TextField {
+                id: cityField; Layout.fillWidth: true
+                placeholderText: "Search a city…"; placeholderTextColor: theme.textTertiary
+                color: theme.textPrimary; font.pixelSize: 15
+                background: Rectangle { radius: theme.radiusSm; color: theme.backgroundColor
+                    border.color: cityField.activeFocus ? theme.accent : theme.cardBorder; border.width: 1 }
+                onAccepted: w.geocode(text)
+            }
+            PillButton { label: w.geocoding ? "…" : "Set location"; glyph: "📍"; primary: true; tint: theme.catInfo
+                onClicked: w.geocode(cityField.text) }
         }
     }
 }

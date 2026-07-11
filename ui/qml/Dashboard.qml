@@ -76,6 +76,7 @@ Item {
         applyAppearance()
     }
 
+
     // Apply persisted appearance to the shared theme (main.qml root).
     function applyAppearance() {
         _applyingAppearance = true
@@ -182,9 +183,8 @@ Item {
                                     clip: true
                                     property string wId: cell.modelData.id
                                     property string wType: cell.modelData.type
-                                    active: wId !== "" && wType !== ""
+                                    active: wId !== "" && wType !== "" && catalog.source(wType) !== ""
                                     source: active ? catalog.source(wType) : ""
-                                    sourceComponent: (active && catalog.source(wType) === "") ? fallbackTile : undefined
                                     onLoaded: {
                                         dashboard.injectWidget(item, wId, wType, false)
                                         if (item) item.active = Qt.binding(function () { return !dashboard.hasExpanded && !dashboard.editMode })
@@ -206,9 +206,11 @@ Item {
                                     anchors.fill: parent
                                     enabled: !dashboard.editMode
                                     onClicked: {
-                                        dashboard.expandedType = cell.modelData.type
+                                        // Set id/color BEFORE type: assigning expandedType triggers the
+                                        // (synchronous) overlay load + injectWidget, which reads expandedId.
                                         dashboard.expandedId = cell.modelData.id
                                         dashboard.expandedColor = theme.accent
+                                        dashboard.expandedType = cell.modelData.type
                                     }
                                 }
 
@@ -405,15 +407,20 @@ Item {
 
         // Full-screen widget instance (expanded=true). Loaded only while shown.
         Loader {
+            id: ovlLoader
             anchors.top: backBtn.bottom; anchors.left: parent.left; anchors.right: parent.right
             anchors.bottom: parent.bottom
             anchors.margins: theme.spacingLg
-            active: dashboard.hasExpanded
-            source: dashboard.hasExpanded ? catalog.source(dashboard.expandedType) : ""
-            sourceComponent: (dashboard.hasExpanded && catalog.source(dashboard.expandedType) === "") ? fallbackTile : undefined
+            active: dashboard.hasExpanded && catalog.source(dashboard.expandedType) !== ""
+            source: active ? catalog.source(dashboard.expandedType) : ""
             onLoaded: {
                 dashboard.injectWidget(item, dashboard.expandedId, dashboard.expandedType, true)
-                if (item) item.active = true
+                if (item) {
+                    item.active = true
+                    // The overlay already shows the title, so hide the card's own
+                    // header to avoid a duplicate title.
+                    if (item.hasOwnProperty("showHeader")) item.showHeader = false
+                }
             }
         }
     }
