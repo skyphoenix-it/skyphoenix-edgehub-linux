@@ -17,7 +17,7 @@ WidgetChrome {
     // Live per-instance config (see WidgetConfigSchema "sensors").
     readonly property var cfg: {
         var _ = store ? store.revision : 0
-        return (store && instanceId) ? store.settingsFor(instanceId) : ({})
+        return (store && instanceId) ? JSON.parse(JSON.stringify(store.settingsFor(instanceId))) : ({})
     }
     readonly property bool showCpu: cfg.showCpu !== undefined ? cfg.showCpu : true
     readonly property bool showGpu: cfg.showGpu !== undefined ? cfg.showGpu : true

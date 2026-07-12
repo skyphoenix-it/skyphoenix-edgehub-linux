@@ -16,7 +16,7 @@ WidgetChrome {
     // Live per-instance config (see WidgetConfigSchema "disk").
     readonly property var cfg: {
         var _ = store ? store.revision : 0
-        return (store && instanceId) ? store.settingsFor(instanceId) : ({})
+        return (store && instanceId) ? JSON.parse(JSON.stringify(store.settingsFor(instanceId))) : ({})
     }
     readonly property real warnPercent: cfg.warnPercent !== undefined ? cfg.warnPercent : 90
 

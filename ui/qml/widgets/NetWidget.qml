@@ -17,7 +17,7 @@ WidgetChrome {
     // Live per-instance config (see WidgetConfigSchema "net").
     readonly property var cfg: {
         var _ = store ? store.revision : 0
-        return (store && instanceId) ? store.settingsFor(instanceId) : ({})
+        return (store && instanceId) ? JSON.parse(JSON.stringify(store.settingsFor(instanceId))) : ({})
     }
     readonly property bool showHistory: cfg.showHistory !== undefined ? cfg.showHistory : true
     readonly property string unit: cfg.unit !== undefined ? cfg.unit : "bytes"

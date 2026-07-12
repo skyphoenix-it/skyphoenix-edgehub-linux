@@ -55,6 +55,13 @@ QtObject {
                 { key: "dateStyle", label: "Date style", type: "segmented", dflt: "full", options: [
                     { value: "full",  label: "Weekday, 5 Jan" },
                     { value: "short", label: "05/01" } ] } ] },
+            { title: "Time zone (world clock)", cols: 1,
+              desc: "Show another city's time instead of your local time.", fields: [
+                { key: "customZone", label: "Use a specific time zone", type: "toggle", dflt: false },
+                { key: "zoneLabel", label: "Zone name", type: "text", placeholder: "New York", dflt: "",
+                  help: "A label shown above the time (e.g. the city)." },
+                { key: "utcOffset", label: "UTC offset", type: "slider", min: -12, max: 14, step: 1, suffix: " h", dflt: 0,
+                  help: "Hours from UTC. Note: a fixed offset, so it doesn't follow daylight-saving changes." } ] },
             titleSection("Clock"),
             about("A digital clock. Choose 12/24-hour, seconds, and how the date is shown.") ] }
 

@@ -16,7 +16,7 @@ WidgetChrome {
     // Live per-instance config (see WidgetConfigSchema "analogClock").
     readonly property var cfg: {
         var _ = store ? store.revision : 0
-        return (store && instanceId) ? store.settingsFor(instanceId) : ({})
+        return (store && instanceId) ? JSON.parse(JSON.stringify(store.settingsFor(instanceId))) : ({})
     }
     readonly property bool showSeconds: cfg.showSeconds !== undefined ? cfg.showSeconds : true
     readonly property bool showNumerals: cfg.showNumerals !== undefined ? cfg.showNumerals : false

@@ -17,7 +17,7 @@ WidgetChrome {
     // Live per-instance config (see WidgetConfigSchema "moon").
     readonly property var cfg: {
         var _ = store ? store.revision : 0
-        return (store && instanceId) ? store.settingsFor(instanceId) : ({})
+        return (store && instanceId) ? JSON.parse(JSON.stringify(store.settingsFor(instanceId))) : ({})
     }
     readonly property string hemisphere: cfg.hemisphere !== undefined ? cfg.hemisphere : "north"
 
