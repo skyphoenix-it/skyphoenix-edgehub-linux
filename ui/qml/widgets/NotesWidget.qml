@@ -8,13 +8,12 @@ import QtQuick.Layouts
 WidgetChrome {
     id: w
     property var metrics: ({})
-    property var settings: ({})
     property bool expanded: false
     property bool active: true
     property var store: null
     property string instanceId: ""
 
-    title: "Quick Note"; icon: "📝"; accentColor: theme.catInfo
+    title: "Quick Note"; iconName: "notes"; accentColor: theme.catInfo
     big: expanded
 
     readonly property var cfg: {

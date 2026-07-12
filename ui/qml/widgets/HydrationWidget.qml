@@ -5,14 +5,13 @@ import QtQuick.Layouts
 WidgetChrome {
     id: w
     property var metrics: ({})
-    property var settings: ({})
     property bool expanded: false
     property bool active: true
     property var store: null
     property string instanceId: ""
     property int tick: 0
 
-    title: "Hydration"; icon: "💧"; accentColor: theme.catInfo
+    title: "Hydration"; iconName: "hydration"; accentColor: theme.catInfo
     big: expanded
 
     readonly property var cfg: {
@@ -20,9 +19,16 @@ WidgetChrome {
         return (store && instanceId) ? JSON.parse(JSON.stringify(store.settingsFor(instanceId))) : ({})
     }
     property int goal: cfg.goal || 8
+    readonly property int glassMl: cfg.glassMl !== undefined ? cfg.glassMl : 250
     property string todayKey: (w.tick, Qt.formatDate(new Date(), "yyyy-MM-dd"))
     property int count: cfg.day === todayKey ? (cfg.count || 0) : 0
     status: count + "/" + goal
+
+    // Total volume drunk today (count × per-glass size), shown as L when ≥ 1000 ml.
+    function volumeText() {
+        var ml = w.count * w.glassMl
+        return ml >= 1000 ? (ml / 1000).toFixed(1) + " L" : ml + " ml"
+    }
 
     function set(n) {
         if (store) store.patchSettings(instanceId, { "day": todayKey, "count": Math.max(0, Math.min(goal, n)) })
@@ -44,9 +50,15 @@ WidgetChrome {
             }
         }
         Text { Layout.alignment: Qt.AlignHCenter; text: w.count + " of " + w.goal + " glasses"
-            font.pixelSize: 10; color: theme.textSecondary }
+            font.pixelSize: 12; color: theme.textSecondary }
+        // Compact "+1" — a bounded target so the rest of the tile still expands
+        // on tap (a full-tile MouseArea here used to swallow the expand gesture).
+        PillButton {
+            Layout.alignment: Qt.AlignHCenter
+            label: "+1 glass"; glyph: "💧"; primary: true; tint: theme.catInfo
+            onClicked: w.set(w.count + 1)
+        }
     }
-    MouseArea { anchors.fill: parent; enabled: !w.expanded; onClicked: w.set(w.count + 1) }
 
     // ── Expanded: one large, centered, cohesive block ──
     ColumnLayout {
@@ -61,6 +73,9 @@ WidgetChrome {
         Text { Layout.alignment: Qt.AlignHCenter; Layout.topMargin: -theme.spacingMd
             text: w.count >= w.goal ? "Daily goal reached! 🎉" : "glasses of water today"
             font.pixelSize: 20; color: theme.textSecondary }
+        Text { Layout.alignment: Qt.AlignHCenter; Layout.topMargin: -theme.spacingLg
+            text: w.volumeText() + " today"
+            font.pixelSize: 16; color: theme.textTertiary }
 
         Flow {
             Layout.alignment: Qt.AlignHCenter; Layout.fillWidth: true

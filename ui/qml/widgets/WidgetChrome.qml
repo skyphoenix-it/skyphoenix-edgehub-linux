@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -11,7 +10,7 @@ import QtQuick.Layouts
 // via the default `content` alias and only need to worry about their data.
 //
 //   WidgetChrome {
-//       title: "Focus"; icon: "🎯"; accentColor: theme.catProductivity
+//       title: "Focus"; iconName: "focus"; accentColor: theme.catProductivity
 //       big: height > 240
 //       // ...your content here...
 //   }
@@ -21,7 +20,8 @@ Item {
 
     // --- Public API ---
     property string title: ""
-    property string icon: ""
+    property string titleOverride: ""   // user-set custom title (from config), wins if set
+    property string iconName: ""        // professional SVG icon (qrc:/icons/<name>.svg)
     property color accentColor: theme.accent
     property string status: ""          // small trailing status text (top-right)
     property color statusColor: theme.textSecondary
@@ -37,7 +37,7 @@ Item {
     default property alias content: body.data
 
     // Convenience: header height scales with size.
-    readonly property int headerHeight: big ? 30 : 26
+    readonly property int headerHeight: big ? 42 : 36
 
     // --- Card surface ---
     Rectangle {
@@ -105,19 +105,21 @@ Item {
 
         // Header
         RowLayout {
-            visible: chrome.showHeader && (chrome.title !== "" || chrome.icon !== "")
+            visible: chrome.showHeader && (chrome.title !== "" || chrome.iconName !== "")
             Layout.fillWidth: true
             Layout.preferredHeight: chrome.headerHeight
             spacing: theme.spacingSm
 
-            Text {
-                visible: chrome.icon !== ""
-                text: chrome.icon
-                font.pixelSize: chrome.big ? 18 : 16
+            AppIcon {
+                visible: chrome.iconName !== ""
+                name: chrome.iconName
+                color: chrome.accentColor
+                size: chrome.big ? 30 : 26
+                Layout.alignment: Qt.AlignVCenter
             }
             Text {
-                text: chrome.title
-                font.pixelSize: chrome.big ? theme.fontTitle : 14
+                text: chrome.titleOverride.length ? chrome.titleOverride : chrome.title
+                font.pixelSize: chrome.big ? theme.fontTitle : 16
                 font.weight: Font.DemiBold
                 font.family: theme.fontDisplay
                 color: theme.textSecondary
@@ -133,7 +135,7 @@ Item {
             Text {
                 visible: chrome.status !== ""
                 text: chrome.status
-                font.pixelSize: chrome.big ? 12 : 11
+                font.pixelSize: chrome.big ? 13 : 12
                 font.family: theme.fontMono
                 color: chrome.statusColor
             }

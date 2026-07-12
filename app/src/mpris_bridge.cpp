@@ -5,13 +5,35 @@
 #include <QStringList>
 #include <QUrl>
 #include <QtDBus/QDBusArgument>
-#include <QtDBus/QDBusInterface>
-#include <QtDBus/QDBusReply>
+#include <QtDBus/QDBusMessage>
+#include <QtDBus/QDBusPendingCall>
+#include <QtDBus/QDBusVariant>
 
 static const char* kPath = "/org/mpris/MediaPlayer2";
 static const char* kPlayerIface = "org.mpris.MediaPlayer2.Player";
 static const char* kPropsIface = "org.freedesktop.DBus.Properties";
 static const QString kPrefix = QStringLiteral("org.mpris.MediaPlayer2.");
+
+// All reads run on the GUI thread, so cap how long an unresponsive player can
+// stall us. The default D-Bus timeout is 25s; a hung player would freeze the UI
+// for that long. 800ms is generous for a healthy player (which replies in <10ms)
+// while keeping any stall imperceptible. Building calls with
+// QDBusMessage::createMethodCall (instead of QDBusInterface) also avoids a
+// blocking introspection round-trip on every single call.
+static constexpr int kDbusTimeoutMs = 800;
+
+// Helper: Properties.Get(iface, prop) → unwrapped variant. Invalid on failure.
+static QVariant propGet(const QDBusConnection& bus, const QString& service,
+                        const QString& iface, const QString& prop) {
+    QDBusMessage msg = QDBusMessage::createMethodCall(
+        service, QString::fromLatin1(kPath), QString::fromLatin1(kPropsIface),
+        QStringLiteral("Get"));
+    msg << iface << prop;
+    const QDBusMessage reply = bus.call(msg, QDBus::Block, kDbusTimeoutMs);
+    if (reply.type() != QDBusMessage::ReplyMessage || reply.arguments().isEmpty())
+        return QVariant();
+    return reply.arguments().first().value<QDBusVariant>().variant();
+}
 
 MprisBridge::MprisBridge(QObject* parent)
     : QObject(parent), m_bus(QDBusConnection::sessionBus()) {
@@ -29,12 +51,13 @@ MprisBridge::MprisBridge(QObject* parent)
 
 QStringList MprisBridge::mprisServices() const {
     QStringList out;
-    QDBusInterface dbus(QStringLiteral("org.freedesktop.DBus"),
-                        QStringLiteral("/org/freedesktop/DBus"),
-                        QStringLiteral("org.freedesktop.DBus"), m_bus);
-    QDBusReply<QStringList> reply = dbus.call(QStringLiteral("ListNames"));
-    if (reply.isValid()) {
-        for (const QString& name : reply.value())
+    QDBusMessage msg = QDBusMessage::createMethodCall(
+        QStringLiteral("org.freedesktop.DBus"), QStringLiteral("/org/freedesktop/DBus"),
+        QStringLiteral("org.freedesktop.DBus"), QStringLiteral("ListNames"));
+    const QDBusMessage reply = m_bus.call(msg, QDBus::Block, kDbusTimeoutMs);
+    if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
+        const QStringList names = reply.arguments().first().toStringList();
+        for (const QString& name : names)
             if (name.startsWith(kPrefix))
                 out << name;
     }
@@ -42,10 +65,9 @@ QStringList MprisBridge::mprisServices() const {
 }
 
 QString MprisBridge::statusOf(const QString& service) const {
-    QDBusInterface props(service, kPath, kPropsIface, m_bus);
-    QDBusReply<QDBusVariant> r =
-        props.call(QStringLiteral("Get"), QString(kPlayerIface), QStringLiteral("PlaybackStatus"));
-    return r.isValid() ? r.value().variant().toString() : QString();
+    return propGet(m_bus, service, QString::fromLatin1(kPlayerIface),
+                   QStringLiteral("PlaybackStatus"))
+        .toString();
 }
 
 void MprisBridge::reevaluate() {
@@ -100,14 +122,17 @@ void MprisBridge::refresh() {
         return;
     }
 
-    QDBusInterface props(m_service, kPath, kPropsIface, m_bus);
-    QDBusReply<QVariantMap> all = props.call(QStringLiteral("GetAll"), QString(kPlayerIface));
-    if (!all.isValid()) {
+    QDBusMessage getAll = QDBusMessage::createMethodCall(
+        m_service, QString::fromLatin1(kPath), QString::fromLatin1(kPropsIface),
+        QStringLiteral("GetAll"));
+    getAll << QString::fromLatin1(kPlayerIface);
+    const QDBusMessage allReply = m_bus.call(getAll, QDBus::Block, kDbusTimeoutMs);
+    if (allReply.type() != QDBusMessage::ReplyMessage || allReply.arguments().isEmpty()) {
         m_available = false;
         emit changed();
         return;
     }
-    const QVariantMap m = all.value();
+    const QVariantMap m = qdbus_cast<QVariantMap>(allReply.arguments().first());
     m_status = m.value(QStringLiteral("PlaybackStatus")).toString();
 
     const QVariantMap meta = qdbus_cast<QVariantMap>(m.value(QStringLiteral("Metadata")));
@@ -129,10 +154,10 @@ void MprisBridge::refresh() {
     m_lengthUs = meta.value(QStringLiteral("mpris:length")).toLongLong();
     m_playerName = m_service.mid(kPrefix.length());
 
-    QDBusReply<QDBusVariant> posR =
-        props.call(QStringLiteral("Get"), QString(kPlayerIface), QStringLiteral("Position"));
-    if (posR.isValid())
-        m_positionUs = posR.value().variant().toLongLong();
+    const QVariant posV =
+        propGet(m_bus, m_service, QString::fromLatin1(kPlayerIface), QStringLiteral("Position"));
+    if (posV.isValid())
+        m_positionUs = posV.toLongLong();
 
     // A service can be registered on the bus (CanControl: true) with no track
     // actually loaded — e.g. a browser tab with audio capability but nothing
@@ -153,11 +178,10 @@ void MprisBridge::refresh() {
 void MprisBridge::poll() {
     if (!m_available || m_service.isEmpty() || m_status != QStringLiteral("Playing"))
         return;
-    QDBusInterface props(m_service, kPath, kPropsIface, m_bus);
-    QDBusReply<QDBusVariant> posR =
-        props.call(QStringLiteral("Get"), QString(kPlayerIface), QStringLiteral("Position"));
-    if (posR.isValid()) {
-        m_positionUs = posR.value().variant().toLongLong();
+    const QVariant posV =
+        propGet(m_bus, m_service, QString::fromLatin1(kPlayerIface), QStringLiteral("Position"));
+    if (posV.isValid()) {
+        m_positionUs = posV.toLongLong();
         emit positionChanged();
     }
 }
@@ -165,10 +189,13 @@ void MprisBridge::poll() {
 void MprisBridge::callPlayer(const char* method) {
     if (m_service.isEmpty())
         return;
-    QDBusInterface player(m_service, kPath, kPlayerIface, m_bus);
-    player.call(QString::fromLatin1(method));
+    // Fire-and-forget: transport controls must never block the GUI thread.
+    QDBusMessage msg = QDBusMessage::createMethodCall(
+        m_service, QString::fromLatin1(kPath), QString::fromLatin1(kPlayerIface),
+        QString::fromLatin1(method));
+    m_bus.asyncCall(msg);
     // Reflect the new state promptly.
-    QTimer::singleShot(150, this, [this] { refresh(); });
+    QTimer::singleShot(200, this, [this] { refresh(); });
 }
 
 void MprisBridge::playPause() { callPlayer("PlayPause"); }

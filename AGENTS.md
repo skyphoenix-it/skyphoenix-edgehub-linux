@@ -15,7 +15,13 @@ cargo clippy --all-targets -- -D warnings
 cargo fmt --all -- --check
 ```
 
-Rust tests live **inline** in `core/src/{config,display,metrics}.rs`. The `tests/` directory is empty — reserved for future C++/QML integration tests. There is **no CI job** for C++/QML style or tests yet.
+Rust tests live **inline** in `core/src/{config,display,metrics}.rs`.
+
+**QML GUI tests:** `./scripts/run_ui_tests.sh` runs the `qmltestrunner` suite in
+`tests/ui/` (offscreen, no cmake needed). It loads every widget against a real
+`DashboardStore`, checks render + boundary behavior (empty/zero/saturated/missing
+metrics), drives real mouse/key input on controls, and asserts touch-target sizes.
+Add a `tests/ui/tst_*.qml` `TestCase` for new widget behavior.
 
 ## Project layout
 
@@ -23,8 +29,11 @@ Rust tests live **inline** in `core/src/{config,display,metrics}.rs`. The `tests
 |-----|------|------|
 | `core/` | Rust | Core library (config, metrics, display, FFI) — compiles to `libxeneon_core.a` |
 | `app/src/main.cpp` | C++17 | Qt6 entry point, display matching, QML context properties |
+| `app/src/control_server.{h,cpp}` | C++17 | `QLocalServer` IPC (socket `xeneon-edge-hub-ctl`) — lets the companion Manager push a live layout to a running hub |
 | `ui/qml/` | QML | All UI: `main.qml`, `Dashboard.qml`, `FirstRunWizard.qml`, 39 widget files in `widgets/` |
 | `ui/qml.qrc` | Qt resource | **Must be updated** when adding/removing QML files |
+| `manager/` | C++/QML | **Xeneon Edge Manager** — standalone companion app (`xeneon-edge-manager`) to manage layout/appearance/images/display. Reuses `DashboardStore.qml` + `WidgetCatalog.qml` via `manager/manager.qrc`; C++ `ManagerBackend` presents a `configBridge`-compatible surface + a live-push socket client |
+| `tests/ui/` | QML | `qmltestrunner` GUI + boundary suite. Harness = `WidgetHarness.qml` + `HarnessTheme.qml` + `MockMedia.qml`. Run with `./scripts/run_ui_tests.sh` (offscreen; exercises real layout + mouse/key input, no cmake needed) |
 
 ## FFI rules (C++ ↔ Rust)
 

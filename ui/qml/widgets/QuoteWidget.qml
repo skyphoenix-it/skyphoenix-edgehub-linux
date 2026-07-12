@@ -5,14 +5,13 @@ import QtQuick.Layouts
 WidgetChrome {
     id: w
     property var metrics: ({})
-    property var settings: ({})
     property bool expanded: false
     property bool active: true
     property var store: null
     property string instanceId: ""
     property int tick: 0
 
-    title: "Daily Quote"; icon: "💬"; accentColor: theme.catInfo
+    title: "Daily Quote"; iconName: "quote"; accentColor: theme.catInfo
     big: expanded; showHeader: expanded
 
     readonly property var quotes: [
@@ -50,6 +49,6 @@ WidgetChrome {
             maximumLineCount: w.expanded ? 6 : 4; elide: Text.ElideRight
         }
         Text { Layout.alignment: Qt.AlignHCenter; text: "— " + w.q.a
-            font.pixelSize: w.expanded ? 18 : 11; color: theme.textSecondary }
+            font.pixelSize: w.expanded ? 18 : 12; color: theme.textSecondary }
     }
 }

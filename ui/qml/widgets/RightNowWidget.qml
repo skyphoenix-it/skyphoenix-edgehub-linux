@@ -7,13 +7,12 @@ import QtQuick.Layouts
 WidgetChrome {
     id: w
     property var metrics: ({})
-    property var settings: ({})
     property bool expanded: false
     property bool active: true
     property var store: null
     property string instanceId: ""
 
-    title: "Right Now"; icon: "🎈"; accentColor: theme.catProductivity
+    title: "Right Now"; iconName: "rightnow"; accentColor: theme.catProductivity
     big: expanded; showHeader: expanded
 
     readonly property var cfg: {

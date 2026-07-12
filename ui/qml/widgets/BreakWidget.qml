@@ -7,41 +7,67 @@ import QtQuick.Layouts
 WidgetChrome {
     id: w
     property var metrics: ({})
-    property var settings: ({})
     property bool expanded: false
     property bool active: true
     property var store: null
     property string instanceId: ""
 
-    title: "Break Reminder"; icon: "☕"; accentColor: theme.success
+    title: "Break Reminder"; iconName: "break"; accentColor: theme.success
     big: expanded
 
+    // All state lives in the store (absolute end-epoch, running, paused-remaining,
+    // due), so the tile and the expanded view are the SAME timer and it survives
+    // a restart. Derived from cfg exactly like FocusWidget.
     readonly property var cfg: {
         var _ = store ? store.revision : 0
         return (store && instanceId) ? JSON.parse(JSON.stringify(store.settingsFor(instanceId))) : ({})
     }
     property int intervalMin: cfg.intervalMin || 30
-    property int remaining: intervalMin * 60
-    property bool running: true
-    property bool due: false
+    property bool running: cfg.running !== undefined ? cfg.running : true
+    property bool due: cfg.due || false
+    // Custom reminder text shown when a break is due; empty → default wording.
+    readonly property string message: cfg.message !== undefined ? cfg.message : ""
 
-    function reset() { remaining = intervalMin * 60; due = false }
+    property int pulse: 0
+    property int remaining: {
+        pulse
+        if (due) return 0
+        if (running && cfg.endEpoch)
+            return Math.max(0, Math.round((cfg.endEpoch - Date.now()) / 1000))
+        return cfg.pausedRemaining !== undefined ? cfg.pausedRemaining : intervalMin * 60
+    }
+
+    function save(o) { if (store) store.patchSettings(instanceId, o) }
+    function reset() {
+        save({ due: false, running: true, pausedRemaining: intervalMin * 60,
+               endEpoch: Date.now() + intervalMin * 60 * 1000 })
+    }
+    function toggleRun() {
+        if (running) save({ running: false, pausedRemaining: remaining })
+        else save({ running: true, endEpoch: Date.now() + remaining * 1000 })
+    }
     function setInterval(m) {
         var v = Math.max(5, Math.min(120, m))
-        if (store) store.setSetting(instanceId, "intervalMin", v)
-        remaining = v * 60; due = false
+        save({ intervalMin: v, due: false, running: true, pausedRemaining: v * 60,
+               endEpoch: Date.now() + v * 60 * 1000 })
     }
     function fmt(s) {
         var mm = Math.floor(s / 60), ss = s % 60
         return (mm < 10 ? "0" : "") + mm + ":" + (ss < 10 ? "0" : "") + ss
     }
-    onIntervalMinChanged: if (!due) remaining = intervalMin * 60
+
+    // Seed an end time on first run so a fresh (auto-running) reminder actually
+    // counts down. Only the active instance seeds, to avoid a double write.
+    Component.onCompleted: {
+        if (w.active && running && !due && !cfg.endEpoch)
+            save({ endEpoch: Date.now() + remaining * 1000 })
+    }
 
     Timer {
-        interval: 1000; repeat: true; running: w.active && w.running
+        interval: 1000; repeat: true; running: w.active && w.running && !w.due
         onTriggered: {
-            if (w.remaining > 0) w.remaining--
-            else { w.due = true; flash.restart() }
+            w.pulse++
+            if (w.remaining <= 0) { w.save({ due: true }); flash.restart() }
         }
     }
     Rectangle {
@@ -57,7 +83,7 @@ WidgetChrome {
         anchors.centerIn: parent; spacing: w.expanded ? 14 : 4
         Text {
             Layout.alignment: Qt.AlignHCenter
-            text: w.due ? "Take a break!" : w.fmt(w.remaining)
+            text: w.due ? (w.message.length ? w.message : "Take a break!") : w.fmt(w.remaining)
             font.pixelSize: w.due ? (w.expanded ? 44 : 22)
                                   : (w.expanded ? 88 : Math.max(26, Math.min(w.width * 0.28, 52)))
             font.bold: true; font.family: w.due ? theme.fontDisplay : theme.fontMono
@@ -65,12 +91,12 @@ WidgetChrome {
         }
         Text {
             Layout.alignment: Qt.AlignHCenter; visible: !w.due
-            text: "until next break"; font.pixelSize: w.expanded ? 15 : 10; color: theme.textSecondary
+            text: "until next break"; font.pixelSize: w.expanded ? 15 : 12; color: theme.textSecondary
         }
         RowLayout {
             Layout.alignment: Qt.AlignHCenter; visible: w.expanded; spacing: theme.spacingSm
             PillButton { label: w.running ? "Pause" : "Resume"; glyph: w.running ? "⏸" : "▶"
-                onClicked: w.running = !w.running }
+                onClicked: w.toggleRun() }
             PillButton { label: "Reset"; glyph: "⟲"; primary: true; tint: theme.success; onClicked: w.reset() }
         }
         RowLayout {

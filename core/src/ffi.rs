@@ -673,3 +673,64 @@ pub extern "C" fn xeneon_string_free(s: *mut c_char) {
         unsafe { drop(CString::from_raw(s)) };
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Round-trip a to_c_string result back to a Rust &str for assertions,
+    /// then free it. Safe: `p` is a live pointer from `to_c_string`.
+    unsafe fn take(p: *mut c_char) -> String {
+        assert!(!p.is_null());
+        let s = CStr::from_ptr(p).to_string_lossy().into_owned();
+        xeneon_string_free(p);
+        s
+    }
+
+    #[test]
+    fn to_c_string_roundtrips_plain_utf8() {
+        unsafe {
+            assert_eq!(take(to_c_string("hello")), "hello");
+            assert_eq!(take(to_c_string(String::new())), "");
+        }
+    }
+
+    #[test]
+    fn to_c_string_sanitizes_interior_nul() {
+        // An interior NUL would make CString::new fail; it must be stripped, not panic.
+        unsafe {
+            assert_eq!(take(to_c_string(vec![b'a', 0, b'b'])), "ab");
+        }
+    }
+
+    #[test]
+    fn null_handle_guards_return_sentinels() {
+        use std::ptr;
+        // Integer-returning guards.
+        assert_eq!(xeneon_config_save(ptr::null()), -1);
+        assert_eq!(xeneon_config_is_first_run(ptr::null()), -1);
+        assert_eq!(xeneon_config_set_first_run_complete(ptr::null_mut()), -1);
+        assert_eq!(xeneon_config_set_autostart(ptr::null_mut(), 1), -1);
+        // String-returning guards.
+        assert!(xeneon_config_get_target_connector(ptr::null()).is_null());
+        assert!(xeneon_config_get_ui_state(ptr::null()).is_null());
+        assert!(xeneon_config_to_json(ptr::null()).is_null());
+    }
+
+    #[test]
+    fn free_null_pointers_is_a_noop() {
+        // Freeing null must never crash.
+        xeneon_string_free(std::ptr::null_mut());
+        xeneon_config_free(std::ptr::null_mut());
+        xeneon_metrics_free(std::ptr::null_mut());
+    }
+
+    #[test]
+    fn parse_helpers_tolerate_null_and_empty() {
+        use std::ptr;
+        // Null / zero-length EDID buffers must not deref or panic.
+        assert!(xeneon_display_parse_manufacturer(ptr::null(), 0).is_null());
+        assert!(xeneon_display_parse_model_name(ptr::null(), 0).is_null());
+        assert_eq!(xeneon_display_is_xeneon_edge(ptr::null(), 0), 0);
+    }
+}

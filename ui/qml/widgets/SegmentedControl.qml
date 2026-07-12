@@ -42,7 +42,10 @@ Rectangle {
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: { seg.currentValue = seg._val(modelData); seg.selected(seg._val(modelData)) }
+                    // Emit only — do NOT imperatively assign seg.currentValue, which
+                    // would clobber the caller's declarative binding and stop the
+                    // control from following external state changes.
+                    onClicked: seg.selected(seg._val(modelData))
                 }
             }
         }

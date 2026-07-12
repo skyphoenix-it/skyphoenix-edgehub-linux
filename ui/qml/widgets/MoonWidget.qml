@@ -5,15 +5,21 @@ import QtQuick.Layouts
 WidgetChrome {
     id: w
     property var metrics: ({})
-    property var settings: ({})
     property bool expanded: false
     property bool active: true
     property var store: null
     property string instanceId: ""
     property int tick: 0
 
-    title: "Moon Phase"; icon: "🌙"; accentColor: theme.catInfo
+    title: "Moon Phase"; iconName: "moon"; accentColor: theme.catInfo
     big: expanded; showHeader: expanded
+
+    // Live per-instance config (see WidgetConfigSchema "moon").
+    readonly property var cfg: {
+        var _ = store ? store.revision : 0
+        return (store && instanceId) ? store.settingsFor(instanceId) : ({})
+    }
+    readonly property string hemisphere: cfg.hemisphere !== undefined ? cfg.hemisphere : "north"
 
     readonly property var phases: ["🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"]
     readonly property var names: ["New Moon", "Waxing Crescent", "First Quarter", "Waxing Gibbous",
@@ -34,8 +40,11 @@ WidgetChrome {
     ColumnLayout {
         anchors.centerIn: parent
         spacing: w.expanded ? 14 : 2
-        Text { Layout.alignment: Qt.AlignHCenter; text: w.phases[w.idx]
-            font.pixelSize: w.expanded ? 150 : Math.min(w.width * 0.4, 58) }
+        Text { id: moonGlyph; Layout.alignment: Qt.AlignHCenter; text: w.phases[w.idx]
+            font.pixelSize: w.expanded ? 150 : Math.min(w.width * 0.4, 58)
+            // Southern hemisphere sees the moon mirrored: flip the lit side horizontally.
+            transform: Scale { origin.x: moonGlyph.width / 2
+                xScale: w.hemisphere === "south" ? -1 : 1 } }
         Text { Layout.alignment: Qt.AlignHCenter; text: w.names[w.idx]
             font.pixelSize: w.expanded ? 26 : 12; color: theme.textSecondary }
         Text { Layout.alignment: Qt.AlignHCenter; visible: w.expanded

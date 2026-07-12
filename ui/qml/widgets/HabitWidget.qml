@@ -6,14 +6,13 @@ import QtQuick.Layouts
 WidgetChrome {
     id: w
     property var metrics: ({})
-    property var settings: ({})
     property bool expanded: false
     property bool active: true
     property var store: null
     property string instanceId: ""
     property int tick: 0
 
-    title: "Habit"; icon: "🔥"; accentColor: theme.catProductivity
+    title: w.name.length ? w.name : "Habit"; iconName: "habit"; accentColor: theme.catProductivity
     big: expanded
 
     readonly property var cfg: {
@@ -21,6 +20,8 @@ WidgetChrome {
         return (store && instanceId) ? JSON.parse(JSON.stringify(store.settingsFor(instanceId))) : ({})
     }
     readonly property var checkins: cfg.checkins || []
+    // Optional habit name; empty → default "Habit" header.
+    readonly property string name: cfg.name !== undefined ? cfg.name : ""
     function key(d) { return Qt.formatDate(d, "yyyy-MM-dd") }
     property string todayKey: (w.tick, key(new Date()))
     property bool doneToday: checkins.indexOf(todayKey) >= 0

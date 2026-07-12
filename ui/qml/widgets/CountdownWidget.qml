@@ -6,14 +6,13 @@ import QtQuick.Layouts
 WidgetChrome {
     id: w
     property var metrics: ({})
-    property var settings: ({})
     property bool expanded: false
     property bool active: true
     property var store: null
     property string instanceId: ""
     property int tick: 0
 
-    title: "Countdown"; icon: "⏳"; accentColor: theme.catInfo
+    title: "Countdown"; iconName: "countdown"; accentColor: theme.catInfo
     big: expanded; showHeader: expanded
 
     readonly property var cfg: {
@@ -46,7 +45,7 @@ WidgetChrome {
                   (w.days > 0 ? (w.days === 1 ? "day until " : "days until ") + (w.label || "the day")
                    : w.days === 0 ? (w.label || "Today") + "!"
                    : (w.label || "the day") + " passed")
-            font.pixelSize: w.expanded ? 22 : 11; color: theme.textSecondary
+            font.pixelSize: w.expanded ? 22 : 12; color: theme.textSecondary
             horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
             Layout.preferredWidth: w.width * 0.9
         }
@@ -59,7 +58,7 @@ WidgetChrome {
         RowLayout {
             Layout.fillWidth: true; spacing: theme.spacingSm
             TextField {
-                id: labelField; Layout.fillWidth: true; text: w.label
+                id: labelField; Layout.fillWidth: true; Layout.preferredHeight: theme.touchSecondary; text: w.label
                 placeholderText: "Label (e.g. Vacation)"; placeholderTextColor: theme.textTertiary
                 color: theme.textPrimary; font.pixelSize: 15
                 background: Rectangle { radius: theme.radiusSm; color: theme.backgroundColor
@@ -67,7 +66,7 @@ WidgetChrome {
                 onEditingFinished: if (w.store) w.store.setSetting(w.instanceId, "label", text)
             }
             TextField {
-                id: dateField; Layout.preferredWidth: 150; text: w.dateStr
+                id: dateField; Layout.preferredWidth: 150; Layout.preferredHeight: theme.touchSecondary; text: w.dateStr
                 placeholderText: "YYYY-MM-DD"; placeholderTextColor: theme.textTertiary
                 color: theme.textPrimary; font.pixelSize: 15; inputMask: "9999-99-99"
                 background: Rectangle { radius: theme.radiusSm; color: theme.backgroundColor

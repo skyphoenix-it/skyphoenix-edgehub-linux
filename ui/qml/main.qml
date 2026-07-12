@@ -34,6 +34,16 @@ ApplicationWindow {
     property string screenAddedChanged: ""
     property string screenRemovedChanged: ""
 
+    // Live UI-state pushed from the companion Manager app via the C++
+    // ControlServer. Forward it to the dashboard for an immediate reload.
+    property string externalUiState: ""
+    onExternalUiStateChanged: {
+        if (!externalUiState.length) return
+        var item = stackView.currentItem
+        if (item && item.applyExternalState)
+            item.applyExternalState(externalUiState)
+    }
+
     // React to screen hotplug events
     onScreenAddedChanged: function(name) {
         if (name) console.log("Screen added:", name);
@@ -47,194 +57,84 @@ ApplicationWindow {
     property string currentPage: "main"
     property int currentPageIndex: 0
 
-    // Reduced-motion preference (design system: all durations → 0ms)
-    property bool reduceMotion: false
+    // Reduced-motion preference (design system: all durations → 0ms).
+    property alias reduceMotion: _theme.reduceMotion
 
     // --- Runtime customization state (persisted best-effort) ---
-    property string accentName: "blue"
-    property real glassOpacity: 0.55   // 0 = solid cards, 1 = very glassy
-    property bool showWidgetGlow: true
+    // These four are now aliases onto the shared Theme (single source of tokens),
+    // so existing root.accentName / root.glassOpacity / … keep working and their
+    // change signals still drive DashboardStore persistence.
+    property alias accentName: _theme.accentName
+    property alias glassOpacity: _theme.glassOpacity
+    property alias showWidgetGlow: _theme.showWidgetGlow
+    property bool animatedBackground: true   // subtle drifting orbs behind the grid
 
-    // Theme object — exposed as property so child QML files can access it.
-    // Encodes the full design system from docs/product/wireframes.md:
-    // colors, spacing, radii, typography, touch targets, and motion tokens.
-    QtObject {
+    // Shared design-system tokens (single source of truth; see ui/qml/Theme.qml).
+    // Its runtime knobs (accent/glass/glow/reduceMotion) are aliased onto root above.
+    Theme {
         id: _theme
-
-        // --- Color tokens ---
-        property color backgroundColor: "#0D1117"
-        property color backgroundColor2: "#0A0E14"   // gradient partner for bg
-        property color cardBackground: "#161B22"
-        property color cardBackgroundAlt: "#1C222B"   // elevated / secondary surface
-        property color cardBorder: "#30363D"
-        property color textPrimary: "#E6EDF3"
-        property color textSecondary: "#8B949E"
-        property color textTertiary: "#6E7681"
-        property color accent: "#58A6FF"
-        property color accent2: "#7EE787"             // secondary accent for gradients
-        property color warning: "#D29922"
-        property color error: "#F85149"
-        property color success: "#3FB950"
-
-        // --- Category accent colors (uniform visual language) ---
-        property color catSystem: "#58A6FF"       // System / hardware
-        property color catProductivity: "#A371F7" // Productivity / focus
-        property color catInfo: "#3FB950"          // Information / data
-        property color catEntertainment: "#F778BA" // Entertainment / media
-        property color catGaming: "#F0883E"        // Gaming
-        property color catServices: "#56D4DD"      // Network services
-
-        // --- Named accent presets (user-selectable) ---
-        readonly property var accentPresets: ({
-            "blue":   { a: "#58A6FF", b: "#79C0FF" },
-            "purple": { a: "#A371F7", b: "#D2A8FF" },
-            "green":  { a: "#3FB950", b: "#7EE787" },
-            "orange": { a: "#F0883E", b: "#FFA657" },
-            "pink":   { a: "#F778BA", b: "#FF9BCE" },
-            "teal":   { a: "#56D4DD", b: "#76E3EA" },
-            "red":    { a: "#F85149", b: "#FF7B72" },
-            "gold":   { a: "#E3B341", b: "#F2CC60" }
-        })
-
-        // --- Spacing tokens (logical px) ---
-        property int spacingXs: 4
-        property int spacingSm: 8
-        property int spacingMd: 12   // grid gap
-        property int spacingLg: 16   // card internal padding (min)
-        property int spacingXl: 24   // card internal padding (max)
-
-        // --- Radius tokens ---
-        property int radiusSm: 8
-        property int radiusMd: 12
-        property int radiusLg: 16
-        property int radiusXl: 22
-
-        // --- Decoration tokens (vary per theme mode for genuine visual identity) ---
-        property int cardBorderWidth: 1
-        property bool decorative: true
-
-        // --- Touch-target tokens (design system: 44/48/64) ---
-        property int touchPrimary: 64     // Play, Pause, Add
-        property int touchSecondary: 48   // Settings, Close
-        property int touchTertiary: 44    // small toggles (absolute minimum)
-
-        // --- Typography tokens (logical px) ---
-        property int fontData: 40         // primary data (36–48)
-        property int fontDataLarge: 48
-        property int fontTitle: 17        // widget titles (16–18)
-        property int fontLabel: 15        // secondary labels (14–16)
-        property int fontCaption: 13
-        property string fontMono: "JetBrains Mono, Fira Code, monospace"
-        property string fontDisplay: "Inter, Segoe UI, Roboto, sans-serif"
-
-        // --- Glass / elevation tokens ---
-        property real glass: root.glassOpacity
-        property bool glow: root.showWidgetGlow
-        // Card fill respects the glass setting (more transparent = glassier).
-        function cardFill() {
-            return Qt.rgba(cardBackground.r, cardBackground.g, cardBackground.b,
-                           0.35 + (1.0 - root.glassOpacity) * 0.65)
-        }
-
-        // --- Motion tokens (ms). Honor reduced motion. ---
-        property int motionPage: root.reduceMotion ? 0 : 250   // page transition
-        property int motionAdd: root.reduceMotion ? 0 : 200    // widget add scale-in
-        property int motionRemove: root.reduceMotion ? 0 : 150 // widget remove fade
-        property int motionEdit: root.reduceMotion ? 0 : 200   // edit enter/exit
-        property int motionFast: root.reduceMotion ? 0 : 150   // press feedback
-        property int motionSlow: root.reduceMotion ? 0 : 500
-
-        // Apply a named accent preset at runtime.
-        function applyAccent(name) {
-            var p = accentPresets[name] || accentPresets["blue"]
-            accent = p.a
-            accent2 = p.b
-            root.accentName = name
-        }
-
-        function applyTheme(mode) {
-            switch(mode) {
-            case "light":
-                backgroundColor = "#FFFFFF";
-                backgroundColor2 = "#EEF1F5";
-                cardBackground = "#F6F8FA";
-                cardBackgroundAlt = "#ECEFF3";
-                cardBorder = "#D0D7DE";
-                textPrimary = "#1F2328";
-                textSecondary = "#656D76";
-                textTertiary = "#8C959F";
-                radiusSm = 6; radiusMd = 9; radiusLg = 12; radiusXl = 16;
-                decorative = true; cardBorderWidth = 1;
-                break;
-            case "oled":
-                backgroundColor = "#000000";
-                backgroundColor2 = "#000000";
-                cardBackground = "#0A0A0A";
-                cardBackgroundAlt = "#121212";
-                cardBorder = "#1A1A1A";
-                textPrimary = "#E0E0E0";
-                textSecondary = "#808080";
-                textTertiary = "#5A5A5A";
-                radiusSm = 8; radiusMd = 12; radiusLg = 16; radiusXl = 22;
-                decorative = true; cardBorderWidth = 1;
-                break;
-            case "high_contrast":
-                backgroundColor = "#000000";
-                backgroundColor2 = "#000000";
-                cardBackground = "#1A1A1A";
-                cardBackgroundAlt = "#242424";
-                cardBorder = "#FFFFFF";
-                textPrimary = "#FFFFFF";
-                textSecondary = "#CCCCCC";
-                textTertiary = "#AAAAAA";
-                radiusSm = 2; radiusMd = 3; radiusLg = 4; radiusXl = 6;
-                decorative = false; cardBorderWidth = 2;
-                break;
-            default: // dark
-                backgroundColor = "#0D1117";
-                backgroundColor2 = "#0A0E14";
-                cardBackground = "#161B22";
-                cardBackgroundAlt = "#1C222B";
-                cardBorder = "#30363D";
-                textPrimary = "#E6EDF3";
-                textSecondary = "#8B949E";
-                textTertiary = "#6E7681";
-                radiusSm = 8; radiusMd = 12; radiusLg = 16; radiusXl = 22;
-                decorative = true; cardBorderWidth = 1;
-                break;
-            }
-            applyAccent(root.accentName);
-        }
-
         Component.onCompleted: applyTheme(root.themeMode)
     }
 
     property alias theme: _theme
+
+    // ── Orientation ──────────────────────────────────────────────────────────
+    // `orientationMode` (persisted appearance) is "auto" or a fixed value.
+    //
+    // AUTO = trust the compositor: the framebuffer is already oriented correctly,
+    // so apply NO software rotation and let the grid reflow to the real aspect
+    // (root width vs height) — this is what makes it flip when the compositor
+    // rotates the output. MANUAL modes apply a fixed software rotation for
+    // mountings the compositor can't correct. We deliberately do NOT rotate from
+    // the raw orientation sensor: doing so double-rotated to an upside-down image,
+    // so a mounting the compositor can't handle is selected explicitly instead.
+    property string orientationMode: "auto"
+    readonly property int contentRotation: {
+        switch (orientationMode) {
+        case "landscape": return 90
+        case "inverted-portrait": return 180
+        case "inverted-landscape": return 270
+        case "portrait": return 0
+        default: return 0    // auto
+        }
+    }
 
     // NOTE: Diagnostics is reached via the ⚙ button on the dashboard and the
     // Ctrl+D shortcut. Earlier there were whole-window TapHandlers here (3-finger
     // + right-click) — removed because a root-level gesture handler can delay
     // touch delivery to the widget buttons underneath, hurting responsiveness.
 
-    // Navigation stack for main ↔ diagnostics
-    StackView {
-        id: stackView
-        anchors.fill: parent
-        initialItem: isFirstRun ? "qrc:/qml/FirstRunWizard.qml" :
-                     startInDiagnostics ? "qrc:/qml/Diagnostics.qml" :
-                     "qrc:/qml/Dashboard.qml"
-    }
+    // Rotating content container — rotates + reflows the whole UI to match the
+    // device orientation. When rotated 90/270 it swaps width/height so the
+    // dashboard inside lays out for the effective aspect (landscape → more cols).
+    Item {
+        id: contentRoot
+        anchors.centerIn: parent
+        readonly property bool swapped: root.contentRotation === 90 || root.contentRotation === 270
+        width: swapped ? root.height : root.width
+        height: swapped ? root.width : root.height
+        rotation: root.contentRotation
+        Behavior on rotation { NumberAnimation { duration: theme.motionPage; easing.type: Easing.InOutCubic } }
 
-    // On-screen keyboard: this is a touchscreen device with no attached
-    // physical keyboard, so any focused TextField needs a way to type.
-    // Slides up from the bottom when a text input takes focus.
-    InputPanel {
-        id: inputPanel
-        z: 1000
-        anchors.left: parent.left
-        anchors.right: parent.right
-        y: active ? root.height - height : root.height
-        Behavior on y { NumberAnimation { duration: theme.motionEdit; easing.type: Easing.OutCubic } }
+        // Navigation stack for main ↔ diagnostics
+        StackView {
+            id: stackView
+            anchors.fill: parent
+            initialItem: isFirstRun ? "qrc:/qml/FirstRunWizard.qml" :
+                         startInDiagnostics ? "qrc:/qml/Diagnostics.qml" :
+                         "qrc:/qml/Dashboard.qml"
+        }
+
+        // On-screen keyboard: this is a touchscreen device with no attached
+        // physical keyboard, so any focused TextField needs a way to type.
+        InputPanel {
+            id: inputPanel
+            z: 1000
+            anchors.left: parent.left
+            anchors.right: parent.right
+            y: active ? contentRoot.height - height : contentRoot.height
+            Behavior on y { NumberAnimation { duration: theme.motionEdit; easing.type: Easing.OutCubic } }
+        }
     }
 
 
@@ -246,7 +146,9 @@ ApplicationWindow {
                 stackView.pop();
             } else {
                 stackView.push("qrc:/qml/Diagnostics.qml", {
-                    "metricsJson": root.metricsJson,
+                    // Bind live so the Diagnostics overview keeps updating, rather
+                    // than freezing at the first sample taken when Ctrl+D was pressed.
+                    "metricsJson": Qt.binding(function () { return root.metricsJson }),
                     "screensData": root.screensData,
                     "configJson": (typeof configBridge !== "undefined" && configBridge) ? configBridge.configJson() : ""
                 });

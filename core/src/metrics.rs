@@ -101,15 +101,25 @@ fn read_disk_info() -> DiskInfo {
     }
     let frsize = stat.f_frsize as u64;
     let total = (stat.f_blocks as u64).saturating_mul(frsize);
-    let free = (stat.f_bfree as u64).saturating_mul(frsize);
+    // `f_bavail` is space usable by unprivileged processes (what `df` reports as
+    // "Avail"); `f_bfree` includes root-reserved blocks. Match `df`'s accounting:
+    // Used = total - f_bfree, and percent is over the user-visible (used+avail).
+    let avail = (stat.f_bavail as u64).saturating_mul(frsize);
+    let free_all = (stat.f_bfree as u64).saturating_mul(frsize);
     if total == 0 {
         return default;
     }
-    let used = total.saturating_sub(free);
+    let used = total.saturating_sub(free_all);
+    let denom = used.saturating_add(avail);
+    let percent = if denom == 0 {
+        0.0
+    } else {
+        used as f64 / denom as f64 * 100.0
+    };
     DiskInfo {
         total,
         used,
-        percent: used as f64 / total as f64 * 100.0,
+        percent,
     }
 }
 
@@ -121,7 +131,9 @@ fn read_cpu_usage() -> f64 {
         None => return 0.0,
     };
 
-    let mut prev = PREV_CPU_TIMES.lock().unwrap();
+    // Recover from a poisoned lock rather than panicking across the FFI boundary
+    // (the crate unwinds, and there is no catch_unwind at the C boundary).
+    let mut prev = PREV_CPU_TIMES.lock().unwrap_or_else(|e| e.into_inner());
     let result = match prev.as_ref() {
         Some(p) => {
             let idle1 = p.idle + p.iowait;
@@ -216,14 +228,30 @@ fn read_cpu_temperature() -> Option<f64> {
 }
 
 /// Discover the CPU temperature sensor path and cache it.
+///
+/// Priority matters: a real CPU sensor is identified by its hwmon `name`
+/// (k10temp/coretemp/…). The generic globs are only a last resort — if tried
+/// first they latch onto whatever hwmon device `read_dir` returns first (NVMe,
+/// Wi-Fi, chipset), which is nondeterministic and usually wrong.
 fn discover_temp_sensor() -> Option<String> {
-    // Common hwmon paths to check
+    // Strong signals: dedicated CPU temperature drivers.
+    const CPU_HWMON_NAMES: &[&str] = &["k10temp", "coretemp", "zenpower", "cpu_thermal"];
+    if let Some(path) = find_hwmon_by_name(CPU_HWMON_NAMES) {
+        return Some(path);
+    }
+
+    // Weaker signal: the ACPI thermal zone. Motherboard-level, but CPU-adjacent
+    // and far better than an unrelated sensor.
+    if let Some(path) = find_hwmon_by_name(&["acpitz"]) {
+        return Some(path);
+    }
+
+    // Last resort: the first hwmon/thermal sensor that yields a parseable value.
     let patterns = [
         "/sys/class/hwmon/hwmon*/temp1_input",
         "/sys/class/hwmon/hwmon*/temp2_input",
         "/sys/class/thermal/thermal_zone*/temp",
     ];
-
     for pattern in &patterns {
         if let Ok(paths) = glob_simple(pattern) {
             for path in paths {
@@ -236,28 +264,30 @@ fn discover_temp_sensor() -> Option<String> {
         }
     }
 
-    // Try k10temp for AMD CPUs, coretemp for Intel, acpitz for ACPI thermal
-    if let Ok(dirs) = std::fs::read_dir("/sys/class/hwmon") {
-        for dir in dirs.flatten() {
-            let name_path = dir.path().join("name");
-            if let Ok(name) = fs::read_to_string(&name_path) {
-                if name.trim() == "k10temp" || name.trim() == "coretemp" || name.trim() == "acpitz"
-                {
-                    for &temp_file in &["temp1_input", "temp2_input"] {
-                        let temp_path = dir.path().join(temp_file);
-                        if temp_path.exists() {
-                            if let Ok(content) = fs::read_to_string(&temp_path) {
-                                if content.trim().parse::<f64>().is_ok() {
-                                    return Some(temp_path.to_string_lossy().to_string());
-                                }
-                            }
-                        }
-                    }
+    None
+}
+
+/// Return the first `tempN_input` under a hwmon device whose `name` matches one
+/// of `names` and reads as a valid number.
+fn find_hwmon_by_name(names: &[&str]) -> Option<String> {
+    let dirs = std::fs::read_dir("/sys/class/hwmon").ok()?;
+    for dir in dirs.flatten() {
+        let name = match fs::read_to_string(dir.path().join("name")) {
+            Ok(n) => n.trim().to_string(),
+            Err(_) => continue,
+        };
+        if !names.contains(&name.as_str()) {
+            continue;
+        }
+        for &temp_file in &["temp1_input", "temp2_input"] {
+            let temp_path = dir.path().join(temp_file);
+            if let Ok(content) = fs::read_to_string(&temp_path) {
+                if content.trim().parse::<f64>().is_ok() {
+                    return Some(temp_path.to_string_lossy().to_string());
                 }
             }
         }
     }
-
     None
 }
 
@@ -443,7 +473,8 @@ fn read_network_rates() -> (f64, f64) {
         None => return (0.0, 0.0),
     };
     let now = Instant::now();
-    let mut prev = PREV_NET.lock().unwrap();
+    // Recover from a poisoned lock rather than panicking across the FFI boundary.
+    let mut prev = PREV_NET.lock().unwrap_or_else(|e| e.into_inner());
     let result = match prev.as_ref() {
         Some(p) => {
             let elapsed = now.duration_since(p.at).as_secs_f64();

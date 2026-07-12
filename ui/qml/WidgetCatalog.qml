@@ -11,39 +11,39 @@ import QtQuick
 QtObject {
     id: catalog
 
-    // category is used to group the picker. icon is an emoji glyph.
+    // `category` groups the picker; icons are SVGs resolved by `type` via AppIcon.
     property var items: [
         // System / hardware (real metrics from the Rust core)
-        { type: "cpu",     title: "CPU",      icon: "🖥", category: "System", source: "qrc:/qml/CpuWidget.qml",     defaults: {} },
-        { type: "gpu",     title: "GPU",      icon: "🎮", category: "System", source: "qrc:/qml/GpuWidget.qml",     defaults: {} },
-        { type: "ram",     title: "Memory",   icon: "🧠", category: "System", source: "qrc:/qml/RamWidget.qml",     defaults: {} },
-        { type: "net",     title: "Network",  icon: "📡", category: "System", source: "qrc:/qml/NetWidget.qml",     defaults: {} },
-        { type: "disk",    title: "Disk",     icon: "💽", category: "System", source: "qrc:/qml/DiskWidget.qml",    defaults: {} },
-        { type: "sensors", title: "Sensors",  icon: "📊", category: "System", source: "qrc:/qml/SensorsWidget.qml", defaults: {} },
+        { type: "cpu",     title: "CPU",      category: "System", source: "qrc:/qml/CpuWidget.qml",     defaults: {} },
+        { type: "gpu",     title: "GPU",      category: "System", source: "qrc:/qml/GpuWidget.qml",     defaults: {} },
+        { type: "ram",     title: "Memory",   category: "System", source: "qrc:/qml/RamWidget.qml",     defaults: {} },
+        { type: "net",     title: "Network",  category: "System", source: "qrc:/qml/NetWidget.qml",     defaults: {} },
+        { type: "disk",    title: "Disk",     category: "System", source: "qrc:/qml/DiskWidget.qml",    defaults: {} },
+        { type: "sensors", title: "Sensors",  category: "System", source: "qrc:/qml/SensorsWidget.qml", defaults: {} },
 
         // Time / ambient
-        { type: "clock",   title: "Clock",       icon: "🕐", category: "Time", source: "qrc:/qml/ClockWidget.qml",   defaults: {} },
-        { type: "analog",  title: "Analog Clock",icon: "🕰", category: "Time", source: "qrc:/qml/AnalogClockWidget.qml", defaults: {} },
-        { type: "moon",    title: "Moon Phase",  icon: "🌙", category: "Time", source: "qrc:/qml/MoonWidget.qml",    defaults: {} },
+        { type: "clock",   title: "Clock",       category: "Time", source: "qrc:/qml/ClockWidget.qml",   defaults: {} },
+        { type: "analog",  title: "Analog Clock",category: "Time", source: "qrc:/qml/AnalogClockWidget.qml", defaults: {} },
+        { type: "moon",    title: "Moon Phase",  category: "Time", source: "qrc:/qml/MoonWidget.qml",    defaults: {} },
 
         // Focus / productivity (persisted user data)
-        { type: "focus",    title: "Focus Timer", icon: "🎯", category: "Focus", source: "qrc:/qml/FocusWidget.qml",    defaults: { preset: "classic", phase: "work", running: false, endEpoch: 0, pausedRemaining: 1500, doneToday: 0, day: "" } },
-        { type: "tasks",    title: "Tasks",       icon: "✅", category: "Focus", source: "qrc:/qml/TasksWidget.qml",    defaults: { items: [] } },
-        { type: "rightnow", title: "Right Now",   icon: "🎈", category: "Focus", source: "qrc:/qml/RightNowWidget.qml", defaults: { text: "" } },
-        { type: "notes",    title: "Quick Note",  icon: "📝", category: "Focus", source: "qrc:/qml/NotesWidget.qml",    defaults: { text: "" } },
-        { type: "habit",    title: "Habit Streak",icon: "🔥", category: "Focus", source: "qrc:/qml/HabitWidget.qml",     defaults: { checkins: [] } },
-        { type: "hydration",title: "Hydration",   icon: "💧", category: "Focus", source: "qrc:/qml/HydrationWidget.qml", defaults: { goal: 8, count: 0, day: "" } },
-        { type: "break",    title: "Break Reminder", icon: "☕", category: "Focus", source: "qrc:/qml/BreakWidget.qml",  defaults: { intervalMin: 30 } },
+        { type: "focus",    title: "Focus Timer", category: "Focus", source: "qrc:/qml/FocusWidget.qml",    defaults: { preset: "classic", phase: "work", running: false, endEpoch: 0, pausedRemaining: 1500, doneToday: 0, day: "" } },
+        { type: "tasks",    title: "Tasks",       category: "Focus", source: "qrc:/qml/TasksWidget.qml",    defaults: { items: [] } },
+        { type: "rightnow", title: "Right Now",   category: "Focus", source: "qrc:/qml/RightNowWidget.qml", defaults: { text: "" } },
+        { type: "notes",    title: "Quick Note",  category: "Focus", source: "qrc:/qml/NotesWidget.qml",    defaults: { text: "" } },
+        { type: "habit",    title: "Habit Streak",category: "Focus", source: "qrc:/qml/HabitWidget.qml",     defaults: { checkins: [] } },
+        { type: "hydration",title: "Hydration",   category: "Focus", source: "qrc:/qml/HydrationWidget.qml", defaults: { goal: 8, count: 0, day: "" } },
+        { type: "break",    title: "Break Reminder", category: "Focus", source: "qrc:/qml/BreakWidget.qml",  defaults: { intervalMin: 30 } },
 
         // Media
-        { type: "media",    title: "Now Playing", icon: "🎵", category: "Media", source: "qrc:/qml/MediaWidget.qml", defaults: {} },
+        { type: "media",    title: "Now Playing", category: "Media", source: "qrc:/qml/MediaWidget.qml", defaults: {} },
 
         // Info
-        { type: "calendar", title: "Calendar",    icon: "📅", category: "Info", source: "qrc:/qml/CalendarWidget.qml",  defaults: { url: "" } },
-        { type: "weather",  title: "Weather",     icon: "⛅", category: "Info", source: "qrc:/qml/WeatherWidget.qml",  defaults: { lat: 52.52, lon: 13.405, place: "Berlin" } },
-        { type: "countdown",title: "Countdown",   icon: "⏳", category: "Info", source: "qrc:/qml/CountdownWidget.qml", defaults: { label: "", date: "" } },
-        { type: "eod",      title: "End of Day",  icon: "🌆", category: "Info", source: "qrc:/qml/EndOfDayWidget.qml",  defaults: { startHour: 9, endHour: 17 } },
-        { type: "quote",    title: "Daily Quote", icon: "💬", category: "Info", source: "qrc:/qml/QuoteWidget.qml",    defaults: {} }
+        { type: "calendar", title: "Calendar",    category: "Info", source: "qrc:/qml/CalendarWidget.qml",  defaults: { url: "" } },
+        { type: "weather",  title: "Weather",     category: "Info", source: "qrc:/qml/WeatherWidget.qml",  defaults: { lat: 52.52, lon: 13.405, place: "Berlin" } },
+        { type: "countdown",title: "Countdown",   category: "Info", source: "qrc:/qml/CountdownWidget.qml", defaults: { label: "", date: "" } },
+        { type: "eod",      title: "End of Day",  category: "Info", source: "qrc:/qml/EndOfDayWidget.qml",  defaults: { startHour: 9, endHour: 17 } },
+        { type: "quote",    title: "Daily Quote", category: "Info", source: "qrc:/qml/QuoteWidget.qml",    defaults: {} }
     ]
 
     // One-line descriptions shown in the expanded (full-screen) view header.
@@ -79,7 +79,6 @@ QtObject {
     }
     function source(type) { var d = def(type); return d ? d.source : "" }
     function title(type)  { var d = def(type); return d ? d.title : type }
-    function icon(type)   { var d = def(type); return d ? d.icon : "❓" }
     function desc(type)   { return _desc[type] || "" }
     function defaults(type) { var d = def(type); return d ? d.defaults : ({}) }
 

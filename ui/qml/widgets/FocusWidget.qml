@@ -11,13 +11,12 @@ import QtQuick.Layouts
 WidgetChrome {
     id: w
     property var metrics: ({})
-    property var settings: ({})
     property bool expanded: false
     property bool active: true
     property var store: null
     property string instanceId: ""
 
-    title: "Focus Timer"; icon: "🎯"; accentColor: theme.catProductivity
+    title: "Focus Timer"; iconName: "focus"; accentColor: theme.catProductivity
     big: expanded; showHeader: expanded
 
     readonly property var presets: ({
@@ -36,7 +35,13 @@ WidgetChrome {
         return (store && instanceId) ? JSON.parse(JSON.stringify(store.settingsFor(instanceId))) : ({})
     }
     property string presetName: cfg.preset || "classic"
-    property var p: presets[presetName] || presets["classic"]
+    // Custom-preset durations (minutes); only used when presetName === "custom".
+    readonly property int workMin: cfg.workMin !== undefined ? cfg.workMin : 25
+    readonly property int breakMin: cfg.breakMin !== undefined ? cfg.breakMin : 5
+    readonly property bool autoStartBreak: cfg.autoStartBreak !== undefined ? cfg.autoStartBreak : false
+    property var p: presetName === "custom"
+        ? ({ work: workMin, short: breakMin, long: breakMin, every: 4, label: "Custom" })
+        : (presets[presetName] || presets["classic"])
     property string phase: cfg.phase || "work"     // work | short | long
     property bool running: cfg.running || false
     property int completedWork: cfg.day === today() ? (cfg.doneToday || 0) : 0
@@ -45,6 +50,9 @@ WidgetChrome {
     // `remaining`, which is derived from the persisted absolute end time.
     property int pulse: 0
     property int phaseTotal: phaseSeconds(phase)
+    // Ring fill fraction (elapsed). Denominator grows if "+5" pushes remaining
+    // past a phase's nominal length, so the ring never underflows past 0.
+    readonly property real ringValue: 1 - remaining / Math.max(1, phaseTotal, remaining)
     property int remaining: {
         pulse
         if (running && cfg.endEpoch)
@@ -71,21 +79,28 @@ WidgetChrome {
         var secs = phaseSeconds(ph)
         save({ phase: ph, pausedRemaining: secs, running: run, endEpoch: run ? Date.now() + secs * 1000 : 0 })
     }
-    function reset() { save({ completedWork: 0, day: today() }); loadPhase("work", false) }
-    function applyPreset(name) { save({ preset: name, completedWork: 0, day: today() }); loadPhase("work", false) }
+    // `completedWork` is derived read-only from the persisted `doneToday`; reset
+    // the real key, not the derived one (writing completedWork was a silent no-op
+    // that left "N done today" stuck).
+    function reset() { save({ doneToday: 0, day: today() }); loadPhase("work", false) }
+    function applyPreset(name) { save({ preset: name, doneToday: 0, day: today() }); loadPhase("work", false) }
     function advance(natural) {
         var cw = completedWork
-        var nextPhase, done = cw
+        var nextPhase, done = cw, run
         if (phase === "work") {
             done = cw + 1
             nextPhase = (done % p.every === 0) ? "long" : "short"
+            // Roll straight into the break only when the user opted in;
+            // otherwise pause and wait for them to start it.
+            run = autoStartBreak
         } else {
             nextPhase = "work"
+            // Never auto-start a work phase after a break.
+            run = false
         }
         var secs = phaseSeconds(nextPhase)
-        // Auto-continue into the next phase (classic Pomodoro flow).
         save({ phase: nextPhase, doneToday: done, day: today(),
-               running: true, endEpoch: Date.now() + secs * 1000, pausedRemaining: secs })
+               running: run, endEpoch: run ? Date.now() + secs * 1000 : 0, pausedRemaining: secs })
         flash.restart()
     }
     function skip() { advance(false) }
@@ -115,7 +130,7 @@ WidgetChrome {
         RingProgress {
             anchors.centerIn: parent
             width: Math.min(parent.width, parent.height) * 0.9; height: width
-            value: 1 - w.remaining / Math.max(1, w.phaseTotal)
+            value: w.ringValue
             progressColor: w.phaseColor(); progressColor2: w.phaseColor()
         }
         ColumnLayout {
@@ -125,7 +140,7 @@ WidgetChrome {
                 font.family: theme.fontMono; font.bold: true
                 color: w.running ? w.phaseColor() : theme.textPrimary }
             Text { Layout.alignment: Qt.AlignHCenter; text: w.phaseLabel()
-                font.pixelSize: 10; color: theme.textSecondary }
+                font.pixelSize: 12; color: theme.textSecondary }
         }
     }
 
@@ -136,7 +151,7 @@ WidgetChrome {
         SegmentedControl {
             Layout.fillWidth: true; Layout.preferredHeight: theme.touchTertiary
             tint: w.phaseColor()
-            options: [ { label: "Classic", value: "classic" }, { label: "Deep", value: "deep" }, { label: "Sprint", value: "sprint" } ]
+            options: [ { label: "Classic", value: "classic" }, { label: "Deep", value: "deep" }, { label: "Sprint", value: "sprint" }, { label: "Custom", value: "custom" } ]
             currentValue: w.presetName
             onSelected: function (v) { w.applyPreset(v) }
         }
@@ -145,7 +160,7 @@ WidgetChrome {
             RingProgress {
                 id: bigRing; anchors.centerIn: parent
                 width: Math.min(parent.width, parent.height); height: width
-                value: 1 - w.remaining / Math.max(1, w.phaseTotal)
+                value: w.ringValue
                 progressColor: w.phaseColor(); progressColor2: w.phaseColor()
             }
             ColumnLayout {

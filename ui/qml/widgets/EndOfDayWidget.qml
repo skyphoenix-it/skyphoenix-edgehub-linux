@@ -6,14 +6,13 @@ import QtQuick.Layouts
 WidgetChrome {
     id: w
     property var metrics: ({})
-    property var settings: ({})
     property bool expanded: false
     property bool active: true
     property var store: null
     property string instanceId: ""
     property int tick: 0
 
-    title: "End of Day"; icon: "🌆"; accentColor: theme.catInfo
+    title: "End of Day"; iconName: "eod"; accentColor: theme.catInfo
     big: expanded
 
     readonly property var cfg: {
@@ -22,6 +21,7 @@ WidgetChrome {
     }
     property int startHour: cfg.startHour !== undefined ? cfg.startHour : 9
     property int endHour: cfg.endHour !== undefined ? cfg.endHour : 17
+    readonly property bool showPercent: cfg.showPercent !== undefined ? cfg.showPercent : true
 
     property real frac: {
         w.tick
@@ -56,9 +56,10 @@ WidgetChrome {
                 Behavior on width { NumberAnimation { duration: 500 } } }
         }
         Text {
+            visible: w.showPercent
             Layout.alignment: Qt.AlignHCenter
             text: Math.round(w.frac * 100) + "% of " + w.startHour + ":00–" + w.endHour + ":00"
-            font.pixelSize: w.expanded ? 15 : 10; color: theme.textSecondary
+            font.pixelSize: w.expanded ? 15 : 12; color: theme.textSecondary
         }
         RowLayout {
             Layout.alignment: Qt.AlignHCenter; visible: w.expanded; spacing: theme.spacingMd

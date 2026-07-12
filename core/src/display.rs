@@ -46,37 +46,22 @@ pub fn parse_model_name(edid: &[u8]) -> Option<String> {
     None
 }
 
-/// Parse the serial number from EDID descriptor blocks.
-pub fn parse_serial(edid: &[u8]) -> Option<String> {
-    for block_start in (54..126).step_by(18) {
-        if edid.len() <= block_start + 18 {
-            break;
-        }
-        let block = &edid[block_start..block_start + 18];
-        if block[0] == 0 && block[1] == 0 && block[2] == 0 && block[3] == 0xFF && block[4] == 0 {
-            let serial_bytes: Vec<u8> = block[5..]
-                .iter()
-                .copied()
-                .take_while(|&b| b != 0x0A && b != 0x00)
-                .collect();
-            if !serial_bytes.is_empty() {
-                return Some(String::from_utf8_lossy(&serial_bytes).trim().to_string());
-            }
-        }
-    }
-    None
-}
-
 /// Check if an EDID likely belongs to a Corsair Xeneon Edge.
 /// The Xeneon Edge has 2560x720 or 720x2560 native resolution at 15.3" physical size.
 pub fn is_xeneon_edge(edid: &[u8]) -> bool {
-    if edid.len() < 22 {
+    // A base EDID block is 128 bytes. Anything shorter can't be parsed reliably,
+    // and the size/resolution reads below would index out of bounds.
+    if edid.len() < 128 {
         return false;
     }
 
-    // Check horizontal resolution (bytes 17-18, little-endian 12-bit values)
-    let h_active = ((edid[18] as u16 & 0xF0) << 4) | edid[17] as u16;
-    let v_active = ((edid[20] as u16 & 0xF0) << 4) | edid[19] as u16;
+    // Native resolution lives in the first Detailed Timing Descriptor at offset 54:
+    //   horizontal addressable = low byte 56 | (high nibble of byte 58) << 8
+    //   vertical addressable   = low byte 59 | (high nibble of byte 61) << 8
+    // (The previous implementation read bytes 17-20, which are the manufacture
+    // year / EDID version / basic-params — never the resolution.)
+    let h_active = ((edid[58] as u16 & 0xF0) << 4) | edid[56] as u16;
+    let v_active = ((edid[61] as u16 & 0xF0) << 4) | edid[59] as u16;
 
     // Xeneon Edge: 2560×720 or 720×2560
     let is_xeneon_res =
@@ -121,26 +106,27 @@ mod tests {
         edid[10..12].copy_from_slice(&[0x01, 0x00]);
         // Serial
         edid[12..16].copy_from_slice(&[0x01, 0x00, 0x00, 0x00]);
-        // Week/Year
+        // Week / Year of manufacture (2026)
         edid[16] = 1;
-        edid[17] = 26; // 2026
-                       // EDID version 1.4
+        edid[17] = 26;
+        // EDID version 1.4
         edid[18] = 1;
         edid[19] = 4;
-        // Basic display params
-        edid[20] = 0xA5; // Digital input
-                         // Horizontal: 2560 (encoded as 12-bit at bytes 17,18)
-                         // 2560 * 4 = 10,240; lower byte = 0, upper nibble = 0xA0 >> 4 for the top bits
-                         // Actually let me just set these correctly:
-                         // H active lower 8 bits
-        edid[17] = (2560 & 0xFF) as u8; // 0
-                                        // H active upper 4 bits (in DTD byte structure, this is simpler in the base block)
-                                        // Actually in the base EDID block, detailed timings are in descriptor blocks.
-                                        // For the base block, the display size is what matters.
-                                        // Let me set physical size instead:
+        // Basic display params: digital input
+        edid[20] = 0xA5;
+        // Physical size at bytes 21 (H) / 22 (V) in cm.
         edid[21] = 39; // 39cm wide (~15.3")
         edid[22] = 11; // 11cm tall
         edid
+    }
+
+    /// Encode a native resolution into the first Detailed Timing Descriptor
+    /// (offset 54) of a base EDID block, matching how `is_xeneon_edge` decodes it.
+    fn set_dtd_resolution(edid: &mut [u8], h: u16, v: u16) {
+        edid[56] = (h & 0xFF) as u8;
+        edid[58] = ((h >> 4) & 0xF0) as u8;
+        edid[59] = (v & 0xFF) as u8;
+        edid[61] = ((v >> 4) & 0xF0) as u8;
     }
 
     #[test]
@@ -180,8 +166,60 @@ mod tests {
     }
 
     #[test]
+    fn test_is_xeneon_edge_by_resolution() {
+        // A non-Corsair display that nonetheless reports the Edge's native
+        // 720x2560 resolution should be detected via the DTD path alone.
+        let mut edid = minimal_edid();
+        // Neutralize manufacturer + size so only the resolution can match.
+        edid[8] = 0x10;
+        edid[9] = 0xAC; // "DEL"
+        edid[21] = 60;
+        edid[22] = 34;
+        set_dtd_resolution(&mut edid, 720, 2560);
+        assert!(is_xeneon_edge(&edid));
+
+        // A completely different resolution must not match.
+        set_dtd_resolution(&mut edid, 1920, 1080);
+        assert!(!is_xeneon_edge(&edid));
+    }
+
+    #[test]
     fn test_is_xeneon_edge_short_edid() {
         assert!(!is_xeneon_edge(&[0; 10]));
+        // A 127-byte buffer (one short of a base block) must not panic or match.
+        assert!(!is_xeneon_edge(&[0; 127]));
+    }
+
+    /// Write an ASCII string into the descriptor block at `block_start` with the
+    /// given descriptor type tag (0xFC = monitor name), matching how
+    /// `parse_model_name` decodes it.
+    fn set_descriptor(edid: &mut [u8], block_start: usize, tag: u8, text: &str) {
+        edid[block_start] = 0;
+        edid[block_start + 1] = 0;
+        edid[block_start + 2] = 0;
+        edid[block_start + 3] = tag;
+        edid[block_start + 4] = 0;
+        let bytes = text.as_bytes();
+        for i in 0..13 {
+            edid[block_start + 5 + i] = if i < bytes.len() { bytes[i] } else { 0x0A };
+        }
+    }
+
+    #[test]
+    fn test_parse_model_name() {
+        let mut edid = minimal_edid();
+        // Second descriptor block (offset 72) carries the monitor name.
+        set_descriptor(&mut edid, 72, 0xFC, "XENEON EDGE");
+        assert_eq!(parse_model_name(&edid), Some("XENEON EDGE".to_string()));
+    }
+
+    #[test]
+    fn test_parse_model_name_absent_or_short() {
+        // No 0xFC descriptor → None.
+        assert_eq!(parse_model_name(&minimal_edid()), None);
+        // Too-short buffers must not panic.
+        assert_eq!(parse_model_name(&[]), None);
+        assert_eq!(parse_model_name(&[0; 60]), None);
     }
 
     #[test]

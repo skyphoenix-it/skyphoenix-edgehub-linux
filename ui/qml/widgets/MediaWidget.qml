@@ -7,13 +7,12 @@ import QtQuick.Layouts
 WidgetChrome {
     id: w
     property var metrics: ({})
-    property var settings: ({})
     property bool expanded: false
     property bool active: true
     property var store: null
     property string instanceId: ""
 
-    title: "Now Playing"; icon: "🎵"; accentColor: theme.catEntertainment
+    title: "Now Playing"; iconName: "media"; accentColor: theme.catEntertainment
     big: expanded
 
     property bool avail: (typeof media !== "undefined") && media && media.available
@@ -45,11 +44,18 @@ WidgetChrome {
             Layout.fillWidth: true; spacing: 0
             Text { text: w.avail ? media.title : ""; color: theme.textPrimary; font.pixelSize: 13
                 font.bold: true; elide: Text.ElideRight; Layout.fillWidth: true }
-            Text { text: w.avail ? media.artist : ""; color: theme.textSecondary; font.pixelSize: 11
+            Text { text: w.avail ? media.artist : ""; color: theme.textSecondary; font.pixelSize: 12
                 elide: Text.ElideRight; Layout.fillWidth: true }
         }
-        Text { text: (w.avail && media.playing) ? "⏸" : "▶"; font.pixelSize: 24; color: theme.catEntertainment
-            MouseArea { anchors.fill: parent; onClicked: if (w.avail) media.playPause() } }
+        // Compact play/pause — a real circular touch target, not a bare glyph.
+        Rectangle {
+            Layout.preferredWidth: theme.touchTertiary; Layout.preferredHeight: theme.touchTertiary
+            radius: width / 2
+            color: Qt.rgba(theme.catEntertainment.r, theme.catEntertainment.g, theme.catEntertainment.b, ppMA.pressed ? 0.30 : 0.16)
+            AppIcon { anchors.centerIn: parent; name: (w.avail && media.playing) ? "ui-pause" : "ui-play"
+                size: 22; color: theme.catEntertainment }
+            MouseArea { id: ppMA; anchors.fill: parent; onClicked: if (w.avail) media.playPause() }
+        }
     }
 
     // Expanded
@@ -85,17 +91,33 @@ WidgetChrome {
         }
         RowLayout {
             Layout.alignment: Qt.AlignHCenter; spacing: theme.spacingXl
-            Text { text: "⏮"; font.pixelSize: 36; color: theme.textPrimary
-                MouseArea { anchors.fill: parent; onClicked: if (w.avail) media.previous() } }
+            // Prev — matching circular touch button (was a bare 36px glyph).
+            Rectangle {
+                Layout.preferredWidth: theme.touchSecondary; Layout.preferredHeight: theme.touchSecondary
+                radius: width / 2
+                color: Qt.rgba(theme.catEntertainment.r, theme.catEntertainment.g, theme.catEntertainment.b, prevMA.pressed ? 0.30 : 0.14)
+                border.width: 1; border.color: Qt.rgba(theme.catEntertainment.r, theme.catEntertainment.g, theme.catEntertainment.b, 0.5)
+                AppIcon { anchors.centerIn: parent; name: "ui-skip-back"; size: 24; color: theme.textPrimary }
+                MouseArea { id: prevMA; anchors.fill: parent; onClicked: if (w.avail) media.previous() }
+            }
             Rectangle {
                 Layout.preferredWidth: theme.touchPrimary; Layout.preferredHeight: theme.touchPrimary
                 radius: width / 2; color: theme.catEntertainment
-                Text { anchors.centerIn: parent; text: (w.avail && media.playing) ? "⏸" : "▶"
-                    font.pixelSize: 32; color: "#0D1117" }
-                MouseArea { anchors.fill: parent; onClicked: if (w.avail) media.playPause() }
+                scale: playMA.pressed ? 0.95 : 1.0
+                Behavior on scale { NumberAnimation { duration: theme.motionFast } }
+                AppIcon { anchors.centerIn: parent; name: (w.avail && media.playing) ? "ui-pause" : "ui-play"
+                    size: 30; color: "#0D1117" }
+                MouseArea { id: playMA; anchors.fill: parent; onClicked: if (w.avail) media.playPause() }
             }
-            Text { text: "⏭"; font.pixelSize: 36; color: theme.textPrimary
-                MouseArea { anchors.fill: parent; onClicked: if (w.avail) media.next() } }
+            // Next — matching circular touch button.
+            Rectangle {
+                Layout.preferredWidth: theme.touchSecondary; Layout.preferredHeight: theme.touchSecondary
+                radius: width / 2
+                color: Qt.rgba(theme.catEntertainment.r, theme.catEntertainment.g, theme.catEntertainment.b, nextMA.pressed ? 0.30 : 0.14)
+                border.width: 1; border.color: Qt.rgba(theme.catEntertainment.r, theme.catEntertainment.g, theme.catEntertainment.b, 0.5)
+                AppIcon { anchors.centerIn: parent; name: "ui-skip-fwd"; size: 24; color: theme.textPrimary }
+                MouseArea { id: nextMA; anchors.fill: parent; onClicked: if (w.avail) media.next() }
+            }
         }
         Item { Layout.fillHeight: true }
     }

@@ -7,13 +7,12 @@ import QtQuick.Layouts
 WidgetChrome {
     id: w
     property var metrics: ({})
-    property var settings: ({})
     property bool expanded: false
     property bool active: true
     property var store: null
     property string instanceId: ""
 
-    title: "Weather"; icon: "⛅"; accentColor: theme.catInfo
+    title: "Weather"; iconName: "weather"; accentColor: theme.catInfo
     big: expanded
 
     readonly property var cfg: {
@@ -23,6 +22,9 @@ WidgetChrome {
     property real lat: cfg.lat !== undefined ? cfg.lat : 52.52
     property real lon: cfg.lon !== undefined ? cfg.lon : 13.405
     property string place: cfg.place || "Berlin"
+    readonly property string units: cfg.units || "celsius"
+    readonly property int forecastDays: cfg.forecastDays !== undefined ? cfg.forecastDays : 4
+    readonly property string degSym: units === "fahrenheit" ? "°F" : "°C"
 
     property bool loaded: false
     property string errorText: ""
@@ -31,7 +33,7 @@ WidgetChrome {
     property int curCode: 0
     property var days: []   // [{ day, code, min, max }]
 
-    function icon(code) {
+    function weatherGlyph(code) {
         if (code === 0) return "☀️"
         if (code <= 2) return "⛅"
         if (code === 3) return "☁️"
@@ -46,10 +48,12 @@ WidgetChrome {
     }
 
     function refresh() {
+        var fdays = Math.max(1, Math.min(16, w.forecastDays + 1))
         var url = "https://api.open-meteo.com/v1/forecast?latitude=" + w.lat + "&longitude=" + w.lon
                 + "&current=temperature_2m,apparent_temperature,weather_code"
                 + "&daily=weather_code,temperature_2m_max,temperature_2m_min"
-                + "&timezone=auto&forecast_days=4"
+                + (w.units === "fahrenheit" ? "&temperature_unit=fahrenheit" : "")
+                + "&timezone=auto&forecast_days=" + fdays
         var xhr = new XMLHttpRequest()
         xhr.onreadystatechange = function () {
             if (xhr.readyState !== XMLHttpRequest.DONE) return
@@ -63,7 +67,7 @@ WidgetChrome {
                 w.curCode = d.current.weather_code
                 var out = []
                 var names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-                for (var i = 0; i < d.daily.time.length && i < 4; i++) {
+                for (var i = 0; i < d.daily.time.length; i++) {
                     var dt = new Date(d.daily.time[i])
                     out.push({ day: i === 0 ? "Today" : names[dt.getDay()],
                                code: d.daily.weather_code[i],
@@ -102,7 +106,7 @@ WidgetChrome {
     }
 
     // Debounce: lat and lon both "change" as settings load — coalesce to one fetch.
-    property string locKey: lat + "," + lon
+    property string locKey: lat + "," + lon + "," + units + "," + forecastDays
     onLocKeyChanged: refreshDebounce.restart()
     Component.onCompleted: refreshDebounce.restart()
     Timer { id: refreshDebounce; interval: 350; onTriggered: w.refresh() }
@@ -114,19 +118,19 @@ WidgetChrome {
 
         RowLayout {
             Layout.alignment: Qt.AlignHCenter; spacing: theme.spacingMd
-            Text { text: w.loaded ? w.icon(w.curCode) : "…"; font.pixelSize: w.expanded ? 72 : 34 }
+            Text { text: w.loaded ? w.weatherGlyph(w.curCode) : "…"; font.pixelSize: w.expanded ? 72 : 34 }
             ColumnLayout {
                 spacing: 0
-                Text { text: w.loaded ? Math.round(w.curTemp) + "°" : (w.errorText.length ? "—" : "…")
+                Text { text: w.loaded ? Math.round(w.curTemp) + w.degSym : (w.errorText.length ? "—" : "…")
                     font.pixelSize: w.expanded ? 64 : 28; font.bold: true; color: theme.textPrimary }
-                Text { visible: w.expanded && w.loaded; text: "Feels " + Math.round(w.feels) + "°  ·  " + w.place
+                Text { visible: w.expanded && w.loaded; text: "Feels " + Math.round(w.feels) + w.degSym + "  ·  " + w.place
                     font.pixelSize: 14; color: theme.textSecondary }
             }
         }
         Text {
             Layout.alignment: Qt.AlignHCenter; visible: !w.expanded
             text: w.errorText.length ? w.errorText : w.place
-            font.pixelSize: 11; color: theme.textSecondary
+            font.pixelSize: 12; color: theme.textSecondary
         }
         RowLayout {
             Layout.alignment: Qt.AlignHCenter; visible: w.expanded && w.loaded; spacing: theme.spacingXl
@@ -135,8 +139,8 @@ WidgetChrome {
                 delegate: ColumnLayout {
                     required property var modelData; spacing: 2
                     Text { Layout.alignment: Qt.AlignHCenter; text: modelData.day; font.pixelSize: 13; color: theme.textSecondary }
-                    Text { Layout.alignment: Qt.AlignHCenter; text: w.icon(modelData.code); font.pixelSize: 26 }
-                    Text { Layout.alignment: Qt.AlignHCenter; text: modelData.max + "° / " + modelData.min + "°"
+                    Text { Layout.alignment: Qt.AlignHCenter; text: w.weatherGlyph(modelData.code); font.pixelSize: 26 }
+                    Text { Layout.alignment: Qt.AlignHCenter; text: modelData.max + w.degSym + " / " + modelData.min + w.degSym
                         font.pixelSize: 13; color: theme.textPrimary }
                 }
             }
@@ -145,7 +149,7 @@ WidgetChrome {
         RowLayout {
             Layout.fillWidth: true; visible: w.expanded; spacing: theme.spacingSm
             TextField {
-                id: cityField; Layout.fillWidth: true
+                id: cityField; Layout.fillWidth: true; Layout.preferredHeight: theme.touchSecondary
                 placeholderText: "Search a city…"; placeholderTextColor: theme.textTertiary
                 color: theme.textPrimary; font.pixelSize: 15
                 background: Rectangle { radius: theme.radiusSm; color: theme.backgroundColor

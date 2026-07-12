@@ -176,8 +176,22 @@ pub fn load_config() -> Result<AppConfig, ConfigError> {
         source: e,
     })?;
 
-    let config: AppConfig =
-        toml::from_str(&contents).map_err(|_e| ConfigError::Parse { path: path.clone() })?;
+    let config: AppConfig = match toml::from_str(&contents) {
+        Ok(cfg) => cfg,
+        Err(e) => {
+            // A corrupt or schema-incompatible file must not brick startup.
+            // Preserve it as a .bak for recovery and continue with defaults.
+            tracing::error!(
+                path = %path.display(),
+                error = %e,
+                "Config parse failed; backing up and starting from defaults"
+            );
+            if let Err(be) = backup_config() {
+                tracing::warn!(error = %be, "Failed to back up unparseable config");
+            }
+            return Ok(AppConfig::default());
+        }
+    };
 
     // Future: run schema migrations here based on config.schema_version
 
@@ -188,7 +202,8 @@ pub fn load_config() -> Result<AppConfig, ConfigError> {
 /// Creates parent directories if needed.
 pub fn save_config(config: &AppConfig) -> Result<(), ConfigError> {
     let path = config_path();
-    let dir = path.parent().unwrap();
+    // config_path() always has a parent; fall back to CWD rather than panic.
+    let dir = path.parent().unwrap_or_else(|| std::path::Path::new("."));
 
     fs::create_dir_all(dir).map_err(|e| ConfigError::Io {
         path: dir.to_path_buf(),
@@ -199,14 +214,30 @@ pub fn save_config(config: &AppConfig) -> Result<(), ConfigError> {
     let tmp_path = path.with_extension("tmp");
     let contents = toml::to_string_pretty(config).map_err(|_e| ConfigError::Serialize)?;
 
-    fs::write(&tmp_path, &contents).map_err(|e| ConfigError::Io {
-        path: tmp_path.clone(),
-        source: e,
-    })?;
+    // Write + flush + fsync so the bytes are durable on disk before the rename;
+    // otherwise a crash between rename and writeback can leave a truncated file.
+    let write_result = (|| -> io::Result<()> {
+        use std::io::Write;
+        let mut f = fs::File::create(&tmp_path)?;
+        f.write_all(contents.as_bytes())?;
+        f.sync_all()?;
+        Ok(())
+    })();
+    if let Err(e) = write_result {
+        // Don't leave a stray temp file behind on failure.
+        let _ = fs::remove_file(&tmp_path);
+        return Err(ConfigError::Io {
+            path: tmp_path,
+            source: e,
+        });
+    }
 
-    fs::rename(&tmp_path, &path).map_err(|e| ConfigError::Io {
-        path: path.clone(),
-        source: e,
+    fs::rename(&tmp_path, &path).map_err(|e| {
+        let _ = fs::remove_file(&tmp_path);
+        ConfigError::Io {
+            path: path.clone(),
+            source: e,
+        }
     })?;
 
     tracing::info!(path = %path.display(), "Configuration saved");
@@ -245,8 +276,6 @@ pub fn reset_config() -> Result<AppConfig, ConfigError> {
 pub enum ConfigError {
     #[error("I/O error at {path}: {source}")]
     Io { path: PathBuf, source: io::Error },
-    #[error("Parse error in {path}")]
-    Parse { path: PathBuf },
     #[error("Serialization error")]
     Serialize,
 }

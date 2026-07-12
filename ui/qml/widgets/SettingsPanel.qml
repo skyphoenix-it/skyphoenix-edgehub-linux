@@ -19,6 +19,10 @@ Rectangle {
     opacity: shown ? 1 : 0
     Behavior on opacity { NumberAnimation { duration: theme.motionFast } }
 
+    // Bundled "standard" wallpapers + animated styles offered in the pickers below.
+    WallpaperCatalog { id: wallpapers }
+    BackgroundCatalog { id: bgCatalog }
+
     // scrim click closes
     MouseArea { anchors.fill: parent; onClicked: panel.closeRequested() }
 
@@ -42,8 +46,10 @@ Rectangle {
             // Header
             RowLayout {
                 Layout.fillWidth: true
+                spacing: theme.spacingSm
+                AppIcon { name: "ui-settings"; color: theme.textPrimary; size: 24; Layout.alignment: Qt.AlignVCenter }
                 Text {
-                    text: "⚙  Appearance"; font.pixelSize: 22; font.bold: true
+                    text: "Appearance"; font.pixelSize: 22; font.bold: true
                     font.family: theme.fontDisplay; color: theme.textPrimary
                     Layout.fillWidth: true
                 }
@@ -51,7 +57,7 @@ Rectangle {
                     width: theme.touchSecondary; height: theme.touchSecondary
                     radius: width / 2; color: theme.cardBackground
                     border.width: 1; border.color: theme.cardBorder
-                    Text { anchors.centerIn: parent; text: "✕"; font.pixelSize: 18; color: theme.textPrimary }
+                    AppIcon { anchors.centerIn: parent; name: "ui-close"; size: 18; color: theme.textPrimary }
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: panel.closeRequested() }
                 }
             }
@@ -64,27 +70,160 @@ Rectangle {
                     width: parent.width
                     spacing: theme.spacingXl
 
-                    // --- Theme mode ---
+                    // --- Theme mode (live gradient previews) ---
                     ColumnLayout {
                         Layout.fillWidth: true; spacing: theme.spacingSm
                         Text { text: "Theme"; font.pixelSize: theme.fontLabel; font.bold: true; color: theme.textSecondary }
                         Flow {
-                            Layout.fillWidth: true; spacing: theme.spacingSm
+                            Layout.fillWidth: true; spacing: theme.spacingMd
                             Repeater {
                                 model: [
-                                    { v: "dark", l: "Dark" }, { v: "oled", l: "OLED Black" },
-                                    { v: "light", l: "Light" }, { v: "high_contrast", l: "High Contrast" }
+                                    { v: "dark",          l: "Dark",     c1: "#161B22", c2: "#0A0E14" },
+                                    { v: "midnight",      l: "Midnight", c1: "#1B1247", c2: "#070A1C" },
+                                    { v: "aurora",        l: "Aurora",   c1: "#0C2E3A", c2: "#111C40" },
+                                    { v: "sunset",        l: "Sunset",   c1: "#3A1230", c2: "#40161C" },
+                                    { v: "nebula",        l: "Nebula",   c1: "#2A1048", c2: "#120A2E" },
+                                    { v: "oled",          l: "OLED",     c1: "#0A0A0A", c2: "#000000" },
+                                    { v: "light",         l: "Light",    c1: "#F6F8FA", c2: "#E4E9F0" },
+                                    { v: "high_contrast", l: "Contrast", c1: "#1A1A1A", c2: "#000000" }
                                 ]
                                 delegate: Rectangle {
                                     required property var modelData
-                                    width: 140; height: theme.touchSecondary; radius: theme.radiusMd
+                                    width: 150; height: 84; radius: theme.radiusLg; clip: true
                                     property bool active: root.themeMode === modelData.v
-                                    color: active ? Qt.rgba(theme.accent.r, theme.accent.g, theme.accent.b, 0.18) : theme.cardBackground
-                                    border.width: active ? 2 : 1
+                                    border.width: active ? 3 : 1
                                     border.color: active ? theme.accent : theme.cardBorder
-                                    Text { anchors.centerIn: parent; text: modelData.l; color: theme.textPrimary; font.pixelSize: theme.fontLabel }
+                                    gradient: Gradient {
+                                        GradientStop { position: 0.0; color: modelData.c1 }
+                                        GradientStop { position: 1.0; color: modelData.c2 }
+                                    }
+                                    Text {
+                                        anchors.left: parent.left; anchors.bottom: parent.bottom; anchors.margins: 10
+                                        text: modelData.l; font.pixelSize: 15; font.bold: true
+                                        color: modelData.v === "light" ? "#1F2328" : "#FFFFFF"
+                                    }
+                                    Text {
+                                        visible: parent.active
+                                        anchors.top: parent.top; anchors.right: parent.right; anchors.margins: 8
+                                        text: "✓"; font.pixelSize: 22; font.bold: true; color: theme.accent
+                                    }
                                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                         onClicked: { root.themeMode = modelData.v; theme.applyTheme(modelData.v) } }
+                                }
+                            }
+                        }
+                    }
+
+                    // --- Orientation ---
+                    ColumnLayout {
+                        Layout.fillWidth: true; spacing: theme.spacingSm
+                        Text { text: "Orientation"; font.pixelSize: theme.fontLabel; font.bold: true; color: theme.textSecondary }
+                        Text { text: "Pick how the dashboard sits on the panel. Use a fixed mode to rotate for a wall/arm mount. (Auto follows the system only when an orientation sensor is present.)"
+                            font.pixelSize: theme.fontCaption; color: theme.textTertiary
+                            Layout.fillWidth: true; wrapMode: Text.WordWrap }
+                        Flow {
+                            Layout.fillWidth: true; spacing: theme.spacingSm
+                            Repeater {
+                                model: [ { v: "auto", l: "Auto" }, { v: "portrait", l: "Portrait" },
+                                         { v: "landscape", l: "Landscape" }, { v: "inverted-portrait", l: "Portrait (flipped)" },
+                                         { v: "inverted-landscape", l: "Landscape (flipped)" } ]
+                                delegate: Rectangle {
+                                    required property var modelData
+                                    width: oLbl.implicitWidth + 26; height: theme.touchSecondary; radius: theme.radiusMd
+                                    property bool active: root.orientationMode === modelData.v
+                                    color: active ? Qt.rgba(theme.accent.r, theme.accent.g, theme.accent.b, 0.18) : theme.cardBackground
+                                    border.width: active ? 2 : 1; border.color: active ? theme.accent : theme.cardBorder
+                                    Text { id: oLbl; anchors.centerIn: parent; text: modelData.l; color: theme.textPrimary; font.pixelSize: theme.fontLabel }
+                                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                        onClicked: root.orientationMode = modelData.v }
+                                }
+                            }
+                        }
+                    }
+
+                    // --- Animated background ---
+                    ColumnLayout {
+                        Layout.fillWidth: true; spacing: theme.spacingSm
+                        Text { text: "Animated background"; font.pixelSize: theme.fontLabel; font.bold: true; color: theme.textSecondary }
+                        Text { text: "A living backdrop behind the frosted widgets. Picking one clears the wallpaper below."
+                            font.pixelSize: theme.fontCaption; color: theme.textTertiary
+                            Layout.fillWidth: true; wrapMode: Text.WordWrap }
+                        Flow {
+                            Layout.fillWidth: true; spacing: theme.spacingSm
+                            Repeater {
+                                model: bgCatalog.styles
+                                delegate: Rectangle {
+                                    required property var modelData
+                                    width: 150; height: theme.touchSecondary; radius: theme.radiusMd
+                                    // A style is "active" only when no wallpaper is set (a wallpaper wins).
+                                    property bool active: (store.revision,
+                                        !store.appearance().wallpaper && (store.appearance().bgStyle || "orbs") === modelData.v)
+                                    color: active ? Qt.rgba(theme.accent.r, theme.accent.g, theme.accent.b, 0.18) : theme.cardBackground
+                                    border.width: active ? 2 : 1; border.color: active ? theme.accent : theme.cardBorder
+                                    Text { anchors.centerIn: parent; text: modelData.l; color: theme.textPrimary; font.pixelSize: theme.fontLabel }
+                                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                        onClicked: { store.setAppearance("bgStyle", modelData.v); store.setAppearance("wallpaper", "") } }
+                                }
+                            }
+                        }
+                    }
+
+                    // --- Wallpaper ---
+                    ColumnLayout {
+                        Layout.fillWidth: true; spacing: theme.spacingSm
+                        Text { text: "Wallpaper"; font.pixelSize: theme.fontLabel; font.bold: true; color: theme.textSecondary }
+                        Text { text: "Shows through the frosted widgets. Set “None” to use the animated background only."
+                            font.pixelSize: theme.fontCaption; color: theme.textTertiary
+                            Layout.fillWidth: true; wrapMode: Text.WordWrap }
+                        Flow {
+                            Layout.fillWidth: true; spacing: theme.spacingSm
+                            // "None" clears the wallpaper (falls back to the animated backdrop).
+                            Rectangle {
+                                width: 88; height: 120; radius: theme.radiusMd
+                                property bool active: (store.revision, !(store.appearance().wallpaper))
+                                color: theme.cardBackground
+                                border.width: active ? 3 : 1; border.color: active ? theme.accent : theme.cardBorder
+                                Text { anchors.centerIn: parent; text: "None"; color: theme.textSecondary; font.pixelSize: theme.fontCaption }
+                                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                    onClicked: store.setAppearance("wallpaper", "") }
+                            }
+                            Repeater {
+                                model: wallpapers.items
+                                delegate: Rectangle {
+                                    required property var modelData
+                                    width: 88; height: 120; radius: theme.radiusMd; clip: true
+                                    property bool active: (store.revision, store.appearance().wallpaper === modelData.source)
+                                    border.width: active ? 3 : 1; border.color: active ? theme.accent : theme.cardBorder
+                                    color: theme.cardBackground
+                                    Image { anchors.fill: parent; anchors.margins: 2; source: modelData.source
+                                        fillMode: Image.PreserveAspectCrop; asynchronous: true }
+                                    Rectangle { anchors.bottom: parent.bottom; anchors.left: parent.left; anchors.right: parent.right
+                                        height: 22; color: Qt.rgba(0, 0, 0, 0.45)
+                                        Text { anchors.centerIn: parent; text: modelData.label; color: "#fff"; font.pixelSize: 11 } }
+                                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                        onClicked: store.setAppearance("wallpaper", modelData.source) }
+                                }
+                            }
+                        }
+                    }
+
+                    // --- Layout columns ---
+                    ColumnLayout {
+                        Layout.fillWidth: true; spacing: theme.spacingSm
+                        Text { text: "Layout Columns"; font.pixelSize: theme.fontLabel; font.bold: true; color: theme.textSecondary }
+                        Flow {
+                            Layout.fillWidth: true; spacing: theme.spacingSm
+                            Repeater {
+                                model: [ { v: 1, l: "1 Column" }, { v: 2, l: "2 Columns" } ]
+                                delegate: Rectangle {
+                                    required property var modelData
+                                    width: 150; height: theme.touchSecondary; radius: theme.radiusMd
+                                    property bool active: (store.revision, store.appearance().gridCols || 1) === modelData.v
+                                    color: active ? Qt.rgba(theme.accent.r, theme.accent.g, theme.accent.b, 0.18) : theme.cardBackground
+                                    border.width: active ? 2 : 1; border.color: active ? theme.accent : theme.cardBorder
+                                    Text { anchors.centerIn: parent; text: modelData.l; color: theme.textPrimary; font.pixelSize: theme.fontLabel }
+                                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                        onClicked: store.setAppearance("gridCols", modelData.v) }
                                 }
                             }
                         }
@@ -137,6 +276,11 @@ Rectangle {
                             Layout.fillWidth: true
                             Text { text: "Accent glow"; font.pixelSize: theme.fontLabel; color: theme.textPrimary; Layout.fillWidth: true }
                             Switch { checked: root.showWidgetGlow; onToggled: root.showWidgetGlow = checked }
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Text { text: "Animated background"; font.pixelSize: theme.fontLabel; color: theme.textPrimary; Layout.fillWidth: true }
+                            Switch { checked: root.animatedBackground; onToggled: root.animatedBackground = checked }
                         }
                         RowLayout {
                             Layout.fillWidth: true

@@ -9,14 +9,13 @@ import QtQuick.Layouts
 WidgetChrome {
     id: w
     property var metrics: ({})
-    property var settings: ({})
     property bool expanded: false
     property bool active: true
     property var store: null
     property string instanceId: ""
     property int tick: 0
 
-    title: "Calendar"; icon: "📅"; accentColor: theme.catServices
+    title: "Calendar"; iconName: "calendar"; accentColor: theme.catServices
     big: expanded
 
     readonly property var cfg: {
@@ -24,7 +23,9 @@ WidgetChrome {
         return (store && instanceId) ? JSON.parse(JSON.stringify(store.settingsFor(instanceId))) : ({})
     }
     readonly property string url: cfg.url || ""
+    readonly property int maxEvents: cfg.maxEvents !== undefined ? cfg.maxEvents : 5
     property var events: []        // expanded, sorted upcoming
+    readonly property var shownEvents: events.slice(0, maxEvents)
     property string errorText: ""
     property bool loading: false
 
@@ -43,8 +44,12 @@ WidgetChrome {
     function expand(ev, horizonEnd, now) {
         var out = []
         var todayStart = dayStart(now)
+        // Duration of the event, used so an occurrence that STARTED before today
+        // but hasn't finished yet (multi-day / in-progress) still counts.
+        var dur = (ev.end && ev.start) ? (ev.end.getTime() - ev.start.getTime()) : 0
         if (!ev.rrule) {
-            if (ev.start >= todayStart && ev.start <= horizonEnd) out.push(ev)
+            var effEnd = ev.end || ev.start
+            if (effEnd >= todayStart && ev.start <= horizonEnd) out.push(ev)
             return out
         }
         var parts = {}
@@ -54,13 +59,17 @@ WidgetChrome {
         var until = parts.UNTIL ? parseDT(parts.UNTIL, "") : horizonEnd
         var stepDays = parts.FREQ === "WEEKLY" ? 7 * interval : (parts.FREQ === "DAILY" ? interval : 0)
         if (stepDays === 0) { // unsupported freq → single instance
-            if (ev.start >= todayStart && ev.start <= horizonEnd) out.push(ev)
+            var effEnd0 = ev.end || ev.start
+            if (effEnd0 >= todayStart && ev.start <= horizonEnd) out.push(ev)
             return out
         }
         var occ = new Date(ev.start), n = 0
         while (occ <= horizonEnd && occ <= until && n < count && out.length < 200) {
-            if (occ >= todayStart)
-                out.push({ title: ev.title, location: ev.location, allDay: ev.allDay, start: new Date(occ) })
+            // Include an occurrence whose end is today or later (so one currently
+            // in progress isn't skipped just because it started before midnight).
+            if (occ.getTime() + dur >= todayStart.getTime())
+                out.push({ title: ev.title, location: ev.location, allDay: ev.allDay,
+                           start: new Date(occ), end: new Date(occ.getTime() + dur) })
             occ = new Date(occ.getTime() + stepDays * 86400000); n++
         }
         return out
@@ -85,6 +94,7 @@ WidgetChrome {
                     cur.start = parseDT(val, key)
                     cur.allDay = key.indexOf("VALUE=DATE") >= 0
                 }
+                else if (name === "DTEND") cur.end = parseDT(val, key)
             }
         }
         var now = new Date(), horizon = new Date(now.getTime() + 30 * 86400000)
@@ -141,23 +151,23 @@ WidgetChrome {
         }
         ColumnLayout {
             visible: w.url.length > 0; Layout.fillWidth: true; Layout.fillHeight: true; spacing: 3
-            Text { text: (w.tick, "Up next"); font.pixelSize: 10; color: theme.textTertiary }
+            Text { text: (w.tick, "Up next"); font.pixelSize: 12; color: theme.textTertiary }
             Repeater {
-                model: Math.min(w.events.length, 3)
+                model: Math.min(w.shownEvents.length, 3)
                 delegate: RowLayout {
                     required property int index
                     Layout.fillWidth: true; spacing: 6
                     Rectangle { Layout.preferredWidth: 3; Layout.preferredHeight: 26; radius: 2; color: theme.catServices }
                     ColumnLayout {
                         Layout.fillWidth: true; spacing: 0
-                        Text { text: w.events[index].title || "(busy)"; color: theme.textPrimary
+                        Text { text: w.shownEvents[index].title || "(busy)"; color: theme.textPrimary
                             font.pixelSize: 12; elide: Text.ElideRight; Layout.fillWidth: true }
-                        Text { text: w.fmtWhen(w.events[index]); color: theme.textSecondary; font.pixelSize: 10 }
+                        Text { text: w.fmtWhen(w.shownEvents[index]); color: theme.textSecondary; font.pixelSize: 12 }
                     }
                 }
             }
             Text { visible: w.events.length === 0; text: w.errorText || (w.loading ? "Loading…" : "No upcoming events")
-                color: theme.textTertiary; font.pixelSize: 11 }
+                color: theme.textTertiary; font.pixelSize: 12 }
             Item { Layout.fillHeight: true }
         }
     }
@@ -169,7 +179,7 @@ WidgetChrome {
         RowLayout {
             Layout.fillWidth: true; spacing: theme.spacingSm
             TextField {
-                id: urlField; Layout.fillWidth: true
+                id: urlField; Layout.fillWidth: true; Layout.preferredHeight: theme.touchSecondary
                 text: w.url; placeholderText: "Paste an ICS calendar URL…"
                 placeholderTextColor: theme.textTertiary; color: theme.textPrimary; font.pixelSize: 15
                 background: Rectangle { radius: theme.radiusSm; color: theme.backgroundColor
@@ -182,7 +192,7 @@ WidgetChrome {
 
         ListView {
             Layout.fillWidth: true; Layout.fillHeight: true; clip: true; spacing: 6
-            model: w.events
+            model: w.shownEvents
             delegate: RowLayout {
                 required property var modelData
                 width: ListView.view ? ListView.view.width : 0

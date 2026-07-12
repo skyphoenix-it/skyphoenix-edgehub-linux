@@ -82,6 +82,23 @@ Item {
         changed()
     }
 
+    // Apply a UI-state document pushed from the companion Manager app (over the
+    // hub's control socket). Reassigns `data` and bumps reactivity so the live
+    // dashboard rebuilds — WITHOUT persisting again (the hub already saved it).
+    function applyExternal(json) {
+        var parsed = null
+        try { parsed = JSON.parse(json) } catch (e) { parsed = null }
+        if (!parsed || !parsed.pages) return false
+        if (!parsed.settings) parsed.settings = {}
+        if (!parsed.appearance) parsed.appearance = {}
+        delete parsed.settings[""]
+        data = parsed
+        loaded = true
+        revision++
+        changed()
+        return true
+    }
+
     // ── Appearance ─────────────────────────────────────────────────────────
     function appearance() { return data.appearance || {} }
     function setAppearance(key, val) {
@@ -165,8 +182,16 @@ Item {
         _commitStructure()
     }
     function addPage(name) {
-        data.pages.push({ "name": name || ("Page " + (data.pages.length + 1)), "tiles": [] })
+        data.pages.push({ "name": name || _uniquePageName(), "tiles": [] })
         _commitStructure()
+    }
+    // Generate a "Page N" name that doesn't collide with existing page names.
+    function _uniquePageName() {
+        var existing = {}
+        for (var i = 0; i < data.pages.length; i++) existing[data.pages[i].name] = true
+        var n = data.pages.length + 1
+        while (existing["Page " + n]) n++
+        return "Page " + n
     }
     function removePage(pageIdx) {
         if (data.pages.length <= 1) return   // keep at least one page
@@ -180,6 +205,36 @@ Item {
         if (pageIdx < 0 || pageIdx >= data.pages.length) return
         data.pages[pageIdx].name = name
         _commitStructure()
+    }
+
+    // Per-page background override: key ∈ {"style","wallpaper"}. Empty value
+    // clears the override so the page falls back to the global appearance.
+    function setPageBackground(pageIdx, key, val) {
+        if (pageIdx < 0 || pageIdx >= data.pages.length) return
+        if (!data.pages[pageIdx].bg) data.pages[pageIdx].bg = {}
+        if (val === "" || val === null || val === undefined)
+            delete data.pages[pageIdx].bg[key]
+        else
+            data.pages[pageIdx].bg[key] = val
+        _commitStructure()
+    }
+    function pageBackground(pageIdx) {
+        var ps = pages()
+        var p = (pageIdx >= 0 && pageIdx < ps.length) ? ps[pageIdx] : {}
+        return p.bg || {}
+    }
+
+    // Per-page column count override (0 = use the global appearance default).
+    function setPageColumns(pageIdx, cols) {
+        if (pageIdx < 0 || pageIdx >= data.pages.length) return
+        if (!cols || cols <= 0) delete data.pages[pageIdx].cols
+        else data.pages[pageIdx].cols = cols
+        _commitStructure()
+    }
+    function pageColumns(pageIdx) {
+        var ps = pages()
+        var p = (pageIdx >= 0 && pageIdx < ps.length) ? ps[pageIdx] : {}
+        return p.cols || 0
     }
 
     // Reset the whole dashboard to a named starter layout.

@@ -1,9 +1,8 @@
-use std::str::FromStr;
-
 /// Initialize structured logging for the application.
 ///
-/// Log level is controlled by RUST_LOG environment variable.
-/// Default: INFO for our crate, WARN for dependencies.
+/// The maximum level is set from the explicit `level` argument (one of
+/// "error" | "warn" | "info" | "debug" | "trace"); anything else falls back to
+/// INFO. Safe to call multiple times — later calls are no-ops.
 pub fn init_logging(level: &str) {
     let filter = match level {
         "error" => tracing_subscriber::filter::LevelFilter::ERROR,
@@ -20,29 +19,4 @@ pub fn init_logging(level: &str) {
         .with_target(false)
         .with_ansi(true)
         .try_init();
-}
-
-/// Log levels mirroring the application's log level configuration.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum LogLevel {
-    Error = 0,
-    Warn = 1,
-    Info = 2,
-    Debug = 3,
-    Trace = 4,
-}
-
-impl FromStr for LogLevel {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "error" => Ok(LogLevel::Error),
-            "warn" | "warning" => Ok(LogLevel::Warn),
-            "info" => Ok(LogLevel::Info),
-            "debug" => Ok(LogLevel::Debug),
-            "trace" => Ok(LogLevel::Trace),
-            _ => Ok(LogLevel::Info),
-        }
-    }
 }

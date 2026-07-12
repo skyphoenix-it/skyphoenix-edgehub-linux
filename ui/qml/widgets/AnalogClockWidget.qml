@@ -4,15 +4,25 @@ import QtQuick
 WidgetChrome {
     id: w
     property var metrics: ({})
-    property var settings: ({})
     property bool expanded: false
     property bool active: true
     property var store: null
     property string instanceId: ""
     property int tick: 0
 
-    title: "Analog"; icon: "🕰"; accentColor: theme.catSystem
+    title: "Analog"; iconName: "analog"; accentColor: theme.catSystem
     big: expanded; showHeader: expanded
+
+    // Live per-instance config (see WidgetConfigSchema "analogClock").
+    readonly property var cfg: {
+        var _ = store ? store.revision : 0
+        return (store && instanceId) ? store.settingsFor(instanceId) : ({})
+    }
+    readonly property bool showSeconds: cfg.showSeconds !== undefined ? cfg.showSeconds : true
+    readonly property bool showNumerals: cfg.showNumerals !== undefined ? cfg.showNumerals : false
+
+    onShowSecondsChanged: cv.requestPaint()
+    onShowNumeralsChanged: cv.requestPaint()
 
     Canvas {
         id: cv
@@ -34,6 +44,15 @@ WidgetChrome {
                 ctx.lineTo(cx + Math.cos(ta) * rad * 0.96, cy + Math.sin(ta) * rad * 0.96)
                 ctx.stroke()
             }
+            if (w.showNumerals) {
+                ctx.fillStyle = theme.textSecondary
+                ctx.font = Math.max(9, rad * 0.16) + "px sans-serif"
+                ctx.textAlign = "center"; ctx.textBaseline = "middle"
+                for (var n = 1; n <= 12; n++) {
+                    var na = n * Math.PI / 6 - Math.PI / 2
+                    ctx.fillText(n, cx + Math.cos(na) * rad * 0.72, cy + Math.sin(na) * rad * 0.72)
+                }
+            }
             var now = new Date(), h = now.getHours() % 12, m = now.getMinutes(), s = now.getSeconds()
             var ha = (h + m / 60) * Math.PI / 6 - Math.PI / 2
             var ma = (m + s / 60) * Math.PI / 30 - Math.PI / 2
@@ -43,8 +62,10 @@ WidgetChrome {
             ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(ha) * rad * 0.5, cy + Math.sin(ha) * rad * 0.5); ctx.stroke()
             ctx.lineWidth = Math.max(2, rad * 0.03)
             ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(ma) * rad * 0.72, cy + Math.sin(ma) * rad * 0.72); ctx.stroke()
-            ctx.strokeStyle = theme.accent; ctx.lineWidth = Math.max(1, rad * 0.02)
-            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(sa) * rad * 0.82, cy + Math.sin(sa) * rad * 0.82); ctx.stroke()
+            if (w.showSeconds) {
+                ctx.strokeStyle = theme.accent; ctx.lineWidth = Math.max(1, rad * 0.02)
+                ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(sa) * rad * 0.82, cy + Math.sin(sa) * rad * 0.82); ctx.stroke()
+            }
             ctx.fillStyle = theme.accent; ctx.beginPath(); ctx.arc(cx, cy, Math.max(2, rad * 0.05), 0, 2 * Math.PI); ctx.fill()
         }
         Connections { target: w; function onTickChanged() { cv.requestPaint() } }

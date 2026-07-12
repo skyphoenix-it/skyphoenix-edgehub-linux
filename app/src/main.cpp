@@ -14,12 +14,12 @@
 #include <QDir>
 #include <QTextStream>
 #include <csignal>
-#include <initializer_list>
 #include <unistd.h>
 #include <QSocketNotifier>
 
 #include "xeneon_core.h"
 #include "mpris_bridge.h"
+#include "control_server.h"
 
 // --- RAII string wrapper ---
 
@@ -72,6 +72,18 @@ static QJsonObject metricsToJson() {
 
 // --- Display helper ---
 
+// Canonical orientation spelling (hyphenated), shared by the initial screens
+// payload and the live sensor push so QML never sees two spellings.
+static QString orientationName(Qt::ScreenOrientation o) {
+    switch (o) {
+    case Qt::LandscapeOrientation: return QStringLiteral("landscape");
+    case Qt::PortraitOrientation: return QStringLiteral("portrait");
+    case Qt::InvertedLandscapeOrientation: return QStringLiteral("inverted-landscape");
+    case Qt::InvertedPortraitOrientation: return QStringLiteral("inverted-portrait");
+    default: return QString();
+    }
+}
+
 static QJsonObject screenToJson(QScreen* screen) {
     QJsonObject obj;
     obj["name"] = screen->name();
@@ -98,10 +110,10 @@ static QJsonObject screenToJson(QScreen* screen) {
         {"width", screen->physicalSize().width()},
         {"height", screen->physicalSize().height()}
     };
-    obj["orientation"] = screen->orientation() == Qt::LandscapeOrientation ? "landscape"
-                     : (screen->orientation() == Qt::PortraitOrientation ? "portrait"
-                     : (screen->orientation() == Qt::InvertedLandscapeOrientation ? "inverted_landscape"
-                     : "inverted_portrait"));
+    {
+        const QString on = orientationName(screen->orientation());
+        obj["orientation"] = on.isEmpty() ? QStringLiteral("portrait") : on;
+    }
     obj["isPrimary"] = (screen == QGuiApplication::primaryScreen());
     obj["size"] = QJsonObject{
         {"width", screen->size().width()},
@@ -136,7 +148,8 @@ static int sigFd[2] = {-1, -1};
 static void signalHandler(int sig) {
     // ONLY async-signal-safe operations: write the signal number to the pipe
     char c = static_cast<char>(sig);
-    ::write(sigFd[1], &c, 1);
+    ssize_t rc = ::write(sigFd[1], &c, 1);
+    (void)rc;   // async-signal-safe; nothing useful to do on failure
 }
 
 // --- Find target display ---
@@ -208,9 +221,10 @@ static QScreen* findTargetScreen(ConfigHandle* config) {
         }
     }
 
+    QScreen* primary = QGuiApplication::primaryScreen();
     qWarning() << "No Xeneon Edge detected, falling back to primary screen:"
-               << QGuiApplication::primaryScreen()->name();
-    return QGuiApplication::primaryScreen();
+               << (primary ? primary->name() : QStringLiteral("<none>"));
+    return primary;
 }
 
 // --- Autostart: install/remove an XDG autostart .desktop entry ---
@@ -299,6 +313,10 @@ public:
         return saved == 0;
     }
 
+    // Detach from the Rust config handle before it is freed at shutdown, so any
+    // late QML call becomes a guarded no-op instead of a use-after-free.
+    void detach() { m_config = nullptr; }
+
 private:
     ConfigHandle* m_config;
 };
@@ -327,6 +345,16 @@ public:
         return ok;
     }
 
+    // Apply a UI-state document pushed from the companion Manager app over IPC:
+    // persist it to the in-memory config + disk. The live reload is handled by
+    // main() re-pushing the JSON to QML. Kept separate from saveUiState so intent
+    // is explicit at the call site.
+    bool applyExternalUiState(const QString& json) {
+        if (!m_config || json.isEmpty()) return false;
+        xeneon_config_set_ui_state(m_config, json.toUtf8().constData());
+        return xeneon_config_save(m_config) == 0;
+    }
+
     // Starter layout id chosen during the wizard ("productivity"/"gaming"/…).
     Q_INVOKABLE QString starterLayout() const {
         if (!m_config) return QString();
@@ -340,6 +368,10 @@ public:
         XeneonString s(xeneon_config_to_json(m_config));
         return s.qstring();
     }
+
+    // Detach from the Rust config handle before it is freed at shutdown, so any
+    // late QML call becomes a guarded no-op instead of a use-after-free.
+    void detach() { m_config = nullptr; }
 
 private:
     ConfigHandle* m_config;
@@ -436,6 +468,9 @@ int main(int argc, char *argv[]) {
     engine.rootContext()->setContextProperty("_safeMode", parser.isSet(safeModeOpt));
     engine.rootContext()->setContextProperty("_startInDiagnostics", parser.isSet(diagOpt));
     engine.rootContext()->setContextProperty("_windowedMode", parser.isSet(windowedOpt));
+    // QA affordance: XENEON_EXPAND=<type> auto-opens that widget's expanded
+    // config view on the first matching tile (mirrors the Manager's XENEON_CFG).
+    engine.rootContext()->setContextProperty("_expandType", qEnvironmentVariable("XENEON_EXPAND"));
 
     // Config path for diagnostics
     XeneonString configDir(xeneon_config_dir());
@@ -474,10 +509,27 @@ int main(int argc, char *argv[]) {
     MprisBridge* mediaBridge = new MprisBridge(&engine);
     engine.rootContext()->setContextProperty("media", mediaBridge);
 
+    // Live control endpoint for the companion "Xeneon Edge Manager" app. It can
+    // push a new layout/appearance document, which we persist and live-reload.
+    ControlServer* controlServer = new ControlServer(&engine);
+    controlServer->setStateProvider([configBridge]() { return configBridge->uiState(); });
+    QObject::connect(controlServer, &ControlServer::uiStateReceived, &engine,
+                     [configBridge, &engine](const QString& json) {
+        if (!configBridge->applyExternalUiState(json)) {
+            qWarning() << "Failed to apply externally pushed UI state";
+            return;
+        }
+        // Trigger a live reload in QML (main.qml forwards this to the dashboard).
+        for (auto* obj : engine.rootObjects())
+            obj->setProperty("externalUiState", json);
+    });
+    controlServer->start();
+
     // Load main QML
     engine.load(QUrl(QStringLiteral("qrc:/qml/main.qml")));
     if (engine.rootObjects().isEmpty()) {
         qCritical() << "Failed to load QML";
+        g_config = nullptr;   // clear before free so a late signal can't touch it
         xeneon_config_free(config);
         return 1;
     }
@@ -486,16 +538,18 @@ int main(int argc, char *argv[]) {
     // C++ positions it on the target screen FIRST, then shows it.
     // This is critical for Wayland where the compositor controls placement.
     QWindow* mainWindow = qobject_cast<QWindow*>(engine.rootObjects().first());
-    if (mainWindow) {
-        QRect geo = targetScreen ? targetScreen->geometry()
-                                 : QGuiApplication::primaryScreen()->geometry();
-        qInfo() << "Placing window on" << (targetScreen ? targetScreen->name() : "primary")
-                << "model:" << (targetScreen ? targetScreen->model() : "none")
+    // Prefer the detected Edge; otherwise the primary. Either may be null on a
+    // headless/no-display host, so guard before dereferencing.
+    QScreen* placeScreen = targetScreen ? targetScreen : QGuiApplication::primaryScreen();
+    if (mainWindow && placeScreen) {
+        QRect geo = placeScreen->geometry();
+        qInfo() << "Placing window on" << placeScreen->name()
+                << "model:" << placeScreen->model()
                 << "at" << geo.x() << "," << geo.y()
                 << geo.width() << "x" << geo.height();
 
         // Position on the target screen BEFORE making visible
-        mainWindow->setScreen(targetScreen ? targetScreen : QGuiApplication::primaryScreen());
+        mainWindow->setScreen(placeScreen);
         mainWindow->setPosition(geo.x(), geo.y());
         mainWindow->resize(geo.width(), geo.height());
 
@@ -511,6 +565,11 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    // Orientation is handled entirely on the QML side: "auto" trusts the
+    // compositor (the reflow follows the real framebuffer aspect) and the manual
+    // modes apply a fixed software rotation. We intentionally do NOT feed the raw
+    // orientation sensor into QML — doing so double-rotated to an upside-down UI.
+
     // Metrics update timer (every 2 seconds)
     QTimer metricsTimer;
     QObject::connect(&metricsTimer, &QTimer::timeout, [&engine]() {
@@ -521,14 +580,17 @@ int main(int argc, char *argv[]) {
     });
     metricsTimer.start(2000);
 
-    // Screen change monitoring
-    QObject::connect(&app, &QGuiApplication::screenAdded, [&engine](QScreen* screen) {
+    // Screen change monitoring. Pass &engine as the context object so these
+    // connections are severed when the engine is destroyed — otherwise the
+    // QGuiApplication (which outlives the engine) emits screenRemoved during its
+    // own teardown and the lambda dereferences a freed engine.
+    QObject::connect(&app, &QGuiApplication::screenAdded, &engine, [&engine](QScreen* screen) {
         qInfo() << "Screen added:" << screen->name();
         for (auto* obj : engine.rootObjects()) {
             obj->setProperty("screenAddedChanged", screen->name());
         }
     });
-    QObject::connect(&app, &QGuiApplication::screenRemoved, [&engine](QScreen* screen) {
+    QObject::connect(&app, &QGuiApplication::screenRemoved, &engine, [&engine](QScreen* screen) {
         qInfo() << "Screen removed:" << screen->name();
         for (auto* obj : engine.rootObjects()) {
             obj->setProperty("screenRemovedChanged", screen->name());
@@ -537,10 +599,18 @@ int main(int argc, char *argv[]) {
 
     int result = app.exec();
 
-    // Save configuration on clean exit
+    // Save configuration on clean exit while the handle is still valid.
     xeneon_config_save(config);
-    xeneon_config_free(config);
+
+    // Detach the QML bridges from the config handle BEFORE freeing it. The
+    // engine is a stack object destroyed after this scope returns; a late
+    // Component.onDestruction handler calling configBridge.saveUiState()/uiState()
+    // would otherwise dereference freed memory. Clear g_config first so the
+    // signal handler can't touch it either.
+    configBridge->detach();
+    wizardBridge->detach();
     g_config = nullptr;
+    xeneon_config_free(config);
 
     return result;
 }

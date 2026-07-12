@@ -17,7 +17,7 @@ include(CheckIPOSupported)
 check_ipo_supported(RESULT IPO_SUPPORTED OUTPUT IPO_ERROR)
 
 # Find Qt6
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Quick Qml DBus VirtualKeyboard)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Quick Qml DBus VirtualKeyboard Network Svg QuickControls2)
 
 # --- Build Rust Core Library ---
 
@@ -61,7 +61,10 @@ add_custom_target(rust_core ALL DEPENDS ${RUST_LIB})
 add_executable(xeneon-edge-hub
     app/src/main.cpp
     app/src/mpris_bridge.cpp
+    app/src/control_server.cpp
     ${CMAKE_SOURCE_DIR}/ui/qml.qrc
+    ${CMAKE_SOURCE_DIR}/assets/icons.qrc
+    ${CMAKE_SOURCE_DIR}/assets/wallpapers.qrc
 )
 
 # Link against the Rust static library
@@ -71,6 +74,9 @@ target_link_libraries(xeneon-edge-hub PRIVATE
     Qt6::Quick
     Qt6::Qml
     Qt6::DBus
+    Qt6::Network
+    Qt6::Svg
+    Qt6::QuickControls2
     Qt6::VirtualKeyboard
     ${RUST_LIB}
     pthread
@@ -106,7 +112,48 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     target_link_options(xeneon-edge-hub PRIVATE -s)
 endif()
 
+# --- Companion: Xeneon Edge Manager ---
+# Standalone desktop app to manage the hub (layout, appearance, images, display).
+# Reuses the Rust core + shared QML store/registry; talks to a running hub over a
+# local socket for live updates.
+add_executable(xeneon-edge-manager
+    manager/src/main.cpp
+    ${CMAKE_SOURCE_DIR}/manager/manager.qrc
+    ${CMAKE_SOURCE_DIR}/assets/icons.qrc
+    ${CMAKE_SOURCE_DIR}/assets/wallpapers.qrc
+)
+
+target_link_libraries(xeneon-edge-manager PRIVATE
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Quick
+    Qt6::Qml
+    Qt6::Network
+    Qt6::Svg
+    Qt6::QuickControls2
+    ${RUST_LIB}
+    pthread
+    dl
+)
+
+target_include_directories(xeneon-edge-manager PRIVATE
+    "${CMAKE_SOURCE_DIR}/core"
+)
+
+add_dependencies(xeneon-edge-manager rust_core)
+
+target_compile_definitions(xeneon-edge-manager PRIVATE
+    QT_DISABLE_DEPRECATED_BEFORE=0x060500
+)
+
+if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    if(IPO_SUPPORTED)
+        set_target_properties(xeneon-edge-manager PROPERTIES INTERPROCEDURAL_OPTIMIZATION TRUE)
+    endif()
+    target_compile_options(xeneon-edge-manager PRIVATE -O3)
+endif()
+
 # Install
-install(TARGETS xeneon-edge-hub DESTINATION bin)
+install(TARGETS xeneon-edge-hub xeneon-edge-manager DESTINATION bin)
 install(FILES assets/xeneon-edge-hub.desktop DESTINATION share/applications OPTIONAL)
 
