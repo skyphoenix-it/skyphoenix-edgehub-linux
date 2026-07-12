@@ -378,6 +378,7 @@ Item {
         Behavior on opacity { NumberAnimation { duration: theme.motionFast } }
         Behavior on scale { NumberAnimation { duration: theme.motionPage; easing.type: Easing.OutCubic } }
 
+        // Backdrop
         Rectangle {
             anchors.fill: parent
             gradient: Gradient {
@@ -386,40 +387,87 @@ Item {
                 GradientStop { position: 1.0; color: theme.backgroundColor2 }
             }
         }
-
-        // Back button
         Rectangle {
-            id: backBtn
-            anchors.left: parent.left; anchors.top: parent.top; anchors.margins: theme.spacingLg
-            width: theme.touchSecondary; height: theme.touchSecondary; radius: theme.radiusMd
-            color: theme.cardBackground; border.width: 1; border.color: theme.cardBorder; z: 10
-            Text { anchors.centerIn: parent; text: "←"; font.pixelSize: 24; color: theme.textPrimary }
-            MouseArea { anchors.fill: parent; onClicked: { dashboard.expandedType = ""; dashboard.expandedId = "" } }
+            anchors.fill: parent; opacity: 0.09
+            gradient: Gradient {
+                orientation: Gradient.Vertical
+                GradientStop { position: 0.0; color: dashboard.expandedColor }
+                GradientStop { position: 0.45; color: "transparent" }
+            }
         }
 
-        Text {
-            anchors.top: parent.top; anchors.horizontalCenter: parent.horizontalCenter
-            anchors.topMargin: theme.spacingLg + 6
-            text: catalog.icon(dashboard.expandedType) + "  " + catalog.title(dashboard.expandedType)
-            font.pixelSize: theme.fontTitle + 6; font.bold: true; font.family: theme.fontDisplay
-            color: theme.textPrimary; z: 10
+        // Modal input barrier — absorbs every tap so nothing reaches the
+        // dashboard behind. Declared before the header/content, which stay on top.
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            acceptedButtons: Qt.AllButtons
+            onClicked: {}
+            onPressed: {}
         }
 
-        // Full-screen widget instance (expanded=true). Loaded only while shown.
-        Loader {
-            id: ovlLoader
-            anchors.top: backBtn.bottom; anchors.left: parent.left; anchors.right: parent.right
-            anchors.bottom: parent.bottom
+        // Header: back button + title + description
+        Item {
+            id: ovlHeader
+            anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
             anchors.margins: theme.spacingLg
-            active: dashboard.hasExpanded && catalog.source(dashboard.expandedType) !== ""
-            source: active ? catalog.source(dashboard.expandedType) : ""
-            onLoaded: {
-                dashboard.injectWidget(item, dashboard.expandedId, dashboard.expandedType, true)
-                if (item) {
-                    item.active = true
-                    // The overlay already shows the title, so hide the card's own
-                    // header to avoid a duplicate title.
-                    if (item.hasOwnProperty("showHeader")) item.showHeader = false
+            height: Math.max(theme.touchSecondary, titleCol.implicitHeight)
+
+            Rectangle {
+                id: backBtn
+                anchors.left: parent.left; anchors.top: parent.top
+                width: theme.touchSecondary; height: theme.touchSecondary; radius: theme.radiusMd
+                color: backMA.pressed ? theme.cardBackgroundAlt : theme.cardBackground
+                border.width: 1; border.color: theme.cardBorder
+                Text { anchors.centerIn: parent; text: "←"; font.pixelSize: 26; color: theme.textPrimary }
+                MouseArea { id: backMA; anchors.fill: parent; onClicked: { dashboard.expandedType = ""; dashboard.expandedId = "" } }
+            }
+            Column {
+                id: titleCol
+                anchors.left: backBtn.right; anchors.leftMargin: theme.spacingLg
+                anchors.right: parent.right; anchors.top: parent.top
+                spacing: 3
+                Row {
+                    spacing: theme.spacingSm
+                    Text { text: catalog.icon(dashboard.expandedType); font.pixelSize: theme.fontTitle + 8 }
+                    Text { text: catalog.title(dashboard.expandedType); font.pixelSize: theme.fontTitle + 8
+                        font.bold: true; font.family: theme.fontDisplay; color: theme.textPrimary }
+                }
+                Text {
+                    width: parent.width
+                    text: catalog.desc(dashboard.expandedType)
+                    font.pixelSize: theme.fontLabel; color: theme.textSecondary
+                    wrapMode: Text.WordWrap; visible: text.length > 0
+                }
+            }
+        }
+
+        // Content — a card that FILLS the whole area below the header.
+        Rectangle {
+            id: ovlCard
+            anchors.top: ovlHeader.bottom; anchors.topMargin: theme.spacingMd
+            anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
+            anchors.leftMargin: theme.spacingLg; anchors.rightMargin: theme.spacingLg
+            anchors.bottomMargin: theme.spacingLg
+            radius: theme.radiusLg
+            color: theme.cardFill()
+            border.width: 1; border.color: theme.cardBorder
+            clip: true
+
+            Loader {
+                id: ovlLoader
+                anchors.fill: parent
+                anchors.margins: theme.spacingLg
+                active: dashboard.hasExpanded && catalog.source(dashboard.expandedType) !== ""
+                source: active ? catalog.source(dashboard.expandedType) : ""
+                onLoaded: {
+                    dashboard.injectWidget(item, dashboard.expandedId, dashboard.expandedType, true)
+                    if (item) {
+                        item.active = true
+                        // Card chrome is provided by ovlCard; hide the widget's own.
+                        if (item.hasOwnProperty("showHeader")) item.showHeader = false
+                        if (item.hasOwnProperty("chromeless")) item.chromeless = true
+                    }
                 }
             }
         }

@@ -46,6 +46,32 @@ QtObject {
         { type: "quote",    title: "Daily Quote", icon: "💬", category: "Info", source: "qrc:/qml/QuoteWidget.qml",    defaults: {} }
     ]
 
+    // One-line descriptions shown in the expanded (full-screen) view header.
+    readonly property var _desc: ({
+        "cpu": "Live processor load and temperature, straight from the kernel.",
+        "gpu": "Discrete GPU utilization and temperature (AMD Radeon).",
+        "ram": "How much system memory is in use right now.",
+        "net": "Live upload and download throughput across your network interfaces.",
+        "disk": "How full your root filesystem is.",
+        "sensors": "CPU, GPU, memory and temperatures together at a glance.",
+        "clock": "The current time and date.",
+        "analog": "A classic analog clock face.",
+        "moon": "Tonight's moon phase and how illuminated it is.",
+        "focus": "A Pomodoro focus timer with work and break cycles. Pick a preset and press Start — it keeps running even if you close this view.",
+        "tasks": "A simple checklist. Type a task and press Add; tap the circle to complete, ✕ to remove.",
+        "rightnow": "The single most important thing you're doing right now. Type it and press Save.",
+        "notes": "A quick scratchpad — type anything and it saves automatically.",
+        "habit": "Build a daily streak. Press Check in each day you do the habit.",
+        "hydration": "Count glasses of water toward a daily goal; use − / + to adjust.",
+        "break": "A repeating reminder to take a break. Set the interval with − / +.",
+        "calendar": "Upcoming events from a calendar you subscribe to. Paste an ICS URL to connect it.",
+        "weather": "Current conditions and a 4-day forecast. Type a city and press Set location.",
+        "countdown": "Counts the days to a date you choose. Set a label and date below.",
+        "eod": "How much of your workday is left. Adjust your start and end hours.",
+        "media": "Now Playing — controls Spotify, YouTube Music, or any player on this machine.",
+        "quote": "A fresh bit of motivation each day."
+    })
+
     function def(type) {
         for (var i = 0; i < items.length; i++)
             if (items[i].type === type) return items[i]
@@ -54,6 +80,7 @@ QtObject {
     function source(type) { var d = def(type); return d ? d.source : "" }
     function title(type)  { var d = def(type); return d ? d.title : type }
     function icon(type)   { var d = def(type); return d ? d.icon : "❓" }
+    function desc(type)   { return _desc[type] || "" }
     function defaults(type) { var d = def(type); return d ? d.defaults : ({}) }
 
     // Distinct category names, in declaration order.

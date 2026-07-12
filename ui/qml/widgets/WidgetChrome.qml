@@ -28,7 +28,10 @@ Item {
     property bool big: height > 240      // "expanded" mode (richer content)
     property bool showHeader: true
     property bool interactive: false     // draw an accent ring on hover
-    property real contentMargins: big ? theme.spacingLg : theme.spacingSm
+    // When hosted inside the expanded overlay (which supplies its own card),
+    // drop this widget's own card surface + padding to avoid a card-in-a-card.
+    property bool chromeless: false
+    property real contentMargins: chromeless ? 0 : (big ? theme.spacingLg : theme.spacingSm)
     property alias headerRightItem: headerRight.data
 
     default property alias content: body.data
@@ -39,6 +42,7 @@ Item {
     // --- Card surface ---
     Rectangle {
         id: surface
+        visible: !chrome.chromeless
         anchors.fill: parent
         radius: theme.radiusLg
         color: theme.cardFill()
