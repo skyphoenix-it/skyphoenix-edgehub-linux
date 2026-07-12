@@ -2,11 +2,15 @@
 
 #include <QDebug>
 #include <QFileInfo>
+#include <QMap>
+#include <QSharedPointer>
 #include <QStringList>
 #include <QUrl>
 #include <QtDBus/QDBusArgument>
 #include <QtDBus/QDBusMessage>
 #include <QtDBus/QDBusPendingCall>
+#include <QtDBus/QDBusPendingCallWatcher>
+#include <QtDBus/QDBusPendingReply>
 #include <QtDBus/QDBusVariant>
 
 static const char* kPath = "/org/mpris/MediaPlayer2";
@@ -14,29 +18,28 @@ static const char* kPlayerIface = "org.mpris.MediaPlayer2.Player";
 static const char* kPropsIface = "org.freedesktop.DBus.Properties";
 static const QString kPrefix = QStringLiteral("org.mpris.MediaPlayer2.");
 
-// All reads run on the GUI thread, so cap how long an unresponsive player can
-// stall us. The default D-Bus timeout is 25s; a hung player would freeze the UI
-// for that long. 800ms is generous for a healthy player (which replies in <10ms)
-// while keeping any stall imperceptible. Building calls with
-// QDBusMessage::createMethodCall (instead of QDBusInterface) also avoids a
-// blocking introspection round-trip on every single call.
+// Cap on how long a D-Bus call may take before erroring. Every call here is
+// ASYNC, so this bounds a hung player's reply latency without ever blocking the
+// GUI thread (the old code used QDBus::Block up to 800ms, which could stack up
+// to (N+1)×800ms of stall across a rescan). Building calls with createMethodCall
+// (not QDBusInterface) also avoids a blocking introspection round-trip.
 static constexpr int kDbusTimeoutMs = 800;
 
-// Helper: Properties.Get(iface, prop) → unwrapped variant. Invalid on failure.
-static QVariant propGet(const QDBusConnection& bus, const QString& service,
-                        const QString& iface, const QString& prop) {
+// Build a Properties.Get(iface, prop) call message.
+static QDBusMessage propGetMsg(const QString& service, const QString& iface, const QString& prop) {
     QDBusMessage msg = QDBusMessage::createMethodCall(
         service, QString::fromLatin1(kPath), QString::fromLatin1(kPropsIface),
         QStringLiteral("Get"));
     msg << iface << prop;
-    const QDBusMessage reply = bus.call(msg, QDBus::Block, kDbusTimeoutMs);
-    if (reply.type() != QDBusMessage::ReplyMessage || reply.arguments().isEmpty())
-        return QVariant();
-    return reply.arguments().first().value<QDBusVariant>().variant();
+    return msg;
 }
 
 MprisBridge::MprisBridge(QObject* parent)
     : QObject(parent), m_bus(QDBusConnection::sessionBus()) {
+    if (!m_bus.isConnected()) {
+        qWarning() << "MprisBridge: no session D-Bus connection; media controls disabled";
+        return;   // leave the timers stopped → stays permanently unavailable
+    }
     // Re-scan for players periodically (they come and go); poll position faster.
     m_rescan.setInterval(3000);
     connect(&m_rescan, &QTimer::timeout, this, &MprisBridge::reevaluate);
@@ -49,49 +52,68 @@ MprisBridge::MprisBridge(QObject* parent)
     reevaluate();
 }
 
-QStringList MprisBridge::mprisServices() const {
-    QStringList out;
+MprisBridge::~MprisBridge() {
+    // Drop the PropertiesChanged match rule on the shared session bus so it
+    // doesn't linger after we're gone.
+    if (!m_service.isEmpty()) {
+        m_bus.disconnect(m_service, kPath, kPropsIface, QStringLiteral("PropertiesChanged"),
+                         this, SLOT(onPropertiesChanged(QString, QVariantMap, QStringList)));
+    }
+}
+
+// (Re)pick the active player: async ListNames → filter to MPRIS services.
+void MprisBridge::reevaluate() {
     QDBusMessage msg = QDBusMessage::createMethodCall(
         QStringLiteral("org.freedesktop.DBus"), QStringLiteral("/org/freedesktop/DBus"),
         QStringLiteral("org.freedesktop.DBus"), QStringLiteral("ListNames"));
-    const QDBusMessage reply = m_bus.call(msg, QDBus::Block, kDbusTimeoutMs);
-    if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
-        const QStringList names = reply.arguments().first().toStringList();
-        for (const QString& name : names)
-            if (name.startsWith(kPrefix))
-                out << name;
-    }
-    return out;
-}
-
-QString MprisBridge::statusOf(const QString& service) const {
-    return propGet(m_bus, service, QString::fromLatin1(kPlayerIface),
-                   QStringLiteral("PlaybackStatus"))
-        .toString();
-}
-
-void MprisBridge::reevaluate() {
-    const QStringList services = mprisServices();
-    if (services.isEmpty()) {
-        if (m_available || !m_service.isEmpty()) {
-            connectTo(QString());
+    auto* w = new QDBusPendingCallWatcher(m_bus.asyncCall(msg, kDbusTimeoutMs), this);
+    connect(w, &QDBusPendingCallWatcher::finished, this, [this](QDBusPendingCallWatcher* self) {
+        self->deleteLater();
+        QDBusPendingReply<QStringList> reply = *self;
+        QStringList services;
+        if (reply.isValid()) {
+            for (const QString& name : reply.value())
+                if (name.startsWith(kPrefix))
+                    services << name;
         }
+        chooseFrom(services);
+    });
+}
+
+// Given the current MPRIS services, prefer one that is Playing, else keep the
+// current one if still present, else the first. The PlaybackStatus probe is an
+// async fan-out that decides once all replies are in.
+void MprisBridge::chooseFrom(const QStringList& services) {
+    if (services.isEmpty()) {
+        if (m_available || !m_service.isEmpty())
+            connectTo(QString());
         return;
     }
-
-    // Prefer a player that is currently Playing; else keep the current one if
-    // still present; else the first available.
-    QString chosen;
+    auto order = QSharedPointer<QStringList>::create(services);
+    auto statuses = QSharedPointer<QMap<QString, QString>>::create();
+    auto remaining = QSharedPointer<int>::create(services.size());
     for (const QString& s : services) {
-        if (statusOf(s) == QStringLiteral("Playing")) { chosen = s; break; }
+        QDBusMessage msg = propGetMsg(s, QString::fromLatin1(kPlayerIface),
+                                      QStringLiteral("PlaybackStatus"));
+        auto* w = new QDBusPendingCallWatcher(m_bus.asyncCall(msg, kDbusTimeoutMs), this);
+        connect(w, &QDBusPendingCallWatcher::finished, this,
+                [this, s, order, statuses, remaining](QDBusPendingCallWatcher* self) {
+            self->deleteLater();
+            QDBusPendingReply<QDBusVariant> reply = *self;
+            statuses->insert(s, reply.isValid() ? reply.value().variant().toString() : QString());
+            if (--(*remaining) != 0)
+                return;
+            QString chosen;
+            for (const QString& cand : *order)
+                if (statuses->value(cand) == QStringLiteral("Playing")) { chosen = cand; break; }
+            if (chosen.isEmpty())
+                chosen = order->contains(m_service) ? m_service : order->first();
+            if (chosen != m_service)
+                connectTo(chosen);
+            else
+                refresh();
+        });
     }
-    if (chosen.isEmpty())
-        chosen = services.contains(m_service) ? m_service : services.first();
-
-    if (chosen != m_service)
-        connectTo(chosen);
-    else
-        refresh();
 }
 
 void MprisBridge::connectTo(const QString& service) {
@@ -111,6 +133,7 @@ void MprisBridge::onPropertiesChanged(const QString&, const QVariantMap&, const 
     refresh();
 }
 
+// GetAll the player props (async), apply them, then fetch Position (async).
 void MprisBridge::refresh() {
     if (m_service.isEmpty()) {
         if (m_available) {
@@ -121,18 +144,24 @@ void MprisBridge::refresh() {
         }
         return;
     }
-
     QDBusMessage getAll = QDBusMessage::createMethodCall(
         m_service, QString::fromLatin1(kPath), QString::fromLatin1(kPropsIface),
         QStringLiteral("GetAll"));
     getAll << QString::fromLatin1(kPlayerIface);
-    const QDBusMessage allReply = m_bus.call(getAll, QDBus::Block, kDbusTimeoutMs);
-    if (allReply.type() != QDBusMessage::ReplyMessage || allReply.arguments().isEmpty()) {
-        m_available = false;
-        emit changed();
-        return;
-    }
-    const QVariantMap m = qdbus_cast<QVariantMap>(allReply.arguments().first());
+    auto* w = new QDBusPendingCallWatcher(m_bus.asyncCall(getAll, kDbusTimeoutMs), this);
+    connect(w, &QDBusPendingCallWatcher::finished, this, [this](QDBusPendingCallWatcher* self) {
+        self->deleteLater();
+        QDBusPendingReply<QVariantMap> reply = *self;
+        if (!reply.isValid()) {
+            if (m_available) { m_available = false; emit changed(); }
+            return;
+        }
+        applyProps(reply.value());
+        fetchPosition();
+    });
+}
+
+void MprisBridge::applyProps(const QVariantMap& m) {
     m_status = m.value(QStringLiteral("PlaybackStatus")).toString();
 
     const QVariantMap meta = qdbus_cast<QVariantMap>(m.value(QStringLiteral("Metadata")));
@@ -154,16 +183,11 @@ void MprisBridge::refresh() {
     m_lengthUs = meta.value(QStringLiteral("mpris:length")).toLongLong();
     m_playerName = m_service.mid(kPrefix.length());
 
-    const QVariant posV =
-        propGet(m_bus, m_service, QString::fromLatin1(kPlayerIface), QStringLiteral("Position"));
-    if (posV.isValid())
-        m_positionUs = posV.toLongLong();
-
     // A service can be registered on the bus (CanControl: true) with no track
     // actually loaded — e.g. a browser tab with audio capability but nothing
     // played yet, or a player that was just stopped. Treat that as genuinely
-    // "nothing playing" rather than showing a blank card: require either a
-    // real title or an active Playing/Paused status.
+    // "nothing playing" rather than showing a blank card: require either a real
+    // title or an active Playing/Paused status.
     const bool hasTrack = !m_title.isEmpty();
     const bool isActive = m_status == QStringLiteral("Playing") || m_status == QStringLiteral("Paused");
     m_available = hasTrack || isActive;
@@ -172,28 +196,47 @@ void MprisBridge::refresh() {
         m_lengthUs = 0;
     }
     emit changed();
-    emit positionChanged();
+}
+
+void MprisBridge::fetchPosition() {
+    if (m_service.isEmpty())
+        return;
+    QDBusMessage msg = propGetMsg(m_service, QString::fromLatin1(kPlayerIface),
+                                  QStringLiteral("Position"));
+    auto* w = new QDBusPendingCallWatcher(m_bus.asyncCall(msg, kDbusTimeoutMs), this);
+    connect(w, &QDBusPendingCallWatcher::finished, this, [this](QDBusPendingCallWatcher* self) {
+        self->deleteLater();
+        QDBusPendingReply<QDBusVariant> reply = *self;
+        if (reply.isValid()) {
+            m_positionUs = reply.value().variant().toLongLong();
+            emit positionChanged();
+        }
+    });
 }
 
 void MprisBridge::poll() {
     if (!m_available || m_service.isEmpty() || m_status != QStringLiteral("Playing"))
         return;
-    const QVariant posV =
-        propGet(m_bus, m_service, QString::fromLatin1(kPlayerIface), QStringLiteral("Position"));
-    if (posV.isValid()) {
-        m_positionUs = posV.toLongLong();
-        emit positionChanged();
-    }
+    fetchPosition();
 }
 
 void MprisBridge::callPlayer(const char* method) {
     if (m_service.isEmpty())
         return;
-    // Fire-and-forget: transport controls must never block the GUI thread.
+    // Fire-and-forget transport control (never blocks the GUI thread), but log a
+    // failed call so a broken PlayPause/Next/Previous isn't entirely invisible.
     QDBusMessage msg = QDBusMessage::createMethodCall(
         m_service, QString::fromLatin1(kPath), QString::fromLatin1(kPlayerIface),
         QString::fromLatin1(method));
-    m_bus.asyncCall(msg);
+    auto* w = new QDBusPendingCallWatcher(m_bus.asyncCall(msg), this);
+    const QString methodName = QString::fromLatin1(method);
+    connect(w, &QDBusPendingCallWatcher::finished, this,
+            [methodName](QDBusPendingCallWatcher* self) {
+        self->deleteLater();
+        QDBusPendingReply<> reply = *self;
+        if (reply.isError())
+            qWarning() << "MprisBridge:" << methodName << "failed:" << reply.error().message();
+    });
     // Reflect the new state promptly.
     QTimer::singleShot(200, this, [this] { refresh(); });
 }

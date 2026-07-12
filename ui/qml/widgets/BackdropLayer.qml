@@ -13,7 +13,10 @@ Loader {
         "orbs": orbsC, "waves": wavesC, "stars": starsC,
         "mesh": meshC, "aurora": auroraC, "bokeh": bokehC, "grid": gridC
     })
-    active: style !== "none" && style !== "gradient" && _map[style] !== undefined
+    // Gate on `visible` too: when a wallpaper is set (or High-Contrast hides the
+    // backdrop) the host sets visible:false — without this the chosen backdrop
+    // would stay LOADED and keep animating invisibly, burning GPU for nothing.
+    active: visible && style !== "none" && style !== "gradient" && _map[style] !== undefined
     sourceComponent: _map[style] || null
     onLoaded: if (item) item.active = Qt.binding(function () { return bl.running })
 

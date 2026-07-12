@@ -41,7 +41,7 @@ Item {
 
     Blob {
         id: b1
-        tint: theme.accent; diameter: root.width * 1.6; strength: 0.5
+        tint: theme.accent; diameter: root.width * 1.2; strength: 0.55
         SequentialAnimation on x {
             running: root.active; loops: Animation.Infinite
             NumberAnimation { to: -b1.diameter * 0.4; duration: 22000; easing.type: Easing.InOutSine }
@@ -56,7 +56,7 @@ Item {
 
     Blob {
         id: b2
-        tint: theme.accent2; diameter: root.width * 1.5; strength: 0.5
+        tint: theme.accent2; diameter: root.width * 1.15; strength: 0.55
         x: root.width - diameter * 0.4
         y: root.height * 0.25
         SequentialAnimation on x {
@@ -73,7 +73,7 @@ Item {
 
     Blob {
         id: b3
-        tint: theme.catEntertainment; diameter: root.width * 1.7; strength: 0.5
+        tint: theme.catEntertainment; diameter: root.width * 1.25; strength: 0.55
         y: root.height * 0.5
         SequentialAnimation on x {
             running: root.active; loops: Animation.Infinite
@@ -89,7 +89,7 @@ Item {
 
     Blob {
         id: b4
-        tint: theme.catServices; diameter: root.width * 1.5; strength: 0.5
+        tint: theme.catServices; diameter: root.width * 1.15; strength: 0.55
         x: root.width * 0.2
         y: root.height * 0.75
         SequentialAnimation on x {
@@ -106,7 +106,7 @@ Item {
 
     Blob {
         id: b5
-        tint: theme.accent; diameter: root.width * 1.4; strength: 0.45
+        tint: theme.accent; diameter: root.width * 1.1; strength: 0.5
         x: root.width * 0.4
         y: root.height * 0.95
         SequentialAnimation on x {

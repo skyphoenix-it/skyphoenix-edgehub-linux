@@ -27,6 +27,7 @@ class MprisBridge : public QObject {
 
 public:
     explicit MprisBridge(QObject* parent = nullptr);
+    ~MprisBridge() override;
 
     bool available() const { return m_available; }
     QString title() const { return m_title; }
@@ -55,10 +56,13 @@ private slots:
     void poll();        // refresh Position while playing
 
 private:
-    QStringList mprisServices() const;
-    QString statusOf(const QString& service) const;
+    // All D-Bus reads are ASYNC (QDBusPendingCallWatcher) so a hung player can
+    // never block the GUI event loop.
     void connectTo(const QString& service);
-    void refresh();
+    void chooseFrom(const QStringList& services);  // pick the active player (async fan-out)
+    void refresh();                                 // GetAll → applyProps → fetchPosition
+    void applyProps(const QVariantMap& props);
+    void fetchPosition();
     void callPlayer(const char* method);
 
     QDBusConnection m_bus;

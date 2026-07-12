@@ -11,6 +11,13 @@ Item {
     property string screensData: ""
     property int currentPage: 0
 
+    // Parse the metrics ONCE per push (guarded), instead of re-parsing inside every
+    // Overview card's text binding (6× per second, unguarded → a malformed payload
+    // blanked the whole grid).
+    readonly property var parsedMetrics: {
+        try { return JSON.parse(metricsJson || "{}") } catch (e) { return {} }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 16
@@ -30,12 +37,14 @@ Item {
                 text: "← Back"
                 onClicked: stackView.pop()
                 flat: true
+                leftPadding: 18; rightPadding: 18; topPadding: 14; bottomPadding: 14
                 contentItem: Text {
                     text: "← Back"
                     color: theme.textSecondary
+                    verticalAlignment: Text.AlignVCenter
                 }
                 background: Rectangle {
-                    color: parent.hovered ? Qt.lighter(theme.cardBackground, 1.1) : "transparent"
+                    color: parent.down ? theme.cardBackgroundAlt : (parent.hovered ? Qt.lighter(theme.cardBackground, 1.1) : "transparent")
                     radius: 6
                 }
             }
@@ -51,10 +60,12 @@ Item {
                     text: modelData; flat: true; checked: diag.currentPage === index
                     checkable: true; autoExclusive: true
                     onClicked: diag.currentPage = index
+                    leftPadding: 16; rightPadding: 16; topPadding: 14; bottomPadding: 14
                     contentItem: Text {
                         text: modelData
                         color: parent.checked ? theme.textPrimary : theme.textSecondary
                         font.weight: parent.checked ? Font.Bold : Font.Normal
+                        horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
                     }
                     background: Rectangle {
                         color: parent.checked ? Qt.lighter(theme.cardBackground, 1.1) : "transparent"
@@ -75,8 +86,11 @@ Item {
 
             // Page 0: Overview
             Item {
-                ColumnLayout {
-                    anchors.fill: parent; spacing: 10
+                Flickable {
+                    anchors.fill: parent; contentHeight: overviewCol.implicitHeight; clip: true
+                    ColumnLayout {
+                    id: overviewCol
+                    width: parent.width; spacing: 10
                     Text { text: "System Overview"; color: theme.textPrimary; font.pixelSize: 16; font.bold: true }
                     GridLayout {
                         columns: 3; columnSpacing: 12; rowSpacing: 12; Layout.fillWidth: true
@@ -87,7 +101,7 @@ Item {
                                 { label: "RAM Usage", key: "ram_usage_percent", unit: "%", color: theme.accent },
                                 { label: "RAM Total", key: "ram_total_bytes", unit: "GB", color: theme.textSecondary, fmt: "bytes_to_gb" },
                                 { label: "RAM Used", key: "ram_used_bytes", unit: "GB", color: theme.error, fmt: "bytes_to_gb" },
-                                { label: "CPU Cores", key: "cpu_core_count", unit: "", color: "#A371F7" }
+                                { label: "CPU Cores", key: "cpu_core_count", unit: "", color: theme.catProductivity }
                             ]
                             Rectangle {
                                 Layout.fillWidth: true; height: 80; radius: 8
@@ -97,14 +111,13 @@ Item {
                                     Text { text: modelData.label; color: theme.textSecondary; font.pixelSize: 12; Layout.alignment: Qt.AlignHCenter }
                                     Text {
                                         text: {
-                                            var m = JSON.parse(diag.metricsJson || "{}");
-                                            var val = m[modelData.key];
-                                            if (val === undefined) return "N/A";
+                                            var val = diag.parsedMetrics[modelData.key];
+                                            if (val === undefined || val === null) return "N/A";
                                             if (modelData.fmt === "bytes_to_gb") return (val/(1024*1024*1024)).toFixed(1)+" "+modelData.unit;
                                             if (typeof val === "number") return val.toFixed(1)+modelData.unit;
                                             return val+modelData.unit;
                                         }
-                                        color: index === 0 ? theme.success : index === 1 ? theme.warning : index === 2 ? theme.accent : index === 4 ? theme.error : modelData.color
+                                        color: modelData.color
                                         font.pixelSize: 20; font.bold: true; Layout.alignment: Qt.AlignHCenter
                                     }
                                 }
@@ -120,6 +133,7 @@ Item {
                             Text { text: "Qt: "+Qt.platform.os+" | Rust core: 0.1.0"; color: theme.textSecondary; font.pixelSize: 12 }
                             Text { text: "Build: Debug | "+new Date().toISOString().slice(0,10); color: theme.textSecondary; font.pixelSize: 12 }
                         }
+                    }
                     }
                 }
             }
@@ -137,7 +151,7 @@ Item {
                             Text {
                                 id: configText; anchors.fill: parent; anchors.margins: 12
                                 text: diag.configJson || "Loading..."; color: theme.textPrimary
-                                font.family: "monospace"; font.pixelSize: 11; wrapMode: Text.Wrap
+                                font.family: theme.fontMono; font.pixelSize: 11; wrapMode: Text.Wrap
                             }
                         }
                     }
@@ -177,7 +191,7 @@ Item {
                                     Text { text: (modelData.geometry?modelData.geometry.width+"×"+modelData.geometry.height:"?")+" @ "+(modelData.refreshRate?modelData.refreshRate.toFixed(0):"?")+"Hz | "+(modelData.orientation||"?"); color: theme.textSecondary; font.pixelSize: 12 }
                                     Text { text: "DPI: "+(modelData.logicalDpi?modelData.logicalDpi.toFixed(0):"?")+" logical / "+(modelData.physicalDpi?modelData.physicalDpi.toFixed(0):"?")+" physical"; color: theme.textSecondary; font.pixelSize: 12 }
                                     Text { text: "Connector: "+(modelData.name||"?"); color: theme.textSecondary; font.pixelSize: 12 }
-                                    Text { text: "EDID Hash: "+(modelData.edidHash||"N/A"); color: theme.textSecondary; font.family: "monospace"; font.pixelSize: 9; elide: Text.ElideMiddle; Layout.fillWidth: true }
+                                    Text { text: "EDID Hash: "+(modelData.edidHash||"N/A"); color: theme.textSecondary; font.family: theme.fontMono; font.pixelSize: 9; elide: Text.ElideMiddle; Layout.fillWidth: true }
                                 }
                             }
                         }
@@ -200,7 +214,7 @@ Item {
                         Text {
                             anchors.fill: parent; anchors.margins: 12
                             text: "Run with RUST_LOG=debug for detailed logs.\n\nConfig dir: "+_configDir
-                            color: theme.textPrimary; font.family: "monospace"; font.pixelSize: 11; wrapMode: Text.Wrap
+                            color: theme.textPrimary; font.family: theme.fontMono; font.pixelSize: 11; wrapMode: Text.Wrap
                         }
                     }
                 }

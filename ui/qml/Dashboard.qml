@@ -90,9 +90,14 @@ Item {
     // and reduce-motion; the style resolves per-page → global default.
     BackdropLayer {
         anchors.fill: parent
-        visible: dashboard.wallpaperSource === "" && theme.decorative
+        // "Animated background" OFF now genuinely removes the backdrop (plain
+        // gradient shows) rather than leaving it frozen — that's what the toggle
+        // reads as. Reduce-motion, by contrast, KEEPS the backdrop but stops its
+        // motion. Gating visible unloads the component entirely (zero cost) when a
+        // wallpaper is set, in High-Contrast, or with the animation switched off.
+        visible: dashboard.wallpaperSource === "" && theme.decorative && dashboard.animatedBg
         style: dashboard.pageBg.style
-        running: dashboard.animatedBg && !root.reduceMotion
+        running: !root.reduceMotion
     }
     // Optional wallpaper image (uploaded + assigned via the Manager). Sits over
     // the gradient with a scrim so cards and text stay legible.
@@ -154,6 +159,15 @@ Item {
         }
     }
     property var overlayLoaderItem: null
+
+    // Close the expanded overlay + clear its transient state (shared by the
+    // header back button and the reachable bottom "Done" bar).
+    function closeExpanded() {
+        dashboard.expandedType = ""
+        dashboard.expandedId = ""
+        dashboard.cfgStatus = ""
+        dashboard.overlayLoaderItem = null
+    }
 
     Component.onCompleted: {
         store.load(typeof configBridge !== "undefined" && configBridge ? configBridge.starterLayout() : "")
@@ -266,7 +280,9 @@ Item {
             interactive: !dashboard.editMode
 
             Repeater {
-                model: store.revision, store.pages()
+                // Bind to structureRevision (not revision): only page/tile structure
+                // changes rebuild the tiles; per-widget settings edits don't.
+                model: store.structureRevision, store.pages()
                 delegate: Item {
                     id: pageItem
                     required property int index
@@ -287,8 +303,27 @@ Item {
                         return Math.max(1, Math.min(want, fit, 6))
                     }
 
-                    GridLayout {
+                    // Scrollable page body: when the tiles' combined minimum height
+                    // exceeds the page, the Flickable scrolls (so bottom widgets stay
+                    // reachable) — otherwise the grid just fills the page and the
+                    // Flickable stays inert so it never competes with the horizontal
+                    // page-swipe.
+                    Flickable {
+                        id: pageFlick
                         anchors.fill: parent
+                        clip: true
+                        contentWidth: width
+                        contentHeight: pageGrid.height
+                        flickableDirection: Flickable.VerticalFlick
+                        boundsBehavior: Flickable.StopAtBounds
+                        interactive: pageGrid.implicitHeight > height + 1
+
+                    GridLayout {
+                        id: pageGrid
+                        width: pageFlick.width
+                        // Fill the page when content fits; grow to natural height (and
+                        // let the Flickable scroll) when it overflows.
+                        height: Math.max(pageFlick.height, implicitHeight)
                         columns: pageItem.cols
                         rowSpacing: theme.spacingMd
                         columnSpacing: theme.spacingMd
@@ -323,6 +358,7 @@ Item {
                                     onClicked: {
                                         // Set id/color BEFORE type: assigning expandedType triggers the
                                         // (synchronous) overlay load + injectWidget, which reads expandedId.
+                                        dashboard.cfgStatus = ""   // don't carry a stale geocode status over
                                         dashboard.expandedId = cell.modelData.id
                                         dashboard.expandedColor = theme.accent
                                         dashboard.expandedType = cell.modelData.type
@@ -351,12 +387,14 @@ Item {
                                     sourceComponent: dashboard.fallbackTile
                                 }
 
-                                // Expand affordance (glanceable hint, hidden in edit mode)
+                                // Expand affordance — a subtle glanceable hint, kept
+                                // small + low-opacity so it doesn't fight a widget's own
+                                // top-right status. Hidden in edit mode.
                                 AppIcon {
                                     anchors.right: parent.right; anchors.top: parent.top
                                     anchors.margins: theme.spacingSm
-                                    name: "ui-expand"; size: theme.iconMd
-                                    color: theme.textSecondary; opacity: 0.75; z: 20
+                                    name: "ui-expand"; size: theme.iconSm
+                                    color: theme.textTertiary; opacity: 0.5; z: 20
                                     visible: !dashboard.editMode
                                 }
 
@@ -449,6 +487,7 @@ Item {
                             }
                         }
                     }
+                    }
 
                     // Empty-page hint. Gated on this being the CURRENT page: after a
                     // live state-swap (Manager push → applyExternal rebuilds the page
@@ -475,8 +514,9 @@ Item {
 
             Text {
                 Layout.preferredWidth: theme.touchSecondary * 1.8
-                text: store.pageCount() > 0 && swipeView.currentIndex < store.pageCount()
-                      ? store.pages()[swipeView.currentIndex].name : ""
+                // structureRevision dep so a page rename refreshes the label.
+                text: (store.structureRevision, store.pageCount() > 0 && swipeView.currentIndex < store.pageCount()
+                      ? store.pages()[swipeView.currentIndex].name : "")
                 font.pixelSize: theme.fontLabel; font.weight: Font.DemiBold
                 font.family: theme.fontDisplay; color: theme.textSecondary
                 elide: Text.ElideRight; verticalAlignment: Text.AlignVCenter
@@ -487,21 +527,31 @@ Item {
                 count: swipeView.count; currentIndex: swipeView.currentIndex
                 interactive: true
                 onCurrentIndexChanged: if (currentIndex !== swipeView.currentIndex) swipeView.currentIndex = currentIndex
-                delegate: Rectangle {
+                // A tall, transparent hit area (>=44px) carrying a small visual pill,
+                // so the dots are actually tappable on a touchscreen.
+                delegate: Item {
                     required property int index
-                    implicitWidth: index === swipeView.currentIndex ? 36 : 14
-                    implicitHeight: 14; radius: 7; color: theme.accent
-                    opacity: index === swipeView.currentIndex ? 0.95 : 0.3
-                    Behavior on implicitWidth { NumberAnimation { duration: theme.motionFast } }
-                    Behavior on opacity { NumberAnimation { duration: theme.motionFast } }
+                    implicitWidth: (index === swipeView.currentIndex ? 36 : 16) + 10
+                    implicitHeight: 44
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: index === swipeView.currentIndex ? 36 : 14
+                        height: 14; radius: 7; color: theme.accent
+                        opacity: index === swipeView.currentIndex ? 0.95 : 0.3
+                        Behavior on width { NumberAnimation { duration: theme.motionFast } }
+                        Behavior on opacity { NumberAnimation { duration: theme.motionFast } }
+                    }
                 }
             }
 
-            // Add page (edit mode)
-            BarButton { iconName: "ui-add-page"; visible: dashboard.editMode; onClicked: store.addPage("") }
-            // Remove current page (edit mode, keep ≥1)
+            // Add page (edit mode) — jump to the new page so the add lands visibly.
+            BarButton { iconName: "ui-add-page"; visible: dashboard.editMode
+                        onClicked: { store.addPage(""); swipeView.currentIndex = store.pageCount() - 1 } }
+            // Remove current page (edit mode, keep ≥1) — re-clamp the index so the
+            // view never points past the new end after deleting the last page.
             BarButton { iconName: "ui-del-page"; visible: dashboard.editMode && store.pageCount() > 1
-                        onClicked: { var i = swipeView.currentIndex; store.removePage(i) } }
+                        onClicked: { var i = swipeView.currentIndex; store.removePage(i)
+                                     swipeView.currentIndex = Math.max(0, Math.min(i, store.pageCount() - 1)) } }
             // Edit toggle
             BarButton {
                 iconName: dashboard.editMode ? "ui-check" : "ui-edit"
@@ -513,7 +563,8 @@ Item {
             // Diagnostics
             BarButton {
                 iconName: "ui-settings"
-                onClicked: if (dashboard.host) dashboard.host.push("qrc:/qml/Diagnostics.qml", {
+                // Guard against stacking multiple Diagnostics pages on repeat taps.
+                onClicked: if (dashboard.host && dashboard.host.depth <= 1) dashboard.host.push("qrc:/qml/Diagnostics.qml", {
                     "metricsJson": Qt.binding(function () { return metricsJson }),
                     "screensData": screensData,
                     "configJson": (typeof configBridge !== "undefined" && configBridge) ? configBridge.configJson() : ""
@@ -594,7 +645,7 @@ Item {
                 color: backMA.pressed ? theme.cardBackgroundAlt : theme.cardBackground
                 border.width: 1; border.color: theme.cardBorder
                 AppIcon { anchors.centerIn: parent; name: "ui-caret-left"; size: theme.iconMd; color: theme.textPrimary }
-                MouseArea { id: backMA; anchors.fill: parent; onClicked: { dashboard.expandedType = ""; dashboard.expandedId = ""; dashboard.cfgStatus = "" } }
+                MouseArea { id: backMA; anchors.fill: parent; onClicked: dashboard.closeExpanded() }
             }
             Column {
                 id: titleCol
@@ -625,9 +676,9 @@ Item {
         GridLayout {
             id: ovlBody
             anchors.top: ovlHeader.bottom; anchors.topMargin: theme.spacingMd
-            anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
+            anchors.left: parent.left; anchors.right: parent.right
+            anchors.bottom: ovlDoneBar.top; anchors.bottomMargin: theme.spacingMd
             anchors.leftMargin: theme.spacingLg; anchors.rightMargin: theme.spacingLg
-            anchors.bottomMargin: theme.spacingLg
             columns: overlay.ovlWide ? 2 : 1
             rowSpacing: theme.spacingMd; columnSpacing: theme.spacingMd
 
@@ -670,19 +721,17 @@ Item {
                     Layout.fillWidth: true; Layout.preferredHeight: theme.touchSecondary
                     radius: theme.radiusMd; color: resetMA.pressed ? theme.cardBackgroundAlt : theme.cardBackground
                     border.width: 1; border.color: theme.cardBorder
-                    RowLayout {
-                        anchors.centerIn: parent; spacing: theme.spacingSm
-                        AppIcon { name: "ui-trash"; size: theme.iconSm; color: theme.textSecondary }
-                        Text { text: "Reset to defaults"; color: theme.textSecondary; font.pixelSize: theme.fontLabel }
+                    Text {
+                        anchors.centerIn: parent; text: "Reset to defaults"
+                        color: theme.textSecondary; font.pixelSize: theme.fontLabel
                     }
                     MouseArea {
                         id: resetMA; anchors.fill: parent
+                        // Deep-clones the defaults (so array/object defaults aren't
+                        // shared across widgets) + drops stale keys — see the store.
                         onClicked: {
-                            var defs = catalog.defaults(dashboard.expandedType)
-                            var s = store.settingsFor(dashboard.expandedId)
-                            for (var kk in s) delete s[kk]
-                            for (var d in defs) s[d] = defs[d]
-                            store._touchSettings(); dashboard.cfgStatus = ""
+                            store.resetSettings(dashboard.expandedId, catalog.defaults(dashboard.expandedType))
+                            dashboard.cfgStatus = ""
                         }
                     }
                 }
@@ -698,6 +747,25 @@ Item {
                 statusText: dashboard.cfgStatus
                 onActionRequested: (a) => dashboard.cfgAction(a)
             }
+        }
+
+        // Reachable close: a full-width "Done" bar pinned to the BOTTOM of the
+        // overlay. On a 2560px-tall portrait panel the top-left back button is out
+        // of one-handed reach, so this is the primary way out of the expanded view.
+        Rectangle {
+            id: ovlDoneBar
+            anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
+            anchors.margins: theme.spacingLg
+            height: theme.touchPrimary
+            radius: theme.radiusMd
+            color: doneMA.pressed ? Qt.darker(theme.accent, 1.2) : theme.accent
+            RowLayout {
+                anchors.centerIn: parent; spacing: theme.spacingSm
+                AppIcon { name: "ui-check"; size: theme.iconMd; color: theme.backgroundColor }
+                Text { text: "Done"; color: theme.backgroundColor; font.pixelSize: theme.fontTitle
+                    font.bold: true; font.family: theme.fontDisplay }
+            }
+            MouseArea { id: doneMA; anchors.fill: parent; onClicked: dashboard.closeExpanded() }
         }
     }
 
@@ -748,8 +816,14 @@ Item {
                                         delegate: Rectangle {
                                             required property var modelData
                                             width: 200; height: theme.touchPrimary; radius: theme.radiusMd
-                                            color: pickMA.containsMouse ? theme.cardBackgroundAlt : theme.backgroundColor
-                                            border.width: 1; border.color: theme.cardBorder
+                                            // Touchscreens have no hover — react to `pressed` so a tap
+                                            // gives real feedback (containsMouse alone did nothing).
+                                            color: pickMA.pressed ? Qt.rgba(theme.accent.r, theme.accent.g, theme.accent.b, 0.22)
+                                                   : (pickMA.containsMouse ? theme.cardBackgroundAlt : theme.backgroundColor)
+                                            border.width: 1
+                                            border.color: pickMA.pressed ? theme.accent : theme.cardBorder
+                                            scale: pickMA.pressed ? 0.97 : 1.0
+                                            Behavior on scale { NumberAnimation { duration: theme.motionFast } }
                                             RowLayout {
                                                 anchors.fill: parent; anchors.margins: theme.spacingSm; spacing: theme.spacingSm
                                                 AppIcon { name: modelData.type; size: 24; color: theme.textSecondary }

@@ -33,6 +33,9 @@ private slots:
     void onReadable();
 
 private:
+    // Disable the notifier + close the fd (on a fatal read error / device unplug),
+    // so QSocketNotifier stops re-firing on a hung-up fd (which would busy-loop).
+    void stopWatching();
     // Scan /sys/class/hidraw for the Edge; returns "/dev/hidrawN" or empty.
     static QString findEdgeHidraw();
     // Map an orientation byte (report[7]) to a content rotation, or -1 if unknown.

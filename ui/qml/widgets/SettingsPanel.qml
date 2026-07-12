@@ -106,10 +106,10 @@ Rectangle {
                                         text: modelData.l; font.pixelSize: 15; font.bold: true
                                         color: modelData.v === "light" ? "#1F2328" : "#FFFFFF"
                                     }
-                                    Text {
+                                    AppIcon {
                                         visible: parent.active
                                         anchors.top: parent.top; anchors.right: parent.right; anchors.margins: 8
-                                        text: "✓"; font.pixelSize: 22; font.bold: true; color: theme.accent
+                                        name: "ui-check"; size: 22; color: theme.accent
                                     }
                                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                         onClicked: { root.themeMode = modelData.v; theme.applyTheme(modelData.v) } }
@@ -152,12 +152,19 @@ Rectangle {
                         Text { text: "Pick a living animation OR a wallpaper — they show through the frosted widgets."
                             font.pixelSize: theme.fontCaption; color: theme.textTertiary
                             Layout.fillWidth: true; wrapMode: Text.WordWrap }
-                        Text { visible: !theme.decorative
-                            text: "⚠  The High Contrast theme keeps backgrounds off for legibility — switch themes to see them."
-                            font.pixelSize: theme.fontCaption; color: theme.warning
-                            Layout.fillWidth: true; wrapMode: Text.WordWrap }
+                        RowLayout {
+                            visible: !theme.decorative; Layout.fillWidth: true; spacing: theme.spacingSm
+                            AppIcon { name: "ui-warning"; size: theme.iconSm; color: theme.warning; Layout.alignment: Qt.AlignTop }
+                            Text { text: "The High Contrast theme keeps backgrounds off for legibility — switch themes to see them."
+                                font.pixelSize: theme.fontCaption; color: theme.warning
+                                Layout.fillWidth: true; wrapMode: Text.WordWrap }
+                        }
                         BackgroundPicker {
                             Layout.fillWidth: true
+                            // Backgrounds have no effect in High Contrast — disable the
+                            // picker there instead of letting taps silently no-op.
+                            enabled: theme.decorative
+                            opacity: theme.decorative ? 1.0 : 0.4
                             store: store; pageIndex: -1; col: panel.pickerCol
                             bgCatalog: bgCatalog; wpCatalog: wallpapers
                         }
@@ -202,7 +209,7 @@ Rectangle {
                                     border.color: theme.textPrimary
                                     scale: active ? 1.08 : 1.0
                                     Behavior on scale { NumberAnimation { duration: theme.motionFast } }
-                                    Text { anchors.centerIn: parent; visible: parent.active; text: "✓"; color: "#0D1117"; font.pixelSize: 22; font.bold: true }
+                                    AppIcon { anchors.centerIn: parent; visible: parent.active; name: "ui-check"; size: 22; color: theme.backgroundColor }
                                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                         onClicked: theme.applyAccent(modelData) }
                                 }

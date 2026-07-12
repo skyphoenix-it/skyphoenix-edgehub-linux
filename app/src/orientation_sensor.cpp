@@ -75,7 +75,21 @@ bool OrientationSensor::start() {
     return true;
 }
 
+void OrientationSensor::stopWatching() {
+    if (m_notifier) {
+        m_notifier->setEnabled(false);
+        m_notifier->deleteLater();
+        m_notifier = nullptr;
+    }
+    if (m_fd >= 0) {
+        ::close(m_fd);
+        m_fd = -1;
+    }
+}
+
 void OrientationSensor::onReadable() {
+    if (m_fd < 0)
+        return;
     unsigned char buf[64];
     // Consume all pending reports; keep the last valid orientation.
     while (true) {
@@ -85,8 +99,18 @@ void OrientationSensor::onReadable() {
                 break;
             if (errno == EINTR)
                 continue;
-            qWarning() << "OrientationSensor: read error" << strerror(errno);
-            break;
+            // Fatal (e.g. -ENODEV on unplug): the fd is hung up, so the notifier
+            // would keep firing and spin/log-spam forever. Stop watching entirely.
+            qWarning() << "OrientationSensor: read error" << strerror(errno)
+                       << "- stopping auto-rotate";
+            stopWatching();
+            return;
+        }
+        if (n == 0) {
+            // EOF: the device went away. Same treatment as a fatal error.
+            qWarning() << "OrientationSensor: device closed (EOF) - stopping auto-rotate";
+            stopWatching();
+            return;
         }
         if (n < 8)
             continue;

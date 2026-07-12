@@ -40,7 +40,7 @@ Item {
 
     Orb {
         id: o1
-        tint: theme.accent; diameter: Math.max(ab.width, ab.height) * 0.6; strength: 0.7
+        tint: theme.accent; diameter: Math.min(ab.width, ab.height) * 0.9; strength: 0.7
         SequentialAnimation on x {
             running: ab.active; loops: Animation.Infinite
             NumberAnimation { to: -o1.diameter * 0.25; duration: 19000; easing.type: Easing.InOutSine }
@@ -55,7 +55,7 @@ Item {
 
     Orb {
         id: o2
-        tint: theme.accent2; diameter: Math.max(ab.width, ab.height) * 0.55; strength: 0.6
+        tint: theme.accent2; diameter: Math.min(ab.width, ab.height) * 0.85; strength: 0.6
         x: ab.width - diameter * 0.5
         SequentialAnimation on x {
             running: ab.active; loops: Animation.Infinite
@@ -71,7 +71,7 @@ Item {
 
     Orb {
         id: o3
-        tint: theme.catEntertainment; diameter: Math.max(ab.width, ab.height) * 0.5; strength: 0.52
+        tint: theme.catEntertainment; diameter: Math.min(ab.width, ab.height) * 0.8; strength: 0.52
         y: ab.height * 0.6
         SequentialAnimation on x {
             running: ab.active; loops: Animation.Infinite

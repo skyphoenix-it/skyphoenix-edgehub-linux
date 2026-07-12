@@ -47,7 +47,12 @@ void ControlServer::onReadyRead() {
     QLocalSocket* sock = qobject_cast<QLocalSocket*>(sender());
     if (!sock)
         return;
-    QByteArray& buf = m_buffers[sock];
+    // Look the buffer up (don't operator[]-insert): if the socket was already
+    // torn down by the oversized/disconnect path, there's nothing to append to.
+    auto it = m_buffers.find(sock);
+    if (it == m_buffers.end())
+        return;
+    QByteArray& buf = it.value();
     buf.append(sock->readAll());
     // Cap the buffer so a misbehaving client can't grow it unbounded.
     if (buf.size() > 8 * 1024 * 1024) {

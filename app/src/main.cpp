@@ -3,6 +3,8 @@
 #include <QQmlContext>
 #include <QScreen>
 #include <QWindow>
+#include <QQuickWindow>
+#include <QImage>
 #include <QTimer>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -16,6 +18,7 @@
 #include <csignal>
 #include <unistd.h>
 #include <QSocketNotifier>
+#include <QThread>
 
 #include "xeneon_core.h"
 #include "mpris_bridge.h"
@@ -67,9 +70,39 @@ static QJsonObject metricsToJson() {
     XeneonString json(xeneon_metrics_to_json(m));
     xeneon_metrics_free(m);
     if (!json) return QJsonObject();
-    QJsonDocument doc = QJsonDocument::fromJson(QByteArray(json.c_str()));
+    QJsonParseError err;
+    QJsonDocument doc = QJsonDocument::fromJson(QByteArray(json.c_str()), &err);
+    if (err.error != QJsonParseError::NoError) {
+        static bool warned = false;
+        if (!warned) { qWarning() << "metricsToJson: malformed metrics JSON:" << err.errorString(); warned = true; }
+        return QJsonObject();
+    }
     return doc.object();
 }
+
+// MetricsWorker — runs the (potentially slow) Rust metrics collection + JSON
+// serialization on a dedicated thread so the 2s poll never blocks/janks the GUI
+// event loop. It emits the compact JSON to the GUI thread, which pushes it onto
+// the QML roots. begin()/stop() run ON the worker thread (invoked via the thread's
+// event loop), so the QTimer lives and fires there.
+class MetricsWorker : public QObject {
+    Q_OBJECT
+public:
+    Q_INVOKABLE void begin() {
+        m_timer = new QTimer(this);
+        connect(m_timer, &QTimer::timeout, this, &MetricsWorker::poll);
+        m_timer->start(2000);
+        poll();   // emit an initial sample immediately
+    }
+    Q_INVOKABLE void stop() {
+        if (m_timer) { m_timer->stop(); delete m_timer; m_timer = nullptr; }
+    }
+signals:
+    void metricsReady(const QByteArray& json);
+private:
+    void poll() { emit metricsReady(QJsonDocument(metricsToJson()).toJson(QJsonDocument::Compact)); }
+    QTimer* m_timer = nullptr;
+};
 
 // --- Display helper ---
 
@@ -245,12 +278,17 @@ static bool applyAutostart(bool enabled) {
         qWarning() << "Could not write autostart entry:" << path;
         return false;
     }
+    // Quote the Exec path if it contains spaces (an install dir with a space
+    // would otherwise produce a broken Exec line per the .desktop spec).
+    QString execPath = QCoreApplication::applicationFilePath();
+    if (execPath.contains(QLatin1Char(' ')))
+        execPath = QLatin1Char('"') + execPath + QLatin1Char('"');
     QTextStream ts(&f);
     ts << "[Desktop Entry]\n"
        << "Type=Application\n"
        << "Name=Xeneon Edge Linux Hub\n"
        << "Comment=Native Linux widget platform for secondary touchscreen displays\n"
-       << "Exec=" << QCoreApplication::applicationFilePath() << "\n"
+       << "Exec=" << execPath << "\n"
        << "Icon=xeneon-edge-hub\n"
        << "Categories=Utility;\n"
        << "Terminal=false\n"
@@ -564,11 +602,11 @@ int main(int argc, char *argv[]) {
             // Now safe to go fullscreen — we're on the right screen
             mainWindow->showFullScreen();
             mainWindow->setVisible(true);
-            qInfo() << "Fullscreen on" << mainWindow->screen()->name();
+            qInfo() << "Fullscreen on" << (mainWindow->screen() ? mainWindow->screen()->name() : QStringLiteral("(unknown screen)"));
         } else {
             mainWindow->show();
             mainWindow->setVisible(true);
-            qInfo() << "Windowed on" << mainWindow->screen()->name();
+            qInfo() << "Windowed on" << (mainWindow->screen() ? mainWindow->screen()->name() : QStringLiteral("(unknown screen)"));
         }
     }
 
@@ -588,15 +626,21 @@ int main(int argc, char *argv[]) {
     if (orientation->start() && orientation->rotation() >= 0)
         pushRotation(orientation->rotation());
 
-    // Metrics update timer (every 2 seconds)
-    QTimer metricsTimer;
-    QObject::connect(&metricsTimer, &QTimer::timeout, [&engine]() {
-        QJsonObject m = metricsToJson();
-        for (auto* obj : engine.rootObjects()) {
-            obj->setProperty("metricsJson", QJsonDocument(m).toJson(QJsonDocument::Compact));
-        }
-    });
-    metricsTimer.start(2000);
+    // Metrics on a dedicated worker thread (every 2s), so the Rust FFI collection
+    // + JSON serialization never janks the GUI event loop. Results arrive on the
+    // GUI thread via a queued signal and are pushed onto the QML roots. `metricsThread`
+    // is declared BEFORE `metricsWorker` so the worker is destroyed first (while the
+    // QThread object is still alive), after we join the thread below.
+    QThread metricsThread;
+    MetricsWorker metricsWorker;
+    metricsWorker.moveToThread(&metricsThread);
+    QObject::connect(&metricsThread, &QThread::started, &metricsWorker, &MetricsWorker::begin);
+    QObject::connect(&metricsWorker, &MetricsWorker::metricsReady, &engine,
+                     [&engine](const QByteArray& json) {
+        for (auto* obj : engine.rootObjects())
+            obj->setProperty("metricsJson", json);
+    }, Qt::QueuedConnection);
+    metricsThread.start();
 
     // Screen change monitoring. Pass &engine as the context object so these
     // connections are severed when the engine is destroyed — otherwise the
@@ -615,7 +659,44 @@ int main(int argc, char *argv[]) {
         }
     });
 
+    // QA capture: XENEON_GRAB=<path> renders the window to a PNG and quits (mirrors
+    // the Manager). Optional XENEON_GRAB_W / XENEON_GRAB_H resize the window first so
+    // a tall portrait shell renders fully on a smaller dev monitor. Always quits, so
+    // a headless/bg run can never hang (addresses the earlier no-fallback-quit note).
+    const QString grabPath = qEnvironmentVariable("XENEON_GRAB");
+    if (!grabPath.isEmpty()) {
+        if (mainWindow) {
+            const int gw = qEnvironmentVariable("XENEON_GRAB_W", "0").toInt();
+            const int gh = qEnvironmentVariable("XENEON_GRAB_H", "0").toInt();
+            if (gw > 0 && gh > 0) {
+                mainWindow->setVisibility(QWindow::Windowed);
+                mainWindow->resize(gw, gh);
+            }
+        }
+        QObject* root = engine.rootObjects().first();
+        QTimer::singleShot(2200, [root, &grabPath]() {
+            auto* win = qobject_cast<QQuickWindow*>(root);
+            if (win) {
+                const QImage img = win->grabWindow();
+                if (!img.isNull() && img.save(grabPath))
+                    qInfo() << "Hub: saved grab to" << grabPath;
+                else
+                    qWarning() << "Hub: grab failed";
+            } else {
+                qWarning() << "Hub: grab skipped (root is not a window)";
+            }
+            QCoreApplication::quit();
+        });
+    }
+
     int result = app.exec();
+
+    // Stop the metrics worker (delete its timer on the worker thread) and join the
+    // thread before any stack teardown, so no metrics callback fires into a
+    // half-destroyed engine.
+    QMetaObject::invokeMethod(&metricsWorker, "stop", Qt::BlockingQueuedConnection);
+    metricsThread.quit();
+    metricsThread.wait();
 
     // Save configuration on clean exit while the handle is still valid.
     xeneon_config_save(config);

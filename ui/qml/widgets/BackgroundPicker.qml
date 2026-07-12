@@ -24,6 +24,7 @@ Item {
     // ── Current selection (reactive on store.revision) ──
     // Returns { kind: "global"|"style"|"wallpaper", val }.
     function current() {
+        if (!store) return { kind: "global" }   // before the store is wired in
         store.revision
         if (pageIndex < 0) {
             var a = store.appearance() || ({})
@@ -63,20 +64,24 @@ Item {
             Layout.fillWidth: true; spacing: 8
             // "Use global" — only meaningful for a page override.
             Rectangle {
+                id: globalChip
                 visible: bp.pageIndex >= 0
-                width: gLbl.implicitWidth + 22; height: 40; radius: bp.col.radius
+                width: gLbl.implicitWidth + 22; height: 44; radius: bp.col.radius
                 property bool sel: bp.selGlobal()
                 color: sel ? bp.col.accent : bp.col.panelAlt
                 border.width: sel ? 2 : 1; border.color: sel ? bp.col.accent : bp.col.border
+                // Reference the chip's `sel` via its id — this Rectangle is NOT a
+                // delegate/component root, so a bare `sel` in the child Text doesn't
+                // resolve (it threw "sel is not defined").
                 Text { id: gLbl; anchors.centerIn: parent; text: "Use global"
-                    color: sel ? "#0D1117" : bp.col.textPrimary; font.pixelSize: 13 }
+                    color: globalChip.sel ? "#0D1117" : bp.col.textPrimary; font.pixelSize: 13 }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: bp.useGlobal() }
             }
             Repeater {
                 model: bp.bgCatalog ? bp.bgCatalog.styles : []
                 delegate: Rectangle {
                     required property var modelData
-                    width: sLbl.implicitWidth + 22; height: 40; radius: bp.col.radius
+                    width: sLbl.implicitWidth + 22; height: 44; radius: bp.col.radius
                     property bool sel: bp.selStyle(modelData.v)
                     color: sel ? bp.col.accent : bp.col.panelAlt
                     border.width: sel ? 2 : 1; border.color: sel ? bp.col.accent : bp.col.border

@@ -26,6 +26,11 @@ Item {
     // bindings; per-widget settings changes mutate in place + bump `revision`.
     property var data: ({ "version": 1, "appearance": {}, "pages": [], "settings": {} })
     property int revision: 0
+    // Bumps ONLY on structural changes (pages/tiles added/removed/moved/resized,
+    // page rename/bg/cols, load/applyExternal). The dashboard's page+tile Repeater
+    // binds to THIS, not `revision`, so per-widget settings edits (which fire every
+    // keystroke/toggle) no longer tear down and rebuild every tile Loader.
+    property int structureRevision: 0
     property bool loaded: false
 
     signal changed()
@@ -57,6 +62,7 @@ Item {
     function _commitStructure() {
         data = _clone(data)
         revision++
+        structureRevision++
         changed()
         saveTimer.restart()
     }
@@ -79,6 +85,7 @@ Item {
         }
         loaded = true
         revision++
+        structureRevision++
         changed()
     }
 
@@ -95,6 +102,7 @@ Item {
         data = parsed
         loaded = true
         revision++
+        structureRevision++
         changed()
         return true
     }

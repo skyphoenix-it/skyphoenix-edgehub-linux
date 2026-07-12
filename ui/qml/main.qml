@@ -39,9 +39,11 @@ ApplicationWindow {
     property string externalUiState: ""
     onExternalUiStateChanged: {
         if (!externalUiState.length) return
-        var item = stackView.currentItem
-        if (item && item.applyExternalState)
-            item.applyExternalState(externalUiState)
+        // Route to whichever stack item can apply it (the Dashboard), even when
+        // Diagnostics or the wizard is on top — otherwise a live Manager push is
+        // silently dropped while any other page is showing.
+        var target = stackView.find(function (item) { return item && item.applyExternalState })
+        if (target) target.applyExternalState(externalUiState)
     }
 
     // React to screen hotplug events
@@ -51,11 +53,6 @@ ApplicationWindow {
     onScreenRemovedChanged: function(name) {
         if (name) console.log("Screen removed:", name);
     }
-
-    // Dashboard state
-    property bool editMode: false
-    property string currentPage: "main"
-    property int currentPageIndex: 0
 
     // Reduced-motion preference (design system: all durations → 0ms).
     property alias reduceMotion: _theme.reduceMotion
@@ -87,7 +84,20 @@ ApplicationWindow {
     // panel turns. MANUAL modes ignore the sensor and apply a fixed rotation (for
     // wall/arm mounts). Until the sensor reports (or if the hidraw node isn't
     // readable) `sensorRotation` is -1 and auto stays at 0.
-    property int sensorRotation: -1          // pushed from C++ OrientationSensor
+    property int sensorRotation: -1          // raw value pushed from C++ OrientationSensor
+    // Debounced sensor value: the raw reading must hold steady briefly before we
+    // rotate, so jitter near an orientation boundary doesn't thrash the whole UI
+    // (each change triggers a 560ms rotate + a fade/scale dip).
+    property int _stableSensorRotation: -1
+    onSensorRotationChanged: {
+        if (root.sensorRotation < 0) return
+        if (root._stableSensorRotation < 0) root._stableSensorRotation = root.sensorRotation // apply the first reading promptly
+        else sensorDebounce.restart()
+    }
+    Timer {
+        id: sensorDebounce; interval: 350; repeat: false
+        onTriggered: root._stableSensorRotation = root.sensorRotation
+    }
     property string orientationMode: "auto"
     readonly property int contentRotation: {
         switch (orientationMode) {
@@ -95,7 +105,7 @@ ApplicationWindow {
         case "landscape": return 90
         case "inverted-portrait": return 180
         case "inverted-landscape": return 270
-        default: return sensorRotation >= 0 ? sensorRotation : 0   // auto
+        default: return _stableSensorRotation >= 0 ? _stableSensorRotation : 0   // auto
         }
     }
 
@@ -153,6 +163,21 @@ ApplicationWindow {
             initialItem: isFirstRun ? "qrc:/qml/FirstRunWizard.qml" :
                          startInDiagnostics ? "qrc:/qml/Diagnostics.qml" :
                          "qrc:/qml/Dashboard.qml"
+
+            // Keep the focused input above the on-screen keyboard: lift the whole
+            // stack by exactly the overlap between the text cursor and the keyboard
+            // top (0 when the cursor is already clear). Without this, inputs in the
+            // bottom half of a 2560px panel are fully hidden behind the VK.
+            transform: Translate {
+                y: {
+                    if (!inputPanel.active) return 0
+                    var kbTop = contentRoot.height - inputPanel.height
+                    var cur = Qt.inputMethod.cursorRectangle
+                    var need = (cur.y + cur.height + theme.spacingLg) - kbTop
+                    return need > 0 ? -need : 0
+                }
+                Behavior on y { NumberAnimation { duration: theme.motionEdit; easing.type: Easing.OutCubic } }
+            }
         }
 
         // On-screen keyboard: this is a touchscreen device with no attached

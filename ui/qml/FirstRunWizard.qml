@@ -9,6 +9,17 @@ Item {
     property int currentStep: 0
     property var selectedScreen: null
     property string selectedLayout: "productivity"
+    property string finishError: ""
+
+    // Parse the detected screens once at the root (the old per-step
+    // `parent.screensList` lookup was fragile and could silently resolve empty).
+    readonly property var screensList: {
+        try { return JSON.parse(_screens || "[]") } catch (e) { return [] }
+    }
+    // Step 1 can advance once a display is picked — OR immediately if none were
+    // detected (otherwise a headless/odd-EDID setup is a hard dead-end).
+    readonly property bool canAdvance: currentStep !== 1 || selectedScreen !== null
+                                       || screensList.length === 0
 
     Rectangle {
         anchors.fill: parent
@@ -85,23 +96,12 @@ Item {
                     Layout.fillWidth: true
                 }
 
-                // Parse screens from the C++ context property directly (the old
-                // wizard.parent.parent traversal was fragile and could resolve to
-                // the wrong object, leaving the list empty).
-                property var screensList: {
-                    try {
-                        return JSON.parse(_screens || "[]");
-                    } catch(e) {
-                        return [];
-                    }
-                }
-
                 ListView {
                     id: screenList
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     clip: true
-                    model: parent.screensList
+                    model: wizard.screensList
                     spacing: 8
 
                     delegate: Rectangle {
@@ -170,9 +170,11 @@ Item {
 
                 Text {
                     visible: screenList.count === 0
-                    text: "No displays detected. Please connect a display and restart."
+                    text: "No displays detected. You can continue and choose a display later from Settings."
                     color: theme.warning
                     font.pixelSize: 14
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
                 }
             }
         }
@@ -380,19 +382,25 @@ Item {
             Button {
                 text: currentStep === 0 ? "Get Started →" :
                       currentStep === 3 ? "Finish Setup" : "Next →"
+                enabled: wizard.canAdvance
+                leftPadding: 22; rightPadding: 22; topPadding: 14; bottomPadding: 14
                 onClicked: {
-                    if (currentStep === 1 && !selectedScreen) {
-                        // Require selection
-                        return;
-                    }
-                    if (currentStep === 3) {
-                        // Save configuration
+                    if (currentStep === 3)
                         wizardCompleted(selectedScreen, selectedLayout, autostartCheck.checked);
-                    } else {
+                    else
                         currentStep++;
-                    }
                 }
             }
+        }
+
+        // Surfaced failure (previously only a console.error → the user was stuck on
+        // "Finish Setup" with no feedback).
+        Text {
+            Layout.fillWidth: true
+            visible: wizard.finishError.length > 0
+            text: wizard.finishError
+            color: theme.error; font.pixelSize: 14
+            horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
         }
     }
 
@@ -400,14 +408,16 @@ Item {
         console.log("Wizard complete. Selected:", screen ? screen.model : "none",
                     "Layout:", layout, "Autostart:", autostart);
 
-        // Persist all wizard choices via WizardBridge → Rust config
+        // Persist all wizard choices via WizardBridge → Rust config. Default the
+        // theme/accent to whatever the app booted with (root), not a hardcoded pair.
+        wizard.finishError = "";
         var ok = wizardBridge.completeWizard(
             screen ? (screen.edidHash || "") : "",
             screen ? (screen.name || "") : "",
             screen ? (screen.model || "") : "",
             layout,
-            "dark",           // themeMode — default dark
-            "#58A6FF",        // themeAccent
+            root.themeMode || "dark",
+            (theme.accentPresets[root.accentName] ? theme.accentPresets[root.accentName].a : "#58A6FF"),
             autostart,
             reconnectCheck.checked,
             notifyCheck.checked
@@ -416,11 +426,13 @@ Item {
         if (ok) {
             console.log("Wizard complete, navigating to dashboard");
             var sv = wizard.StackView.view;
-            if (sv) {
+            if (sv)
                 sv.replace("qrc:/qml/Dashboard.qml");
-            }
+            else
+                wizard.finishError = "Setup saved, but couldn't open the dashboard. Please restart the hub.";
         } else {
             console.error("WizardBridge.completeWizard failed");
+            wizard.finishError = "Couldn't save your setup. Please check permissions and try again.";
         }
     }
 }
