@@ -10,7 +10,10 @@ depends=('qt6-base' 'qt6-declarative' 'qt6-svg' 'qt6-virtualkeyboard' 'qt6-wayla
 makedepends=('cmake' 'rust')
 install="$pkgname.install"
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('SKIP')
+# NOTE: requires a PUBLIC repo — GitHub serves tag archives (and thus this URL)
+# only for public repositories. If GitHub ever regenerates the archive the hash
+# can change; refresh with `updpkgsums`.
+sha256sums=('eeec1be242c4c04f388499502a8eecfdc0936fe9aacf91c6b02993e42328d726')
 
 _srcdir="XeneonEdge_Linux-$pkgver"
 
