@@ -16,7 +16,9 @@ Dialog {
     function openFor(id, type) { wId = id; wType = type; geoStatus = ""; open() }
 
     anchors.centerIn: parent
-    width: 960; height: 680
+    // Responsive: use most of the window (capped) so the form isn't cramped/clipped.
+    width: Math.min(parent ? parent.width * 0.92 : 960, 1200)
+    height: Math.min(parent ? parent.height * 0.9 : 680, 900)
     modal: true
     standardButtons: Dialog.Close
     background: Rectangle { color: m.bg; radius: m.radius; border.width: 1; border.color: m.border }
