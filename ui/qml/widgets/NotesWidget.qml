@@ -22,6 +22,11 @@ WidgetChrome {
     }
     readonly property string current: cfg.text || ""
     function save(t) { if (store) store.setSetting(instanceId, "text", t) }
+    // Debounce writes so a store save + revision bump doesn't fire on every
+    // keystroke; flushed immediately when the editor closes.
+    property string _pending: ""
+    Timer { id: saveDebounce; interval: 400; onTriggered: w.save(w._pending) }
+    function flush() { if (saveDebounce.running) { saveDebounce.stop(); w.save(w._pending) } }
 
     // Compact preview
     Text {
@@ -45,11 +50,14 @@ WidgetChrome {
             font.pixelSize: 18; color: theme.textPrimary
             wrapMode: TextEdit.Wrap; selectByMouse: true
             persistentSelection: true
-            onTextChanged: w.save(text)
-            // Re-sync from the store only when (re)opened, to avoid clobbering typing.
+            onTextChanged: { w._pending = text; saveDebounce.restart() }
+            // Re-sync from the store when (re)opened; flush pending text on close.
             Connections {
                 target: w
-                function onExpandedChanged() { if (w.expanded) editor.text = w.current }
+                function onExpandedChanged() {
+                    if (w.expanded) editor.text = w.current
+                    else w.flush()
+                }
             }
         }
         Text {
@@ -58,5 +66,13 @@ WidgetChrome {
             text: "Type anything — it saves automatically."
             color: theme.textTertiary; font.pixelSize: 18
         }
+    }
+
+    // Character / word count (expanded).
+    Text {
+        anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.margins: theme.spacingSm
+        visible: w.expanded && editor.text.length > 0
+        text: editor.text.length + " chars · " + editor.text.trim().split(/\s+/).filter(function (s) { return s.length }).length + " words"
+        color: theme.textTertiary; font.pixelSize: 12
     }
 }

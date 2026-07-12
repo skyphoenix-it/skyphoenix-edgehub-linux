@@ -22,7 +22,7 @@ WidgetChrome {
     readonly property bool showHistory: cfg.showHistory !== undefined ? cfg.showHistory : true
 
     property real v: metrics.ram_usage_percent || 0
-    function col(p) { return p > 90 ? theme.error : p > 75 ? theme.warning : theme.catProductivity }
+    function col(p) { return p > 90 ? theme.error : p > 75 ? theme.warning : w.effAccent }
     function gb(b) { return (b / 1073741824).toFixed(1) }
 
     property var hist: []

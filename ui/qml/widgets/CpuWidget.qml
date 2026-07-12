@@ -26,7 +26,16 @@ WidgetChrome {
     property real temp: (metrics.cpu_temp_celsius === undefined || metrics.cpu_temp_celsius === null) ? -1 : metrics.cpu_temp_celsius
     status: (w.showTemp && temp > 0) ? temp.toFixed(0) + "°C" : ""
     statusColor: temp > w.warnTemp ? theme.error : temp > w.warnTemp - 17 ? theme.warning : theme.textSecondary
-    function col(p) { return p > 85 ? theme.error : p > 60 ? theme.warning : theme.catSystem }
+    // Temperature is the real warning signal — escalate the WHOLE gauge (ring +
+    // number) on it, not just the tiny header text. Otherwise reflect load, in the
+    // widget's own accent while comfortable.
+    function col(p) {
+        if (w.showTemp && w.temp > 0) {
+            if (w.temp > w.warnTemp) return theme.error
+            if (w.temp > w.warnTemp - 12) return theme.warning
+        }
+        return p > 90 ? theme.error : p > 70 ? theme.warning : w.effAccent
+    }
 
     property var hist: []
     onMetricsChanged: {
@@ -39,9 +48,9 @@ WidgetChrome {
         anchors.fill: parent
         value: Math.min(w.v / 100, 1)
         big: w.v.toFixed(0) + "%"
-        sub: w.expanded ? ((metrics.cpu_core_count || 0) + " cores"
-                           + (w.showTemp && w.temp > 0 ? "  ·  " + w.temp.toFixed(0) + "°C" : ""))
-                        : (w.showTemp && w.temp > 0 ? w.temp.toFixed(0) + "°C" : "")
+        // Temp lives in the header (top-right) — the sub-line only adds core count
+        // in expanded, so the reading isn't printed twice.
+        sub: w.expanded ? ((metrics.cpu_core_count || 0) + " cores") : ""
         color: w.col(w.v)
         history: w.showHistory ? w.hist : []
         expanded: w.expanded

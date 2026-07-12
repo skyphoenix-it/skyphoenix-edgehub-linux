@@ -41,15 +41,42 @@ WidgetChrome {
         return new Date(y, mo, d, h, mi, s)
     }
 
+    // BYDAY tokens → weekday numbers (SU=0…SA=6), tolerating ordinal prefixes
+    // like "2MO" by keeping only the trailing two-letter day code.
+    function weekdayNums(byday) {
+        var map = { SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6 }
+        var out = []
+        byday.split(",").forEach(function (t) {
+            var d = t.replace(/[^A-Z]/g, "").slice(-2)
+            if (map[d] !== undefined) out.push(map[d])
+        })
+        return out
+    }
+    // Comparison key for EXDATE matching: calendar day + hour + minute (robust to
+    // the small tz/format variations between DTSTART and EXDATE in real feeds).
+    function exKey(d) {
+        return d.getFullYear() + "-" + d.getMonth() + "-" + d.getDate() + "-" + d.getHours() + "-" + d.getMinutes()
+    }
+
     function expand(ev, horizonEnd, now) {
         var out = []
         var todayStart = dayStart(now)
         // Duration of the event, used so an occurrence that STARTED before today
         // but hasn't finished yet (multi-day / in-progress) still counts.
         var dur = (ev.end && ev.start) ? (ev.end.getTime() - ev.start.getTime()) : 0
+        var excl = {}
+        if (ev.exdates) ev.exdates.forEach(function (d) { excl[exKey(d)] = true })
+        // Emit one occurrence (honours EXDATE exclusions + horizon/past bounds).
+        function emit(occStart) {
+            if (excl[exKey(occStart)]) return                          // cancelled (EXDATE)
+            if (occStart.getTime() + dur < todayStart.getTime()) return  // already finished
+            if (occStart > horizonEnd) return
+            out.push({ title: ev.title, location: ev.location, allDay: ev.allDay,
+                       start: new Date(occStart), end: new Date(occStart.getTime() + dur) })
+        }
         if (!ev.rrule) {
             var effEnd = ev.end || ev.start
-            if (effEnd >= todayStart && ev.start <= horizonEnd) out.push(ev)
+            if (effEnd >= todayStart && ev.start <= horizonEnd) emit(ev.start)
             return out
         }
         var parts = {}
@@ -57,20 +84,42 @@ WidgetChrome {
         var interval = +(parts.INTERVAL || 1)
         var count = parts.COUNT ? +parts.COUNT : 100000
         var until = parts.UNTIL ? parseDT(parts.UNTIL, "") : horizonEnd
-        var stepDays = parts.FREQ === "WEEKLY" ? 7 * interval : (parts.FREQ === "DAILY" ? interval : 0)
-        if (stepDays === 0) { // unsupported freq → single instance
-            var effEnd0 = ev.end || ev.start
-            if (effEnd0 >= todayStart && ev.start <= horizonEnd) out.push(ev)
+        var freq = parts.FREQ, n = 0
+
+        // WEEKLY with BYDAY (e.g. MO,WE,FR): walk day-by-day across the horizon and
+        // emit each listed weekday that falls on an active interval-week.
+        if (freq === "WEEKLY" && parts.BYDAY) {
+            var days = weekdayNums(parts.BYDAY)
+            var startWeek = dayStart(ev.start); startWeek.setDate(startWeek.getDate() - startWeek.getDay())
+            var cursor = dayStart(ev.start)
+            if (cursor < todayStart) cursor = new Date(todayStart)
+            var guard = 0
+            while (cursor <= horizonEnd && cursor <= until && n < count && out.length < 200 && guard < 800) {
+                guard++
+                if (days.indexOf(cursor.getDay()) >= 0) {
+                    var cw = dayStart(cursor); cw.setDate(cw.getDate() - cw.getDay())
+                    var weekIdx = Math.round((cw.getTime() - startWeek.getTime()) / (7 * 86400000))
+                    if (weekIdx >= 0 && weekIdx % interval === 0) {
+                        var occ = new Date(cursor)
+                        occ.setHours(ev.start.getHours(), ev.start.getMinutes(), ev.start.getSeconds(), 0)
+                        if (occ >= ev.start) { emit(occ); n++ }
+                    }
+                }
+                cursor = new Date(cursor.getTime() + 86400000)
+            }
             return out
         }
-        var occ = new Date(ev.start), n = 0
-        while (occ <= horizonEnd && occ <= until && n < count && out.length < 200) {
-            // Include an occurrence whose end is today or later (so one currently
-            // in progress isn't skipped just because it started before midnight).
-            if (occ.getTime() + dur >= todayStart.getTime())
-                out.push({ title: ev.title, location: ev.location, allDay: ev.allDay,
-                           start: new Date(occ), end: new Date(occ.getTime() + dur) })
-            occ = new Date(occ.getTime() + stepDays * 86400000); n++
+
+        var stepDays = freq === "WEEKLY" ? 7 * interval : (freq === "DAILY" ? interval : 0)
+        if (stepDays === 0) { // MONTHLY/YEARLY/unsupported → single instance
+            var effEnd0 = ev.end || ev.start
+            if (effEnd0 >= todayStart && ev.start <= horizonEnd) emit(ev.start)
+            return out
+        }
+        var occ2 = new Date(ev.start)
+        while (occ2 <= horizonEnd && occ2 <= until && n < count && out.length < 200) {
+            emit(occ2)
+            occ2 = new Date(occ2.getTime() + stepDays * 86400000); n++
         }
         return out
     }
@@ -92,9 +141,15 @@ WidgetChrome {
                 else if (name === "RRULE") cur.rrule = val
                 else if (name === "DTSTART") {
                     cur.start = parseDT(val, key)
-                    cur.allDay = key.indexOf("VALUE=DATE") >= 0
+                    // VALUE=DATE marks an all-day event, but must NOT match the
+                    // longer VALUE=DATE-TIME (which is a normal timed event).
+                    cur.allDay = key.indexOf("VALUE=DATE") >= 0 && key.indexOf("VALUE=DATE-TIME") < 0
                 }
                 else if (name === "DTEND") cur.end = parseDT(val, key)
+                else if (name === "EXDATE") {
+                    cur.exdates = cur.exdates || []
+                    val.split(",").forEach(function (v) { if (v.trim().length) cur.exdates.push(parseDT(v, key)) })
+                }
             }
         }
         var now = new Date(), horizon = new Date(now.getTime() + 30 * 86400000)
@@ -105,13 +160,20 @@ WidgetChrome {
         return all.slice(0, 60)
     }
 
+    property var _xhr: null
+    Component.onDestruction: { if (_xhr) _xhr.abort() }
     function refresh() {
         if (!url.length) { events = []; errorText = ""; return }
         loading = true
+        if (_xhr) _xhr.abort()
         var xhr = new XMLHttpRequest()
+        _xhr = xhr
+        xhr.timeout = 12000
+        xhr.ontimeout = function () { if (w._xhr === xhr) { w._xhr = null; w.loading = false; w.errorText = "Calendar timed out" } }
         xhr.onreadystatechange = function () {
             if (xhr.readyState !== XMLHttpRequest.DONE) return
-            if (!w) return
+            if (w._xhr !== xhr) return   // superseded by a newer fetch
+            w._xhr = null
             w.loading = false
             if (xhr.status !== 200) { w.errorText = "Couldn't fetch calendar"; return }
             try {
@@ -120,7 +182,7 @@ WidgetChrome {
             } catch (e) { w.errorText = "Couldn't read calendar" }
         }
         try { xhr.open("GET", url); xhr.send() }
-        catch (e) { loading = false; errorText = "Invalid URL" }
+        catch (e) { _xhr = null; loading = false; errorText = "Invalid URL" }
     }
 
     property string _urlKey: url
@@ -157,7 +219,7 @@ WidgetChrome {
                 delegate: RowLayout {
                     required property int index
                     Layout.fillWidth: true; spacing: 6
-                    Rectangle { Layout.preferredWidth: 3; Layout.preferredHeight: 26; radius: 2; color: theme.catServices }
+                    Rectangle { Layout.preferredWidth: 3; Layout.preferredHeight: 26; radius: 2; color: w.effAccent }
                     ColumnLayout {
                         Layout.fillWidth: true; spacing: 0
                         Text { text: w.shownEvents[index].title || "(busy)"; color: theme.textPrimary
@@ -183,10 +245,10 @@ WidgetChrome {
                 text: w.url; placeholderText: "Paste an ICS calendar URL…"
                 placeholderTextColor: theme.textTertiary; color: theme.textPrimary; font.pixelSize: 15
                 background: Rectangle { radius: theme.radiusSm; color: theme.backgroundColor
-                    border.color: urlField.activeFocus ? theme.accent : theme.cardBorder; border.width: 1 }
+                    border.color: urlField.activeFocus ? w.effAccent : theme.cardBorder; border.width: 1 }
                 onEditingFinished: if (w.store) w.store.setSetting(w.instanceId, "url", text)
             }
-            PillButton { label: "Save"; primary: true; tint: theme.catServices
+            PillButton { label: "Save"; primary: true; tint: w.effAccent
                 onClicked: if (w.store) w.store.setSetting(w.instanceId, "url", urlField.text) }
         }
 
@@ -197,7 +259,7 @@ WidgetChrome {
                 required property var modelData
                 width: ListView.view ? ListView.view.width : 0
                 spacing: theme.spacingSm
-                Rectangle { Layout.preferredWidth: 4; Layout.preferredHeight: 40; radius: 2; color: theme.catServices }
+                Rectangle { Layout.preferredWidth: 4; Layout.preferredHeight: 40; radius: 2; color: w.effAccent }
                 ColumnLayout {
                     Layout.fillWidth: true; spacing: 0
                     Text { text: modelData.title || "(busy)"; color: theme.textPrimary; font.pixelSize: 17

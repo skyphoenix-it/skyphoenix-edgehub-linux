@@ -24,17 +24,68 @@ WidgetChrome {
     property int count: cfg.day === todayKey ? (cfg.count || 0) : 0
     status: count + "/" + goal
 
+    // Live goal streak: only counts if the last goal-day is today or yesterday,
+    // otherwise the streak has lapsed (shown as 0 until you hit the goal again).
+    function _yesterdayKey() { var d = new Date(); d.setDate(d.getDate() - 1); return Qt.formatDate(d, "yyyy-MM-dd") }
+    readonly property int streakDisplay: {
+        var lg = cfg.lastGoalDay
+        return (lg === todayKey || lg === _yesterdayKey()) ? (cfg.streak || 0) : 0
+    }
+
     // Total volume drunk today (count × per-glass size), shown as L when ≥ 1000 ml.
     function volumeText() {
         var ml = w.count * w.glassMl
         return ml >= 1000 ? (ml / 1000).toFixed(1) + " L" : ml + " ml"
     }
 
+    // Overfilling past the goal is allowed (extra-credit dopamine); capped only to
+    // keep the glass grid sane.
     function set(n) {
-        if (store) store.patchSettings(instanceId, { "day": todayKey, "count": Math.max(0, Math.min(goal, n)) })
+        if (!store) return
+        var v = Math.max(0, Math.min(50, n))
+        var was = w.count
+        var patch = { "day": todayKey, "count": v }
+        // First crossing of the goal today → bump the streak + celebrate.
+        if (was < goal && v >= goal) {
+            var s
+            if (cfg.lastGoalDay === todayKey) s = cfg.streak || 1
+            else s = (cfg.lastGoalDay === _yesterdayKey()) ? (cfg.streak || 0) + 1 : 1
+            patch.streak = s; patch.lastGoalDay = todayKey
+            celebrateNow("🎉 Goal reached!")
+        }
+        store.patchSettings(instanceId, patch)
     }
     function setGoal(g) {
-        if (store) store.patchSettings(instanceId, { "goal": Math.max(1, Math.min(16, g)) })
+        if (store) store.patchSettings(instanceId, { "goal": Math.max(1, Math.min(20, g)) })
+    }
+
+    // Celebration pop (mirrors FocusWidget).
+    property string celebrateMsg: ""
+    function celebrateNow(msg) { celebrateMsg = msg; celebrateAnim.restart(); flash.restart() }
+    Rectangle {
+        anchors.fill: parent; radius: theme.radiusLg; color: w.effAccent; opacity: 0; z: 5
+        SequentialAnimation on opacity {
+            id: flash; running: false
+            NumberAnimation { to: 0.32; duration: 130 }
+            NumberAnimation { to: 0.0; duration: 520 }
+        }
+    }
+    Text {
+        id: celebrateLabel; anchors.centerIn: parent; z: 20
+        text: w.celebrateMsg; opacity: 0
+        font.pixelSize: w.expanded ? 40 : 20; font.bold: true; font.family: theme.fontDisplay
+        color: w.effAccent; horizontalAlignment: Text.AlignHCenter
+        SequentialAnimation {
+            id: celebrateAnim; running: false
+            PropertyAction { target: celebrateLabel; property: "scale"; value: 0.6 }
+            ParallelAnimation {
+                NumberAnimation { target: celebrateLabel; property: "opacity"; from: 0; to: 1; duration: 180 }
+                NumberAnimation { target: celebrateLabel; property: "scale"; to: 1.12
+                    duration: 260; easing.type: theme.reduceMotion ? Easing.Linear : Easing.OutBack }
+            }
+            PauseAnimation { duration: 900 }
+            NumberAnimation { target: celebrateLabel; property: "opacity"; to: 0; duration: 500 }
+        }
     }
 
     // ── Compact tile ──
@@ -51,11 +102,13 @@ WidgetChrome {
         }
         Text { Layout.alignment: Qt.AlignHCenter; text: w.count + " of " + w.goal + " glasses"
             font.pixelSize: 12; color: theme.textSecondary }
+        Text { Layout.alignment: Qt.AlignHCenter; visible: w.streakDisplay > 1
+            text: "🔥 " + w.streakDisplay + "-day streak"; font.pixelSize: 11; color: theme.textTertiary }
         // Compact "+1" — a bounded target so the rest of the tile still expands
         // on tap (a full-tile MouseArea here used to swallow the expand gesture).
         PillButton {
             Layout.alignment: Qt.AlignHCenter
-            label: "+1 glass"; glyph: "💧"; primary: true; tint: theme.catInfo
+            label: "+1 glass"; glyph: "💧"; primary: true; tint: w.effAccent
             onClicked: w.set(w.count + 1)
         }
     }
@@ -69,26 +122,31 @@ WidgetChrome {
 
         Text { Layout.alignment: Qt.AlignHCenter; text: w.count + " / " + w.goal
             font.pixelSize: 110; font.bold: true; font.family: theme.fontMono
-            color: w.count >= w.goal ? theme.success : theme.catInfo }
+            color: w.count >= w.goal ? theme.success : w.effAccent }
         Text { Layout.alignment: Qt.AlignHCenter; Layout.topMargin: -theme.spacingMd
-            text: w.count >= w.goal ? "Daily goal reached! 🎉" : "glasses of water today"
+            text: w.count > w.goal ? ("Overachiever! +" + (w.count - w.goal) + " 💪")
+                  : (w.count === w.goal ? "Daily goal reached! 🎉" : "glasses of water today")
             font.pixelSize: 20; color: theme.textSecondary }
         Text { Layout.alignment: Qt.AlignHCenter; Layout.topMargin: -theme.spacingLg
-            text: w.volumeText() + " today"
+            text: w.volumeText() + " today" + (w.streakDisplay > 1 ? "   ·   🔥 " + w.streakDisplay + "-day streak" : "")
             font.pixelSize: 16; color: theme.textTertiary }
 
         Flow {
             Layout.alignment: Qt.AlignHCenter; Layout.fillWidth: true
             spacing: theme.spacingMd
             Repeater {
-                model: w.goal
+                // Render goal cells, plus any extra "bonus" glasses when overfilled.
+                model: Math.max(w.goal, w.count)
                 delegate: Rectangle {
                     required property int index
+                    readonly property bool filled: index < w.count
+                    readonly property bool bonus: index >= w.goal
                     width: 88; height: 88; radius: theme.radiusMd
-                    color: index < w.count ? Qt.rgba(theme.catInfo.r, theme.catInfo.g, theme.catInfo.b, 0.18) : "transparent"
-                    border.width: 2; border.color: index < w.count ? theme.catInfo : theme.cardBorder
-                    Text { anchors.centerIn: parent; text: index < w.count ? "💧" : "○"
-                        font.pixelSize: 42; opacity: index < w.count ? 1 : 0.4 }
+                    color: filled ? Qt.rgba(w.effAccent.r, w.effAccent.g, w.effAccent.b, bonus ? 0.28 : 0.18) : "transparent"
+                    border.width: 2
+                    border.color: filled ? (bonus ? theme.success : w.effAccent) : theme.cardBorder
+                    Text { anchors.centerIn: parent; text: filled ? "💧" : "○"
+                        font.pixelSize: 42; opacity: filled ? 1 : 0.4 }
                     MouseArea { anchors.fill: parent; onClicked: w.set(index + 1) }
                 }
             }
@@ -97,7 +155,7 @@ WidgetChrome {
         RowLayout {
             Layout.alignment: Qt.AlignHCenter; Layout.topMargin: theme.spacingMd; spacing: theme.spacingLg
             PillButton { label: "Remove"; glyph: "−"; implicitWidth: 170; onClicked: w.set(w.count - 1) }
-            PillButton { label: "Add a glass"; glyph: "💧"; primary: true; tint: theme.catInfo
+            PillButton { label: "Add a glass"; glyph: "💧"; primary: true; tint: w.effAccent
                 implicitWidth: 240; onClicked: w.set(w.count + 1) }
         }
         RowLayout {

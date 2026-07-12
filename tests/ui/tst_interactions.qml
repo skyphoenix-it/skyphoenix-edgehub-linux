@@ -54,11 +54,13 @@ Item {
         when: windowShown
         function init() { tryVerify(function () { return hHydration.ready }, 3000) }
 
-        function test_count_clamps_to_goal() {
+        function test_count_allows_overfill() {
             var w = hHydration.item
             w.setGoal(8)
+            w.set(10)
+            compare(w.count, 10, "overfilling past the goal is allowed (extra credit)")
             w.set(100)
-            compare(w.count, 8, "count cannot exceed goal")
+            compare(w.count, 50, "count is capped at 50 to keep the glass grid sane")
             w.set(-5)
             compare(w.count, 0, "count cannot go below 0")
         }
@@ -67,7 +69,7 @@ Item {
             w.setGoal(0)
             compare(w.goal, 1, "goal min 1")
             w.setGoal(99)
-            compare(w.goal, 16, "goal max 16")
+            compare(w.goal, 20, "goal max 20 (matches the config schema)")
         }
         function test_increment_decrement() {
             var w = hHydration.item

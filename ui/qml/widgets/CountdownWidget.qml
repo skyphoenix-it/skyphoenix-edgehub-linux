@@ -21,13 +21,27 @@ WidgetChrome {
     }
     readonly property string label: cfg.label || ""
     readonly property string dateStr: cfg.date || ""
+    readonly property bool repeatYearly: cfg.repeatYearly !== undefined ? cfg.repeatYearly : false
     function dayStart(d) { var x = new Date(d); x.setHours(0, 0, 0, 0); return x }
     property int days: {
         w.tick
         if (!dateStr.length) return -999
-        var t = new Date(dateStr)
-        if (isNaN(t.getTime())) return -999
-        return Math.round((dayStart(t) - dayStart(new Date())) / 86400000)
+        // Parse "YYYY-MM-DD" into LOCAL components — new Date(str) would treat it as
+        // UTC midnight and, west of UTC, land the countdown one day off.
+        var p = ("" + dateStr).split("-")
+        if (p.length < 3) return -999
+        var y = +p[0], mo = +p[1] - 1, d = +p[2]
+        if (isNaN(y) || isNaN(mo) || isNaN(d) || mo < 0 || mo > 11 || d < 1 || d > 31) return -999
+        var today0 = dayStart(new Date())
+        var target = new Date(y, mo, d)
+        if (isNaN(target.getTime())) return -999
+        if (w.repeatYearly) {
+            // Recur every year: aim at this year's occurrence, or next year's if it
+            // has already passed, so a birthday/anniversary never reads "passed".
+            target = new Date(today0.getFullYear(), mo, d)
+            if (dayStart(target) < today0) target = new Date(today0.getFullYear() + 1, mo, d)
+        }
+        return Math.round((dayStart(target) - today0) / 86400000)
     }
     property bool valid: days > -999
 
@@ -37,7 +51,7 @@ WidgetChrome {
             Layout.alignment: Qt.AlignHCenter
             text: !w.valid ? "—" : (w.days > 0 ? w.days : (w.days === 0 ? "🎉" : Math.abs(w.days)))
             font.pixelSize: w.expanded ? 120 : Math.max(30, Math.min(w.width * 0.34, 68))
-            font.bold: true; font.family: theme.fontMono; color: theme.catInfo
+            font.bold: true; font.family: theme.fontMono; color: w.effAccent
         }
         Text {
             Layout.alignment: Qt.AlignHCenter
@@ -73,7 +87,7 @@ WidgetChrome {
                     border.color: dateField.activeFocus ? theme.accent : theme.cardBorder; border.width: 1 }
                 onEditingFinished: if (w.store) w.store.setSetting(w.instanceId, "date", text)
             }
-            PillButton { label: "Save"; primary: true; tint: theme.catInfo
+            PillButton { label: "Save"; primary: true; tint: w.effAccent
                 onClicked: if (w.store) w.store.patchSettings(w.instanceId, { "label": labelField.text, "date": dateField.text }) }
         }
     }

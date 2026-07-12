@@ -23,6 +23,7 @@ WidgetChrome {
 
     onShowSecondsChanged: cv.requestPaint()
     onShowNumeralsChanged: cv.requestPaint()
+    onEffAccentChanged: cv.requestPaint()
 
     Canvas {
         id: cv
@@ -63,10 +64,10 @@ WidgetChrome {
             ctx.lineWidth = Math.max(2, rad * 0.03)
             ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(ma) * rad * 0.72, cy + Math.sin(ma) * rad * 0.72); ctx.stroke()
             if (w.showSeconds) {
-                ctx.strokeStyle = theme.accent; ctx.lineWidth = Math.max(1, rad * 0.02)
+                ctx.strokeStyle = w.effAccent; ctx.lineWidth = Math.max(1, rad * 0.02)
                 ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(sa) * rad * 0.82, cy + Math.sin(sa) * rad * 0.82); ctx.stroke()
             }
-            ctx.fillStyle = theme.accent; ctx.beginPath(); ctx.arc(cx, cy, Math.max(2, rad * 0.05), 0, 2 * Math.PI); ctx.fill()
+            ctx.fillStyle = w.effAccent; ctx.beginPath(); ctx.arc(cx, cy, Math.max(2, rad * 0.05), 0, 2 * Math.PI); ctx.fill()
         }
         Connections { target: w; function onTickChanged() { cv.requestPaint() } }
         onWidthChanged: requestPaint()

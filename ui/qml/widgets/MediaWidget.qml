@@ -12,7 +12,7 @@ WidgetChrome {
     property var store: null
     property string instanceId: ""
 
-    title: "Now Playing"; iconName: "media"; accentColor: theme.catEntertainment
+    title: "Now Playing"; iconName: "media"; accentColor: w.effAccent
     big: expanded
 
     property bool avail: (typeof media !== "undefined") && media && media.available
@@ -33,7 +33,7 @@ WidgetChrome {
         visible: w.avail && !w.expanded; spacing: theme.spacingSm
         Rectangle {
             Layout.preferredWidth: 46; Layout.preferredHeight: 46; radius: theme.radiusSm; clip: true
-            gradient: Gradient { GradientStop { position: 0; color: theme.catEntertainment } GradientStop { position: 1; color: theme.accent } }
+            gradient: Gradient { GradientStop { position: 0; color: w.effAccent } GradientStop { position: 1; color: Qt.darker(w.effAccent, 1.5) } }
             Image { id: artC; anchors.fill: parent; source: w.avail && media.artUrl ? media.artUrl : ""
                 fillMode: Image.PreserveAspectCrop; asynchronous: true; cache: false
                 visible: status === Image.Ready }
@@ -51,9 +51,9 @@ WidgetChrome {
         Rectangle {
             Layout.preferredWidth: theme.touchTertiary; Layout.preferredHeight: theme.touchTertiary
             radius: width / 2
-            color: Qt.rgba(theme.catEntertainment.r, theme.catEntertainment.g, theme.catEntertainment.b, ppMA.pressed ? 0.30 : 0.16)
+            color: Qt.rgba(w.effAccent.r, w.effAccent.g, w.effAccent.b, ppMA.pressed ? 0.30 : 0.16)
             AppIcon { anchors.centerIn: parent; name: (w.avail && media.playing) ? "ui-pause" : "ui-play"
-                size: 22; color: theme.catEntertainment }
+                size: 22; color: w.effAccent }
             MouseArea { id: ppMA; anchors.fill: parent; onClicked: if (w.avail) media.playPause() }
         }
     }
@@ -67,7 +67,7 @@ WidgetChrome {
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: Math.min(w.width * 0.5, 260); Layout.preferredHeight: Layout.preferredWidth
             radius: theme.radiusLg; clip: true
-            gradient: Gradient { GradientStop { position: 0; color: theme.catEntertainment } GradientStop { position: 1; color: theme.accent } }
+            gradient: Gradient { GradientStop { position: 0; color: w.effAccent } GradientStop { position: 1; color: Qt.darker(w.effAccent, 1.5) } }
             Image { id: artE; anchors.fill: parent; source: w.avail && media.artUrl ? media.artUrl : ""
                 fillMode: Image.PreserveAspectCrop; asynchronous: true; cache: false
                 visible: status === Image.Ready }
@@ -85,7 +85,7 @@ WidgetChrome {
         }
         Rectangle {
             Layout.fillWidth: true; Layout.preferredHeight: 6; radius: 3; color: theme.cardBorder
-            Rectangle { height: parent.height; radius: 3; color: theme.catEntertainment
+            Rectangle { height: parent.height; radius: 3; color: w.effAccent
                 width: parent.width * Math.max(0, Math.min(1, w.avail ? media.position : 0))
                 Behavior on width { NumberAnimation { duration: 400 } } }
         }
@@ -95,14 +95,14 @@ WidgetChrome {
             Rectangle {
                 Layout.preferredWidth: theme.touchSecondary; Layout.preferredHeight: theme.touchSecondary
                 radius: width / 2
-                color: Qt.rgba(theme.catEntertainment.r, theme.catEntertainment.g, theme.catEntertainment.b, prevMA.pressed ? 0.30 : 0.14)
-                border.width: 1; border.color: Qt.rgba(theme.catEntertainment.r, theme.catEntertainment.g, theme.catEntertainment.b, 0.5)
+                color: Qt.rgba(w.effAccent.r, w.effAccent.g, w.effAccent.b, prevMA.pressed ? 0.30 : 0.14)
+                border.width: 1; border.color: Qt.rgba(w.effAccent.r, w.effAccent.g, w.effAccent.b, 0.5)
                 AppIcon { anchors.centerIn: parent; name: "ui-skip-back"; size: 24; color: theme.textPrimary }
                 MouseArea { id: prevMA; anchors.fill: parent; onClicked: if (w.avail) media.previous() }
             }
             Rectangle {
                 Layout.preferredWidth: theme.touchPrimary; Layout.preferredHeight: theme.touchPrimary
-                radius: width / 2; color: theme.catEntertainment
+                radius: width / 2; color: w.effAccent
                 scale: playMA.pressed ? 0.95 : 1.0
                 Behavior on scale { NumberAnimation { duration: theme.motionFast } }
                 AppIcon { anchors.centerIn: parent; name: (w.avail && media.playing) ? "ui-pause" : "ui-play"
@@ -113,8 +113,8 @@ WidgetChrome {
             Rectangle {
                 Layout.preferredWidth: theme.touchSecondary; Layout.preferredHeight: theme.touchSecondary
                 radius: width / 2
-                color: Qt.rgba(theme.catEntertainment.r, theme.catEntertainment.g, theme.catEntertainment.b, nextMA.pressed ? 0.30 : 0.14)
-                border.width: 1; border.color: Qt.rgba(theme.catEntertainment.r, theme.catEntertainment.g, theme.catEntertainment.b, 0.5)
+                color: Qt.rgba(w.effAccent.r, w.effAccent.g, w.effAccent.b, nextMA.pressed ? 0.30 : 0.14)
+                border.width: 1; border.color: Qt.rgba(w.effAccent.r, w.effAccent.g, w.effAccent.b, 0.5)
                 AppIcon { anchors.centerIn: parent; name: "ui-skip-fwd"; size: 24; color: theme.textPrimary }
                 MouseArea { id: nextMA; anchors.fill: parent; onClicked: if (w.avail) media.next() }
             }

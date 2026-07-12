@@ -1,7 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
 
-// Daily quote — rotates once per day from a local list (no network).
+// Daily quote — rotates once per day from a chosen category (or your own custom
+// list); no network. A "Shuffle" picks a fresh one on demand.
 WidgetChrome {
     id: w
     property var metrics: ({})
@@ -14,41 +15,106 @@ WidgetChrome {
     title: "Daily Quote"; iconName: "quote"; accentColor: theme.catInfo
     big: expanded; showHeader: expanded
 
-    readonly property var quotes: [
-        { t: "Simplicity is the soul of efficiency.", a: "Austin Freeman" },
-        { t: "Make it work, make it right, make it fast.", a: "Kent Beck" },
-        { t: "The best way out is always through.", a: "Robert Frost" },
-        { t: "Focus is saying no to a thousand good ideas.", a: "Steve Jobs" },
-        { t: "Well done is better than well said.", a: "Ben Franklin" },
-        { t: "Discipline equals freedom.", a: "Jocko Willink" },
-        { t: "Start where you are. Use what you have. Do what you can.", a: "Arthur Ashe" },
-        { t: "Action is the antidote to anxiety.", a: "Unknown" },
-        { t: "Done is better than perfect.", a: "Sheryl Sandberg" },
-        { t: "Small steps every day.", a: "Unknown" }
-    ]
+    readonly property var cfg: {
+        var _ = store ? store.revision : 0
+        return (store && instanceId) ? JSON.parse(JSON.stringify(store.settingsFor(instanceId))) : ({})
+    }
+    readonly property string category: cfg.category !== undefined ? cfg.category : "focus"
+    readonly property string customText: cfg.customText !== undefined ? cfg.customText : ""
+
+    readonly property var library: ({
+        "focus": [
+            { t: "Simplicity is the soul of efficiency.", a: "Austin Freeman" },
+            { t: "Make it work, make it right, make it fast.", a: "Kent Beck" },
+            { t: "Focus is saying no to a thousand good ideas.", a: "Steve Jobs" },
+            { t: "Well done is better than well said.", a: "Ben Franklin" },
+            { t: "Done is better than perfect.", a: "Sheryl Sandberg" },
+            { t: "Small steps every day.", a: "Unknown" },
+            { t: "Action is the antidote to anxiety.", a: "Unknown" }
+        ],
+        "stoic": [
+            { t: "We suffer more in imagination than in reality.", a: "Seneca" },
+            { t: "You have power over your mind — not outside events.", a: "Marcus Aurelius" },
+            { t: "The best way out is always through.", a: "Robert Frost" },
+            { t: "Discipline equals freedom.", a: "Jocko Willink" },
+            { t: "First say to yourself what you would be; then do what you have to do.", a: "Epictetus" },
+            { t: "He who fears death will never do anything worthy of a living man.", a: "Seneca" }
+        ],
+        "humor": [
+            { t: "I always wanted to be somebody, but I should have been more specific.", a: "Lily Tomlin" },
+            { t: "The road to success is always under construction.", a: "Lily Tomlin" },
+            { t: "I can resist everything except temptation.", a: "Oscar Wilde" },
+            { t: "Hard work never killed anybody, but why take the chance?", a: "Edgar Bergen" },
+            { t: "If at first you don't succeed, then skydiving isn't for you.", a: "Steven Wright" }
+        ],
+        "kindness": [
+            { t: "Start where you are. Use what you have. Do what you can.", a: "Arthur Ashe" },
+            { t: "No act of kindness, no matter how small, is ever wasted.", a: "Aesop" },
+            { t: "Be kind whenever possible. It is always possible.", a: "Dalai Lama" },
+            { t: "You are enough, just as you are.", a: "Unknown" },
+            { t: "Progress, not perfection.", a: "Unknown" }
+        ]
+    })
+
+    // Parse the user's custom list: one quote per line, optional " — Author".
+    function parseCustom() {
+        var out = []
+        var lines = ("" + w.customText).split("\n")
+        for (var i = 0; i < lines.length; i++) {
+            var ln = lines[i].trim()
+            if (!ln.length) continue
+            var sep = ln.indexOf(" — ")
+            if (sep < 0) sep = ln.indexOf(" -- ")
+            if (sep < 0) sep = ln.indexOf(" | ")
+            if (sep >= 0) out.push({ t: ln.substring(0, sep).trim(), a: ln.substring(sep + 3).trim() })
+            else out.push({ t: ln, a: "" })
+        }
+        return out
+    }
+    // Active pool for the chosen category (custom falls back to focus if empty).
+    readonly property var pool: {
+        if (w.category === "custom") { var c = parseCustom(); return c.length ? c : library["focus"] }
+        return library[w.category] || library["focus"]
+    }
+
     // Day-of-year index → stable for the whole day, rotates at midnight (via tick).
-    property int idx: {
+    property int dailyIdx: {
         w.tick
         var n = new Date()
         var start = new Date(n.getFullYear(), 0, 0)
         var doy = Math.floor((n - start) / 86400000)
-        return doy % quotes.length
+        return doy % Math.max(1, w.pool.length)
     }
-    property var q: quotes[idx]
+    // A manual "shuffle" overrides the daily pick until the next day / reset.
+    property int manualIdx: -1
+    onCategoryChanged: manualIdx = -1
+    property int idx: (w.manualIdx >= 0 && w.manualIdx < w.pool.length) ? w.manualIdx : w.dailyIdx
+    property var q: w.pool[idx] || ({ t: "", a: "" })
+    function shuffle() {
+        if (w.pool.length <= 1) return
+        var n = w.idx
+        while (n === w.idx) n = Math.floor(Math.random() * w.pool.length)
+        w.manualIdx = n
+    }
 
     ColumnLayout {
         anchors.centerIn: parent
         width: parent.width * 0.9
         spacing: w.expanded ? 14 : 4
         Text { Layout.alignment: Qt.AlignHCenter; text: "“"; font.bold: true
-            font.pixelSize: w.expanded ? 72 : 30; color: theme.catInfo }
+            font.pixelSize: w.expanded ? 72 : 30; color: w.effAccent }
         Text {
             Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
             text: w.q.t; font.italic: true; color: theme.textPrimary
             font.pixelSize: w.expanded ? 30 : Math.max(12, Math.min(w.width * 0.075, 16))
             maximumLineCount: w.expanded ? 6 : 4; elide: Text.ElideRight
         }
-        Text { Layout.alignment: Qt.AlignHCenter; text: "— " + w.q.a
+        Text { Layout.alignment: Qt.AlignHCenter; visible: w.q.a.length > 0; text: "— " + w.q.a
             font.pixelSize: w.expanded ? 18 : 12; color: theme.textSecondary }
+        PillButton {
+            Layout.alignment: Qt.AlignHCenter; Layout.topMargin: theme.spacingSm
+            visible: w.expanded && w.pool.length > 1
+            label: "Shuffle"; glyph: "🔀"; tint: w.effAccent; onClicked: w.shuffle()
+        }
     }
 }

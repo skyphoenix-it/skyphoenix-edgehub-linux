@@ -22,6 +22,7 @@ WidgetChrome {
     }
     readonly property var items: cfg.items || []
     readonly property bool hideCompleted: cfg.hideCompleted !== undefined ? cfg.hideCompleted : false
+    readonly property bool celebrate: cfg.celebrate !== undefined ? cfg.celebrate : true
     // View-only projection: optionally drop done items, but carry each item's
     // original storage index so toggle/remove still target the right entry.
     readonly property var visibleItems: {
@@ -40,13 +41,62 @@ WidgetChrome {
     status: items.length ? doneCount + "/" + items.length : ""
 
     function _save(arr) { if (store) store.setSetting(instanceId, "items", arr) }
-    function toggle(i) { var a = items.slice(); a[i] = { text: a[i].text, done: !a[i].done }; _save(a) }
+    function toggle(i) {
+        var a = items.slice(); a[i] = { text: a[i].text, done: !a[i].done }; _save(a)
+        // Dopamine hit: a burst when checking the box that clears the whole list.
+        if (a[i].done && celebrate && a.length > 0 && a.every(function (t) { return t.done }))
+            celebrateNow("🎉 All done!")
+    }
     function remove(i) { var a = items.slice(); a.splice(i, 1); _save(a) }
     function add(t) { if (!t || !t.trim().length) return; var a = items.slice(); a.push({ text: t.trim(), done: false }); _save(a) }
+    function clearCompleted() { _save(items.filter(function (t) { return !t.done })) }
+
+    // Celebration pop, mirroring FocusWidget's honest little reward.
+    property string celebrateMsg: ""
+    function celebrateNow(msg) { celebrateMsg = msg; celebrateAnim.restart(); flash.restart() }
+
+    Rectangle {
+        anchors.fill: parent; radius: theme.radiusLg; color: w.effAccent; opacity: 0; z: 5
+        SequentialAnimation on opacity {
+            id: flash; running: false
+            NumberAnimation { to: 0.30; duration: 120 }
+            NumberAnimation { to: 0.0; duration: 500 }
+        }
+    }
+    Text {
+        id: celebrateLabel; anchors.centerIn: parent; z: 20
+        text: w.celebrateMsg; opacity: 0
+        font.pixelSize: w.expanded ? 34 : 18; font.bold: true; font.family: theme.fontDisplay
+        color: w.effAccent; horizontalAlignment: Text.AlignHCenter
+        SequentialAnimation {
+            id: celebrateAnim; running: false
+            PropertyAction { target: celebrateLabel; property: "scale"; value: 0.6 }
+            ParallelAnimation {
+                NumberAnimation { target: celebrateLabel; property: "opacity"; from: 0; to: 1; duration: 180 }
+                NumberAnimation { target: celebrateLabel; property: "scale"; to: 1.12
+                    duration: 260; easing.type: theme.reduceMotion ? Easing.Linear : Easing.OutBack }
+            }
+            PauseAnimation { duration: 900 }
+            NumberAnimation { target: celebrateLabel; property: "opacity"; to: 0; duration: 500 }
+        }
+    }
 
     ColumnLayout {
         anchors.fill: parent
         spacing: theme.spacingSm
+
+        // Progress toward "all done" — a glanceable momentum bar (expanded).
+        Rectangle {
+            visible: w.expanded && w.items.length > 0
+            Layout.fillWidth: true; Layout.preferredHeight: 6
+            radius: 3; color: theme.cardBorder
+            Rectangle {
+                height: parent.height; radius: 3
+                width: parent.width * (w.items.length ? w.doneCount / w.items.length : 0)
+                color: w.effAccent
+                Behavior on width { NumberAnimation { duration: 300 } }
+            }
+        }
 
         ListView {
             Layout.fillWidth: true; Layout.fillHeight: true
@@ -66,19 +116,21 @@ WidgetChrome {
                     Rectangle {
                         anchors.centerIn: parent
                         width: w.expanded ? 30 : 16; height: width; radius: 7
-                        color: modelData.done ? theme.catProductivity : "transparent"
-                        border.width: 2; border.color: modelData.done ? theme.catProductivity : theme.cardBorder
+                        color: modelData.done ? w.effAccent : "transparent"
+                        border.width: 2; border.color: modelData.done ? w.effAccent : theme.cardBorder
                         Text { anchors.centerIn: parent; visible: modelData.done; text: "✓"
                             color: "#0D1117"; font.bold: true; font.pixelSize: w.expanded ? 17 : 10 }
                     }
-                    MouseArea { anchors.fill: parent; onClicked: w.toggle(modelData.idx) }
+                    // Only interactive when expanded — in compact a tap must reach the
+                    // host so the whole tile expands (not silently toggle a task).
+                    MouseArea { anchors.fill: parent; enabled: w.expanded; onClicked: w.toggle(modelData.idx) }
                 }
                 Text {
                     Layout.fillWidth: true; Layout.fillHeight: true; verticalAlignment: Text.AlignVCenter
                     text: modelData.text; elide: Text.ElideRight
                     font.pixelSize: w.expanded ? 18 : 12; font.strikeout: modelData.done
                     color: modelData.done ? theme.textTertiary : theme.textPrimary
-                    MouseArea { anchors.fill: parent; onClicked: w.toggle(modelData.idx) }
+                    MouseArea { anchors.fill: parent; enabled: w.expanded; onClicked: w.toggle(modelData.idx) }
                 }
                 // Remove in a >=44px touch cell.
                 Item {
@@ -107,11 +159,18 @@ WidgetChrome {
                 color: theme.textPrimary; font.pixelSize: 16
                 placeholderTextColor: theme.textTertiary
                 background: Rectangle { radius: theme.radiusSm; color: theme.backgroundColor
-                    border.color: input.activeFocus ? theme.accent : theme.cardBorder; border.width: 1 }
+                    border.color: input.activeFocus ? w.effAccent : theme.cardBorder; border.width: 1 }
                 onAccepted: { w.add(text); text = "" }
             }
-            PillButton { label: "Add"; glyph: "＋"; primary: true; tint: theme.catProductivity
+            PillButton { label: "Add"; glyph: "＋"; primary: true; tint: w.effAccent
                 onClicked: { w.add(input.text); input.text = "" } }
+        }
+        // Bulk "clear completed" — only when there's something to clear.
+        PillButton {
+            Layout.alignment: Qt.AlignHCenter
+            visible: w.expanded && w.doneCount > 0
+            label: "Clear " + w.doneCount + " completed"; glyph: "🧹"; tint: theme.textSecondary
+            onClicked: w.clearCompleted()
         }
     }
 }

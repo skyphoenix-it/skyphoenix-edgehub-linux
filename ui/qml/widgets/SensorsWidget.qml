@@ -22,16 +22,26 @@ WidgetChrome {
     readonly property bool showCpu: cfg.showCpu !== undefined ? cfg.showCpu : true
     readonly property bool showGpu: cfg.showGpu !== undefined ? cfg.showGpu : true
     readonly property bool showRam: cfg.showRam !== undefined ? cfg.showRam : true
+    readonly property bool showDisk: cfg.showDisk !== undefined ? cfg.showDisk : true
+    readonly property bool showTemps: cfg.showTemps !== undefined ? cfg.showTemps : true
 
     function num(x) { return (x === undefined || x === null) ? -1 : x }
     property var rows: {
+        // Load bars follow the per-widget accent when one is set, else keep their
+        // distinct category colours (which help tell the rows apart at a glance).
+        var accentSet = w.accentName !== ""
+        function lc(base) { return accentSet ? w.effAccent : base }
+        // Temperature bars threshold by the ACTUAL value — a cool GPU must not show
+        // a red bar (the old constant amber/red misread as "hot").
+        function tc(t) { return t > 85 ? theme.error : t > 70 ? theme.warning : (accentSet ? w.effAccent : theme.catSystem) }
+        var ct = num(metrics.cpu_temp_celsius), gt = num(metrics.gpu_temp_celsius)
         var r = [
-            { lbl: "CPU", val: metrics.cpu_usage_percent || 0, max: 100, unit: "%", col: theme.catSystem, show: w.showCpu },
-            { lbl: "GPU", val: num(metrics.gpu_usage_percent), max: 100, unit: "%", col: theme.catGaming, show: w.showGpu && num(metrics.gpu_usage_percent) >= 0 },
-            { lbl: "RAM", val: metrics.ram_usage_percent || 0, max: 100, unit: "%", col: theme.catProductivity, show: w.showRam },
-            { lbl: "DISK", val: metrics.disk_usage_percent || 0, max: 100, unit: "%", col: theme.catInfo, show: (metrics.disk_total_bytes || 0) > 0 },
-            { lbl: "CPU °", val: num(metrics.cpu_temp_celsius), max: 100, unit: "°C", col: theme.warning, show: num(metrics.cpu_temp_celsius) >= 0 },
-            { lbl: "GPU °", val: num(metrics.gpu_temp_celsius), max: 100, unit: "°C", col: theme.error, show: num(metrics.gpu_temp_celsius) >= 0 }
+            { lbl: "CPU", val: metrics.cpu_usage_percent || 0, max: 100, unit: "%", col: lc(theme.catSystem), show: w.showCpu },
+            { lbl: "GPU", val: num(metrics.gpu_usage_percent), max: 100, unit: "%", col: lc(theme.catGaming), show: w.showGpu && num(metrics.gpu_usage_percent) >= 0 },
+            { lbl: "RAM", val: metrics.ram_usage_percent || 0, max: 100, unit: "%", col: lc(theme.catProductivity), show: w.showRam },
+            { lbl: "DISK", val: metrics.disk_usage_percent || 0, max: 100, unit: "%", col: lc(theme.catInfo), show: w.showDisk && (metrics.disk_total_bytes || 0) > 0 },
+            { lbl: "CPU °", val: ct, max: 100, unit: "°C", col: tc(ct), show: w.showTemps && ct >= 0 },
+            { lbl: "GPU °", val: gt, max: 100, unit: "°C", col: tc(gt), show: w.showTemps && gt >= 0 }
         ]
         var out = []
         for (var i = 0; i < r.length; i++) if (r[i].show) out.push(r[i])

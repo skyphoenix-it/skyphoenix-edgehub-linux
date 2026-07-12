@@ -31,7 +31,14 @@ WidgetChrome {
                         ? -1 : metrics.gpu_temp_celsius
     status: (w.showTemp && temp > 0) ? temp.toFixed(0) + "°C" : ""
     statusColor: temp > w.warnTemp ? theme.error : temp > w.warnTemp - 17 ? theme.warning : theme.textSecondary
-    function col(p) { return p > 90 ? theme.error : p > 65 ? theme.warning : theme.catGaming }
+    // Temperature escalates the whole gauge; otherwise reflect load in the accent.
+    function col(p) {
+        if (w.showTemp && w.temp > 0) {
+            if (w.temp > w.warnTemp) return theme.error
+            if (w.temp > w.warnTemp - 12) return theme.warning
+        }
+        return p > 92 ? theme.error : p > 75 ? theme.warning : w.effAccent
+    }
 
     property var hist: []
     onMetricsChanged: {
@@ -46,7 +53,8 @@ WidgetChrome {
         ok: w.avail
         value: Math.min(w.v / 100, 1)
         big: w.avail ? w.v.toFixed(0) + "%" : "N/A"
-        sub: w.avail && w.showTemp && w.temp > 0 ? w.temp.toFixed(0) + "°C" : ""
+        // Temp shows in the header — don't repeat it in the sub-line.
+        sub: ""
         color: w.col(w.v)
         history: w.showHistory ? w.hist : []
         expanded: w.expanded

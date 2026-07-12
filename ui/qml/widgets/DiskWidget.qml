@@ -21,18 +21,28 @@ WidgetChrome {
     readonly property real warnPercent: cfg.warnPercent !== undefined ? cfg.warnPercent : 90
 
     property real v: metrics.disk_usage_percent || 0
-    function col(p) { return p > w.warnPercent ? theme.warning : theme.catInfo }
+    // Amber over the warn line, red when critically full (a nearly-full disk
+    // shouldn't look the same as one just over the threshold).
+    function col(p) {
+        if (p >= 97) return theme.error
+        if (p > w.warnPercent) return theme.warning
+        return w.effAccent
+    }
     function human(b) {
         if (b >= 1099511627776) return (b / 1099511627776).toFixed(2) + " TB"
         return (b / 1073741824).toFixed(0) + " GB"
     }
+    readonly property real freeBytes: Math.max(0, (metrics.disk_total_bytes || 0) - (metrics.disk_used_bytes || 0))
 
     // Disk usage barely changes; the gauge carries it, no sparkline needed.
     MetricGauge {
         anchors.fill: parent
         value: Math.min(w.v / 100, 1)
         big: w.v.toFixed(0) + "%"
-        sub: w.human(metrics.disk_used_bytes || 0) + " / " + w.human(metrics.disk_total_bytes || 0)
+        sub: w.expanded
+             ? (w.human(metrics.disk_used_bytes || 0) + " / " + w.human(metrics.disk_total_bytes || 0)
+                + "  ·  " + w.human(w.freeBytes) + " free")
+             : (w.human(metrics.disk_used_bytes || 0) + " / " + w.human(metrics.disk_total_bytes || 0))
         color: w.col(w.v)
         expanded: w.expanded
     }

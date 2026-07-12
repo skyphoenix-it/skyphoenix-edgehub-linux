@@ -20,7 +20,45 @@ WidgetChrome {
         return (store && instanceId) ? JSON.parse(JSON.stringify(store.settingsFor(instanceId))) : ({})
     }
     readonly property string current: cfg.text || ""
+    property string todayKey: Qt.formatDate(new Date(), "yyyy-MM-dd")
+    property int finishedToday: cfg.day === todayKey ? (cfg.finishedToday || 0) : 0
     function setText(t) { if (store) store.setSetting(instanceId, "text", t) }
+    // Finishing a focus is a small win — count it and celebrate, then clear.
+    function finish() {
+        var had = w.current.trim().length > 0
+        var patch = { text: "" }
+        if (had) { patch.finishedToday = finishedToday + 1; patch.day = todayKey; celebrateNow("🎉 Done!") }
+        if (store) store.patchSettings(instanceId, patch)
+    }
+
+    // Celebration pop (mirrors FocusWidget).
+    property string celebrateMsg: ""
+    function celebrateNow(msg) { celebrateMsg = msg; celebrateAnim.restart(); flash.restart() }
+    Rectangle {
+        anchors.fill: parent; radius: theme.radiusLg; color: w.effAccent; opacity: 0; z: 5
+        SequentialAnimation on opacity {
+            id: flash; running: false
+            NumberAnimation { to: 0.30; duration: 120 }
+            NumberAnimation { to: 0.0; duration: 500 }
+        }
+    }
+    Text {
+        id: celebrateLabel; anchors.centerIn: parent; z: 20
+        text: w.celebrateMsg; opacity: 0
+        font.pixelSize: w.expanded ? 40 : 22; font.bold: true; font.family: theme.fontDisplay
+        color: w.effAccent; horizontalAlignment: Text.AlignHCenter
+        SequentialAnimation {
+            id: celebrateAnim; running: false
+            PropertyAction { target: celebrateLabel; property: "scale"; value: 0.6 }
+            ParallelAnimation {
+                NumberAnimation { target: celebrateLabel; property: "opacity"; from: 0; to: 1; duration: 180 }
+                NumberAnimation { target: celebrateLabel; property: "scale"; to: 1.12
+                    duration: 260; easing.type: theme.reduceMotion ? Easing.Linear : Easing.OutBack }
+            }
+            PauseAnimation { duration: 850 }
+            NumberAnimation { target: celebrateLabel; property: "opacity"; to: 0; duration: 500 }
+        }
+    }
 
     // Compact / display mode
     Item {
@@ -56,15 +94,24 @@ WidgetChrome {
             color: theme.textPrimary; placeholderText: "e.g. Finish the report"
             placeholderTextColor: theme.textTertiary
             background: Rectangle { radius: theme.radiusMd; color: theme.backgroundColor
-                border.color: field.activeFocus ? theme.accent : theme.cardBorder; border.width: 2 }
+                border.color: field.activeFocus ? w.effAccent : theme.cardBorder; border.width: 2 }
             onEditingFinished: w.setText(text)
+            // Resync when the focus changes elsewhere (e.g. cleared by "Done").
+            Connections { target: w; function onCurrentChanged() { if (!field.activeFocus) field.text = w.current } }
+        }
+        Text {
+            Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter
+            visible: w.finishedToday > 0
+            text: "✓ " + w.finishedToday + (w.finishedToday === 1 ? " finished today" : " finished today")
+            font.pixelSize: 15; color: theme.textTertiary
         }
         RowLayout {
             Layout.alignment: Qt.AlignHCenter; spacing: theme.spacingMd
-            PillButton { label: "Save"; glyph: "✓"; primary: true; tint: theme.catProductivity
+            PillButton { label: "Save"; glyph: "✓"; primary: true; tint: w.effAccent
                 onClicked: w.setText(field.text) }
-            PillButton { label: "Done / Clear"; glyph: "🎉"; tint: theme.textSecondary
-                onClicked: { field.text = ""; w.setText("") } }
+            PillButton { label: "Done!"; glyph: "🎉"; tint: theme.textSecondary
+                enabled: w.current.trim().length > 0
+                onClicked: { field.text = ""; w.finish() } }
         }
         Item { Layout.fillHeight: true }
     }

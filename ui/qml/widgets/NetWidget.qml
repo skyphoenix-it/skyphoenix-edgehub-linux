@@ -24,9 +24,15 @@ WidgetChrome {
 
     property real rx: metrics.net_rx_bytes_per_sec || 0
     property real tx: metrics.net_tx_bytes_per_sec || 0
+    property real peakRx: 0
+    property real peakTx: 0
     property var hist: []
     function fmt(bps) {
-        if (w.unit === "bits") return (bps * 8 / 1e6).toFixed(1) + " Mbps"
+        if (w.unit === "bits") {
+            var mb = bps * 8 / 1e6
+            // Step down to Kbps for small values so it doesn't read "0.0 Mbps".
+            return mb < 1 ? (bps * 8 / 1e3).toFixed(0) + " Kbps" : mb.toFixed(1) + " Mbps"
+        }
         if (bps >= 1048576) return (bps / 1048576).toFixed(1) + " MB/s"
         if (bps >= 1024) return (bps / 1024).toFixed(0) + " KB/s"
         return Math.round(bps) + " B/s"
@@ -35,8 +41,11 @@ WidgetChrome {
     onMetricsChanged: {
         hist.push({ r: rx, t: tx })
         if (hist.length > 60) hist.shift()
+        if (rx > peakRx) peakRx = rx
+        if (tx > peakTx) peakTx = tx
         spark.requestPaint()
     }
+    onEffAccentChanged: spark.requestPaint()
 
     ColumnLayout {
         anchors.fill: parent
@@ -49,10 +58,20 @@ WidgetChrome {
                 spacing: 0
                 Text { text: "↓ " + w.fmt(w.rx); color: theme.success; font.bold: true
                     font.family: theme.fontMono; font.pixelSize: w.expanded ? 30 : 15 }
-                Text { text: "↑ " + w.fmt(w.tx); color: theme.accent; font.bold: true
+                Text { text: "↑ " + w.fmt(w.tx); color: w.effAccent; font.bold: true
                     font.family: theme.fontMono; font.pixelSize: w.expanded ? 30 : 15 }
             }
             Item { Layout.fillWidth: true }
+            // Session peaks — a small "best so far" readout (expanded only).
+            ColumnLayout {
+                visible: w.expanded; spacing: 0
+                Text { text: "peak ↓ " + w.fmt(w.peakRx); color: theme.textTertiary
+                    font.family: theme.fontMono; font.pixelSize: 14; horizontalAlignment: Text.AlignRight
+                    Layout.alignment: Qt.AlignRight }
+                Text { text: "peak ↑ " + w.fmt(w.peakTx); color: theme.textTertiary
+                    font.family: theme.fontMono; font.pixelSize: 14; horizontalAlignment: Text.AlignRight
+                    Layout.alignment: Qt.AlignRight }
+            }
         }
 
         Canvas {
@@ -75,7 +94,7 @@ WidgetChrome {
                     ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke()
                 }
                 line("r", theme.success)
-                line("t", theme.accent)
+                line("t", w.effAccent)
             }
             onWidthChanged: requestPaint()
             onHeightChanged: requestPaint()

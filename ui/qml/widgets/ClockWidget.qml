@@ -52,8 +52,13 @@ WidgetChrome {
         ? "dd/MM"
         : (w.expanded ? "dddd, MMMM d yyyy" : "ddd, d MMM")
     function offsetLabel() {
-        var s = w.utcOffset >= 0 ? "+" + w.utcOffset : "" + w.utcOffset
-        return "UTC" + s
+        var o = w.utcOffset
+        var sign = o < 0 ? "-" : "+"
+        var a = Math.abs(o)
+        var h = Math.floor(a)
+        var m = Math.round((a - h) * 60)
+        var mm = m > 0 ? ":" + (m < 10 ? "0" : "") + m : ""
+        return "UTC" + sign + h + mm
     }
 
     ColumnLayout {
@@ -65,7 +70,7 @@ WidgetChrome {
             visible: w.customZone && (w.zoneLabel.length > 0 || w.expanded)
             text: w.zoneLabel.length ? w.zoneLabel : w.offsetLabel()
             font.pixelSize: w.expanded ? 22 : 12; font.bold: true
-            font.family: theme.fontDisplay; color: theme.accent
+            font.family: theme.fontDisplay; color: w.effAccent
             elide: Text.ElideRight; Layout.maximumWidth: w.width * 0.9
         }
         Text {
@@ -73,11 +78,6 @@ WidgetChrome {
             text: (w.tick, Qt.formatTime(w.zonedNow(), w.timeFmt))
             font.pixelSize: w.expanded ? 168 : Math.max(30, Math.min(w.width * 0.24, 74))
             font.bold: true; font.family: theme.fontMono; color: theme.textPrimary
-        }
-        Text {
-            Layout.alignment: Qt.AlignHCenter; visible: w.expanded && w.showSeconds
-            text: (w.tick, Qt.formatTime(w.zonedNow(), "ss")) + " sec"
-            font.pixelSize: 24; font.family: theme.fontMono; color: theme.accent
         }
         Text {
             Layout.alignment: Qt.AlignHCenter; visible: w.showDate

@@ -60,8 +60,8 @@ QtObject {
                 { key: "customZone", label: "Use a specific time zone", type: "toggle", dflt: false },
                 { key: "zoneLabel", label: "Zone name", type: "text", placeholder: "New York", dflt: "",
                   help: "A label shown above the time (e.g. the city)." },
-                { key: "utcOffset", label: "UTC offset", type: "slider", min: -12, max: 14, step: 1, suffix: " h", dflt: 0,
-                  help: "Hours from UTC. Note: a fixed offset, so it doesn't follow daylight-saving changes." } ] },
+                { key: "utcOffset", label: "UTC offset", type: "slider", min: -12, max: 14, step: 0.5, suffix: " h", dflt: 0,
+                  help: "Hours from UTC (½-hour steps for zones like India +5:30). A fixed offset, so it doesn't follow daylight-saving changes." } ] },
             titleSection("Clock"),
             about("A digital clock. Choose 12/24-hour, seconds, and how the date is shown.") ] }
 
@@ -126,11 +126,14 @@ QtObject {
 
         case "sensors": return { sections: [
             { title: "Rows to show", cols: 1, fields: [
-                { key: "showCpu", label: "CPU load & temp", type: "toggle", dflt: true },
-                { key: "showGpu", label: "GPU load & temp", type: "toggle", dflt: true },
-                { key: "showRam", label: "Memory", type: "toggle", dflt: true } ] },
+                { key: "showCpu", label: "CPU load", type: "toggle", dflt: true },
+                { key: "showGpu", label: "GPU load", type: "toggle", dflt: true },
+                { key: "showRam", label: "Memory", type: "toggle", dflt: true },
+                { key: "showDisk", label: "Disk usage", type: "toggle", dflt: true },
+                { key: "showTemps", label: "Temperatures", type: "toggle", dflt: true,
+                  help: "CPU and GPU temperature bars (colour-coded by how hot they are)." } ] },
             titleSection("Sensors"),
-            about("CPU, GPU and memory together at a glance.") ] }
+            about("CPU, GPU, memory, disk and temperatures together at a glance.") ] }
 
         case "weather": return { sections: [
             { title: "Location", cols: 1, fields: [
@@ -169,7 +172,9 @@ QtObject {
         case "tasks": return { sections: [
             { title: "Tasks", cols: 1, fields: [ { key: "items", label: "", type: "tasks" } ] },
             { title: "Display", cols: 1, fields: [
-                { key: "hideCompleted", label: "Hide completed tasks", type: "toggle", dflt: false } ] },
+                { key: "hideCompleted", label: "Hide completed tasks", type: "toggle", dflt: false },
+                { key: "celebrate", label: "Celebrate clearing the list", type: "toggle", dflt: true,
+                  help: "A little burst when you check off the last task." } ] },
             titleSection("Tasks"),
             about("A simple checklist. Add tasks here or on the Edge; tap the circle to complete.") ] }
 
@@ -184,7 +189,9 @@ QtObject {
         case "break": return { sections: [
             { title: "Reminder", cols: 1, fields: [
                 { key: "intervalMin", label: "Remind me every", type: "slider", min: 5, max: 120, step: 5, suffix: " min", dflt: 30 },
-                { key: "message", label: "Reminder message", type: "text", placeholder: "Time to stretch!", dflt: "" } ] },
+                { key: "message", label: "Reminder message", type: "text", placeholder: "Time to stretch!", dflt: "" },
+                { key: "showSuggestion", label: "Suggest a break activity", type: "toggle", dflt: true,
+                  help: "Shows a small “try this” idea when a break is due." } ] },
             titleSection("Break Reminder"),
             about("A repeating nudge to take a break.") ] }
 
@@ -192,6 +199,9 @@ QtObject {
             { title: "Event", cols: 2, fields: [
                 { key: "label", label: "Label", type: "text", placeholder: "Vacation" },
                 { key: "date", label: "Date", type: "date" } ] },
+            { title: "Behaviour", cols: 1, fields: [
+                { key: "repeatYearly", label: "Repeats every year", type: "toggle", dflt: false,
+                  help: "For birthdays and anniversaries — counts down to the next occurrence and never shows “passed”." } ] },
             titleSection("Countdown"),
             about("Counts the days to a date you choose.") ] }
 
@@ -200,6 +210,9 @@ QtObject {
                 { key: "startHour", label: "Start hour", type: "hour", dflt: 9 },
                 { key: "endHour", label: "End hour", type: "hour", dflt: 17 } ] },
             { title: "Display", cols: 1, fields: [
+                { key: "progressStyle", label: "Progress style", type: "segmented", dflt: "bar", options: [
+                    { value: "bar", label: "Bar" },
+                    { value: "ring", label: "Ring" } ] },
                 { key: "showPercent", label: "Show percent complete", type: "toggle", dflt: true } ] },
             titleSection("End of Day"),
             about("How much of your workday is left.") ] }
@@ -237,8 +250,18 @@ QtObject {
             about("Controls whatever is playing on the Edge's machine (Spotify, YouTube Music, …). No configuration needed.") ] }
 
         case "quote": return { sections: [
+            { title: "Source", cols: 1, fields: [
+                { key: "category", label: "Category", type: "segmented", dflt: "focus", options: [
+                    { value: "focus", label: "Focus" },
+                    { value: "stoic", label: "Stoic" },
+                    { value: "humor", label: "Humour" },
+                    { value: "kindness", label: "Kindness" },
+                    { value: "custom", label: "My own" } ] },
+                { key: "customText", label: "Your own quotes", type: "textarea",
+                  placeholder: "One per line — add “ — Author” for attribution",
+                  help: "Used when the category is “My own”. One quote per line." } ] },
             titleSection("Daily Quote"),
-            about("A fresh bit of motivation each day.") ] }
+            about("A fresh bit of motivation each day. Pick a category or add your own; Shuffle grabs another.") ] }
 
         default: return { sections: [ titleSection(type) ] }
         }
