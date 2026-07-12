@@ -134,7 +134,18 @@ void MprisBridge::refresh() {
     if (posR.isValid())
         m_positionUs = posR.value().variant().toLongLong();
 
-    m_available = true;
+    // A service can be registered on the bus (CanControl: true) with no track
+    // actually loaded — e.g. a browser tab with audio capability but nothing
+    // played yet, or a player that was just stopped. Treat that as genuinely
+    // "nothing playing" rather than showing a blank card: require either a
+    // real title or an active Playing/Paused status.
+    const bool hasTrack = !m_title.isEmpty();
+    const bool isActive = m_status == QStringLiteral("Playing") || m_status == QStringLiteral("Paused");
+    m_available = hasTrack || isActive;
+    if (!m_available) {
+        m_title = m_artist = m_album = m_artUrl = QString();
+        m_lengthUs = 0;
+    }
     emit changed();
     emit positionChanged();
 }

@@ -175,9 +175,12 @@ Item {
                                 id: cell
                                 required property int index
                                 required property var modelData
+                                property int rowSpan: Math.max(1, modelData.h || 1)
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
-                                Layout.minimumHeight: 120
+                                Layout.columnSpan: Math.max(1, Math.min(modelData.w || 1, pageItem.cols))
+                                Layout.rowSpan: rowSpan
+                                Layout.minimumHeight: 120 * rowSpan + theme.spacingMd * (rowSpan - 1)
 
                                 scale: tapMA.pressed && !dashboard.editMode ? 0.98 : 1.0
                                 Behavior on scale { NumberAnimation { duration: theme.motionFast; easing.type: Easing.OutCubic } }
@@ -262,6 +265,25 @@ Item {
                                             visible: cell.index < pageItem.tiles.length - 1
                                             Text { anchors.centerIn: parent; text: "▶"; font.pixelSize: 20; color: theme.textPrimary }
                                             MouseArea { anchors.fill: parent; onClicked: store.moveTile(pageItem.index, cell.index, cell.index + 1) }
+                                        }
+                                        // resize cycle: 1x1 -> 2x1 -> 1x2 -> 2x2 -> 1x1
+                                        Rectangle {
+                                            Layout.preferredWidth: theme.touchSecondary; Layout.preferredHeight: theme.touchSecondary
+                                            radius: width / 2; color: theme.cardBackgroundAlt; border.width: 1; border.color: theme.cardBorder
+                                            Text { anchors.centerIn: parent; text: "⤢"; font.pixelSize: 20; color: theme.textPrimary }
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                onClicked: {
+                                                    var w = cell.modelData.w || 1
+                                                    var h = cell.modelData.h || 1
+                                                    var nw = 1, nh = 1
+                                                    if (w === 1 && h === 1) { nw = 2; nh = 1 }
+                                                    else if (w === 2 && h === 1) { nw = 1; nh = 2 }
+                                                    else if (w === 1 && h === 2) { nw = 2; nh = 2 }
+                                                    else { nw = 1; nh = 1 }
+                                                    store.setTileSize(pageItem.index, cell.modelData.id, nw, nh)
+                                                }
+                                            }
                                         }
                                     }
                                 }

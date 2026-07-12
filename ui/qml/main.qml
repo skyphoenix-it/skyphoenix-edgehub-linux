@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
+import QtQuick.VirtualKeyboard
 
 ApplicationWindow {
     id: root
@@ -108,6 +109,10 @@ ApplicationWindow {
         property int radiusLg: 16
         property int radiusXl: 22
 
+        // --- Decoration tokens (vary per theme mode for genuine visual identity) ---
+        property int cardBorderWidth: 1
+        property bool decorative: true
+
         // --- Touch-target tokens (design system: 44/48/64) ---
         property int touchPrimary: 64     // Play, Pause, Add
         property int touchSecondary: 48   // Settings, Close
@@ -158,6 +163,8 @@ ApplicationWindow {
                 textPrimary = "#1F2328";
                 textSecondary = "#656D76";
                 textTertiary = "#8C959F";
+                radiusSm = 6; radiusMd = 9; radiusLg = 12; radiusXl = 16;
+                decorative = true; cardBorderWidth = 1;
                 break;
             case "oled":
                 backgroundColor = "#000000";
@@ -168,6 +175,8 @@ ApplicationWindow {
                 textPrimary = "#E0E0E0";
                 textSecondary = "#808080";
                 textTertiary = "#5A5A5A";
+                radiusSm = 8; radiusMd = 12; radiusLg = 16; radiusXl = 22;
+                decorative = true; cardBorderWidth = 1;
                 break;
             case "high_contrast":
                 backgroundColor = "#000000";
@@ -178,6 +187,8 @@ ApplicationWindow {
                 textPrimary = "#FFFFFF";
                 textSecondary = "#CCCCCC";
                 textTertiary = "#AAAAAA";
+                radiusSm = 2; radiusMd = 3; radiusLg = 4; radiusXl = 6;
+                decorative = false; cardBorderWidth = 2;
                 break;
             default: // dark
                 backgroundColor = "#0D1117";
@@ -188,6 +199,8 @@ ApplicationWindow {
                 textPrimary = "#E6EDF3";
                 textSecondary = "#8B949E";
                 textTertiary = "#6E7681";
+                radiusSm = 8; radiusMd = 12; radiusLg = 16; radiusXl = 22;
+                decorative = true; cardBorderWidth = 1;
                 break;
             }
             applyAccent(root.accentName);
@@ -210,6 +223,18 @@ ApplicationWindow {
         initialItem: isFirstRun ? "qrc:/qml/FirstRunWizard.qml" :
                      startInDiagnostics ? "qrc:/qml/Diagnostics.qml" :
                      "qrc:/qml/Dashboard.qml"
+    }
+
+    // On-screen keyboard: this is a touchscreen device with no attached
+    // physical keyboard, so any focused TextField needs a way to type.
+    // Slides up from the bottom when a text input takes focus.
+    InputPanel {
+        id: inputPanel
+        z: 1000
+        anchors.left: parent.left
+        anchors.right: parent.right
+        y: active ? root.height - height : root.height
+        Behavior on y { NumberAnimation { duration: theme.motionEdit; easing.type: Easing.OutCubic } }
     }
 
 

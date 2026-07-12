@@ -142,6 +142,19 @@ Item {
             }
         }
     }
+    // Cycle sizes: 1x1 -> 2x1 (wide) -> 1x2 (tall) -> 2x2 (large) -> 1x1
+    function setTileSize(pageIdx, tileId, w, h) {
+        if (pageIdx < 0 || pageIdx >= data.pages.length) return
+        var tiles = data.pages[pageIdx].tiles
+        for (var i = 0; i < tiles.length; i++) {
+            if (tiles[i].id === tileId) {
+                tiles[i].w = w
+                tiles[i].h = h
+                _commitStructure()
+                return
+            }
+        }
+    }
     function moveTile(pageIdx, fromIdx, toIdx) {
         var tiles = data.pages[pageIdx].tiles
         if (fromIdx < 0 || fromIdx >= tiles.length) return

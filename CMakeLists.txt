@@ -17,7 +17,7 @@ include(CheckIPOSupported)
 check_ipo_supported(RESULT IPO_SUPPORTED OUTPUT IPO_ERROR)
 
 # Find Qt6
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Quick Qml DBus)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Quick Qml DBus VirtualKeyboard)
 
 # --- Build Rust Core Library ---
 
@@ -71,6 +71,7 @@ target_link_libraries(xeneon-edge-hub PRIVATE
     Qt6::Quick
     Qt6::Qml
     Qt6::DBus
+    Qt6::VirtualKeyboard
     ${RUST_LIB}
     pthread
     dl

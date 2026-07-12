@@ -37,7 +37,7 @@ Item {
     default property alias content: body.data
 
     // Convenience: header height scales with size.
-    readonly property int headerHeight: big ? 30 : 20
+    readonly property int headerHeight: big ? 30 : 26
 
     // --- Card surface ---
     Rectangle {
@@ -46,13 +46,14 @@ Item {
         anchors.fill: parent
         radius: theme.radiusLg
         color: theme.cardFill()
-        border.width: 1
+        border.width: theme.cardBorderWidth
         border.color: chrome.interactive && hoverArea.containsMouse
                       ? chrome.accentColor : theme.cardBorder
         Behavior on border.color { ColorAnimation { duration: theme.motionFast } }
 
         // Diagonal glass gradient
         Rectangle {
+            visible: theme.decorative
             anchors.fill: parent
             radius: parent.radius
             gradient: Gradient {
@@ -65,6 +66,7 @@ Item {
 
         // Accent wash in the top-left corner — ties each widget to its category.
         Rectangle {
+            visible: theme.decorative
             anchors.fill: parent
             radius: parent.radius
             opacity: 0.10
@@ -111,11 +113,11 @@ Item {
             Text {
                 visible: chrome.icon !== ""
                 text: chrome.icon
-                font.pixelSize: chrome.big ? 18 : 13
+                font.pixelSize: chrome.big ? 18 : 16
             }
             Text {
                 text: chrome.title
-                font.pixelSize: chrome.big ? theme.fontTitle : 11
+                font.pixelSize: chrome.big ? theme.fontTitle : 14
                 font.weight: Font.DemiBold
                 font.family: theme.fontDisplay
                 color: theme.textSecondary
@@ -131,7 +133,7 @@ Item {
             Text {
                 visible: chrome.status !== ""
                 text: chrome.status
-                font.pixelSize: chrome.big ? 12 : 9
+                font.pixelSize: chrome.big ? 12 : 11
                 font.family: theme.fontMono
                 color: chrome.statusColor
             }
