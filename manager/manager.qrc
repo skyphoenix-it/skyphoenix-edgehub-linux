@@ -5,7 +5,7 @@
         <file alias="Theme.qml">../ui/qml/Theme.qml</file>
         <file alias="MockMedia.qml">qml/MockMedia.qml</file>
         <file alias="WidgetConfigSchema.qml">../ui/qml/WidgetConfigSchema.qml</file>
-        <file alias="ConfigField.qml">../ui/qml/ConfigField.qml</file>
+        <file alias="ConfigField.qml">../ui/qml/widgets/ConfigField.qml</file>
         <file alias="WidgetConfigPanel.qml">../ui/qml/widgets/WidgetConfigPanel.qml</file>
         <file alias="WidgetConfigDialog.qml">qml/WidgetConfigDialog.qml</file>
         <!-- Reuse the hub's store + registry. -->

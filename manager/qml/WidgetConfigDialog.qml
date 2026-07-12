@@ -36,7 +36,8 @@ Dialog {
         store.ensureSettings(dlg.wId, catalog.defaults(dlg.wType))
         item.instanceId = dlg.wId
         item.store = store
-        item.expanded = false
+        item.expanded = true                       // show the full, interactive layout
+        if (item.hasOwnProperty("showHeader")) item.showHeader = false
         if (item.hasOwnProperty("active")) item.active = true
         item.metrics = Qt.binding(function () { return dlg.metricsObj })
         if (item.hasOwnProperty("titleOverride"))
@@ -84,12 +85,12 @@ Dialog {
     contentItem: RowLayout {
         spacing: 18
 
-        // ── Live preview ──
+        // ── Live, interactive preview ──
         ColumnLayout {
-            Layout.preferredWidth: 300; Layout.maximumWidth: 300; Layout.fillHeight: true; spacing: 10
+            Layout.preferredWidth: 340; Layout.maximumWidth: 340; Layout.fillHeight: true; spacing: 10
             Text { text: "Live preview"; color: m.textSecondary; font.pixelSize: 13; font.bold: true }
             Rectangle {
-                Layout.fillWidth: true; Layout.preferredHeight: 300
+                Layout.fillWidth: true; Layout.fillHeight: true
                 radius: 18; color: theme.backgroundColor; border.width: 2; border.color: "#000"; clip: true
                 Rectangle {
                     anchors.fill: parent; anchors.margins: 10; radius: 12; clip: true
@@ -106,10 +107,9 @@ Dialog {
             }
             Text {
                 Layout.fillWidth: true; wrapMode: Text.WordWrap
-                text: "Changes apply instantly to the Edge."
+                text: "Live & interactive — changes apply instantly to the Edge."
                 color: m.textSecondary; font.pixelSize: 12
             }
-            Item { Layout.fillHeight: true }
             Button {
                 text: "Reset to defaults"; Layout.fillWidth: true
                 onClicked: {

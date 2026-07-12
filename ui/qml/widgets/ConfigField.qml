@@ -11,6 +11,7 @@ import QtQuick.Layouts
 //           (+ optional ctlH = control height, fontBase = base font size)
 Item {
     id: f
+    objectName: "field-" + (field.key || field.type || "")   // test hook
     property var field: ({})
     property var st: null        // the store (named 'st' to avoid a self-binding
                                  // collision with the caller's `store` id)
@@ -159,7 +160,7 @@ Item {
     }
     Component {
         id: toggleC
-        Switch { checked: f.cur() === true; onToggled: f.setV(checked) }
+        Switch { objectName: "control"; checked: f.cur() === true; onToggled: f.setV(checked) }
     }
     Component {
         id: segC

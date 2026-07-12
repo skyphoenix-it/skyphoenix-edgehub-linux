@@ -18,18 +18,43 @@ Item {
     property string statusText: ""      // e.g. geocode result, shown under the form
     signal actionRequested(string action)
 
-    ScrollView {
+    // A plain Flickable (not ScrollView) so the mouse-wheel step is fully under
+    // our control — the default was tiny ("~10px per scroll"). A WheelHandler as a
+    // direct child intercepts the wheel and moves a sensible amount per notch,
+    // handling both mice (angleDelta) and trackpads (pixelDelta). pressDelay 0 +
+    // StopAtBounds keeps controls feeling instantly clickable, never draggy.
+    Flickable {
         id: scroll
+        objectName: "cfgScroll"
         anchors.fill: parent
         clip: true
-        contentWidth: availableWidth
+        contentWidth: width
+        contentHeight: formCol.implicitHeight
+        boundsBehavior: Flickable.StopAtBounds
+        pressDelay: 0
+        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+        WheelHandler {
+            acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+            onWheel: function (ev) {
+                var dy = ev.pixelDelta.y !== 0 ? ev.pixelDelta.y : ev.angleDelta.y
+                var maxY = Math.max(0, scroll.contentHeight - scroll.height)
+                scroll.contentY = Math.max(0, Math.min(maxY, scroll.contentY - dy * 1.1))
+                ev.accepted = true
+            }
+        }
 
         ColumnLayout {
-            width: scroll.availableWidth
+            id: formCol
+            width: scroll.width
             spacing: 14
 
             Repeater {
-                model: panel.schema ? panel.schema.sections : []
+                // The "About this widget" section duplicates the header description
+                // shown above the panel, so don't render it here.
+                model: panel.schema
+                       ? panel.schema.sections.filter(function (s) { return s.title !== "About this widget" })
+                       : []
                 delegate: Rectangle {
                     required property var modelData
                     Layout.fillWidth: true

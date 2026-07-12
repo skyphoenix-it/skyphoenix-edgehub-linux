@@ -622,16 +622,14 @@ Item {
             columns: overlay.ovlWide ? 2 : 1
             rowSpacing: theme.spacingMd; columnSpacing: theme.spacingMd
 
-            // ── Live preview ──
+            // ── Live, interactive widget ──
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: overlay.ovlWide
-                Layout.preferredWidth: overlay.ovlWide ? overlay.width * 0.42 : -1
-                Layout.preferredHeight: overlay.ovlWide ? -1 : Math.min(overlay.height * 0.34, 560)
+                Layout.preferredWidth: overlay.ovlWide ? overlay.width * 0.46 : -1
+                Layout.preferredHeight: overlay.ovlWide ? -1 : Math.min(overlay.height * 0.46, 1080)
                 spacing: theme.spacingSm
 
-                Text { text: "Preview"; color: theme.textSecondary; font.pixelSize: theme.fontCaption
-                    font.bold: true }
                 Rectangle {
                     Layout.fillWidth: true; Layout.fillHeight: true
                     radius: theme.radiusLg
@@ -641,15 +639,19 @@ Item {
                     Loader {
                         id: ovlLoader
                         anchors.fill: parent
-                        anchors.margins: theme.spacingMd
+                        anchors.margins: theme.spacingLg
                         active: dashboard.hasExpanded && catalog.source(dashboard.expandedType) !== ""
                         source: active ? catalog.source(dashboard.expandedType) : ""
                         onLoaded: {
-                            dashboard.injectWidget(item, dashboard.expandedId, dashboard.expandedType, false)
+                            // expanded=true → the widget shows its full, INTERACTIVE
+                            // layout (e.g. Focus's Start/preset controls), usable here.
+                            dashboard.injectWidget(item, dashboard.expandedId, dashboard.expandedType, true)
                             dashboard.overlayLoaderItem = item
                             if (item) {
                                 item.active = true
                                 if (item.hasOwnProperty("chromeless")) item.chromeless = true
+                                // The overlay header already shows the title/icon.
+                                if (item.hasOwnProperty("showHeader")) item.showHeader = false
                             }
                         }
                     }

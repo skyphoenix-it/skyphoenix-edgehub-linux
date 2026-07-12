@@ -39,6 +39,18 @@ WidgetChrome {
     readonly property int workMin: cfg.workMin !== undefined ? cfg.workMin : 25
     readonly property int breakMin: cfg.breakMin !== undefined ? cfg.breakMin : 5
     readonly property bool autoStartBreak: cfg.autoStartBreak !== undefined ? cfg.autoStartBreak : false
+
+    // ADHD-friendly "momentum" options (all honoured below).
+    readonly property int dailyGoal: cfg.dailyGoal !== undefined ? cfg.dailyGoal : 4
+    readonly property bool celebrate: cfg.celebrate !== undefined ? cfg.celebrate : true
+    readonly property bool rewardPoints: cfg.rewardPoints !== undefined ? cfg.rewardPoints : true
+    readonly property bool showNudges: cfg.showNudges !== undefined ? cfg.showNudges : true
+    readonly property bool breakSuggestions: cfg.breakSuggestions !== undefined ? cfg.breakSuggestions : true
+    readonly property int points: cfg.points || 0
+    readonly property var breakIdeas: [
+        "Stand up & stretch", "Drink some water", "Look 20ft away for 20s",
+        "Roll your shoulders", "Take 5 slow breaths", "Quick walk around"
+    ]
     property var p: presetName === "custom"
         ? ({ work: workMin, short: breakMin, long: breakMin, every: 4, label: "Custom" })
         : (presets[presetName] || presets["classic"])
@@ -87,23 +99,46 @@ WidgetChrome {
     function advance(natural) {
         var cw = completedWork
         var nextPhase, done = cw, run
+        var pts = points
         if (phase === "work") {
             done = cw + 1
             nextPhase = (done % p.every === 0) ? "long" : "short"
             // Roll straight into the break only when the user opted in;
             // otherwise pause and wait for them to start it.
             run = autoStartBreak
+            // Reward: points per session (+ a bonus for hitting the daily goal),
+            // and a celebration — a small, honest dopamine hit.
+            var hitGoal = (done === dailyGoal)
+            if (rewardPoints) pts += 10 + (hitGoal ? 50 : 0)
+            if (celebrate) celebrateNow(hitGoal ? "🎯 Goal reached!  +50" : "🎉 Nice! Session done")
         } else {
             nextPhase = "work"
             // Never auto-start a work phase after a break.
             run = false
         }
         var secs = phaseSeconds(nextPhase)
-        save({ phase: nextPhase, doneToday: done, day: today(),
+        save({ phase: nextPhase, doneToday: done, day: today(), points: pts,
                running: run, endEpoch: run ? Date.now() + secs * 1000 : 0, pausedRemaining: secs })
         flash.restart()
     }
+
+    // Celebration pop (message scales/fades in over a colour flash).
+    property string celebrateMsg: ""
+    function celebrateNow(msg) { celebrateMsg = msg; celebrateAnim.restart(); flash.restart() }
     function skip() { advance(false) }
+
+    // Keep the idle clock in sync with the chosen preset / custom lengths: when
+    // the timer is NOT running, changing the preset (via the widget's segmented)
+    // or the custom minutes (via the config panel) resets the shown time + ring to
+    // the new phase length. Guarded so it's a no-op when already correct, and
+    // deferred to avoid a binding loop with `p`.
+    onPChanged: Qt.callLater(_syncIdleDuration)
+    function _syncIdleDuration() {
+        if (running) return
+        var secs = phaseSeconds(phase)
+        if (cfg.pausedRemaining !== secs || cfg.endEpoch)
+            save({ pausedRemaining: secs, endEpoch: 0 })
+    }
 
     // Only the active (visible) instance drives completion, so phases never
     // double-advance. `remaining` itself is derived from endEpoch everywhere.
@@ -121,6 +156,24 @@ WidgetChrome {
             id: flash; running: false
             NumberAnimation { to: 0.35; duration: 120 }
             NumberAnimation { to: 0.0; duration: 500 }
+        }
+    }
+    // Celebration message — pops in on a completed session (dopamine kick).
+    Text {
+        id: celebrateLabel; anchors.centerIn: parent; z: 20
+        text: w.celebrateMsg; opacity: 0
+        font.pixelSize: w.expanded ? 34 : 18; font.bold: true; font.family: theme.fontDisplay
+        color: w.phaseColor(); horizontalAlignment: Text.AlignHCenter
+        SequentialAnimation {
+            id: celebrateAnim; running: false
+            PropertyAction { target: celebrateLabel; property: "scale"; value: 0.6 }
+            ParallelAnimation {
+                NumberAnimation { target: celebrateLabel; property: "opacity"; from: 0; to: 1; duration: 180 }
+                NumberAnimation { target: celebrateLabel; property: "scale"; to: 1.12
+                    duration: 260; easing.type: theme.reduceMotion ? Easing.Linear : Easing.OutBack }
+            }
+            PauseAnimation { duration: 950 }
+            NumberAnimation { target: celebrateLabel; property: "opacity"; to: 0; duration: 500 }
         }
     }
 
@@ -170,14 +223,36 @@ WidgetChrome {
                 Text { Layout.alignment: Qt.AlignHCenter; text: w.fmt(w.remaining)
                     font.pixelSize: Math.min(bigRing.width * 0.30, 92); font.family: theme.fontMono
                     font.bold: true; color: theme.textPrimary }
-                Text { Layout.alignment: Qt.AlignHCenter
-                    text: w.completedWork + " done today"; font.pixelSize: 12; color: theme.textSecondary }
+                RowLayout {
+                    Layout.alignment: Qt.AlignHCenter; spacing: theme.spacingSm
+                    Text { text: w.completedWork + " / " + w.dailyGoal + " today"
+                        font.pixelSize: 12; color: w.completedWork >= w.dailyGoal ? theme.success : theme.textSecondary
+                        font.bold: w.completedWork >= w.dailyGoal }
+                    Text { visible: w.rewardPoints; text: "·  ⭐ " + w.points + " pts"
+                        font.pixelSize: 12; color: theme.textSecondary }
+                }
+                // Goal progress dots — a glanceable "streak" bar.
+                RowLayout {
+                    Layout.alignment: Qt.AlignHCenter; spacing: 4; Layout.topMargin: 2
+                    Repeater {
+                        model: Math.min(w.dailyGoal, 8)
+                        delegate: Rectangle {
+                            required property int index
+                            width: 8; height: 8; radius: 4
+                            color: index < w.completedWork ? theme.success : theme.cardBorder
+                        }
+                    }
+                }
             }
         }
+        // Encouraging nudge (focus) or a break-activity suggestion (break).
         Text {
-            Layout.fillWidth: true; visible: w.phase === "work"
+            Layout.fillWidth: true
+            visible: (w.phase === "work" && w.showNudges) || (w.phase !== "work" && w.breakSuggestions)
             horizontalAlignment: Text.AlignHCenter
-            text: w.nudges[w.completedWork % w.nudges.length]
+            text: w.phase === "work"
+                  ? w.nudges[w.completedWork % w.nudges.length]
+                  : "Break idea: " + w.breakIdeas[w.completedWork % w.breakIdeas.length]
             font.pixelSize: 13; font.italic: true; color: theme.textTertiary; elide: Text.ElideRight
         }
         RowLayout {

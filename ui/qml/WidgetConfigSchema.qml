@@ -119,17 +119,21 @@ QtObject {
             about("Current conditions and a multi-day forecast from Open-Meteo (free, no API key).") ] }
 
         case "focus": return { sections: [
-            { title: "Timer preset", cols: 1, fields: [
-                { key: "preset", label: "", type: "segmented", dflt: "classic", options: [
-                    { value: "classic", label: "Classic · 25/5" },
-                    { value: "deep", label: "Deep · 50/10" },
-                    { value: "sprint", label: "Sprint · 15/3" },
-                    { value: "custom", label: "Custom" } ] } ] },
-            { title: "Custom lengths", cols: 2, desc: "Used when the preset is “Custom”.", fields: [
+            { title: "Custom lengths", cols: 2, desc: "Used when you pick the “Custom” preset on the timer.", fields: [
                 { key: "workMin", label: "Focus", type: "number", min: 1, max: 180, step: 1, suffix: " min", dflt: 25 },
                 { key: "breakMin", label: "Break", type: "number", min: 1, max: 60, step: 1, suffix: " min", dflt: 5 } ] },
             { title: "Behaviour", cols: 1, fields: [
                 { key: "autoStartBreak", label: "Auto-start the break", type: "toggle", dflt: false } ] },
+            { title: "Momentum (ADHD-friendly)", cols: 1,
+              desc: "Small wins to keep you going.", fields: [
+                { key: "dailyGoal", label: "Daily focus goal", type: "number", min: 1, max: 16, step: 1, suffix: " sessions", dflt: 4,
+                  help: "Progress toward this shows on the timer; hitting it triggers a bigger celebration." },
+                { key: "celebrate", label: "Celebrate finished sessions", type: "toggle", dflt: true,
+                  help: "A burst of colour + a “nice!” when a focus session completes — a little dopamine hit." },
+                { key: "rewardPoints", label: "Earn reward points", type: "toggle", dflt: true,
+                  help: "Rack up points per session (bonus for hitting your goal)." },
+                { key: "showNudges", label: "Show encouraging nudges", type: "toggle", dflt: true },
+                { key: "breakSuggestions", label: "Suggest a break activity", type: "toggle", dflt: true } ] },
             titleSection("Focus Timer"),
             about("A Pomodoro focus timer. Pick a preset or set custom lengths; it keeps running even when this view is closed.") ] }
 

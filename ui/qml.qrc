@@ -9,7 +9,7 @@
         <file>qml/WallpaperCatalog.qml</file>
         <file>qml/BackgroundCatalog.qml</file>
         <file>qml/WidgetConfigSchema.qml</file>
-        <file>qml/ConfigField.qml</file>
+        <file alias="qml/ConfigField.qml">qml/widgets/ConfigField.qml</file>
         <file>qml/Theme.qml</file>
 
         <!-- Shared framework components -->
