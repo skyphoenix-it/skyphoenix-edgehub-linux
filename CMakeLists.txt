@@ -156,7 +156,32 @@ endif()
 
 # Install
 install(TARGETS xeneon-edge-hub xeneon-edge-manager DESTINATION bin)
-install(FILES assets/xeneon-edge-hub.desktop DESTINATION share/applications OPTIONAL)
+
+# Desktop entries + AppStream metadata (both apps).
+install(FILES
+    assets/xeneon-edge-hub.desktop
+    assets/xeneon-edge-manager.desktop
+    DESTINATION share/applications)
+install(FILES
+    assets/metainfo/com.skyphoenix_it.XeneonEdgeHub.metainfo.xml
+    assets/metainfo/com.skyphoenix_it.XeneonEdgeManager.metainfo.xml
+    DESTINATION share/metainfo)
+
+# App icons (hicolor theme): scalable SVG source + rasterized PNG sizes.
+install(FILES
+    assets/icon/xeneon-edge-hub.svg
+    assets/icon/xeneon-edge-manager.svg
+    DESTINATION share/icons/hicolor/scalable/apps)
+foreach(_sz 16 32 48 64 128 256 512)
+    install(FILES
+        "assets/icon/hicolor/${_sz}x${_sz}/apps/xeneon-edge-hub.png"
+        "assets/icon/hicolor/${_sz}x${_sz}/apps/xeneon-edge-manager.png"
+        DESTINATION "share/icons/hicolor/${_sz}x${_sz}/apps")
+endforeach()
+
+# License.
+install(FILES LICENSE DESTINATION share/licenses/xeneon-edge-hub)
+
 # udev rule for Edge orientation-sensor access (installed under /usr by default;
 # override with -DUDEV_RULES_DIR=/etc/udev/rules.d for a system install).
 set(UDEV_RULES_DIR "${CMAKE_INSTALL_PREFIX}/lib/udev/rules.d" CACHE PATH "udev rules directory")

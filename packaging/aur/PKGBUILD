@@ -1,0 +1,30 @@
+# Maintainer: Simon Kreitmayer <simon.kreitmayer@skyphoenix-it.com>
+pkgname=xeneon-edge-hub
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Native Linux widget dashboard for the Corsair Xeneon Edge and other secondary touchscreens (includes the companion Manager)"
+arch=('x86_64')
+url="https://github.com/skyphoenix-it/XeneonEdge_Linux"
+license=('MIT')
+depends=('qt6-base' 'qt6-declarative' 'qt6-svg' 'qt6-virtualkeyboard' 'qt6-wayland' 'hicolor-icon-theme')
+makedepends=('cmake' 'rust')
+install="$pkgname.install"
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+_srcdir="XeneonEdge_Linux-$pkgver"
+
+build() {
+  cd "$_srcdir"
+  cmake -B build -S . \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DUDEV_RULES_DIR=/usr/lib/udev/rules.d \
+    -Wno-dev
+  cmake --build build -j"$(nproc)"
+}
+
+package() {
+  cd "$_srcdir"
+  DESTDIR="$pkgdir" cmake --install build
+}

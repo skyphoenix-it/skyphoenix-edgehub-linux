@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.skyphoenix_it.XeneonEdgeHub</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+
+  <name>Xeneon Edge Linux Hub</name>
+  <summary>Native widget dashboard for secondary touchscreen displays</summary>
+
+  <developer id="com.skyphoenix_it">
+    <name>Simon Kreitmayer</name>
+  </developer>
+
+  <description>
+    <p>
+      Xeneon Edge Linux Hub turns a secondary touchscreen — such as the Corsair
+      Xeneon Edge — into a persistent, touch-editable dashboard of live widgets.
+      It runs natively on Linux (Qt 6 + a Rust core), with no browser and no server.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Live system metrics straight from the kernel: CPU, GPU, memory, disk, network and temperatures</li>
+      <li>Focus/Pomodoro timer, tasks, habits, hydration and other ADHD-friendly productivity widgets</li>
+      <li>Clock, weather, calendar, moon phase, media controls, countdowns and more</li>
+      <li>Touch-editable layout: drag, resize, add and remove widgets across multiple pages</li>
+      <li>Per-widget appearance, themes, animated backgrounds and wallpapers</li>
+      <li>Automatic screen rotation on supported hardware</li>
+    </ul>
+    <p>
+      Configure it directly on the touchscreen, or from the companion Xeneon Edge
+      Manager desktop app, which mirrors the layout live.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">xeneon-edge-hub.desktop</launchable>
+  <icon type="stock">xeneon-edge-hub</icon>
+
+  <categories>
+    <category>System</category>
+    <category>Monitor</category>
+    <category>Utility</category>
+  </categories>
+
+  <keywords>
+    <keyword>xeneon</keyword>
+    <keyword>edge</keyword>
+    <keyword>corsair</keyword>
+    <keyword>dashboard</keyword>
+    <keyword>widgets</keyword>
+    <keyword>touchscreen</keyword>
+  </keywords>
+
+  <url type="homepage">https://github.com/skyphoenix-it/XeneonEdge_Linux</url>
+  <url type="bugtracker">https://github.com/skyphoenix-it/XeneonEdge_Linux/issues</url>
+
+  <content_rating type="oars-1.1"/>
+
+  <releases>
+    <release version="0.1.0" date="2026-07-13">
+      <description>
+        <p>Initial release: real widget dashboard, companion Manager, live metrics and touch editing.</p>
+      </description>
+    </release>
+  </releases>
+</component>

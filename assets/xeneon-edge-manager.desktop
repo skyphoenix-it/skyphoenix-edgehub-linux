@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Xeneon Edge Manager
+GenericName=Dashboard Configuration
+Comment=Configure and control your Xeneon Edge dashboard
+Exec=xeneon-edge-manager
+Icon=xeneon-edge-manager
+Terminal=false
+Categories=Utility;
+Keywords=xeneon;edge;corsair;dashboard;configure;settings;widgets;
+StartupNotify=true
+StartupWMClass=xeneon-edge-manager
