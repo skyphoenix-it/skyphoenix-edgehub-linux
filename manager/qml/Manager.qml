@@ -380,6 +380,9 @@ ApplicationWindow {
                     Text { text: "Default animated background"; color: m.textSecondary; font.pixelSize: 14 }
                     Text { text: "Picking one clears the global wallpaper (a wallpaper always wins over the animation)."
                         color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
+                    Text { visible: !theme.decorative
+                        text: "⚠  The High Contrast theme keeps backgrounds off for legibility — switch themes to see them."
+                        color: m.danger; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
                     Flow {
                         Layout.fillWidth: true; spacing: 8
                         Repeater {

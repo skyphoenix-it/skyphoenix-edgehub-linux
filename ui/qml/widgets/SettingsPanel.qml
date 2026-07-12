@@ -148,6 +148,10 @@ Rectangle {
                         Text { text: "A living backdrop behind the frosted widgets. Picking one clears the wallpaper below."
                             font.pixelSize: theme.fontCaption; color: theme.textTertiary
                             Layout.fillWidth: true; wrapMode: Text.WordWrap }
+                        Text { visible: !theme.decorative
+                            text: "⚠  The High Contrast theme keeps backgrounds off for legibility — switch themes to see them."
+                            font.pixelSize: theme.fontCaption; color: theme.warning
+                            Layout.fillWidth: true; wrapMode: Text.WordWrap }
                         Flow {
                             Layout.fillWidth: true; spacing: theme.spacingSm
                             Repeater {
