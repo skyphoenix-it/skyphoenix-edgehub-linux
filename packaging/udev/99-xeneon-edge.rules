@@ -1,0 +1,16 @@
+# Grant the local desktop user read access to the Corsair Xeneon Edge's vendor
+# HID node so the hub can read the built-in orientation sensor for auto-rotate.
+#
+# Without this the node is root-only (0600) and auto-rotate stays disabled — the
+# hub falls back to the manual orientation modes.
+#
+# Install:
+#   sudo cp packaging/udev/99-xeneon-edge.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload
+#   sudo udevadm trigger --action=change --subsystem-match=hidraw
+# (or just replug the Edge / reboot).
+#
+# GROUP="users" works on most distros where the login user is in the `users`
+# group. If your user isn't, either add them (`sudo usermod -aG users $USER`) or
+# change GROUP below to one they belong to (e.g. `plugdev` on Debian/Ubuntu).
+KERNEL=="hidraw*", ATTRS{idVendor}=="1b1c", ATTRS{idProduct}=="1d0d", MODE="0660", GROUP="users", TAG+="uaccess"

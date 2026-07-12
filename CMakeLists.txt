@@ -62,6 +62,7 @@ add_executable(xeneon-edge-hub
     app/src/main.cpp
     app/src/mpris_bridge.cpp
     app/src/control_server.cpp
+    app/src/orientation_sensor.cpp
     ${CMAKE_SOURCE_DIR}/ui/qml.qrc
     ${CMAKE_SOURCE_DIR}/assets/icons.qrc
     ${CMAKE_SOURCE_DIR}/assets/wallpapers.qrc
@@ -156,4 +157,8 @@ endif()
 # Install
 install(TARGETS xeneon-edge-hub xeneon-edge-manager DESTINATION bin)
 install(FILES assets/xeneon-edge-hub.desktop DESTINATION share/applications OPTIONAL)
+# udev rule for Edge orientation-sensor access (installed under /usr by default;
+# override with -DUDEV_RULES_DIR=/etc/udev/rules.d for a system install).
+set(UDEV_RULES_DIR "${CMAKE_INSTALL_PREFIX}/lib/udev/rules.d" CACHE PATH "udev rules directory")
+install(FILES packaging/udev/99-xeneon-edge.rules DESTINATION "${UDEV_RULES_DIR}" OPTIONAL)
 

@@ -81,21 +81,21 @@ ApplicationWindow {
     // ── Orientation ──────────────────────────────────────────────────────────
     // `orientationMode` (persisted appearance) is "auto" or a fixed value.
     //
-    // AUTO = trust the compositor: the framebuffer is already oriented correctly,
-    // so apply NO software rotation and let the grid reflow to the real aspect
-    // (root width vs height) — this is what makes it flip when the compositor
-    // rotates the output. MANUAL modes apply a fixed software rotation for
-    // mountings the compositor can't correct. We deliberately do NOT rotate from
-    // the raw orientation sensor: doing so double-rotated to an upside-down image,
-    // so a mounting the compositor can't handle is selected explicitly instead.
+    // AUTO follows the Edge's built-in orientation sensor: C++ reads it over the
+    // vendor HID pipe and pushes the correct content rotation into `sensorRotation`
+    // (0/90/180/270); we rotate + reflow the UI to match so it stays upright as the
+    // panel turns. MANUAL modes ignore the sensor and apply a fixed rotation (for
+    // wall/arm mounts). Until the sensor reports (or if the hidraw node isn't
+    // readable) `sensorRotation` is -1 and auto stays at 0.
+    property int sensorRotation: -1          // pushed from C++ OrientationSensor
     property string orientationMode: "auto"
     readonly property int contentRotation: {
         switch (orientationMode) {
+        case "portrait": return 0
         case "landscape": return 90
         case "inverted-portrait": return 180
         case "inverted-landscape": return 270
-        case "portrait": return 0
-        default: return 0    // auto
+        default: return sensorRotation >= 0 ? sensorRotation : 0   // auto
         }
     }
 
@@ -110,11 +110,41 @@ ApplicationWindow {
     Item {
         id: contentRoot
         anchors.centerIn: parent
+        transformOrigin: Item.Center
         readonly property bool swapped: root.contentRotation === 90 || root.contentRotation === 270
         width: swapped ? root.height : root.width
         height: swapped ? root.width : root.height
         rotation: root.contentRotation
-        Behavior on rotation { NumberAnimation { duration: theme.motionPage; easing.type: Easing.InOutCubic } }
+        // Always turn the SHORT way (0°↔270° goes -90°, not +270°) with a soft ease.
+        Behavior on rotation {
+            RotationAnimation {
+                direction: RotationAnimation.Shortest
+                duration: root.reduceMotion ? 0 : 560
+                easing.type: Easing.InOutCubic
+            }
+        }
+        // Soften the reflow: as it re-orients, dip opacity + scale slightly so the
+        // aspect swap (portrait↔landscape grid) is masked behind a smooth fade.
+        Connections {
+            target: root
+            function onContentRotationChanged() {
+                // Dismiss the on-screen keyboard before re-orienting so it can't
+                // flash while the container height swaps underneath it.
+                Qt.inputMethod.hide()
+                if (!root.reduceMotion) reorientFx.restart()
+            }
+        }
+        SequentialAnimation {
+            id: reorientFx
+            ParallelAnimation {
+                NumberAnimation { target: contentRoot; property: "opacity"; to: 0.25; duration: 210; easing.type: Easing.InQuad }
+                NumberAnimation { target: contentRoot; property: "scale"; to: 0.93; duration: 210; easing.type: Easing.InQuad }
+            }
+            ParallelAnimation {
+                NumberAnimation { target: contentRoot; property: "opacity"; to: 1.0; duration: 360; easing.type: Easing.OutQuad }
+                NumberAnimation { target: contentRoot; property: "scale"; to: 1.0; duration: 360; easing.type: Easing.OutCubic }
+            }
+        }
 
         // Navigation stack for main ↔ diagnostics
         StackView {
@@ -132,8 +162,13 @@ ApplicationWindow {
             z: 1000
             anchors.left: parent.left
             anchors.right: parent.right
+            // Only render when the keyboard is actually active, so it can never
+            // flash during a rotation (when contentRoot's height changes under it).
+            visible: inputPanel.active
             y: active ? contentRoot.height - height : contentRoot.height
-            Behavior on y { NumberAnimation { duration: theme.motionEdit; easing.type: Easing.OutCubic } }
+            // Slide only for genuine show/hide — not when the container resizes
+            // on rotation (which would otherwise re-animate the hidden panel).
+            Behavior on y { enabled: inputPanel.active; NumberAnimation { duration: theme.motionEdit; easing.type: Easing.OutCubic } }
         }
     }
 

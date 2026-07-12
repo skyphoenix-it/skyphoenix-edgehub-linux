@@ -20,6 +20,7 @@
 #include "xeneon_core.h"
 #include "mpris_bridge.h"
 #include "control_server.h"
+#include "orientation_sensor.h"
 
 // --- RAII string wrapper ---
 
@@ -565,10 +566,21 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // Orientation is handled entirely on the QML side: "auto" trusts the
-    // compositor (the reflow follows the real framebuffer aspect) and the manual
-    // modes apply a fixed software rotation. We intentionally do NOT feed the raw
-    // orientation sensor into QML — doing so double-rotated to an upside-down UI.
+    // Live orientation from the Edge's built-in sensor (read over its vendor HID
+    // pipe). In "auto" mode QML rotates + reflows the UI to match. The manual
+    // orientation modes ignore this and apply a fixed rotation instead.
+    auto* orientation = new OrientationSensor(&app);
+    auto pushRotation = [&engine](int rot) {
+        for (auto* obj : engine.rootObjects())
+            obj->setProperty("sensorRotation", rot);
+    };
+    QObject::connect(orientation, &OrientationSensor::rotationChanged, &engine,
+                     [pushRotation](int rot) {
+        qInfo() << "Orientation sensor: content rotation" << rot << "deg";
+        pushRotation(rot);
+    });
+    if (orientation->start() && orientation->rotation() >= 0)
+        pushRotation(orientation->rotation());
 
     // Metrics update timer (every 2 seconds)
     QTimer metricsTimer;
