@@ -116,6 +116,8 @@ flatpak install flathub com.corsair.xeneonedgehub
 
 | Document | Description |
 |----------|-------------|
+| **[Creating a Widget](docs/widgets/authoring.md)** | **Build your own widget in ~20 min (`./scripts/new-widget.sh` scaffolds it)** |
+| **[Distribution & Monetizing](docs/DISTRIBUTION.md)** | **Packaging, install, licensing, and making money** |
 | [Product Vision](docs/product/product-vision.md) | What we're building and why |
 | [User Personas](docs/product/personas.md) | Who we're building for |
 | [Use Cases](docs/product/use-cases.md) | How users will use the product |

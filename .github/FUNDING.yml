@@ -1,0 +1,9 @@
+# Enables the "Sponsor" button on the GitHub repo. Fill in your handles and
+# uncomment the lines you want. Delete the rest.
+# Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
+
+# github: your-github-username        # GitHub Sponsors (zero fees)
+# ko_fi: your-kofi-name               # one-off tips
+# liberapay: your-liberapay-name      # recurring, FOSS-friendly
+# open_collective: your-collective    # transparent, recurring
+# custom: ["https://your-site/donate"]  # any URL (PayPal, etc.)
