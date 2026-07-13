@@ -2,6 +2,8 @@ import QtQuick
 import QtTest
 import "../../ui/qml" as App
 
+// COVERS: schema:maxEvents, schema:url
+
 // ─────────────────────────────────────────────────────────────────────────
 // tst_gen_calendar — COMPREHENSIVE coverage for area "widget:calendar"
 // (ui/qml/widgets/CalendarWidget.qml, an ICS agenda widget).

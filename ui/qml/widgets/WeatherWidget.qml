@@ -11,6 +11,9 @@ WidgetChrome {
     property bool active: true
     property var store: null
     property string instanceId: ""
+    // Test seam: when set, called instead of `new XMLHttpRequest()` so a FakeXHR
+    // can be injected. null in production → real XHR (behaviour unchanged).
+    property var xhrFactory: null
 
     title: "Weather"; iconName: "weather"; accentColor: theme.catInfo
     big: expanded
@@ -66,7 +69,7 @@ WidgetChrome {
                 + (w.units === "fahrenheit" ? "&temperature_unit=fahrenheit" : "")
                 + "&timezone=auto&forecast_days=" + fdays
         if (w._fxhr) w._fxhr.abort()
-        var xhr = new XMLHttpRequest()
+        var xhr = (w.xhrFactory ? w.xhrFactory() : new XMLHttpRequest())
         w._fxhr = xhr
         xhr.timeout = 8000
         xhr.ontimeout = function () { if (w._fxhr === xhr) { w._fxhr = null; if (!w.loaded) w.errorText = "Timed out" } }
@@ -109,7 +112,7 @@ WidgetChrome {
         geocoding = true
         var url = "https://geocoding-api.open-meteo.com/v1/search?count=1&name=" + encodeURIComponent(name.trim())
         if (w._gxhr) w._gxhr.abort()
-        var xhr = new XMLHttpRequest()
+        var xhr = (w.xhrFactory ? w.xhrFactory() : new XMLHttpRequest())
         w._gxhr = xhr
         xhr.timeout = 8000
         xhr.ontimeout = function () { if (w._gxhr === xhr) { w._gxhr = null; w.geocoding = false; w.errorText = "Lookup timed out" } }

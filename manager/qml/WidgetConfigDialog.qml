@@ -12,6 +12,9 @@ Dialog {
     property string wType: ""
     property var schema: schemaReg.schemaFor(wType)
     property string geoStatus: ""
+    // Test seam: when set, called instead of `new XMLHttpRequest()` so a FakeXHR
+    // can be injected. null in production → real XHR (behaviour unchanged).
+    property var xhrFactory: null
 
     function openFor(id, type) {
         wId = id; wType = type; geoStatus = ""
@@ -66,7 +69,7 @@ Dialog {
             if (!place.trim().length) { geoStatus = "Type a place name first"; return }
             dlg._cancelGeo()                       // supersede any in-flight lookup
             geoStatus = "Searching…"
-            var xhr = new XMLHttpRequest()
+            var xhr = (dlg.xhrFactory ? dlg.xhrFactory() : new XMLHttpRequest())
             dlg._geoXhr = xhr
             xhr.timeout = 8000
             xhr.ontimeout = function () {

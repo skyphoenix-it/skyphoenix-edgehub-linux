@@ -1,6 +1,8 @@
 import QtQuick
 import QtTest
 
+// COVERS: schema:category, schema:customText
+
 // ─────────────────────────────────────────────────────────────────────────
 // Comprehensive tests for widget:quote — ui/qml/widgets/QuoteWidget.qml
 // (the "Daily Quote" rotating-quote widget).

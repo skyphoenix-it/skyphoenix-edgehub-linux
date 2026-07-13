@@ -2,6 +2,8 @@ import QtQuick
 import QtTest
 import "../../ui/qml" as App
 
+// COVERS: schema:text
+
 // ─────────────────────────────────────────────────────────────────────────
 // Comprehensive coverage for area "widget:notes" (ui/qml/widgets/NotesWidget.qml).
 //

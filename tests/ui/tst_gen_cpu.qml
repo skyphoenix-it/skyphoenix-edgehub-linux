@@ -3,6 +3,8 @@ import QtTest
 import "../../ui/qml" as App
 import "../../ui/qml/widgets" as Wg
 
+// COVERS: schema:showHistory, schema:showTemp, schema:title, schema:warnTemp
+
 // Comprehensive coverage for the CPU widget (ui/qml/widgets/CpuWidget.qml).
 //
 // Exercises: usage + temperature reading from the Rust metrics JSON, the

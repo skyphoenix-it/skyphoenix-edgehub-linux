@@ -1,6 +1,8 @@
 import QtQuick
 import QtTest
 
+// COVERS: schema:date, schema:label, schema:repeatYearly
+
 // ─────────────────────────────────────────────────────────────────────────
 // Comprehensive tests for widget:countdown — ui/qml/widgets/CountdownWidget.qml
 //

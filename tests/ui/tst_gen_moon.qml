@@ -2,6 +2,8 @@ import QtQuick
 import QtTest
 import "../../ui/qml" as App
 
+// COVERS: schema:hemisphere
+
 // ─────────────────────────────────────────────────────────────────────────
 // Comprehensive tests for area "widget:moon" (ui/qml/widgets/MoonWidget.qml)
 // plus the shared config schema that drives it.

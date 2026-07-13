@@ -1,6 +1,8 @@
 import QtQuick
 import QtTest
 
+// COVERS: schema:intervalMin, schema:message, schema:showSuggestion
+
 // ─────────────────────────────────────────────────────────────────────────
 // Comprehensive coverage for widget:break — ui/qml/widgets/BreakWidget.qml.
 //

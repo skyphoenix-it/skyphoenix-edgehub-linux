@@ -14,6 +14,9 @@ WidgetChrome {
     property var store: null
     property string instanceId: ""
     property int tick: 0
+    // Test seam: when set, called instead of `new XMLHttpRequest()` so a FakeXHR
+    // can be injected. null in production → real XHR (behaviour unchanged).
+    property var xhrFactory: null
 
     title: "Calendar"; iconName: "calendar"; accentColor: theme.catServices
     big: expanded
@@ -265,7 +268,7 @@ WidgetChrome {
         if (!url.length) { events = []; errorText = ""; return }
         loading = true
         if (_xhr) _xhr.abort()
-        var xhr = new XMLHttpRequest()
+        var xhr = (w.xhrFactory ? w.xhrFactory() : new XMLHttpRequest())
         _xhr = xhr
         xhr.timeout = 12000
         xhr.ontimeout = function () { if (w._xhr === xhr) { w._xhr = null; w.loading = false; w.errorText = "Calendar timed out" } }

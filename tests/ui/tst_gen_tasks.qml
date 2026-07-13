@@ -2,6 +2,8 @@ import QtQuick
 import QtTest
 import "../../ui/qml" as App
 
+// COVERS: schema:hideCompleted, schema:items
+
 // ─────────────────────────────────────────────────────────────────────────
 // Comprehensive coverage for area "widget:tasks" (ui/qml/widgets/TasksWidget.qml).
 //
