@@ -35,6 +35,13 @@ everything: `./scripts/run_all_tests.sh` (→ `RESULT: SUCCESS`); coverage: `./s
 - New tests: `tst_config_panel_wiring`, `tst_all_widget_configs` (all 23 types render),
   `tst_store_validation`, `tst_single_instance` (C++), `tst_rx_cap` (C++).
 
+### One design question for you (left unchanged — your call)
+- **FocusWidget goal bonus/celebration re-fires every session past the daily goal.**
+  With a goal of 4, sessions 5/6/7… each award +50 pts and re-show "🎯 Goal reached!".
+  The code comment says this ("reaching OR exceeding") is intended, so I did NOT change
+  it. If you'd prefer a one-time daily celebration (fire once when `done` crosses the
+  goal), say so and it's a small change in `FocusWidget.advance()`.
+
 ### Prior test-push (PR #1)
 - **On-device**: hub dashboard, Manager, and an expanded widget config all verified
   via `XENEON_GRAB` captures on the real Edge (DP-3). Wallpaper with spaces + `#`
