@@ -118,6 +118,16 @@ public:
         : QObject(parent), m_config(config) {}
 
     // Opaque UI-state JSON (dashboard layout + per-widget settings + appearance).
+    // Build version, injected at compile time via -DXENEON_VERSION (git describe;
+    // or the pkgver for packaged builds). Falls back to "dev" for syntax-only builds.
+    Q_INVOKABLE QString appVersion() const {
+#ifdef XENEON_VERSION
+        return QStringLiteral(XENEON_VERSION);
+#else
+        return QStringLiteral("dev");
+#endif
+    }
+
     Q_INVOKABLE QString uiState() const {
         if (!m_config) return QString();
         XeneonString s(xeneon_config_get_ui_state(m_config));

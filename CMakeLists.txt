@@ -1,6 +1,25 @@
 cmake_minimum_required(VERSION 3.22)
 project(XeneonEdgeLinuxHub VERSION 0.1.0 LANGUAGES CXX)
 
+# --- Build version string (git-derived, overridable) ---
+# project VERSION stays 0.1.0 across commits, so derive a distinguishing string
+# from git (e.g. "5c3baec" / "v0.1.0-37-g5c3baec-dirty"). Packaged builds have no
+# .git, so the PKGBUILD passes -DXENEON_VERSION_OVERRIDE=<pkgver>.
+if(DEFINED XENEON_VERSION_OVERRIDE AND XENEON_VERSION_OVERRIDE)
+    set(XENEON_GIT_VERSION "${XENEON_VERSION_OVERRIDE}")
+else()
+    execute_process(
+        COMMAND git describe --tags --always --dirty
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        OUTPUT_VARIABLE XENEON_GIT_VERSION
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET)
+endif()
+if(NOT XENEON_GIT_VERSION)
+    set(XENEON_GIT_VERSION "${PROJECT_VERSION}")
+endif()
+message(STATUS "Xeneon build version: ${XENEON_GIT_VERSION}")
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
@@ -179,6 +198,11 @@ if(XENEON_BUILD_TESTS)
 endif()
 
 # Install
+# Surface the build version to both apps (see ManagerBackend::appVersion /
+# ConfigBridge::appVersion).
+target_compile_definitions(xeneon-edge-hub PRIVATE XENEON_VERSION="${XENEON_GIT_VERSION}")
+target_compile_definitions(xeneon-edge-manager PRIVATE XENEON_VERSION="${XENEON_GIT_VERSION}")
+
 install(TARGETS xeneon-edge-hub xeneon-edge-manager DESTINATION bin)
 
 # Desktop entries + AppStream metadata (both apps).

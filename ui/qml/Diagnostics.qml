@@ -129,8 +129,9 @@ Item {
                         color: theme.backgroundColor; border.color: theme.cardBorder
                         ColumnLayout {
                             anchors.fill: parent; anchors.margins: 12; spacing: 4
-                            Text { text: Qt.application.name + " v" + Qt.application.version; color: theme.textPrimary; font.pixelSize: 14; font.bold: true }
-                            Text { text: "Platform: " + Qt.platform.os + " | Core " + Qt.application.version; color: theme.textSecondary; font.pixelSize: 12 }
+                            readonly property string appVer: (typeof configBridge !== "undefined" && configBridge && configBridge.appVersion) ? configBridge.appVersion() : "dev"
+                            Text { text: "Xeneon Edge Hub " + parent.appVer; color: theme.textPrimary; font.pixelSize: 14; font.bold: true }
+                            Text { text: "Platform: " + Qt.platform.os + " | Build " + parent.appVer; color: theme.textSecondary; font.pixelSize: 12 }
                             Text { text: "Build: " + (typeof _buildType !== "undefined" && _buildType ? _buildType : "unknown"); color: theme.textSecondary; font.pixelSize: 12 }
                         }
                     }

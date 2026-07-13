@@ -198,7 +198,12 @@ ApplicationWindow {
                 spacing: 8
 
                 Text { text: "Xeneon Edge"; color: m.textPrimary; font.pixelSize: 20; font.bold: true }
-                Text { text: "Manager"; color: m.accent; font.pixelSize: 14; Layout.bottomMargin: 12 }
+                Text { text: "Manager"; color: m.accent; font.pixelSize: 14 }
+                Text {
+                    text: (backend && backend.appVersion ? backend.appVersion() : "?")
+                    color: m.textSecondary; font.pixelSize: 11; font.family: theme.fontMono
+                    Layout.bottomMargin: 12; Layout.fillWidth: true; elide: Text.ElideRight
+                }
 
                 Repeater {
                     model: [ { l: "Layout", i: "ui-layout" }, { l: "Appearance", i: "ui-palette" },

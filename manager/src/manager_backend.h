@@ -182,6 +182,16 @@ public:
     Q_INVOKABLE int startTab() const { return qEnvironmentVariable("XENEON_TAB", "0").toInt(); }
     Q_INVOKABLE QString autoConfig() const { return qEnvironmentVariable("XENEON_CFG"); }
 
+    // Build version, injected at compile time via -DXENEON_VERSION (git describe;
+    // or the pkgver for packaged builds). Falls back to "dev" for syntax-only builds.
+    Q_INVOKABLE QString appVersion() const {
+#ifdef XENEON_VERSION
+        return QStringLiteral(XENEON_VERSION);
+#else
+        return QStringLiteral("dev");
+#endif
+    }
+
     // Live system metrics (same source + JSON shape the hub uses).
     Q_INVOKABLE QString metricsJson() const {
         MetricsHandle* m = xeneon_metrics_collect();

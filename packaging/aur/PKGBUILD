@@ -22,6 +22,7 @@ build() {
   cmake -B build -S . \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=/usr \
+    -DXENEON_VERSION_OVERRIDE="$pkgver-$pkgrel" \
     -Wno-dev
   cmake --build build -j"$(nproc)"
 }
