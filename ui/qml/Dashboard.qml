@@ -795,7 +795,7 @@ Item {
             WidgetConfigPanel {
                 Layout.fillWidth: true; Layout.fillHeight: true
                 schema: cfgSchema.schemaFor(dashboard.expandedType)
-                store: store
+                st: store
                 instanceId: dashboard.expandedId
                 col: dashboard.cfgCol
                 statusText: dashboard.cfgStatus

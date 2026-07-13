@@ -173,7 +173,7 @@ Dialog {
         WidgetConfigPanel {
             Layout.fillWidth: true; Layout.fillHeight: true; Layout.minimumWidth: 320
             schema: dlg.schema
-            store: store
+            st: store
             instanceId: dlg.wId
             col: m
             statusText: dlg.wType === "weather" ? dlg.geoStatus : ""

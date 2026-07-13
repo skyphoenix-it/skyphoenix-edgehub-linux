@@ -41,7 +41,7 @@ Item {
         id: cfg
         anchors.fill: parent
         schema: root.schema
-        store: store
+        st: store
         instanceId: "inst"
         col: root.col
     }

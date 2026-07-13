@@ -48,7 +48,7 @@ Item {
             W.WidgetConfigPanel {
                 id: panel
                 Layout.fillWidth: true; Layout.fillHeight: true
-                schema: sc.schemaFor("focus"); store: store; instanceId: "t"; col: root.col
+                schema: sc.schemaFor("focus"); st: store; instanceId: "t"; col: root.col
             }
         }
     }

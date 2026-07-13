@@ -12,7 +12,12 @@ import QtQuick.Layouts
 Item {
     id: panel
     property var schema: ({ sections: [] })
-    property var store: null
+    // Named `st` (not `store`) so a call-site binding `st: store` can't self-bind
+    // to this property: `store: store` resolves the RHS to the panel's OWN null
+    // property (QML self-binding trap), which severed the whole form from the store
+    // (every field showed defaults, edits were silently dropped). Same convention
+    // as ConfigField's `st`.
+    property var st: null
     property string instanceId: ""
     property var col: null
     property string statusText: ""      // e.g. geocode result, shown under the form
@@ -88,7 +93,7 @@ Item {
                                 delegate: ConfigField {
                                     required property var modelData
                                     field: modelData
-                                    st: panel.store
+                                    st: panel.st
                                     instanceId: panel.instanceId
                                     col: panel.col
                                     onActionRequested: (a) => panel.actionRequested(a)

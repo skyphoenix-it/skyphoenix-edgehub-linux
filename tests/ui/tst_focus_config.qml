@@ -28,7 +28,7 @@ Item {
         id: panel
         x: 0; y: 0; width: 400; height: root.height
         schema: sc.schemaFor("focus")
-        store: store
+        st: store
         instanceId: "t"
         col: root.col
     }
@@ -38,7 +38,7 @@ Item {
         id: scrollPanel
         x: 410; y: 0; width: 340; height: 240
         schema: sc.schemaFor("focus")
-        store: store
+        st: store
         instanceId: "t2"
         col: root.col
     }

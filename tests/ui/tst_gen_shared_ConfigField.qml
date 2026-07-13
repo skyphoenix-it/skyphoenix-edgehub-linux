@@ -133,19 +133,19 @@ Item {
     // ── WidgetConfigPanel instances ───────────────────────────────────────────
     Widgets.WidgetConfigPanel {
         id: clkPanel; x: 800; y: 0; width: 360; height: 760
-        schema: sc.schemaFor("clock"); store: cstore; instanceId: "clk"; col: root.edgeCol
+        schema: sc.schemaFor("clock"); st: cstore; instanceId: "clk"; col: root.edgeCol
     }
     Widgets.WidgetConfigPanel {
         id: scrPanel; x: 800; y: 780; width: 340; height: 220
-        schema: sc.schemaFor("focus"); store: cstore; instanceId: "scr"; col: root.edgeCol
+        schema: sc.schemaFor("focus"); st: cstore; instanceId: "scr"; col: root.edgeCol
     }
     Widgets.WidgetConfigPanel {
         id: taskPanel; x: 1170; y: 0; width: 340; height: 560
-        schema: sc.schemaFor("tasks"); store: cstore; instanceId: "tsk"; col: root.edgeCol
+        schema: sc.schemaFor("tasks"); st: cstore; instanceId: "tsk"; col: root.edgeCol
     }
     Widgets.WidgetConfigPanel {
         id: nullPanel; x: 1170; y: 580; width: 320; height: 200
-        schema: null; store: cstore; instanceId: "nul"; col: root.edgeCol
+        schema: null; st: cstore; instanceId: "nul"; col: root.edgeCol
     }
 
     // ── Downstream consumer of the date field ─────────────────────────────────
