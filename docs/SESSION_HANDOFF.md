@@ -35,6 +35,16 @@ everything: `./scripts/run_all_tests.sh` (→ `RESULT: SUCCESS`); coverage: `./s
 - New tests: `tst_config_panel_wiring`, `tst_all_widget_configs` (all 23 types render),
   `tst_store_validation`, `tst_single_instance` (C++), `tst_rx_cap` (C++).
 
+### Known follow-up (not yet fixed — needs a design decision)
+- **Manager `setTargetDisplay`/`setAutostart` write config.toml directly even when the
+  hub is connected** (two-writer race): the hub's in-memory config still holds the old
+  target/autostart, so the hub's next save reverts the Manager's change. `saveUiState`
+  already avoids this (IPC-only when connected), but display/startup have no IPC path —
+  fixing it needs a new hub control-socket command (e.g. `reloadConfig` or per-field
+  setters) so the hub adopts the change. Narrow window (these are set rarely) but real.
+  The single-instance guard + IPC-only ui_state cover the common churn; this is the
+  remaining edge. `manager/src/manager_backend.h:setTargetDisplay/setAutostart`.
+
 ### One design question for you (left unchanged — your call)
 - **FocusWidget goal bonus/celebration re-fires every session past the daily goal.**
   With a goal of 4, sessions 5/6/7… each award +50 pts and re-show "🎯 Goal reached!".
