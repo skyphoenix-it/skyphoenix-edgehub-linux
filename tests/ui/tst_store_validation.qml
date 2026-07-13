@@ -2,6 +2,8 @@ import QtQuick
 import QtTest
 import "../../ui/qml" as App
 
+// COVERS: fn:DashboardStore._isPlainObject
+//
 // Robustness (Phase 3a): `_normaliseDoc` is a real VALIDATOR. A corrupt or hostile
 // UI-state document — pushed over the control socket (applyExternal) or read from a
 // clobbered config.toml (load) — must SELF-HEAL into a well-formed structure rather
@@ -57,6 +59,20 @@ Item {
             // A nameless page gets a synthesised default name (never undefined).
             compare(typeof store.pages()[0].name, "string", "page has a string name")
             verify(store.pages()[0].name.length > 0, "default page name is non-empty")
+        }
+
+        // The `_isPlainObject` predicate underpins every heal above: it is the exact
+        // gate that decides whether appearance/settings/a page/a tile is a usable
+        // object or junk to drop. Assert it across every branch (null / non-object /
+        // array / plain object) so a regression in the predicate is caught here.
+        function test_isPlainObject_predicate() {
+            verify(store._isPlainObject({}), "an empty object is a plain object")
+            verify(store._isPlainObject({ a: 1 }), "a populated object is a plain object")
+            verify(!store._isPlainObject(null), "null is not a plain object")
+            verify(!store._isPlainObject([]), "an array is not a plain object")
+            verify(!store._isPlainObject(5), "a number is not a plain object")
+            verify(!store._isPlainObject("x"), "a string is not a plain object")
+            verify(!store._isPlainObject(undefined), "undefined is not a plain object")
         }
 
         // Id-less / empty-id tile objects are dropped (they'd poison settings keys).

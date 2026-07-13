@@ -1,7 +1,7 @@
 import QtQuick
 import QtTest
 
-// COVERS: fn:main.bindStackItem
+// COVERS: fn:main.bindStackItem, fn:main.onContentRotationChanged
 //
 // ui/qml/main.qml — bindStackItem (binds/rebinds cleanly, skips null +
 // items without the shell properties) and the readonly `contentRotation`
@@ -183,6 +183,26 @@ Item {
             compare(cr.swapped, true, "270° is a swapped (landscape) orientation")
             compare(cr.width, win.height, "270°: contentRoot width takes the window HEIGHT")
             compare(cr.height, win.width, "270°: contentRoot height takes the window WIDTH")
+        }
+
+        // ── onContentRotationChanged (reorient fx) ────────────────────────────
+        // A contentRotation change fires main.qml's Connections handler
+        // `onContentRotationChanged`, which — when motion is allowed — restarts the
+        // reorient fx that briefly dips contentRoot's scale/opacity before easing it
+        // back to full. We drive a real rotation change on the REAL contentRoot and
+        // observe that dip-then-settle, proving the handler ran (not just the binding).
+        function test_content_rotation_change_runs_reorient_fx() {
+            var cr = findPred(win.contentItem, function (n) {
+                return n && typeof n.swapped === "boolean" })
+            verify(cr !== null, "found contentRoot (the reorient-fx target)")
+            win.reduceMotion = false
+            win.orientationMode = "portrait"          // settle at a known upright state
+            tryVerify(function () { return cr.scale === 1 && cr.opacity === 1 }, 3000,
+                      "contentRoot rests at full scale/opacity between turns")
+            win.orientationMode = "landscape"         // rotation change → handler fires
+            tryVerify(function () { return cr.scale < 1 || cr.opacity < 1 }, 2000, "onContentRotationChanged restarted the reorient fx (scale/opacity dip)")
+            tryVerify(function () { return cr.scale === 1 && cr.opacity === 1 }, 3000,
+                      "reorient fx eases contentRoot back to full scale/opacity")
         }
     }
 }
