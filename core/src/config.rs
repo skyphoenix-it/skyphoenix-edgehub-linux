@@ -744,6 +744,117 @@ version = 1
             "BUG: schema migrations are unimplemented; foreign schema_version loaded verbatim"
         );
     }
+
+    // --- backup_config_of: copy failure surfaces an Io error ---
+
+    #[test]
+    fn backup_config_of_copy_failure_is_io_error() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        fs::write(&path, "schema_version = 1\n").unwrap();
+        // Occupy the canonical .bak destination with a *directory* so fs::copy
+        // cannot open it for writing (EISDIR) → the copy error branch runs.
+        let bak_dir = path.with_extension("toml.bak");
+        fs::create_dir(&bak_dir).unwrap();
+
+        let err = backup_config_of(&path).unwrap_err();
+        assert!(matches!(err, ConfigError::Io { .. }));
+    }
+
+    // --- backup_corrupt_config: copy failure surfaces an Io error ---
+
+    #[test]
+    fn backup_corrupt_config_copy_failure_is_io_error() {
+        let dir = tempfile::tempdir().unwrap();
+        // Source does not exist, so fs::copy fails with NotFound → error branch.
+        let path = dir.path().join("ghost.toml");
+        let err = backup_corrupt_config(&path).unwrap_err();
+        assert!(matches!(err, ConfigError::Io { .. }));
+    }
+
+    // --- load_config_from: corrupt config whose backup ALSO fails still salvages ---
+
+    #[test]
+    fn corrupt_config_salvages_even_when_backup_fails() {
+        let dir = tempfile::tempdir().unwrap();
+        // A file name long enough that appending ".corrupt-<ts>.bak" (~23 chars)
+        // overruns NAME_MAX (255) → the backup copy fails with ENAMETOOLONG,
+        // exercising the "failed to back up unparseable config" warn branch
+        // while salvage still recovers the readable scalar fields.
+        let long_name = format!("{}.toml", "c".repeat(240));
+        let path = dir.path().join(long_name);
+        fs::write(
+            &path,
+            "first_run_complete = tru\nui_state = \"KEEP_ME\"\n= broken",
+        )
+        .unwrap();
+
+        let cfg = load_config_from(&path).unwrap();
+        // Backup failed, but partial salvage still recovered the flag + ui_state.
+        assert!(cfg.first_run_complete);
+        assert_eq!(cfg.ui_state.as_deref(), Some("KEEP_ME"));
+    }
+
+    // --- save_config: temp-file write failure is reported and cleaned up ---
+
+    #[test]
+    fn save_config_temp_write_failure_is_io_error() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        std::env::set_var("XDG_CONFIG_HOME", dir.path());
+
+        // Pre-create the temp target (config.tmp) as a *directory* so
+        // File::create() fails (EISDIR) → the write-failure branch runs.
+        let hub = config_dir();
+        fs::create_dir_all(&hub).unwrap();
+        let tmp_path = config_path().with_extension("tmp");
+        fs::create_dir(&tmp_path).unwrap();
+
+        let err = save_config(&AppConfig::default()).unwrap_err();
+        assert!(matches!(err, ConfigError::Io { .. }));
+
+        std::env::remove_var("XDG_CONFIG_HOME");
+    }
+
+    // --- save_config: atomic-rename failure is reported ---
+
+    #[test]
+    fn save_config_rename_failure_is_io_error() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        std::env::set_var("XDG_CONFIG_HOME", dir.path());
+
+        // Make the final config.toml path a non-empty *directory* so the temp
+        // file writes fine but rename(tmp → config.toml) fails (EISDIR).
+        let target = config_path();
+        fs::create_dir_all(&target).unwrap();
+        fs::write(target.join("occupant"), "x").unwrap();
+
+        let err = save_config(&AppConfig::default()).unwrap_err();
+        assert!(matches!(err, ConfigError::Io { .. }));
+        // The temp file must not be left behind after a failed rename.
+        assert!(!config_path().with_extension("tmp").exists());
+
+        std::env::remove_var("XDG_CONFIG_HOME");
+    }
+
+    // --- reset_config: remove failure surfaces an Io error ---
+
+    #[test]
+    fn reset_config_remove_failure_is_io_error() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        std::env::set_var("XDG_CONFIG_HOME", dir.path());
+
+        // config.toml exists but is a directory → remove_file fails (EISDIR).
+        let target = config_path();
+        fs::create_dir_all(&target).unwrap();
+
+        let err = reset_config().unwrap_err();
+        assert!(matches!(err, ConfigError::Io { .. }));
+
+        std::env::remove_var("XDG_CONFIG_HOME");
+    }
 }
 
 #[cfg(test)]
