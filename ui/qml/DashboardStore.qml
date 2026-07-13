@@ -111,8 +111,13 @@ Item {
             var cleanTiles = []
             for (var j = 0; j < srcTiles.length; j++) {
                 var t = srcTiles[j]
-                if (_isPlainObject(t) && typeof t.id === "string" && t.id !== "")
+                if (_isPlainObject(t) && typeof t.id === "string" && t.id !== "") {
+                    // Clamp span to [1,2]: a crafted/corrupt w/h (e.g. h:9999) would
+                    // otherwise drive a runaway rowSpan and blow up the grid layout.
+                    if (t.w !== undefined) t.w = Math.max(1, Math.min(2, Math.round(Number(t.w)) || 1))
+                    if (t.h !== undefined) t.h = Math.max(1, Math.min(2, Math.round(Number(t.h)) || 1))
                     cleanTiles.push(t)
+                }
             }
             p.tiles = cleanTiles
             cleanPages.push(p)
@@ -124,7 +129,7 @@ Item {
         // Page 5 tabs" bug) was never reconciled. Walk in order, keep the first
         // occurrence, and disambiguate later duplicates deterministically by
         // appending " 2", " 3", … — tiles/order/all other fields are untouched.
-        var seenNames = {}
+        var seenNames = Object.create(null)
         for (var n = 0; n < doc.pages.length; n++) {
             var pg = doc.pages[n]
             var nm = String(pg.name)
@@ -238,9 +243,14 @@ Item {
     function ensureSettings(id, defaults) {
         var s = _bucket(id)
         if (!s) return ({})
+        // Only bump revision + schedule a save when a default was ACTUALLY seeded.
+        // Otherwise every tile Loader rebuild (e.g. after applyExternal bumps
+        // structureRevision) re-ran ensureSettings → unconditional _touchSettings →
+        // a redundant ~400ms flash write echoing back the doc the hub just pushed.
+        var added = false
         for (var k in defaults)
-            if (s[k] === undefined) s[k] = defaults[k]
-        _touchSettings()
+            if (s[k] === undefined) { s[k] = defaults[k]; added = true }
+        if (added) _touchSettings()
         return s
     }
     function setSetting(id, key, val) {
@@ -307,8 +317,8 @@ Item {
         var tiles = data.pages[pageIdx].tiles
         for (var i = 0; i < tiles.length; i++) {
             if (tiles[i].id === tileId) {
-                tiles[i].w = w
-                tiles[i].h = h
+                tiles[i].w = Math.max(1, Math.min(2, Math.round(Number(w)) || 1))
+                tiles[i].h = Math.max(1, Math.min(2, Math.round(Number(h)) || 1))
                 _commitStructure()
                 return
             }
@@ -330,7 +340,7 @@ Item {
     }
     // Generate a "Page N" name that doesn't collide with existing page names.
     function _uniquePageName() {
-        var existing = {}
+        var existing = Object.create(null)
         for (var i = 0; i < data.pages.length; i++) existing[data.pages[i].name] = true
         var n = data.pages.length + 1
         while (existing["Page " + n]) n++
@@ -351,7 +361,7 @@ Item {
         if (pageIdx < 0 || pageIdx >= data.pages.length) return
         var trimmed = String(name || "").trim()
         if (trimmed === "") trimmed = data.pages[pageIdx].name
-        var others = {}
+        var others = Object.create(null)
         for (var i = 0; i < data.pages.length; i++)
             if (i !== pageIdx) others[data.pages[i].name] = true
         if (others[trimmed]) {

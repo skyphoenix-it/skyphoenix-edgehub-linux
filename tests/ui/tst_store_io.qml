@@ -78,6 +78,23 @@ Item {
             verify(!threw, "_flush / flushNow must be no-ops (not throw) without a bridge")
         }
 
+        // ensureSettings must NOT schedule a save when every default is already
+        // present — otherwise each tile-Loader rebuild (e.g. after applyExternal)
+        // re-runs it and triggers a redundant flash write echoing the pushed doc.
+        function test_ensureSettings_no_save_when_nothing_added() {
+            store.load("blank")
+            store.setSetting("w1", "a", 1)      // real key → schedules a save
+            store.flushNow()                    // clear the pending save
+            verify(!store._savePending, "no save pending after flushNow")
+            store.ensureSettings("w1", { a: 999 })   // 'a' already present → nothing seeded
+            verify(!store._savePending, "ensureSettings scheduled NO save when all defaults present")
+            compare(store.settingsFor("w1").a, 1, "existing value not overwritten by the default")
+            store.ensureSettings("w1", { b: 2 })     // 'b' is new → seeded
+            verify(store._savePending, "ensureSettings DID schedule a save when a default was seeded")
+            compare(store.settingsFor("w1").b, 2, "new default was seeded")
+            store.flushNow()   // don't leak a pending save into the next (alphabetical) test
+        }
+
         // ── _persistableData strips ephemeral keys from EVERY bucket ─────────
         function test_persistableData_strips_ephemeral_from_every_bucket() {
             seedBuckets()

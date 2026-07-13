@@ -46,6 +46,30 @@ Item {
             compare(store.pages()[0].tiles.length, 0, "non-array tiles reset to []")
         }
 
+        // A crafted/corrupt tile span (w/h) is clamped to [1,2] so it can't drive a
+        // runaway rowSpan and blow up the grid.
+        function test_tile_span_clamped() {
+            var ok = store.applyExternal('{"pages":[{"tiles":[{"id":"a","type":"cpu","w":9999,"h":-5},{"id":"b","type":"ram","h":2}]}]}')
+            verify(ok, "did not throw")
+            var tiles = store.pages()[0].tiles
+            compare(tiles.length, 2, "both valid tiles kept")
+            verify(tiles[0].w <= 2 && tiles[0].w >= 1, "w:9999 clamped into [1,2] (got " + tiles[0].w + ")")
+            verify(tiles[0].h <= 2 && tiles[0].h >= 1, "h:-5 clamped into [1,2] (got " + tiles[0].h + ")")
+            compare(tiles[1].h, 2, "a valid h:2 is preserved")
+        }
+
+        // Page names that collide with JS prototype members (toString/valueOf/
+        // constructor/hasOwnProperty) must NOT be spuriously renamed by the dedup —
+        // the name-set uses a null-prototype object, so these aren't false collisions.
+        function test_prototype_name_not_spuriously_renamed() {
+            var ok = store.applyExternal('{"pages":[{"name":"valueOf","tiles":[]},{"name":"toString","tiles":[]},{"name":"constructor","tiles":[]}]}')
+            verify(ok, "did not throw")
+            var names = store.pages().map(function(p){ return p.name })
+            compare(names[0], "valueOf", "'valueOf' page keeps its name (not 'valueOf 2')")
+            compare(names[1], "toString", "'toString' page keeps its name")
+            compare(names[2], "constructor", "'constructor' page keeps its name")
+        }
+
         // Mixed tile array: a bare string and a number are dropped; the only valid
         // tile (a plain object with a non-empty string id) survives.
         function test_bad_tiles_dropped_valid_survives() {
