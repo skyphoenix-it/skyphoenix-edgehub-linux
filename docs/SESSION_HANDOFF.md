@@ -14,7 +14,27 @@ everything: `./scripts/run_all_tests.sh` (→ `RESULT: SUCCESS`); coverage: `./s
 - **Rust**: `cd core && cargo test` — **116 passed**; **97.4%** line (config.rs 98.3%).
 - **C++**: `./scripts/run_cpp_tests.sh` — **15/15 ctest**; ~97% filtered line.
 
-### Post-PR#1 work (this session, newest first)
+### Install the latest build
+Package staged at **`~/xeneon-edge-hub-0.1.0.r55-1-x86_64.pkg.tar.zst`** (version
+`v0.1.0-26-g9b38f88`, shown in the Manager nav + hub Diagnostics). Install in your
+terminal (closes stray instances first): `pkill -f xeneon-edge; sudo pacman -U
+~/xeneon-edge-hub-0.1.0.r55-1-x86_64.pkg.tar.zst`.
+
+### Overnight autonomous pass — real bugs fixed (adversarial reviews)
+- **habit streak cap** (`7064c57`): streak was capped at 28 (heatmap-window prune);
+  now a persisted number, milestones ≥30 fire, backward-compatible.
+- **EOD overnight window** (`4e9265e`): night-shift (22→06) was wrong after midnight;
+  now selects the day-earlier window candidate.
+- **sensors 0% fabrication** (`40c4d93`): CPU/RAM no longer show a fake 0% before the
+  first metrics frame (S4).
+- **offline-edit loss** (`1f90515`, P1 data loss): a connected edit didn't update the
+  reconcile baseline, so an offline edit after a hub restart could be dropped — fixed +
+  regression test.
+- **store hardening** (`8001ffc`): clamp tile w/h to [1,2], prototype-safe page-name
+  dedup (`valueOf`/`toString`/… no longer spuriously renamed), no redundant flash-write
+  from ensureSettings after applyExternal.
+
+### Post-PR#1 work (newest first)
 - **Manager UI/UX + themes + robustness** (`8df1ccc`/`fafb133` + follow-ups): dark
   `QPalette` on both apps (config Switch/Slider/Button/ScrollBar/dialog buttons no
   longer render as pale Fusion), restyled config controls, **config live-preview now
