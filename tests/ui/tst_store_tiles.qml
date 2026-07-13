@@ -123,6 +123,39 @@ Item {
             compare(readerB.text, "typed in the overlay")
         }
 
+        // Metric sparkline history / peaks are volatile per-session state: they must
+        // stay in memory (so the compact tile and its expanded overlay share one
+        // sparkline) yet NEVER reach config.toml — otherwise the metric widgets
+        // rewrite the config on every ~2s sample (flash wear + a save race with the
+        // Manager). The persisted document strips them; a plain setting is kept.
+        function test_ephemeral_metric_keys_not_persisted() {
+            var id = store.addTile(0, "cpu")
+            store.setSetting(id, "hist", [1, 2, 3])
+            store.patchSettings(id, { peakRx: 99, peakTx: 42, place: "kept" })
+            // In-memory: everything is live (shared with the expanded overlay).
+            compare(store.settingsFor(id).hist, [1, 2, 3])
+            compare(store.settingsFor(id).peakRx, 99)
+            // On disk: the volatile keys are gone, the real setting survives.
+            var disk = store._persistableData().settings[id]
+            verify(disk.hist === undefined, "hist must not be persisted")
+            verify(disk.peakRx === undefined, "peakRx must not be persisted")
+            verify(disk.peakTx === undefined, "peakTx must not be persisted")
+            compare(disk.place, "kept", "a real setting alongside volatile keys is kept")
+        }
+
+        // A write that touches ONLY volatile keys must not schedule a disk save,
+        // but must still bump revision so the live sparkline redraws.
+        function test_ephemeral_write_bumps_revision_without_save() {
+            var id = store.addTile(0, "net")
+            var r0 = store.revision
+            store.patchSettings(id, { hist: [{ r: 1, t: 2 }], peakRx: 5, peakTx: 6 })
+            verify(store.revision > r0, "volatile write still bumps revision for reactivity")
+            verify(!store._savePending, "a volatile-only write must not schedule a disk save")
+            // A mixed patch (volatile + real) DOES schedule a save.
+            store.patchSettings(id, { hist: [{ r: 9, t: 9 }], units: "mbit" })
+            verify(store._savePending, "a patch with a real key schedules a save")
+        }
+
         function test_mutations_bump_revision() {
             var r0 = store.revision
             store.addTile(0, "cpu")

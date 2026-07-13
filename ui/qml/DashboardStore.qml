@@ -40,14 +40,40 @@ Item {
         interval: 400; repeat: false
         onTriggered: store._flush()
     }
+    // True while a debounced disk save is pending (introspection for tests).
+    readonly property alias _savePending: saveTimer.running
 
     function _hasBridge() {
         return (typeof configBridge !== "undefined") && configBridge
     }
 
+    // Setting keys that hold volatile, per-session runtime state (metric sparkline
+    // history + session peaks). They are shared in memory so the compact tile and
+    // its expanded overlay draw the same sparkline, but they must NEVER be persisted
+    // or schedule a disk write — otherwise the metric widgets rewrite config.toml on
+    // every sample (~2s), which is constant flash wear on the device and races the
+    // Manager's own save (transient ENOENT). They're also stripped from the on-disk
+    // document, so a genuine save never carries stale history across restarts (S4).
+    readonly property var _ephemeralKeys: ({ "hist": true, "peakRx": true, "peakTx": true })
+    function _isEphemeralKey(k) { return store._ephemeralKeys[k] === true }
+
+    // Deep copy of the document with all ephemeral runtime keys removed — the exact
+    // bytes written to disk.
+    function _persistableData() {
+        var d = _clone(store.data)
+        if (d.settings) {
+            for (var id in d.settings) {
+                var b = d.settings[id]
+                for (var k in store._ephemeralKeys)
+                    if (b[k] !== undefined) delete b[k]
+            }
+        }
+        return d
+    }
+
     function _flush() {
         if (_hasBridge())
-            configBridge.saveUiState(JSON.stringify(store.data))
+            configBridge.saveUiState(JSON.stringify(store._persistableData()))
     }
 
     // Force an immediate (non-debounced) save — used on structural edits.
@@ -73,8 +99,14 @@ Item {
         return doc
     }
 
-    // Bump reactivity for in-place settings mutations, schedule a save.
-    function _touchSettings() { revision++; changed(); saveTimer.restart() }
+    // Bump reactivity for in-place settings mutations. `persist` (default true)
+    // controls whether a disk save is scheduled: volatile metric writes bump
+    // revision so the live sparkline updates, but do not touch disk.
+    function _touchSettings(persist) {
+        revision++
+        changed()
+        if (persist === undefined || persist) saveTimer.restart()
+    }
 
     // Reassign `data` (clone) for structural mutations so Repeaters refresh.
     // Structural edits are force-flushed (not debounced) so a page/tile added
@@ -166,13 +198,16 @@ Item {
         var s = _bucket(id)
         if (!s) return
         s[key] = val
-        _touchSettings()
+        // A write to a volatile metric key bumps reactivity but is never persisted.
+        _touchSettings(!_isEphemeralKey(key))
     }
     function patchSettings(id, obj) {
         var s = _bucket(id)
         if (!s) return
-        for (var k in obj) s[k] = obj[k]
-        _touchSettings()
+        var persist = false
+        for (var k in obj) { s[k] = obj[k]; if (!_isEphemeralKey(k)) persist = true }
+        // Persist only when the patch carries at least one real (non-volatile) key.
+        _touchSettings(persist)
     }
     // Replace an instance's settings with a DEEP COPY of `defaults` (drops any
     // stale keys). The clone is essential: assigning array/object defaults by
