@@ -15,10 +15,10 @@ everything: `./scripts/run_all_tests.sh` (→ `RESULT: SUCCESS`); coverage: `./s
 - **C++**: `./scripts/run_cpp_tests.sh` — **15/15 ctest**; ~97% filtered line.
 
 ### Install the latest build
-Package staged at **`~/xeneon-edge-hub-0.1.0.r55-1-x86_64.pkg.tar.zst`** (version
-`v0.1.0-26-g9b38f88`, shown in the Manager nav + hub Diagnostics). Install in your
+Package staged at **`~/xeneon-edge-hub-0.1.0.r57-1-x86_64.pkg.tar.zst`** (version
+`v0.1.0-28-g5b961b0`, shown in the Manager nav + hub Diagnostics). Install in your
 terminal (closes stray instances first): `pkill -f xeneon-edge; sudo pacman -U
-~/xeneon-edge-hub-0.1.0.r55-1-x86_64.pkg.tar.zst`.
+~/xeneon-edge-hub-0.1.0.r57-1-x86_64.pkg.tar.zst`.
 
 ### Overnight autonomous pass — real bugs fixed (adversarial reviews)
 - **habit streak cap** (`7064c57`): streak was capped at 28 (heatmap-window prune);
@@ -112,9 +112,9 @@ The three former items are now **DONE** this session:
 3. ~~**Duplicate "Page 5" pages**~~ ✅ `_normaliseDoc` now de-dupes `pages[].name` on
    `load`/`applyExternal` (appends " 2", " 3", …). Gated by `tst_store_dedup`.
 
-Still open (documented, non-blocking): `config.rs` ~93% line (merged gate passes at
-96.64%; a corrupt-path IO test would close it); `mpris_bridge.cpp` D-Bus fan-out uncovered
-(needs a session bus).
+Still open (documented, non-blocking): `mpris_bridge.cpp` D-Bus fan-out uncovered (needs a
+session bus; the review confirmed the rest of the C++/core is solid). (config.rs was raised
+to 98.3% this session.)
 
 ### CI is now live (first real run this session)
 The trigger was fixed (`main`→`[main, master]`), so CI ran for the first time and surfaced
