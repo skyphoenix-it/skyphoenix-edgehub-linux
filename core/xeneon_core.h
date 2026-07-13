@@ -50,6 +50,8 @@ int xeneon_config_set_theme_accent(ConfigHandle* handle, const char* color);
 int xeneon_config_set_autostart(ConfigHandle* handle, int enabled);
 int xeneon_config_set_reconnect(ConfigHandle* handle, int enabled);
 int xeneon_config_set_notify_disconnect(ConfigHandle* handle, int enabled);
+int xeneon_config_get_reconnect(const ConfigHandle* handle);          // 1/0, -1 on error
+int xeneon_config_get_notify_disconnect(const ConfigHandle* handle);  // 1/0, -1 on error
 int xeneon_config_set_starter_layout(ConfigHandle* handle, const char* layout_id);
 char* xeneon_config_get_starter_layout(const ConfigHandle* handle);
 
