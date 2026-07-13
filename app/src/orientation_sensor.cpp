@@ -3,13 +3,20 @@
 #include <QSocketNotifier>
 #include <QDir>
 #include <QFile>
+#include <QRegularExpression>
 #include <QDebug>
 
 #include <fcntl.h>
 #include <unistd.h>
 #include <cerrno>
+#include <sys/ioctl.h>
+#include <linux/hidraw.h>
 
-OrientationSensor::OrientationSensor(QObject* parent) : QObject(parent) {}
+OrientationSensor::OrientationSensor(QObject* parent) : QObject(parent) {
+    // Poll timer used only after an unplug, to re-open the node when it returns.
+    m_retry.setInterval(3000);
+    connect(&m_retry, &QTimer::timeout, this, &OrientationSensor::tryReopen);
+}
 
 OrientationSensor::~OrientationSensor() {
     if (m_notifier) {
@@ -24,6 +31,14 @@ QString OrientationSensor::findEdgeHidraw() {
     // The kernel exposes each hidraw as /sys/class/hidraw/hidrawN with a
     // device/uevent carrying HID_ID=BUS:VVVVVVVV:PPPPPPPP. Match Corsair 1b1c /
     // Xeneon Edge 1d0d (hex, uppercase in uevent).
+    // Match the exact HID_ID vendor:product field (e.g. HID_ID=0003:00001B1C:00001D0D)
+    // rather than loose substrings anywhere in the uevent: two independent
+    // "contains" checks could both hit on an unrelated device whose numbers merely
+    // happen to include 1B1C and 1D0D somewhere, or on a Corsair device with a
+    // different product id. Anchoring on HID_ID=<bus>:<vid>:<pid> ties them together.
+    static const QRegularExpression hidIdRe(
+        QStringLiteral("HID_ID=[0-9A-F]+:0*1B1C:0*1D0D"),
+        QRegularExpression::CaseInsensitiveOption);
     QDir dir(QStringLiteral("/sys/class/hidraw"));
     const auto entries = dir.entryList(QStringList{QStringLiteral("hidraw*")}, QDir::Dirs | QDir::NoDotAndDotDot);
     for (const QString& name : entries) {
@@ -31,11 +46,8 @@ QString OrientationSensor::findEdgeHidraw() {
         if (!uevent.open(QIODevice::ReadOnly | QIODevice::Text))
             continue;
         const QString text = QString::fromUtf8(uevent.readAll());
-        // e.g. HID_ID=0003:00001B1C:00001D0D
-        if (text.contains(QStringLiteral("1B1C"), Qt::CaseInsensitive)
-            && text.contains(QStringLiteral("1D0D"), Qt::CaseInsensitive)) {
+        if (hidIdRe.match(text).hasMatch())
             return QStringLiteral("/dev/") + name;
-        }
     }
     return QString();
 }
@@ -61,6 +73,10 @@ bool OrientationSensor::start() {
         qInfo() << "OrientationSensor: no Xeneon Edge hidraw node found (auto-rotate disabled)";
         return false;
     }
+    return openAndWatch(path);
+}
+
+bool OrientationSensor::openAndWatch(const QString& path) {
     m_fd = ::open(path.toUtf8().constData(), O_RDONLY | O_NONBLOCK | O_CLOEXEC);
     if (m_fd < 0) {
         qWarning() << "OrientationSensor: cannot open" << path << "-" << strerror(errno)
@@ -70,9 +86,30 @@ bool OrientationSensor::start() {
     m_notifier = new QSocketNotifier(m_fd, QSocketNotifier::Read, this);
     connect(m_notifier, &QSocketNotifier::activated, this, &OrientationSensor::onReadable);
     qInfo() << "OrientationSensor: watching" << path << "for Xeneon Edge orientation";
-    // Drain any immediately-available report so we start with the real state.
+    // The panel only pushes a report when the orientation *changes*, so actively
+    // query the current state once — otherwise the UI stays at its default until
+    // the user physically rotates the panel.
+    queryInitialOrientation();
+    // Also drain any immediately-available change report.
     onReadable();
     return true;
+}
+
+void OrientationSensor::queryInitialOrientation() {
+    if (m_fd < 0)
+        return;
+    // HID GET_REPORT for input report id 0x01 — the same report the panel pushes
+    // asynchronously on rotation. buf[0] is the report id on entry (and on return).
+    unsigned char buf[64] = {0};
+    buf[0] = 0x01;
+    const int n = ::ioctl(m_fd, HIDIOCGINPUT(sizeof(buf)), buf);
+    if (n < 8 || buf[0] != 0x01)
+        return;   // unsupported / unexpected layout: fall back to the next change report
+    const int rot = byteToRotation(buf[7]);
+    if (rot >= 0 && rot != m_rotation) {
+        m_rotation = rot;
+        emit rotationChanged(m_rotation);
+    }
 }
 
 void OrientationSensor::stopWatching() {
@@ -85,6 +122,27 @@ void OrientationSensor::stopWatching() {
         ::close(m_fd);
         m_fd = -1;
     }
+}
+
+void OrientationSensor::handleDeviceLost() {
+    stopWatching();
+    // The node may reappear (device re-plugged / re-enumerated by the kernel).
+    // Poll for it and re-open transparently so auto-rotate recovers without a hub
+    // restart. active() reports false meanwhile (m_fd < 0).
+    if (!m_retry.isActive())
+        m_retry.start();
+}
+
+void OrientationSensor::tryReopen() {
+    if (m_fd >= 0) {   // already recovered by a prior attempt
+        m_retry.stop();
+        return;
+    }
+    const QString path = findEdgeHidraw();
+    if (path.isEmpty())
+        return;   // not back yet; keep polling
+    if (openAndWatch(path))
+        m_retry.stop();
 }
 
 void OrientationSensor::onReadable() {
@@ -100,16 +158,18 @@ void OrientationSensor::onReadable() {
             if (errno == EINTR)
                 continue;
             // Fatal (e.g. -ENODEV on unplug): the fd is hung up, so the notifier
-            // would keep firing and spin/log-spam forever. Stop watching entirely.
+            // would keep firing and spin/log-spam forever. Stop watching, then
+            // poll for the device to come back.
             qWarning() << "OrientationSensor: read error" << strerror(errno)
-                       << "- stopping auto-rotate";
-            stopWatching();
+                       << "- stopping auto-rotate (will retry if the panel returns)";
+            handleDeviceLost();
             return;
         }
         if (n == 0) {
             // EOF: the device went away. Same treatment as a fatal error.
-            qWarning() << "OrientationSensor: device closed (EOF) - stopping auto-rotate";
-            stopWatching();
+            qWarning() << "OrientationSensor: device closed (EOF) - stopping auto-rotate"
+                       << "(will retry if the panel returns)";
+            handleDeviceLost();
             return;
         }
         if (n < 8)

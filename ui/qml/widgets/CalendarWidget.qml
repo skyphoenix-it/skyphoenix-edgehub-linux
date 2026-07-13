@@ -38,7 +38,78 @@ WidgetChrome {
         if (val.length <= 8) return new Date(y, mo, d)
         var h = +val.substr(9, 2), mi = +val.substr(11, 2), s = +val.substr(13, 2) || 0
         if (val.indexOf("Z") >= 0) return new Date(Date.UTC(y, mo, d, h, mi, s))
+        // A named zone (DTSTART;TZID=…) is NOT a floating wall time: anchor it to
+        // the zone's offset. Only a bare timed value stays device-local.
+        var tz = tzidOf(key)
+        var off = tz ? tzOffsetMinutes(tz, y, mo, d) : null
+        if (off !== null) return new Date(Date.UTC(y, mo, d, h, mi, s) - off * 60000)
         return new Date(y, mo, d, h, mi, s)
+    }
+
+    // Extract a TZID parameter from a property line's key part.
+    function tzidOf(key) { var m = /TZID=([^;:]+)/.exec(key || ""); return m ? m[1].trim() : null }
+
+    // Best-effort zone → offset (minutes east of UTC) WITHOUT a tz database
+    // (QML's JS engine has no Intl). Explicit numeric-offset zones resolve
+    // exactly; a table of common IANA zones carries US/EU daylight-saving rules;
+    // anything unrecognised returns null so the caller falls back to floating.
+    function tzOffsetMinutes(tzid, y, mo, d) {
+        if (!tzid) return null
+        var m = /(?:GMT|UTC)?\s*([+-])(\d{2}):?(\d{2})/.exec(tzid)
+        if (m) { var v = (+m[2]) * 60 + (+m[3]); return m[1] === "-" ? -v : v }
+        var eg = /Etc\/GMT([+-])(\d{1,2})/.exec(tzid)   // POSIX sign is inverted
+        if (eg) return (eg[1] === "+" ? -1 : 1) * (+eg[2]) * 60
+        var zones = {
+            "America/New_York": [-300, "US"], "America/Chicago": [-360, "US"],
+            "America/Denver": [-420, "US"], "America/Los_Angeles": [-480, "US"],
+            "America/Anchorage": [-540, "US"], "America/Phoenix": [-420, null],
+            "America/Sao_Paulo": [-180, null], "America/Halifax": [-240, "US"],
+            "Europe/London": [0, "EU"], "Europe/Dublin": [0, "EU"], "Europe/Lisbon": [0, "EU"],
+            "Europe/Berlin": [60, "EU"], "Europe/Paris": [60, "EU"], "Europe/Madrid": [60, "EU"],
+            "Europe/Rome": [60, "EU"], "Europe/Amsterdam": [60, "EU"], "Europe/Zurich": [60, "EU"],
+            "Europe/Vienna": [60, "EU"], "Europe/Warsaw": [60, "EU"], "Europe/Athens": [120, "EU"],
+            "Europe/Helsinki": [120, "EU"], "Europe/Istanbul": [180, null], "Europe/Moscow": [180, null],
+            "UTC": [0, null], "Etc/UTC": [0, null], "GMT": [0, null],
+            "Asia/Kolkata": [330, null], "Asia/Dubai": [240, null], "Asia/Shanghai": [480, null],
+            "Asia/Singapore": [480, null], "Asia/Hong_Kong": [480, null], "Asia/Tokyo": [540, null],
+            "Australia/Sydney": [600, "AUE"], "Pacific/Auckland": [720, "NZ"]
+        }
+        var z = zones[tzid]
+        if (!z) return null
+        return z[0] + (z[1] && inDst(z[1], y, mo, d) ? 60 : 0)
+    }
+
+    function nthSunday(y, mo, n) {
+        var first = new Date(y, mo, 1).getDay()
+        return 1 + ((7 - first) % 7) + (n - 1) * 7
+    }
+    function lastSunday(y, mo) {
+        var last = new Date(y, mo + 1, 0)
+        return last.getDate() - last.getDay()
+    }
+    // Approximate daylight-saving membership by local calendar date (mo 0-based).
+    function inDst(rule, y, mo, d) {
+        if (rule === "US") {   // 2nd Sun Mar → 1st Sun Nov
+            if (mo < 2 || mo > 10) return false
+            if (mo > 2 && mo < 10) return true
+            return mo === 2 ? d >= nthSunday(y, 2, 2) : d < nthSunday(y, 10, 1)
+        }
+        if (rule === "EU") {   // last Sun Mar → last Sun Oct
+            if (mo < 2 || mo > 9) return false
+            if (mo > 2 && mo < 9) return true
+            return mo === 2 ? d >= lastSunday(y, 2) : d < lastSunday(y, 9)
+        }
+        if (rule === "AUE") {  // southern: 1st Sun Oct → 1st Sun Apr
+            if (mo > 9 || mo < 3) return true
+            if (mo > 3 && mo < 9) return false
+            return mo === 9 ? d >= nthSunday(y, 9, 1) : d < nthSunday(y, 3, 1)
+        }
+        if (rule === "NZ") {   // southern: last Sun Sep → 1st Sun Apr
+            if (mo > 8 || mo < 3) return true
+            if (mo > 3 && mo < 8) return false
+            return mo === 8 ? d >= lastSunday(y, 8) : d < nthSunday(y, 3, 1)
+        }
+        return false
     }
 
     // BYDAY tokens → weekday numbers (SU=0…SA=6), tolerating ordinal prefixes
@@ -69,8 +140,19 @@ WidgetChrome {
         // Emit one occurrence (honours EXDATE exclusions + horizon/past bounds).
         function emit(occStart) {
             if (excl[exKey(occStart)]) return                          // cancelled (EXDATE)
-            if (occStart.getTime() + dur < todayStart.getTime()) return  // already finished
             if (occStart > horizonEnd) return
+            var finished
+            if (ev.allDay) {
+                // All-day DTEND is exclusive; the event occupies whole days
+                // (default 1). Past once its last-occupied day is before today.
+                var occEnd = occStart.getTime() + (dur > 0 ? dur : 86400000)
+                finished = occEnd <= todayStart.getTime()
+            } else {
+                // Timed: past only once it has actually ended — compare against
+                // now, not start-of-day (else events done earlier today linger).
+                finished = occStart.getTime() + dur < now.getTime()
+            }
+            if (finished) return
             out.push({ title: ev.title, location: ev.location, allDay: ev.allDay,
                        start: new Date(occStart), end: new Date(occStart.getTime() + dur) })
         }
@@ -105,21 +187,38 @@ WidgetChrome {
                         if (occ >= ev.start) { emit(occ); n++ }
                     }
                 }
-                cursor = new Date(cursor.getTime() + 86400000)
+                var nc = new Date(cursor); nc.setDate(nc.getDate() + 1); cursor = nc  // calendar-day step (DST-safe)
+            }
+            return out
+        }
+
+        // MONTHLY / YEARLY: step by calendar month/year, rolling a past DTSTART
+        // forward to its upcoming occurrence (birthdays, monthly bills, …).
+        if (freq === "MONTHLY" || freq === "YEARLY") {
+            var occM = new Date(ev.start), guardM = 0
+            while (occM <= horizonEnd && occM <= until && n < count && out.length < 200 && guardM < 100000) {
+                guardM++
+                emit(occM)
+                var nxM = new Date(occM)
+                if (freq === "MONTHLY") nxM.setMonth(nxM.getMonth() + interval)
+                else nxM.setFullYear(nxM.getFullYear() + interval)
+                occM = nxM; n++
             }
             return out
         }
 
         var stepDays = freq === "WEEKLY" ? 7 * interval : (freq === "DAILY" ? interval : 0)
-        if (stepDays === 0) { // MONTHLY/YEARLY/unsupported → single instance
+        if (stepDays === 0) { // unsupported FREQ → single instance
             var effEnd0 = ev.end || ev.start
             if (effEnd0 >= todayStart && ev.start <= horizonEnd) emit(ev.start)
             return out
         }
+        // Step by calendar days so the local wall-clock time survives DST
+        // transitions (a fixed 86400000ms delta would drift the hour by ±1).
         var occ2 = new Date(ev.start)
         while (occ2 <= horizonEnd && occ2 <= until && n < count && out.length < 200) {
             emit(occ2)
-            occ2 = new Date(occ2.getTime() + stepDays * 86400000); n++
+            var nx2 = new Date(occ2); nx2.setDate(nx2.getDate() + stepDays); occ2 = nx2; n++
         }
         return out
     }
@@ -175,13 +274,16 @@ WidgetChrome {
             if (w._xhr !== xhr) return   // superseded by a newer fetch
             w._xhr = null
             w.loading = false
-            if (xhr.status !== 200) { w.errorText = "Couldn't fetch calendar"; return }
+            if ([200, 203, 206, 304].indexOf(xhr.status) < 0) { w.errorText = "Couldn't fetch calendar"; return }
             try {
                 w.events = w.parseICS(xhr.responseText)
                 w.errorText = w.events.length ? "" : "No upcoming events"
             } catch (e) { w.errorText = "Couldn't read calendar" }
         }
-        try { xhr.open("GET", url); xhr.send() }
+        // webcal:// (iCloud/Apple) is just ICS over HTTP(S) — rewrite the scheme
+        // rather than handing XMLHttpRequest a scheme it rejects as invalid.
+        var reqUrl = /^webcal:/i.test(url) ? url.replace(/^webcal:/i, "https:") : url
+        try { xhr.open("GET", reqUrl); xhr.send() }
         catch (e) { _xhr = null; loading = false; errorText = "Invalid URL" }
     }
 
@@ -215,7 +317,7 @@ WidgetChrome {
             visible: w.url.length > 0; Layout.fillWidth: true; Layout.fillHeight: true; spacing: 3
             Text { text: (w.tick, "Up next"); font.pixelSize: 12; color: theme.textTertiary }
             Repeater {
-                model: Math.min(w.shownEvents.length, 3)
+                model: w.shownEvents.length
                 delegate: RowLayout {
                     required property int index
                     Layout.fillWidth: true; spacing: 6
@@ -224,7 +326,8 @@ WidgetChrome {
                         Layout.fillWidth: true; spacing: 0
                         Text { text: w.shownEvents[index].title || "(busy)"; color: theme.textPrimary
                             font.pixelSize: 12; elide: Text.ElideRight; Layout.fillWidth: true }
-                        Text { text: w.fmtWhen(w.shownEvents[index]); color: theme.textSecondary; font.pixelSize: 12 }
+                        Text { text: w.fmtWhen(w.shownEvents[index]); color: theme.textSecondary
+                            font.pixelSize: 12; elide: Text.ElideRight; Layout.fillWidth: true }
                     }
                 }
             }
@@ -247,6 +350,12 @@ WidgetChrome {
                 background: Rectangle { radius: theme.radiusSm; color: theme.backgroundColor
                     border.color: urlField.activeFocus ? w.effAccent : theme.cardBorder; border.width: 1 }
                 onEditingFinished: if (w.store) w.store.setSetting(w.instanceId, "url", text)
+                // Re-assert the store value after an external/store push (typing
+                // severs the `text:` binding permanently — S2). Skip while editing.
+                Connections {
+                    target: w
+                    function onUrlChanged() { if (!urlField.activeFocus) urlField.text = w.url }
+                }
             }
             PillButton { label: "Save"; primary: true; tint: w.effAccent
                 onClicked: if (w.store) w.store.setSetting(w.instanceId, "url", urlField.text) }

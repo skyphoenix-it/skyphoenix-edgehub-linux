@@ -32,16 +32,20 @@ WidgetChrome {
     status: (w.showTemp && temp > 0) ? temp.toFixed(0) + "°C" : ""
     statusColor: temp > w.warnTemp ? theme.error : temp > w.warnTemp - 17 ? theme.warning : theme.textSecondary
     // Temperature escalates the whole gauge; otherwise reflect load in the accent.
+    // Thermal escalation is a safety signal — it must survive even when the temp
+    // text is hidden (showTemp only governs the header status, not the ring). The
+    // amber band matches the header's (warnTemp-17) so number and ring never disagree.
     function col(p) {
-        if (w.showTemp && w.temp > 0) {
+        if (w.temp > 0) {
             if (w.temp > w.warnTemp) return theme.error
-            if (w.temp > w.warnTemp - 12) return theme.warning
+            if (w.temp > w.warnTemp - 17) return theme.warning
         }
         return p > 92 ? theme.error : p > 75 ? theme.warning : w.effAccent
     }
 
     property var hist: []
     onMetricsChanged: {
+        if (!w.active) return           // paused (expanded / off-page) → stop sampling
         if (!w.avail) return
         var h = w.hist.slice(); h.push(w.v / 100)
         if (h.length > 48) h.shift()

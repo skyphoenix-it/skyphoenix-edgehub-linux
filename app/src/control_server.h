@@ -36,8 +36,11 @@ public:
     void setStateProvider(const std::function<QString()>& provider) { m_provider = provider; }
 
 signals:
-    // A client pushed a new UI-state document; main persists + reloads it.
-    void uiStateReceived(const QString& json);
+    // A client pushed a new UI-state document; main persists + reloads it and
+    // writes the apply result back through `ok` (an out-parameter, since a signal
+    // can't return a value) so setUiState can ack success/failure honestly. The
+    // slot is same-thread, so the value is set by the time emit returns.
+    void uiStateReceived(const QString& json, bool* ok);
     // A client asked the hub to quit (companion Manager's Stop control).
     void shutdownRequested();
 

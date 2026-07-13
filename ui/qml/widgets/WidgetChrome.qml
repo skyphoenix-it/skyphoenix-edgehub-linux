@@ -29,13 +29,19 @@ Item {
     //                  stands out ("none" | orbs | mesh | aurora | waves | stars | bokeh | grid).
     property string accentName: ""
     property string cardBackdrop: "none"
+    // Resolve the effective accent. A named preset (accentName) wins; otherwise
+    // fall back to accentColor. Guard against a self-referential binding loop
+    // (a widget setting `accentColor: someChrome.effAccent`), which resolves to
+    // an invalid/transparent colour — use theme.accent so content never renders
+    // black/invisible.
     readonly property color effAccent: (accentName !== "" && theme.accentPresets[accentName])
-                                       ? theme.accentPresets[accentName].a : accentColor
+                                       ? theme.accentPresets[accentName].a
+                                       : (accentColor.a > 0 ? accentColor : theme.accent)
     property string status: ""          // small trailing status text (top-right)
     property color statusColor: theme.textSecondary
     property bool big: height > 240      // "expanded" mode (richer content)
     property bool showHeader: true
-    property bool interactive: false     // draw an accent ring on hover
+    property bool interactive: false     // retained for API compat; hover ring is a no-op on the touchscreen
     // When hosted inside the expanded overlay (which supplies its own card),
     // drop this widget's own card surface + padding to avoid a card-in-a-card.
     property bool chromeless: false
@@ -55,8 +61,7 @@ Item {
         radius: theme.radiusLg
         color: theme.cardFill()
         border.width: theme.cardBorderWidth
-        border.color: chrome.interactive && hoverArea.containsMouse
-                      ? chrome.effAccent : theme.cardBorder
+        border.color: theme.cardBorder
         Behavior on border.color { ColorAnimation { duration: theme.motionFast } }
         clip: true
 
@@ -167,15 +172,6 @@ Item {
             Layout.fillHeight: true
             clip: true
         }
-    }
-
-    // Hover ring for interactive widgets
-    MouseArea {
-        id: hoverArea
-        anchors.fill: parent
-        hoverEnabled: chrome.interactive
-        acceptedButtons: Qt.NoButton
-        propagateComposedEvents: true
     }
 }
 

@@ -24,6 +24,8 @@ WidgetChrome {
     onShowSecondsChanged: cv.requestPaint()
     onShowNumeralsChanged: cv.requestPaint()
     onEffAccentChanged: cv.requestPaint()
+    // Reactivated tile (edit-mode/off-page → live) refreshes with current time+palette.
+    onActiveChanged: if (active) cv.requestPaint()
 
     Canvas {
         id: cv
@@ -69,7 +71,18 @@ WidgetChrome {
             }
             ctx.fillStyle = w.effAccent; ctx.beginPath(); ctx.arc(cx, cy, Math.max(2, rad * 0.05), 0, 2 * Math.PI); ctx.fill()
         }
-        Connections { target: w; function onTickChanged() { cv.requestPaint() } }
+        // Single-driver rule (S3): only the active tile repaints on the shared tick.
+        // Off-screen / expanded / edit-mode clocks are set active=false and stay idle.
+        Connections { target: w; function onTickChanged() { if (w.active) cv.requestPaint() } }
+        // Theme role colors (ring/ticks/numerals/hands) are read at paint time; repaint
+        // when the palette changes so a theme switch doesn't leave a stale face.
+        Connections {
+            target: theme
+            function onCardBorderChanged() { if (w.active) cv.requestPaint() }
+            function onTextPrimaryChanged() { if (w.active) cv.requestPaint() }
+            function onTextSecondaryChanged() { if (w.active) cv.requestPaint() }
+            function onTextTertiaryChanged() { if (w.active) cv.requestPaint() }
+        }
         onWidthChanged: requestPaint()
         onHeightChanged: requestPaint()
         Component.onCompleted: requestPaint()

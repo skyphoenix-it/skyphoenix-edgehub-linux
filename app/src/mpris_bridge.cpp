@@ -148,9 +148,16 @@ void MprisBridge::refresh() {
         m_service, QString::fromLatin1(kPath), QString::fromLatin1(kPropsIface),
         QStringLiteral("GetAll"));
     getAll << QString::fromLatin1(kPlayerIface);
+    // Capture the service this reply belongs to. If the active player switched
+    // while the async call was in flight, a late reply from the OLD player must
+    // NOT overwrite the new one's metadata.
+    const QString service = m_service;
     auto* w = new QDBusPendingCallWatcher(m_bus.asyncCall(getAll, kDbusTimeoutMs), this);
-    connect(w, &QDBusPendingCallWatcher::finished, this, [this](QDBusPendingCallWatcher* self) {
+    connect(w, &QDBusPendingCallWatcher::finished, this,
+            [this, service](QDBusPendingCallWatcher* self) {
         self->deleteLater();
+        if (service != m_service)
+            return;   // player changed since we asked; drop the stale reply
         QDBusPendingReply<QVariantMap> reply = *self;
         if (!reply.isValid()) {
             if (m_available) { m_available = false; emit changed(); }
@@ -162,40 +169,60 @@ void MprisBridge::refresh() {
 }
 
 void MprisBridge::applyProps(const QVariantMap& m) {
-    m_status = m.value(QStringLiteral("PlaybackStatus")).toString();
+    // Compute the new values into locals first so we can dirty-check against the
+    // current state and only notify QML when something actually moved (see below).
+    QString status = m.value(QStringLiteral("PlaybackStatus")).toString();
 
     const QVariantMap meta = qdbus_cast<QVariantMap>(m.value(QStringLiteral("Metadata")));
-    m_title = meta.value(QStringLiteral("xesam:title")).toString();
+    QString title = meta.value(QStringLiteral("xesam:title")).toString();
     QStringList artists = qdbus_cast<QStringList>(meta.value(QStringLiteral("xesam:artist")));
     if (artists.isEmpty())
         artists = meta.value(QStringLiteral("xesam:artist")).toStringList();
-    m_artist = artists.join(QStringLiteral(", "));
-    m_album = meta.value(QStringLiteral("xesam:album")).toString();
-    m_artUrl = meta.value(QStringLiteral("mpris:artUrl")).toString();
+    QString artist = artists.join(QStringLiteral(", "));
+    QString album = meta.value(QStringLiteral("xesam:album")).toString();
+    QString artUrl = meta.value(QStringLiteral("mpris:artUrl")).toString();
     // Some players (e.g. Chromium) advertise a file:// art path that may be
     // stale/unreadable. Validate local files so QML never tries a bad URL
     // (which would emit an Image "Cannot open" warning); http(s) is passed through.
-    if (m_artUrl.startsWith(QStringLiteral("file://"))) {
-        const QString local = QUrl(m_artUrl).toLocalFile();
+    if (artUrl.startsWith(QStringLiteral("file://"))) {
+        const QString local = QUrl(artUrl).toLocalFile();
         if (local.isEmpty() || !QFileInfo(local).isReadable())
-            m_artUrl.clear();
+            artUrl.clear();
     }
-    m_lengthUs = meta.value(QStringLiteral("mpris:length")).toLongLong();
-    m_playerName = m_service.mid(kPrefix.length());
+    qlonglong lengthUs = meta.value(QStringLiteral("mpris:length")).toLongLong();
+    QString playerName = m_service.mid(kPrefix.length());
 
     // A service can be registered on the bus (CanControl: true) with no track
     // actually loaded — e.g. a browser tab with audio capability but nothing
     // played yet, or a player that was just stopped. Treat that as genuinely
     // "nothing playing" rather than showing a blank card: require either a real
     // title or an active Playing/Paused status.
-    const bool hasTrack = !m_title.isEmpty();
-    const bool isActive = m_status == QStringLiteral("Playing") || m_status == QStringLiteral("Paused");
-    m_available = hasTrack || isActive;
-    if (!m_available) {
-        m_title = m_artist = m_album = m_artUrl = QString();
-        m_lengthUs = 0;
+    const bool hasTrack = !title.isEmpty();
+    const bool isActive = status == QStringLiteral("Playing") || status == QStringLiteral("Paused");
+    bool available = hasTrack || isActive;
+    if (!available) {
+        title = artist = album = artUrl = QString();
+        lengthUs = 0;
     }
-    emit changed();
+
+    // Dirty-check: applyProps runs on every 3s rescan, but emitting changed()
+    // unconditionally re-fires every property NOTIFY and restarts QML animations
+    // bound to them. Only emit when a visible field really changed.
+    const bool dirty = available != m_available || status != m_status ||
+                       title != m_title || artist != m_artist || album != m_album ||
+                       artUrl != m_artUrl || playerName != m_playerName;
+
+    m_status = status;
+    m_title = title;
+    m_artist = artist;
+    m_album = album;
+    m_artUrl = artUrl;
+    m_lengthUs = lengthUs;
+    m_playerName = playerName;
+    m_available = available;
+
+    if (dirty)
+        emit changed();
 }
 
 void MprisBridge::fetchPosition() {
@@ -203,9 +230,15 @@ void MprisBridge::fetchPosition() {
         return;
     QDBusMessage msg = propGetMsg(m_service, QString::fromLatin1(kPlayerIface),
                                   QStringLiteral("Position"));
+    // Same identity guard as refresh(): a Position reply from a player we've since
+    // switched away from must not scrub the new player's position.
+    const QString service = m_service;
     auto* w = new QDBusPendingCallWatcher(m_bus.asyncCall(msg, kDbusTimeoutMs), this);
-    connect(w, &QDBusPendingCallWatcher::finished, this, [this](QDBusPendingCallWatcher* self) {
+    connect(w, &QDBusPendingCallWatcher::finished, this,
+            [this, service](QDBusPendingCallWatcher* self) {
         self->deleteLater();
+        if (service != m_service)
+            return;   // stale reply from a replaced player; drop it
         QDBusPendingReply<QDBusVariant> reply = *self;
         if (reply.isValid()) {
             m_positionUs = reply.value().variant().toLongLong();

@@ -56,7 +56,11 @@ WidgetChrome {
         : (presets[presetName] || presets["classic"])
     property string phase: cfg.phase || "work"     // work | short | long
     property bool running: cfg.running || false
-    property int completedWork: cfg.day === today() ? (cfg.doneToday || 0) : 0
+    // Ticks forward (each driving second) so `todayKey` / `completedWork` roll
+    // over at midnight on this 24/7 device instead of freezing on the boot day.
+    property int tick: 0
+    readonly property string todayKey: { tick; return today() }
+    property int completedWork: cfg.day === todayKey ? (cfg.doneToday || 0) : 0
 
     // A local pulse ticks each second (when this instance drives) to refresh
     // `remaining`, which is derived from the persisted absolute end time.
@@ -74,7 +78,10 @@ WidgetChrome {
 
     function today() { return Qt.formatDate(new Date(), "yyyy-MM-dd") }
     function phaseSeconds(ph) { return (ph === "work" ? p.work : ph === "short" ? p.short : p.long) * 60 }
-    function phaseColor() { return phase === "work" ? theme.catProductivity : phase === "short" ? theme.success : theme.accent }
+    // Work phase follows the widget's effective accent (per-instance override
+    // reaches the highlight content, not just the chrome header); breaks keep
+    // their semantic colours.
+    function phaseColor() { return phase === "work" ? w.effAccent : phase === "short" ? theme.success : theme.accent }
     function phaseLabel() { return phase === "work" ? "Focus" : phase === "short" ? "Short Break" : "Long Break" }
     function fmt(s) { var m = Math.floor(s / 60), sec = s % 60; return String(m).padStart(2, '0') + ":" + String(sec).padStart(2, '0') }
 
@@ -84,33 +91,42 @@ WidgetChrome {
     function pause() { save({ running: false, pausedRemaining: remaining }) }
     function toggle() { running ? pause() : start() }
     function addFive() {
-        if (running) save({ endEpoch: cfg.endEpoch + 300000 })
+        // Running without a persisted endEpoch (e.g. state pushed mid-flight)
+        // would make `cfg.endEpoch + 300000` NaN — rebuild it from `remaining`.
+        if (running) save({ endEpoch: (cfg.endEpoch || Date.now() + remaining * 1000) + 300000 })
         else save({ pausedRemaining: remaining + 300 })
     }
     function loadPhase(ph, run) {
         var secs = phaseSeconds(ph)
         save({ phase: ph, pausedRemaining: secs, running: run, endEpoch: run ? Date.now() + secs * 1000 : 0 })
     }
-    // `completedWork` is derived read-only from the persisted `doneToday`; reset
-    // the real key, not the derived one (writing completedWork was a silent no-op
-    // that left "N done today" stuck).
-    function reset() { save({ doneToday: 0, day: today() }); loadPhase("work", false) }
-    function applyPreset(name) { save({ preset: name, doneToday: 0, day: today() }); loadPhase("work", false) }
+    // Reset restarts the timer for the current phase; it must NOT wipe today's
+    // session count / points — that's the day's earned momentum, not timer state.
+    function reset() { loadPhase("work", false) }
+    // Switching preset re-seeds the timer to the new work length but likewise
+    // preserves today's count (changing technique mid-day shouldn't erase it).
+    function applyPreset(name) { save({ preset: name }); loadPhase("work", false) }
     function advance(natural) {
         var cw = completedWork
         var nextPhase, done = cw, run
         var pts = points
         if (phase === "work") {
-            done = cw + 1
-            nextPhase = (done % p.every === 0) ? "long" : "short"
+            // Only a timer-driven completion (natural) counts as a finished
+            // session and earns rewards; a manual Skip must never count, reward,
+            // or celebrate (the `natural` flag was previously dead).
+            if (natural) {
+                done = cw + 1
+                // Reward: points per session (+ a bonus for reaching the daily
+                // goal), and a celebration — a small, honest dopamine hit. Fires
+                // on reaching OR exceeding the goal, not only on the exact hit.
+                var hitGoal = (done >= dailyGoal)
+                if (rewardPoints) pts += 10 + (hitGoal ? 50 : 0)
+                if (celebrate) celebrateNow(hitGoal ? "🎯 Goal reached!  +50" : "🎉 Nice! Session done")
+            }
+            nextPhase = (done > 0 && done % p.every === 0) ? "long" : "short"
             // Roll straight into the break only when the user opted in;
             // otherwise pause and wait for them to start it.
             run = autoStartBreak
-            // Reward: points per session (+ a bonus for hitting the daily goal),
-            // and a celebration — a small, honest dopamine hit.
-            var hitGoal = (done === dailyGoal)
-            if (rewardPoints) pts += 10 + (hitGoal ? 50 : 0)
-            if (celebrate) celebrateNow(hitGoal ? "🎯 Goal reached!  +50" : "🎉 Nice! Session done")
         } else {
             nextPhase = "work"
             // Never auto-start a work phase after a break.
@@ -146,6 +162,7 @@ WidgetChrome {
         interval: 1000; repeat: true; running: w.active
         onTriggered: {
             w.pulse++
+            w.tick++   // rolls todayKey / completedWork over at midnight
             if (w.running && w.remaining <= 0) w.advance(true)
         }
     }
@@ -161,9 +178,11 @@ WidgetChrome {
     // Celebration message — pops in on a completed session (dopamine kick).
     Text {
         id: celebrateLabel; anchors.centerIn: parent; z: 20
+        width: parent.width * 0.92
         text: w.celebrateMsg; opacity: 0
         font.pixelSize: w.expanded ? 34 : 18; font.bold: true; font.family: theme.fontDisplay
-        color: w.phaseColor(); horizontalAlignment: Text.AlignHCenter
+        fontSizeMode: Text.HorizontalFit; minimumPixelSize: 12
+        color: w.phaseColor(); horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight
         SequentialAnimation {
             id: celebrateAnim; running: false
             PropertyAction { target: celebrateLabel; property: "scale"; value: 0.6 }
@@ -192,7 +211,8 @@ WidgetChrome {
                 font.pixelSize: Math.max(20, Math.min(parent.width * 0.26, 34))
                 font.family: theme.fontMono; font.bold: true
                 color: w.running ? w.phaseColor() : theme.textPrimary }
-            Text { Layout.alignment: Qt.AlignHCenter; text: w.phaseLabel()
+            Text { Layout.alignment: Qt.AlignHCenter; Layout.maximumWidth: parent.width
+                text: w.phaseLabel(); elide: Text.ElideRight
                 font.pixelSize: 12; color: theme.textSecondary }
         }
     }

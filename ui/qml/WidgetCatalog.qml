@@ -53,7 +53,7 @@ QtObject {
         "ram": "How much system memory is in use right now.",
         "net": "Live upload and download throughput across your network interfaces.",
         "disk": "How full your root filesystem is.",
-        "sensors": "CPU, GPU, memory and temperatures together at a glance.",
+        "sensors": "CPU, GPU, memory, disk and temperatures together at a glance.",
         "clock": "The current time and date.",
         "analog": "A classic analog clock face.",
         "moon": "Tonight's moon phase and how illuminated it is.",
@@ -65,7 +65,7 @@ QtObject {
         "hydration": "Count glasses of water toward a daily goal; use − / + to adjust.",
         "break": "A repeating reminder to take a break. Set the interval with − / +.",
         "calendar": "Upcoming events from a calendar you subscribe to. Paste an ICS URL to connect it.",
-        "weather": "Current conditions and a 4-day forecast. Type a city and press Set location.",
+        "weather": "Current conditions and a multi-day forecast. Type a city and look up its coordinates.",
         "countdown": "Counts the days to a date you choose. Set a label and date below.",
         "eod": "How much of your workday is left. Adjust your start and end hours.",
         "media": "Now Playing — controls Spotify, YouTube Music, or any player on this machine.",
@@ -80,7 +80,9 @@ QtObject {
     function source(type) { var d = def(type); return d ? d.source : "" }
     function title(type)  { var d = def(type); return d ? d.title : type }
     function desc(type)   { return _desc[type] || "" }
-    function defaults(type) { var d = def(type); return d ? d.defaults : ({}) }
+    // Deep clone so callers can freely mutate the seed without aliasing the
+    // catalog's live object (or every future instance seeded from it).
+    function defaults(type) { var d = def(type); return d ? JSON.parse(JSON.stringify(d.defaults)) : ({}) }
 
     // Distinct category names, in declaration order.
     function categories() {

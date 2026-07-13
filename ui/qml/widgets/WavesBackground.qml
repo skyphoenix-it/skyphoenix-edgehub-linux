@@ -6,7 +6,9 @@ import QtQuick
 Item {
     id: root
     property bool active: true
-    property color c1: theme.accent
+    // Primary tint (S7). Defaults to theme.accent; overridable via BackdropLayer.
+    property color accent: theme.accent
+    property color c1: accent
     property color c2: theme.accent2
     property color c3: theme.catEntertainment
     clip: true
@@ -20,6 +22,11 @@ Item {
         property real speed: 30000
         property real op: 0.15
         anchors.fill: parent
+        // The wave shape is drawn once into the Canvas; the tint is baked into
+        // that texture, so a theme (or accent-override) change needs an explicit
+        // repaint — a plain colour binding would never reach the cached pixels.
+        onTintChanged: cv.requestPaint()
+        onOpChanged: cv.requestPaint()
         Canvas {
             id: cv
             height: parent.height

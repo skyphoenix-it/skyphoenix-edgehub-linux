@@ -55,9 +55,16 @@ WidgetChrome {
             model: w.rows
             delegate: RowLayout {
                 required property var modelData
-                Layout.fillWidth: true; spacing: theme.spacingSm
+                // Compact tiles are height-starved (a 120px tile leaves ~64px of
+                // body): let every row share that height so all six stay fully
+                // visible instead of overflowing the clipped body (S12). Expanded
+                // tiles keep their natural, top-aligned rows.
+                Layout.fillWidth: true; Layout.fillHeight: !w.expanded
+                spacing: theme.spacingSm
                 Text { text: modelData.lbl; font.family: theme.fontMono; color: theme.textSecondary
-                    font.pixelSize: w.expanded ? 16 : 12; Layout.preferredWidth: w.expanded ? 62 : 46 }
+                    font.pixelSize: w.expanded ? 16 : 12; Layout.preferredWidth: w.expanded ? 62 : 46
+                    Layout.fillHeight: !w.expanded; verticalAlignment: Text.AlignVCenter
+                    elide: Text.ElideRight; fontSizeMode: Text.VerticalFit; minimumPixelSize: 6 }
                 Rectangle {
                     Layout.fillWidth: true; Layout.preferredHeight: w.expanded ? 12 : 6
                     radius: height / 2; color: theme.cardBorder
@@ -69,8 +76,24 @@ WidgetChrome {
                 }
                 Text { text: modelData.val.toFixed(0) + modelData.unit; font.family: theme.fontMono
                     color: theme.textPrimary; font.pixelSize: w.expanded ? 16 : 12
-                    horizontalAlignment: Text.AlignRight; Layout.preferredWidth: w.expanded ? 64 : 50 }
+                    horizontalAlignment: Text.AlignRight; Layout.preferredWidth: w.expanded ? 64 : 50
+                    Layout.fillHeight: !w.expanded; verticalAlignment: Text.AlignVCenter
+                    fontSizeMode: Text.VerticalFit; minimumPixelSize: 6 }
             }
         }
+    }
+
+    // Every row disabled → an explicit placeholder instead of a blank card.
+    Text {
+        anchors.centerIn: parent
+        visible: w.rows.length === 0
+        width: parent.width - 2 * theme.spacingSm
+        text: "No sensors enabled"
+        color: theme.textSecondary
+        font.family: theme.fontDisplay
+        font.pixelSize: w.expanded ? 16 : 13
+        horizontalAlignment: Text.AlignHCenter
+        wrapMode: Text.WordWrap
+        elide: Text.ElideRight
     }
 }

@@ -31,21 +31,46 @@ Item {
             ctx.lineCap = "round"
             ctx.stroke()
 
-            // Progress arc with gradient
+            // Progress arc. An idle metric (value <= 0) must paint nothing — a
+            // round-cap stroke over a zero-length arc would leave a spurious dot
+            // at 12 o'clock, so guard the sweep instead of flooring it.
+            var frac = Math.max(0, Math.min(1, ring.value))
+            if (frac <= 0)
+                return
             var start = -Math.PI / 2
-            var end = start + Math.max(0.0001, Math.min(1, ring.value)) * 2 * Math.PI
-            var grad = ctx.createLinearGradient(0, 0, width, height)
-            grad.addColorStop(0, ring.progressColor)
-            grad.addColorStop(1, ring.progressColor2)
+            var end = start + frac * 2 * Math.PI
+            var c0 = ring.progressColor, c1 = ring.progressColor2
             // (Canvas shadowBlur glow removed — it is a CPU-side blur that is
             // recomputed on every repaint and caused noticeable jank when the
             // ring animates each second. The gradient stroke reads well on its own.)
-            ctx.beginPath()
-            ctx.arc(cx, cy, r, start, end)
-            ctx.strokeStyle = grad
-            ctx.lineWidth = ring.thickness
-            ctx.lineCap = "round"
-            ctx.stroke()
+            if (Qt.colorEqual(c0, c1)) {
+                // Single colour: one cheap stroke (the common timer/gauge case).
+                ctx.beginPath()
+                ctx.arc(cx, cy, r, start, end)
+                ctx.strokeStyle = c0
+                ctx.lineWidth = ring.thickness
+                ctx.lineCap = "round"
+                ctx.stroke()
+            } else {
+                // Two-colour ramp that follows the arc (a bounding-box linear
+                // gradient does not track angular position). Draw short segments
+                // with a per-segment interpolated colour; round caps blend them.
+                var segs = Math.max(2, Math.round(frac * 48))
+                for (var k = 0; k < segs; k++) {
+                    var a0 = start + (end - start) * (k / segs)
+                    var a1 = start + (end - start) * ((k + 1) / segs)
+                    var t = (k + 0.5) / segs
+                    ctx.beginPath()
+                    ctx.arc(cx, cy, r, a0, a1)
+                    ctx.strokeStyle = Qt.rgba(c0.r + (c1.r - c0.r) * t,
+                                              c0.g + (c1.g - c0.g) * t,
+                                              c0.b + (c1.b - c0.b) * t,
+                                              c0.a + (c1.a - c0.a) * t)
+                    ctx.lineWidth = ring.thickness
+                    ctx.lineCap = "round"
+                    ctx.stroke()
+                }
+            }
         }
     }
 

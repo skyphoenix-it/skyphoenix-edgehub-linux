@@ -8,6 +8,11 @@ import QtQuick
 Item {
     id: root
     property bool active: true
+    // Accent override hook (S7). This style's curtains are an intentionally fixed
+    // multi-hue palette (green/teal/purple), so it keeps its own colours rather
+    // than collapsing to a single accent; declared only so BackdropLayer can bind
+    // an accent uniformly across every style without erroring on this one.
+    property color accent: theme.accent
     clip: true
 
     // A single soft vertical curtain.

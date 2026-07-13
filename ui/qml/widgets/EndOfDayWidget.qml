@@ -19,29 +19,53 @@ WidgetChrome {
         var _ = store ? store.revision : 0
         return (store && instanceId) ? JSON.parse(JSON.stringify(store.settingsFor(instanceId))) : ({})
     }
-    property int startHour: cfg.startHour !== undefined ? cfg.startHour : 9
-    property int endHour: cfg.endHour !== undefined ? cfg.endHour : 17
+    // Config can arrive out of range (the number stepper writes raw values, or a
+    // pushed doc). Wrap the start into 0..23 (25:00 → 01:00) and clamp the end
+    // into 0..24 (24:00 = next-day midnight is a valid "end of day"), so a bad
+    // config can never corrupt the window.
+    property int startHour: {
+        var raw = cfg.startHour !== undefined ? Math.round(cfg.startHour) : 9
+        return ((raw % 24) + 24) % 24
+    }
+    property int endHour: {
+        var raw = cfg.endHour !== undefined ? Math.round(cfg.endHour) : 17
+        return Math.max(0, Math.min(24, raw))
+    }
     readonly property bool showPercent: cfg.showPercent !== undefined ? cfg.showPercent : true
     readonly property string progressStyle: cfg.progressStyle !== undefined ? cfg.progressStyle : "bar"
 
     property bool validHours: endHour > startHour
+    // Longest overnight (end < start) window we treat as a real night shift; a
+    // longer wrap is almost certainly swapped hours, so it stays invalid.
+    readonly property int maxOvernightSpan: 12
+    // Window endpoints for `ref`, stepping the end onto the next calendar date
+    // (via setDate, DST-safe — no fixed 86400000ms delta) for a plausible
+    // overnight shift so cross-midnight windows aren't silently rejected.
+    function windowBounds(ref) {
+        var s = new Date(ref); s.setHours(startHour, 0, 0, 0)
+        var e = new Date(ref); e.setHours(endHour, 0, 0, 0)
+        if (endHour < startHour && (24 - startHour + endHour) <= maxOvernightSpan)
+            e.setDate(e.getDate() + 1)                    // overnight: end is tomorrow
+        return [s, e]
+    }
     property real frac: {
         w.tick
         var n = new Date()
-        var s = new Date(n); s.setHours(startHour, 0, 0, 0)
-        var e = new Date(n); e.setHours(endHour, 0, 0, 0)
+        var wb = windowBounds(n)
+        var s = wb[0], e = wb[1]
         if (e <= s) return 0
         return Math.max(0, Math.min(1, (n - s) / (e - s)))
     }
     function fmtDur(secs) {
         return Math.floor(secs / 3600) + "h " + Math.floor((secs % 3600) / 60) + "m"
     }
+    function fmtHour(h) { return (h < 10 ? "0" + h : "" + h) + ":00" }   // zero-padded, editor-style
     property string remaining: {
         w.tick
         var n = new Date()
-        var s = new Date(n); s.setHours(startHour, 0, 0, 0)
-        var e = new Date(n); e.setHours(endHour, 0, 0, 0)
-        if (e <= s) return "Set hours"                    // invalid (end ≤ start)
+        var wb = windowBounds(n)
+        var s = wb[0], e = wb[1]
+        if (e <= s) return "Set hours"                    // invalid (end ≤ start, not overnight)
         if (n < s) return "Starts in " + fmtDur((s - n) / 1000)  // before the workday
         var d = (e - n) / 1000
         if (d <= 0) return "Done! 🎉"
@@ -74,7 +98,7 @@ WidgetChrome {
                 anchors.centerIn: parent; spacing: 2
                 Text { Layout.alignment: Qt.AlignHCenter; text: w.remaining
                     font.pixelSize: Math.min(parent.parent.width * 0.22, 56)
-                    font.bold: true; font.family: theme.fontMono; color: theme.textPrimary }
+                    font.bold: true; font.family: theme.fontMono; color: w.effAccent }
                 Text { Layout.alignment: Qt.AlignHCenter; visible: w.showPercent
                     text: Math.round(w.frac * 100) + "%"; font.pixelSize: 18; color: theme.textSecondary }
             }
@@ -82,7 +106,10 @@ WidgetChrome {
 
         Text {
             visible: !(w.expanded && w.progressStyle === "ring")
+            Layout.fillWidth: true; Layout.maximumWidth: parent.width
             Layout.alignment: Qt.AlignHCenter; text: w.remaining
+            horizontalAlignment: Text.AlignHCenter
+            elide: Text.ElideRight; fontSizeMode: Text.HorizontalFit
             font.pixelSize: w.expanded ? 80 : Math.max(24, Math.min(w.width * 0.24, 44))
             font.bold: true; font.family: theme.fontMono; color: w.effAccent
         }
@@ -95,8 +122,11 @@ WidgetChrome {
         }
         Text {
             visible: w.showPercent && !(w.expanded && w.progressStyle === "ring")
+            Layout.fillWidth: true; Layout.maximumWidth: parent.width
             Layout.alignment: Qt.AlignHCenter
-            text: Math.round(w.frac * 100) + "% of " + w.startHour + ":00–" + w.endHour + ":00"
+            horizontalAlignment: Text.AlignHCenter
+            elide: Text.ElideRight; fontSizeMode: Text.HorizontalFit
+            text: Math.round(w.frac * 100) + "% of " + w.fmtHour(w.startHour) + "–" + w.fmtHour(w.endHour)
             font.pixelSize: w.expanded ? 15 : 12; color: theme.textSecondary
         }
         RowLayout {

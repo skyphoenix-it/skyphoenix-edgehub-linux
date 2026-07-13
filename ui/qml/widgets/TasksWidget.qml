@@ -41,13 +41,27 @@ WidgetChrome {
     status: items.length ? doneCount + "/" + items.length : ""
 
     function _save(arr) { if (store) store.setSetting(instanceId, "items", arr) }
+    // Key of the last list we celebrated, so re-completing an already-finished
+    // set (un-check then re-check) doesn't re-fire the burst.
+    property string _celebratedKey: ""
+    function _itemsKey(arr) { return arr.map(function (t) { return String(t.text) }).join("") }
     function toggle(i) {
-        var a = items.slice(); a[i] = { text: a[i].text, done: !a[i].done }; _save(a)
+        // A rendered row's idx can go stale after an external shrink; ignore it
+        // rather than crash (a[i].text on undefined) or mutate the wrong entry.
+        if (i < 0 || i >= items.length) return
+        var a = items.slice()
+        var it = a[i]
+        // Preserve any extra fields (e.g. a Manager-assigned id) and never
+        // re-persist a malformed item with text:undefined.
+        a[i] = Object.assign({}, it, { text: it.text !== undefined ? it.text : "", done: !it.done })
+        _save(a)
         // Dopamine hit: a burst when checking the box that clears the whole list.
-        if (a[i].done && celebrate && a.length > 0 && a.every(function (t) { return t.done }))
-            celebrateNow("🎉 All done!")
+        if (a[i].done && celebrate && a.length > 0 && a.every(function (t) { return t.done })) {
+            var key = _itemsKey(a)
+            if (key !== _celebratedKey) { _celebratedKey = key; celebrateNow("🎉 All done!") }
+        }
     }
-    function remove(i) { var a = items.slice(); a.splice(i, 1); _save(a) }
+    function remove(i) { if (i < 0 || i >= items.length) return; var a = items.slice(); a.splice(i, 1); _save(a) }
     function add(t) { if (!t || !t.trim().length) return; var a = items.slice(); a.push({ text: t.trim(), done: false }); _save(a) }
     function clearCompleted() { _save(items.filter(function (t) { return !t.done })) }
 
@@ -99,10 +113,17 @@ WidgetChrome {
         }
 
         ListView {
+            id: taskList
             Layout.fillWidth: true; Layout.fillHeight: true
             clip: true; spacing: 3
             interactive: w.expanded
             model: w.visibleItems
+            // The model is a fresh array on every revision bump, which resets the
+            // view to the top. Remember where the user was and restore it so an
+            // add / external push doesn't yank the list back to row 0.
+            property real _savedY: 0
+            onContentYChanged: if (contentY > 0) _savedY = contentY
+            onModelChanged: contentY = _savedY
             delegate: RowLayout {
                 required property int index
                 required property var modelData
@@ -127,7 +148,7 @@ WidgetChrome {
                 }
                 Text {
                     Layout.fillWidth: true; Layout.fillHeight: true; verticalAlignment: Text.AlignVCenter
-                    text: modelData.text; elide: Text.ElideRight
+                    text: modelData.text !== undefined ? modelData.text : ""; elide: Text.ElideRight
                     font.pixelSize: w.expanded ? 18 : 12; font.strikeout: modelData.done
                     color: modelData.done ? theme.textTertiary : theme.textPrimary
                     MouseArea { anchors.fill: parent; enabled: w.expanded; onClicked: w.toggle(modelData.idx) }
@@ -143,7 +164,10 @@ WidgetChrome {
         }
 
         Text {
-            visible: w.visibleItems.length === 0
+            // Only claim "no tasks" when the list is genuinely empty — not merely
+            // when every task is hidden by hideCompleted (status + Clear button
+            // would otherwise contradict it).
+            visible: w.items.length === 0
             Layout.alignment: Qt.AlignHCenter
             text: w.expanded ? "No tasks yet — add one below." : "No tasks"
             color: theme.textTertiary; font.pixelSize: w.expanded ? 15 : 12

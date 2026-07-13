@@ -10,6 +10,8 @@ import QtQuick.Shapes
 Item {
     id: root
     property bool active: true
+    // Primary tint (S7). Defaults to theme.accent; overridable via BackdropLayer.
+    property color accent: theme.accent
     clip: true
 
     // A very soft, very large radial colour blob.
@@ -41,7 +43,7 @@ Item {
 
     Blob {
         id: b1
-        tint: theme.accent; diameter: root.width * 1.2; strength: 0.55
+        tint: root.accent; diameter: root.width * 1.2; strength: 0.55
         SequentialAnimation on x {
             running: root.active; loops: Animation.Infinite
             NumberAnimation { to: -b1.diameter * 0.4; duration: 22000; easing.type: Easing.InOutSine }
@@ -106,7 +108,7 @@ Item {
 
     Blob {
         id: b5
-        tint: theme.accent; diameter: root.width * 1.1; strength: 0.5
+        tint: root.accent; diameter: root.width * 1.1; strength: 0.5
         x: root.width * 0.4
         y: root.height * 0.95
         SequentialAnimation on x {

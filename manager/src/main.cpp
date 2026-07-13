@@ -64,12 +64,13 @@ public:
         connect(m_sock, &QLocalSocket::connected, this, [this] {
             m_hubConnected = true;
             emit hubConnectedChanged();
-            // Flush any edit made while the socket was down, then pull the hub's
-            // authoritative state so we don't overwrite device-side changes.
-            if (!m_pendingPush.isEmpty()) {
-                writeMsg(QJsonObject{{"type", "setUiState"}, {"state", m_pendingPush}});
-                m_pendingPush.clear();
-            }
+            // Correct reconnect order: PULL the hub's authoritative state FIRST,
+            // then reconcile any edit buffered while the socket was down against it
+            // (in onSocketReadyRead, when the reply arrives) before pushing.
+            // Flushing the buffered edit here — BEFORE pulling — would clobber edits
+            // made on the device while the Manager was offline.
+            if (!m_pendingPush.isEmpty())
+                m_pendingPushAwaitingHub = true;
             syncFromHub();
         });
         connect(m_sock, &QLocalSocket::disconnected, this, [this] {
@@ -98,6 +99,20 @@ public:
         // save) is reflected. When the hub is connected we prefer getUiState.
         m_watcher = new QFileSystemWatcher(this);
         if (QFile::exists(m_configPath)) m_watcher->addPath(m_configPath);
+        // Also watch the containing directory so that if config.toml does NOT exist
+        // yet at startup, we arm the file watch the moment it first appears — without
+        // this, later external writes to a config that was initially absent go unseen.
+        const QString cfgDir = QFileInfo(m_configPath).absolutePath();
+        QDir().mkpath(cfgDir);
+        if (QFile::exists(cfgDir)) m_watcher->addPath(cfgDir);
+        connect(m_watcher, &QFileSystemWatcher::directoryChanged, this, [this] {
+            if (m_watcher->files().contains(m_configPath) || !QFile::exists(m_configPath))
+                return;                       // already armed, or still absent
+            m_watcher->addPath(m_configPath); // config just appeared — arm the watch
+            if (QDateTime::currentMSecsSinceEpoch() < m_ignoreWatchUntilMs) return;
+            if (m_hubConnected) return;
+            reloadConfig();                   // pick up the just-created config
+        });
         connect(m_watcher, &QFileSystemWatcher::fileChanged, this, [this] {
             // Atomic saves rename over the file and drop the watch — re-add it.
             QTimer::singleShot(60, this, [this] {
@@ -214,16 +229,24 @@ public:
         const auto screens = QGuiApplication::screens();
         QScreen* primary = QGuiApplication::primaryScreen();
         for (auto* s : screens) {
+            // Use the NATIVE/physical pixel resolution, not the logical (DPI-scaled)
+            // size: QScreen::size() is in device-independent pixels, so on a scaled
+            // display a 2560x720 Edge reports e.g. 1707x480 and the isEdge match (and
+            // the resolution shown to the user) would be wrong. Multiplying by the
+            // device pixel ratio recovers the real panel resolution.
+            const qreal dpr = s->devicePixelRatio();
+            const int nativeW = qRound(s->size().width() * dpr);
+            const int nativeH = qRound(s->size().height() * dpr);
             arr.append(QJsonObject{
                 {"name", s->name()},
                 {"model", s->model()},
                 {"manufacturer", s->manufacturer()},
                 {"serial", s->serialNumber()},
-                {"width", s->size().width()},
-                {"height", s->size().height()},
+                {"width", nativeW},
+                {"height", nativeH},
                 {"primary", s == primary},
-                {"isEdge", (s->size().width() == 2560 && s->size().height() == 720)
-                            || (s->size().width() == 720 && s->size().height() == 2560)
+                {"isEdge", (nativeW == 2560 && nativeH == 720)
+                            || (nativeW == 720 && nativeH == 2560)
                             || s->model().contains("XENEON", Qt::CaseInsensitive)}
             });
         }
@@ -293,9 +316,26 @@ public:
         return name;
     }
     Q_INVOKABLE bool deleteImage(const QString& name) {
-        bool ok = QFile::remove(imagesDir() + "/" + name);
+        // Sanitize: collapse to a bare filename so a crafted name (e.g.
+        // "../../.config/foo") can't traverse outside the images dir, then verify
+        // the resolved path really stays within it before removing anything.
+        const QString base = QFileInfo(name).fileName();
+        if (base.isEmpty() || base == "." || base == "..") return false;
+        const QString dirPath = QDir::cleanPath(QDir(imagesDir()).absolutePath());
+        const QString target = QDir::cleanPath(dirPath + "/" + base);
+        if (target != dirPath && !target.startsWith(dirPath + "/")) return false;
+        bool ok = QFile::remove(target);
         if (ok) emit imagesChanged();
         return ok;
+    }
+    // Properly percent-encoded file:// URL for an image in the hub's images dir.
+    // Building the URL here via QUrl ensures paths containing spaces or '#' survive
+    // — naive "file://" + path string concatenation (as done in the QML) produces a
+    // malformed URL that fails to load for those characters.
+    Q_INVOKABLE QString imageUrl(const QString& name) const {
+        const QString base = QFileInfo(name).fileName();
+        if (base.isEmpty()) return QString();
+        return QUrl::fromLocalFile(imagesDir() + "/" + base).toString();
     }
 
 signals:
@@ -315,10 +355,32 @@ private slots:
             const QString type = o.value("type").toString();
             if (type == "uiState") {
                 const QString st = o.value("state").toString();
+                // ── Reconnect reconciliation ──
+                // On the first pull after reconnecting, decide the fate of any edit
+                // buffered while the socket was down BEFORE adopting or pushing.
+                // If the hub's state changed while we were offline (a device-side
+                // edit), the hub is authoritative and the stale buffered push is
+                // dropped; otherwise the device didn't touch it and our offline edit
+                // is applied. This pull → reconcile → push order is what prevents
+                // clobbering device-side changes.
+                if (m_pendingPushAwaitingHub) {
+                    m_pendingPushAwaitingHub = false;
+                    const bool hubChanged = !st.isEmpty() && !m_lastHubState.isEmpty()
+                                            && st != m_lastHubState;
+                    if (hubChanged) {
+                        m_pendingPush.clear();     // hub is newer — drop the offline edit
+                    } else if (!m_pendingPush.isEmpty()) {
+                        const QString edit = m_pendingPush;
+                        m_pendingPush.clear();
+                        pushLive(edit);            // hub unchanged — apply our edit
+                    }
+                    if (!st.isEmpty()) m_lastHubState = st;
+                }
                 // Ignore pulled state briefly after we push, so a reply that
                 // predates the hub applying our edit can't revert it.
                 if (QDateTime::currentMSecsSinceEpoch() < m_suppressAdoptUntilMs)
                     continue;
+                if (!st.isEmpty()) m_lastHubState = st;   // track the hub's live state
                 if (!st.isEmpty() && m_config) {
                     // This IS the hub's live state — adopt it WITHOUT re-saving, and
                     // only tell QML to reload when it actually differs (so the gentle
@@ -376,7 +438,12 @@ private:
     }
     bool applyAutostart(bool enabled) {
         const QString path = autostartPath();
-        if (!enabled) { QFile::remove(path); return true; }
+        if (!enabled) {
+            // Removing a non-existent entry is already "off" (success); otherwise
+            // report whether the removal actually succeeded rather than lying true.
+            if (!QFile::exists(path)) return true;
+            return QFile::remove(path);
+        }
         QDir().mkpath(QFileInfo(path).absolutePath());
         QFile f(path);
         if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) return false;
@@ -391,11 +458,13 @@ private:
     QLocalSocket* m_sock = nullptr;
     QFileSystemWatcher* m_watcher = nullptr;
     QString m_configPath;
-    QString m_pendingPush;
+    QString m_pendingPush;          // edit buffered while the socket was down
+    QString m_lastHubState;         // last UI state we know the hub held (for reconcile)
     QByteArray m_rxBuf;
     qint64 m_ignoreWatchUntilMs = 0;
     qint64 m_suppressAdoptUntilMs = 0;
     bool m_hubConnected = false;
+    bool m_pendingPushAwaitingHub = false;  // reconcile buffered push on next pull
 };
 
 int main(int argc, char* argv[]) {

@@ -186,11 +186,13 @@ Item {
         // them). The two figures disagree.
         function test_ring_and_text_same_accounting() {
             var w = h.item
-            // Root-reserved case: core percent 94.7 but raw used/total is 90/100.
+            // Root-reserved case: core percent 94.7, raw used/total 90/100.
             feed(94.7, 90 * gib, 100 * gib)
-            var textPct = 100 * (90 * gib) / (100 * gib)   // 90
-            verify(Math.abs(w.v - textPct) < 1.5,
-                   "the ring % (" + w.v + ") and the used/total text (" + textPct
+            // Fix keeps the df-correct ring % (root-reservation aware) and derives the
+            // shown used/free from it, so the sub-line matches the ring — not raw bytes.
+            var shownPct = 100 * (100 * gib - w.freeBytes) / (100 * gib)
+            verify(Math.abs(w.v - shownPct) < 1.5,
+                   "the ring % (" + w.v + ") and the used/free shown (" + shownPct
                    + "%) must represent the same accounting")
         }
 
@@ -220,10 +222,11 @@ Item {
         // Documents the current numeric output + precision (these pass).
         function test_human_precision() {
             var w = h.item
-            compare(w.human(0), "0 GB", "zero bytes")
-            compare(w.human(8 * tib), "8.00 TB", "8 tib → 8.00 TB, 2-decimal")
-            compare(w.human(tib), "1.00 TB", "exactly 1 tib rolls into the TB path")
-            compare(w.human(1000 * gib), "1000 GB", "just under 1 tib stays coarse whole-GB")
+            // Binary-computed sizes now carry binary unit labels (GiB/TiB).
+            compare(w.human(0), "0 GiB", "zero bytes")
+            compare(w.human(8 * tib), "8.00 TiB", "8 tib → 8.00 TiB, 2-decimal")
+            compare(w.human(tib), "1.00 TiB", "exactly 1 tib rolls into the TiB path")
+            compare(w.human(1000 * gib), "1000 GiB", "just under 1 tib stays coarse whole-GiB")
         }
 
         // BUG (audit, low): human() divides by powers of two but labels the result
@@ -321,7 +324,7 @@ Item {
             compare(g.big, "100%", "centre label shows 100%")
             verify(Qt.colorEqual(w.col(w.v), h.theme.error), "a full disk is red")
             verify(Qt.colorEqual(g.color, h.theme.error), "the gauge paints red")
-            compare(w.human(8 * tib), "8.00 TB", "human() renders TB for an 8 tib disk")
+            compare(w.human(8 * tib), "8.00 TiB", "human() renders TiB for an 8 tib disk")
         }
 
         // ── freeBytes never goes negative ────────────────────────────────────

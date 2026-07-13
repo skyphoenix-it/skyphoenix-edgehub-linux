@@ -52,10 +52,9 @@ void ControlServer::onReadyRead() {
     auto it = m_buffers.find(sock);
     if (it == m_buffers.end())
         return;
-    QByteArray& buf = it.value();
-    buf.append(sock->readAll());
+    it.value().append(sock->readAll());
     // Cap the buffer so a misbehaving client can't grow it unbounded.
-    if (buf.size() > 8 * 1024 * 1024) {
+    if (it.value().size() > 8 * 1024 * 1024) {
         qWarning() << "ControlServer: oversized message, dropping connection";
         // abort() may not emit disconnected(), so free the buffer entry here.
         m_buffers.remove(sock);
@@ -63,10 +62,20 @@ void ControlServer::onReadyRead() {
         sock->deleteLater();
         return;
     }
-    int nl;
-    while ((nl = buf.indexOf('\n')) >= 0) {
-        const QByteArray line = buf.left(nl);
-        buf.remove(0, nl + 1);
+    // Process complete lines. Re-look up the buffer each iteration and splice the
+    // line out of it BEFORE dispatching: handleLine() can re-enter the event loop
+    // (writeJson()'s flush, or a slot on uiStateReceived that reloads the UI) and
+    // erase this socket's entry, so any reference into m_buffers held across the
+    // callback could dangle. `line` is an independent copy, safe to pass along.
+    while (true) {
+        auto bit = m_buffers.find(sock);
+        if (bit == m_buffers.end())
+            return;   // socket was torn down by a previous dispatch
+        const int nl = bit.value().indexOf('\n');
+        if (nl < 0)
+            break;
+        const QByteArray line = bit.value().left(nl);
+        bit.value().remove(0, nl + 1);
         if (!line.trimmed().isEmpty())
             handleLine(sock, line);
     }
@@ -104,8 +113,20 @@ void ControlServer::handleLine(QLocalSocket* sock, const QByteArray& line) {
                                 .toJson(QJsonDocument::Compact));
             return;
         }
-        emit uiStateReceived(state);
-        writeJson(sock, QJsonDocument(QJsonObject{{"type", "ok"}}).toJson(QJsonDocument::Compact));
+        // Let the owner apply the state and report whether it stuck. The signal is
+        // delivered synchronously (same-thread direct connection), so `ok` holds
+        // the real result once emit returns — the ack must reflect it, otherwise
+        // the Manager treats a failed persist as success and silently diverges.
+        bool ok = false;
+        emit uiStateReceived(state, &ok);
+        if (ok) {
+            writeJson(sock,
+                      QJsonDocument(QJsonObject{{"type", "ok"}}).toJson(QJsonDocument::Compact));
+        } else {
+            writeJson(sock, QJsonDocument(QJsonObject{{"type", "error"},
+                                                      {"message", "failed to apply state"}})
+                                .toJson(QJsonDocument::Compact));
+        }
     } else if (type == "ping") {
         writeJson(sock, QJsonDocument(QJsonObject{{"type", "pong"}}).toJson(QJsonDocument::Compact));
     } else if (type == "shutdown") {

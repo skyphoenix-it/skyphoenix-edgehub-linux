@@ -9,6 +9,8 @@ import QtQuick.Shapes
 Item {
     id: ab
     property bool active: true
+    // Primary tint (S7). Defaults to theme.accent; overridable via BackdropLayer.
+    property color accent: theme.accent
     clip: true
 
     // A soft radial colour orb.
@@ -40,7 +42,7 @@ Item {
 
     Orb {
         id: o1
-        tint: theme.accent; diameter: Math.min(ab.width, ab.height) * 0.9; strength: 0.7
+        tint: ab.accent; diameter: Math.min(ab.width, ab.height) * 0.9; strength: 0.7
         SequentialAnimation on x {
             running: ab.active; loops: Animation.Infinite
             NumberAnimation { to: -o1.diameter * 0.25; duration: 19000; easing.type: Easing.InOutSine }

@@ -11,6 +11,9 @@ WidgetChrome {
     property bool active: true
     property var store: null
     property string instanceId: ""
+    // Per-minute tick injected by the Dashboard (S6): keeps todayKey/breaksToday
+    // rolling over at midnight on a 24/7 device instead of freezing at boot-day.
+    property int tick: 0
 
     title: "Break Reminder"; iconName: "break"; accentColor: theme.success
     big: expanded
@@ -66,24 +69,46 @@ WidgetChrome {
         else save({ due: false, pausedRemaining: secs, endEpoch: 0 })
     }
     function toggleRun() {
-        if (running) save({ running: false, pausedRemaining: remaining })
-        else save({ running: true, endEpoch: Date.now() + remaining * 1000 })
+        if (running) {
+            // While due, `remaining` is forced to 0 — snapshotting it would
+            // persist pausedRemaining:0 and corrupt the timer. Fall back to the
+            // last stored remaining (or a full interval) instead.
+            var snap = w.due ? (cfg.pausedRemaining !== undefined ? cfg.pausedRemaining : intervalMin * 60)
+                             : remaining
+            save({ running: false, pausedRemaining: snap })
+        } else save({ running: true, endEpoch: Date.now() + remaining * 1000 })
     }
     function setInterval(m) {
         var v = Math.max(5, Math.min(120, m))
-        save({ intervalMin: v, due: false, running: true, pausedRemaining: v * 60,
-               endEpoch: Date.now() + v * 60 * 1000 })
+        // Preserve the running/paused state: tapping ±5m while paused must not
+        // silently resume the countdown.
+        var run = w.running
+        save({ intervalMin: v, due: false, running: run, pausedRemaining: v * 60,
+               endEpoch: run ? Date.now() + v * 60 * 1000 : 0 })
     }
     function fmt(s) {
         var mm = Math.floor(s / 60), ss = s % 60
         return (mm < 10 ? "0" : "") + mm + ":" + (ss < 10 ? "0" : "") + ss
     }
 
-    // Seed an end time on first run so a fresh (auto-running) reminder actually
-    // counts down. Only the active instance seeds, to avoid a double write.
-    Component.onCompleted: {
-        if (w.active && running && !due && !cfg.endEpoch)
+    // Seed an end time so a fresh (auto-running) reminder actually counts down.
+    // Component.onCompleted runs BEFORE the store/instanceId are injected, so the
+    // original seed here was a no-op and the timer stayed frozen. Instead, run the
+    // seed reactively once the store is wired up (and again if the endEpoch key is
+    // cleared). Only the active instance seeds, to avoid a double write, and only
+    // when endEpoch is genuinely absent (undefined) — an explicit endEpoch:0 means
+    // "no live end time, use the fallback" and must be left alone.
+    function _seedIfNeeded() {
+        if (!w.active || !store || !instanceId) return
+        if (w.running && !w.due && cfg.endEpoch === undefined)
             save({ endEpoch: Date.now() + remaining * 1000 })
+    }
+    Component.onCompleted: _seedIfNeeded()
+    onStoreChanged: _seedIfNeeded()
+    onInstanceIdChanged: _seedIfNeeded()
+    Connections {
+        target: w.store
+        function onRevisionChanged() { w._seedIfNeeded() }
     }
 
     Timer {
@@ -106,6 +131,11 @@ WidgetChrome {
         anchors.centerIn: parent; spacing: w.expanded ? 14 : 4
         Text {
             Layout.alignment: Qt.AlignHCenter
+            // Custom due-messages are user text and can be long — cap the width and
+            // wrap/elide so they never overflow the tile (S12).
+            Layout.maximumWidth: w.width * 0.92
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.WordWrap; maximumLineCount: w.expanded ? 3 : 2; elide: Text.ElideRight
             text: w.due ? (w.message.length ? w.message : "Take a break!") : w.fmt(w.remaining)
             font.pixelSize: w.due ? (w.expanded ? 44 : 22)
                                   : (w.expanded ? 88 : Math.max(26, Math.min(w.width * 0.28, 52)))

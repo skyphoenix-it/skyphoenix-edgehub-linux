@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QTimer>
 
 class QSocketNotifier;
 
@@ -31,11 +32,20 @@ signals:
 
 private slots:
     void onReadable();
+    // Poll for the device coming back after an unplug and re-open it transparently.
+    void tryReopen();
 
 private:
+    // Open the hidraw node, wire up the notifier, and seed the initial orientation.
+    bool openAndWatch(const QString& path);
     // Disable the notifier + close the fd (on a fatal read error / device unplug),
     // so QSocketNotifier stops re-firing on a hung-up fd (which would busy-loop).
     void stopWatching();
+    // stopWatching() + arm the reopen timer, for the device-lost (unplug) case.
+    void handleDeviceLost();
+    // Actively query the current orientation once at open time (the panel only
+    // pushes reports on *change*, so without this the UI can start mis-rotated).
+    void queryInitialOrientation();
     // Scan /sys/class/hidraw for the Edge; returns "/dev/hidrawN" or empty.
     static QString findEdgeHidraw();
     // Map an orientation byte (report[7]) to a content rotation, or -1 if unknown.
@@ -44,4 +54,5 @@ private:
     int m_fd = -1;
     int m_rotation = -1;
     QSocketNotifier* m_notifier = nullptr;
+    QTimer m_retry;   // polls for the hidraw node to reappear after an unplug
 };

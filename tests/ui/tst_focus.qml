@@ -25,25 +25,26 @@ Item {
 
         function cfg() { return h.storeCtl.settingsFor("test-instance") }
 
-        function test_reset_clears_done_today() {
+        function test_reset_preserves_done_today() {
             var w = h.item
             // Simulate sessions completed today.
             h.storeCtl.patchSettings("test-instance", { doneToday: 3, day: w.today() })
             compare(w.completedWork, 3)
             w.reset()
-            compare(cfg().doneToday, 0, "doneToday persisted key reset")
-            compare(w.completedWork, 0, "derived counter reflects reset")
-            // Must NOT have written the bogus derived key.
+            // Reset restarts the TIMER; it must NOT wipe the day's earned count.
+            compare(cfg().doneToday, 3, "reset keeps today's earned session count")
+            compare(w.phase, "work", "reset returns to the work phase")
+            verify(!w.running, "reset stops the timer")
             verify(cfg().completedWork === undefined, "no stray completedWork key written")
         }
 
-        function test_applypreset_resets_and_switches() {
+        function test_applypreset_switches_preserving_count() {
             var w = h.item
             h.storeCtl.patchSettings("test-instance", { doneToday: 2, day: w.today() })
             w.applyPreset("deep")
             compare(cfg().preset, "deep")
             compare(w.presetName, "deep")
-            compare(cfg().doneToday, 0)
+            compare(cfg().doneToday, 2, "switching preset keeps the day's count")
             compare(w.phase, "work", "preset switch returns to work phase")
         }
 
@@ -68,11 +69,21 @@ Item {
             verify(w.ringValue <= 1, "ring fill fraction stays <= 1")
         }
 
-        function test_skip_advances_phase_and_counts() {
+        function test_skip_advances_without_counting() {
             var w = h.item
             w.reset()  // phase = work, doneToday = 0
             w.skip()
-            compare(cfg().doneToday, 1, "finishing a work phase counts a session")
+            // A MANUAL skip advances the phase but must not count/reward — you
+            // didn't actually finish the focus session.
+            compare(cfg().doneToday || 0, 0, "a manual skip does NOT count as a completed session")
+            verify(w.phase === "short" || w.phase === "long", "skip still advances to a break phase")
+        }
+
+        function test_natural_completion_counts() {
+            var w = h.item
+            w.reset()
+            w.advance(true)  // timer-driven (natural) completion of the work phase
+            compare(cfg().doneToday, 1, "a timer-driven completion counts a session")
             verify(w.phase === "short" || w.phase === "long", "advanced to a break phase")
         }
 
@@ -118,12 +129,12 @@ Item {
             var w = h.item
             w.reset()
             h.storeCtl.patchSettings("test-instance", { points: 0, dailyGoal: 2 })
-            w.skip()                     // work #1 → +10, done=1, → break
+            w.advance(true)              // work #1 → +10, done=1, → break
             compare(cfg().doneToday, 1)
             compare(cfg().points, 10, "10 points per completed session")
-            w.skip()                     // break → work (no points)
+            w.advance(true)              // break → work (no points)
             compare(cfg().doneToday, 1)
-            w.skip()                     // work #2 hits the goal → +10 +50
+            w.advance(true)              // work #2 hits the goal → +10 +50
             compare(cfg().doneToday, 2)
             compare(cfg().points, 70, "goal bonus (+50) awarded on hitting the daily goal")
         }
@@ -132,7 +143,7 @@ Item {
             var w = h.item
             w.reset()
             w.celebrateMsg = ""
-            w.skip()                     // completes a work session (celebrate dflt on)
+            w.advance(true)              // a natural (timer-driven) completion celebrates
             verify(w.celebrateMsg.length > 0, "a celebration message pops on a completed session")
         }
 
@@ -159,7 +170,7 @@ Item {
             var w = h.item
             w.reset()
             h.storeCtl.patchSettings("test-instance", { points: 0, rewardPoints: false })
-            w.skip()
+            w.advance(true)
             compare(cfg().points, 0, "no points accrue when rewards are disabled")
         }
     }

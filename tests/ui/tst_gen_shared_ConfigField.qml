@@ -447,7 +447,8 @@ Item {
             var threw = false
             try {
                 var s = ({})   // truthy but no .sections
-                var model = s ? s.sections.filter(function (x) { return x.title !== "About this widget" }) : []
+                // Mirrors the fixed WidgetConfigPanel.qml guard: check .sections too.
+                var model = (s && s.sections) ? s.sections.filter(function (x) { return x.title !== "About this widget" }) : []
                 verify(model !== undefined)
             } catch (e) {
                 threw = true
@@ -501,9 +502,13 @@ Item {
         function toggles() {
             var t = root.findAll(cfTasks, function (n) {
                 var p = n.parent
+                // The toggle checkbox is the square, radius-6, bordered (border.width 2)
+                // hit area — distinct from the borderless delete button. (Sizes now
+                // scale with ctlH to meet the 44px touch minimum, so match by border
+                // rather than a hardcoded 30px.)
                 return n.hasOwnProperty("containsMouse")
                     && p && p.hasOwnProperty("radius") && p.radius === 6
-                    && p.width === 30 && p.height === 30
+                    && p.width === p.height && p.border.width === 2
             }, [])
             t.sort(function (a, b) { return a.mapToItem(root, 0, 0).y - b.mapToItem(root, 0, 0).y })
             return t

@@ -54,12 +54,17 @@ WidgetChrome {
         anchors.centerIn: parent
         spacing: w.expanded ? 14 : 2
         Text { id: moonGlyph; Layout.alignment: Qt.AlignHCenter; text: w.phases[w.idx]
-            font.pixelSize: w.expanded ? 150 : Math.min(w.width * 0.4, 58)
+            // Cap the collapsed glyph by BOTH width and height so it never
+            // overflows short tiles (glyph line box ≈ pixelSize * 1.3).
+            font.pixelSize: w.expanded ? 150 : Math.min(w.width * 0.4, w.height * 0.55, 58)
             // Southern hemisphere sees the moon mirrored: flip the lit side horizontally.
             transform: Scale { origin.x: moonGlyph.width / 2
                 xScale: w.hemisphere === "south" ? -1 : 1 } }
         Text { Layout.alignment: Qt.AlignHCenter; text: w.names[w.idx]
-            font.pixelSize: w.expanded ? 26 : 12; color: theme.textSecondary }
+            Layout.maximumWidth: w.width - theme.spacingSm * 2
+            horizontalAlignment: Text.AlignHCenter
+            elide: Text.ElideRight; fontSizeMode: Text.HorizontalFit
+            font.pixelSize: w.expanded ? 26 : 12; color: w.effAccent }
         Text { Layout.alignment: Qt.AlignHCenter; visible: w.expanded
             text: w.illum + "% illuminated  ·  " + w.ageDays.toFixed(1) + " days old"
             font.pixelSize: 16; color: theme.textTertiary }
@@ -70,13 +75,13 @@ WidgetChrome {
                 spacing: 1
                 Text { Layout.alignment: Qt.AlignHCenter; text: "🌑 New"; font.pixelSize: 13; color: theme.textSecondary }
                 Text { Layout.alignment: Qt.AlignHCenter; text: Qt.formatDate(w.nextNew, "ddd, d MMM")
-                    font.pixelSize: 14; font.bold: true; color: theme.textPrimary }
+                    font.pixelSize: 14; font.bold: true; color: w.effAccent }
             }
             ColumnLayout {
                 spacing: 1
                 Text { Layout.alignment: Qt.AlignHCenter; text: "🌕 Full"; font.pixelSize: 13; color: theme.textSecondary }
                 Text { Layout.alignment: Qt.AlignHCenter; text: Qt.formatDate(w.nextFull, "ddd, d MMM")
-                    font.pixelSize: 14; font.bold: true; color: theme.textPrimary }
+                    font.pixelSize: 14; font.bold: true; color: w.effAccent }
             }
         }
     }

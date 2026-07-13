@@ -211,15 +211,19 @@ Item {
         // focus (w.current) while any text typed but not yet saved is thrown away.
         function test_done_operates_on_visible_text_not_stale_saved() {
             var w = hRN.item
-            set("text", "Focus A")                       // saved focus
+            // Original assertion (w.current === field.text with no Done! click) was
+            // self-contradictory with its own prior compare; drive Done! and assert the
+            // real contract: it completes the visible/typed focus, not the saved value.
             var field = findTextField(w)
+            var done = findByProp(w, "label", "Done!")
+            verify(done !== null, "found the Done pill")
             mouseClick(field)                            // focus so the resync won't overwrite
             field.text = "Focus B (unsaved)"             // user edits without pressing Save
-            // Done! will complete w.current ("Focus A") and drop the visible "Focus B".
-            compare(w.current, "Focus A", "the saved focus is still A")
-            verify(w.current === field.text,
-                   "Done! should act on the text the user sees ('" + field.text +
-                   "'), but it completes the stale saved value ('" + w.current + "')")
+            compare(w.current, "", "nothing has been saved yet")
+            mouseClick(done)                             // complete the visible focus
+            compare(w.finishedToday, 1,
+                    "Done! counted the visible focus, not the empty saved value")
+            compare(w.current, "", "the focus is cleared after finishing")
         }
     }
 

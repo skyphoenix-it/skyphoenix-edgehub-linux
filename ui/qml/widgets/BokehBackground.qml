@@ -9,6 +9,8 @@ import QtQuick.Shapes
 Item {
     id: root
     property bool active: true
+    // Primary tint (S7). Defaults to theme.accent; overridable via BackdropLayer.
+    property color accent: theme.accent
     clip: true
 
     Repeater {
@@ -20,7 +22,7 @@ Item {
             readonly property real diameter: 30 + (((index * 137 + 53) % 100) / 100) * 110   // 30..140
             readonly property real startFrac: ((index * 613 + 197) % 1000) / 1000
             readonly property real strength: 0.28 + ((index * 71) % 40) / 200                 // 0.28..0.48
-            readonly property color tint: index % 5 === 0 ? theme.accent
+            readonly property color tint: index % 5 === 0 ? root.accent
                                         : index % 5 === 1 ? theme.accent2
                                         : index % 5 === 2 ? theme.catEntertainment
                                         : index % 5 === 3 ? theme.catServices

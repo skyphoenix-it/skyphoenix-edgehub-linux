@@ -553,11 +553,16 @@ int main(int argc, char *argv[]) {
     ControlServer* controlServer = new ControlServer(&engine);
     controlServer->setStateProvider([configBridge]() { return configBridge->uiState(); });
     QObject::connect(controlServer, &ControlServer::uiStateReceived, &engine,
-                     [configBridge, &engine](const QString& json) {
+                     [configBridge, &engine](const QString& json, bool* ok) {
+        // *ok reports the apply result back to ControlServer so the socket ack is
+        // honest (was: always "ok"). Same-thread direct connection, so it's set on
+        // return. Set on BOTH paths.
         if (!configBridge->applyExternalUiState(json)) {
             qWarning() << "Failed to apply externally pushed UI state";
+            if (ok) *ok = false;
             return;
         }
+        if (ok) *ok = true;
         // Trigger a live reload in QML (main.qml forwards this to the dashboard).
         for (auto* obj : engine.rootObjects())
             obj->setProperty("externalUiState", json);

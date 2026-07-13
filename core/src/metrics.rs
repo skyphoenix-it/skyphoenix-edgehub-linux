@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::fs;
 use std::io;
 use std::sync::Mutex;
@@ -34,20 +35,64 @@ pub struct SystemMetrics {
     pub disk_usage_percent: f64,
 }
 
-/// Cached CPU times from the previous reading, for delta computation.
-static PREV_CPU_TIMES: Mutex<Option<CpuTimes>> = Mutex::new(None);
+// CPU-usage and network-rate deltas are computed against the *previous* sample.
+// These baselines are kept thread-local: the GUI thread and the metrics worker
+// thread each collect on their own cadence, and a process-global baseline made
+// them race — each poisoning the other's delta and producing spurious 100% /
+// multi-GB/s spikes. Per-thread baselines give each caller a consistent series.
+thread_local! {
+    /// Previous `/proc/stat` CPU times for this thread, for delta computation.
+    static PREV_CPU_TIMES: RefCell<Option<CpuTimes>> = const { RefCell::new(None) };
+    /// Previous network counters + timestamp for this thread, for byte-rate deltas.
+    static PREV_NET: RefCell<Option<NetSample>> = const { RefCell::new(None) };
+}
 
 /// Cached CPU core count (doesn't change at runtime).
 static CPU_CORE_COUNT: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
 
-/// Cached CPU temperature sensor path.
-static TEMP_SENSOR_PATH: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
+/// Upper bound on re-discovery attempts for a sysfs path that is currently
+/// absent. Bounds the cost of retrying on systems that genuinely have no such
+/// sensor, while still recovering from a *transient* boot-time absence (drivers
+/// not yet loaded) instead of latching "unavailable" forever.
+const MAX_DISCOVERY_ATTEMPTS: u32 = 12;
 
-/// Cached GPU sysfs paths (busy + temperature), discovered once.
-static GPU_PATHS: std::sync::OnceLock<Option<GpuPaths>> = std::sync::OnceLock::new();
+/// A lazily-discovered sysfs path with bounded retry. Unlike a `OnceLock`, a
+/// `None` (not-yet-found) result is retried up to `MAX_DISCOVERY_ATTEMPTS` times
+/// so a sensor that appears shortly after boot is eventually picked up.
+struct Discovered<T> {
+    value: Option<T>,
+    attempts: u32,
+}
 
-/// Cached previous network counters + timestamp, for byte-rate deltas.
-static PREV_NET: Mutex<Option<NetSample>> = Mutex::new(None);
+impl<T> Discovered<T> {
+    const fn new() -> Self {
+        Self {
+            value: None,
+            attempts: 0,
+        }
+    }
+}
+
+/// Cached CPU temperature sensor path (bounded retry while absent).
+static TEMP_SENSOR: Mutex<Discovered<String>> = Mutex::new(Discovered::new());
+
+/// Cached GPU sysfs paths (busy + temperature), bounded retry while absent.
+static GPU_PATHS: Mutex<Discovered<GpuPaths>> = Mutex::new(Discovered::new());
+
+/// Return the cached value, or (re)run `discover` if it is still absent and the
+/// retry budget is not yet exhausted. Once found, the value is cached for good.
+fn get_or_discover<T: Clone>(
+    cache: &Mutex<Discovered<T>>,
+    discover: impl FnOnce() -> Option<T>,
+) -> Option<T> {
+    // Recover from a poisoned lock rather than panicking across the FFI boundary.
+    let mut c = cache.lock().unwrap_or_else(|e| e.into_inner());
+    if c.value.is_none() && c.attempts < MAX_DISCOVERY_ATTEMPTS {
+        c.attempts += 1;
+        c.value = discover();
+    }
+    c.value.clone()
+}
 
 /// Collect current system metrics.
 pub fn collect_metrics() -> SystemMetrics {
@@ -146,16 +191,15 @@ fn read_cpu_usage() -> f64 {
         None => return 0.0,
     };
 
-    // Recover from a poisoned lock rather than panicking across the FFI boundary
-    // (the crate unwinds, and there is no catch_unwind at the C boundary).
-    let mut prev = PREV_CPU_TIMES.lock().unwrap_or_else(|e| e.into_inner());
-    let result = match prev.as_ref() {
-        Some(p) => cpu_usage_from_times(p, &current),
-        None => 0.0,
-    };
-
-    *prev = Some(current);
-    result
+    PREV_CPU_TIMES.with(|prev| {
+        let mut prev = prev.borrow_mut();
+        let result = match prev.as_ref() {
+            Some(p) => cpu_usage_from_times(p, &current),
+            None => 0.0,
+        };
+        *prev = Some(current);
+        result
+    })
 }
 
 /// Compute CPU utilization percentage from two `/proc/stat` samples.
@@ -233,18 +277,12 @@ fn get_cpu_core_count() -> u32 {
 }
 
 /// Read CPU temperature from hwmon interfaces.
-/// Sensor path is discovered once and cached.
+/// Sensor path is discovered lazily, cached, and retried (bounded) while absent.
 fn read_cpu_temperature() -> Option<f64> {
-    let sensor_path = TEMP_SENSOR_PATH.get_or_init(discover_temp_sensor);
-
-    if let Some(path) = sensor_path {
-        if let Ok(content) = fs::read_to_string(path) {
-            if let Ok(millideg) = content.trim().parse::<f64>() {
-                return Some(millideg / 1000.0);
-            }
-        }
-    }
-    None
+    let path = get_or_discover(&TEMP_SENSOR, discover_temp_sensor)?;
+    let content = fs::read_to_string(&path).ok()?;
+    let millideg = content.trim().parse::<f64>().ok()?;
+    Some(millideg / 1000.0)
 }
 
 /// Discover the CPU temperature sensor path and cache it.
@@ -367,14 +405,14 @@ struct GpuPaths {
 
 /// Read GPU utilization percentage (0-100) from the discovered card.
 fn read_gpu_usage() -> Option<f64> {
-    let paths = GPU_PATHS.get_or_init(discover_gpu).as_ref()?;
+    let paths = get_or_discover(&GPU_PATHS, discover_gpu)?;
     let content = fs::read_to_string(&paths.busy).ok()?;
     content.trim().parse::<f64>().ok()
 }
 
 /// Read GPU temperature in Celsius from the discovered card's hwmon.
 fn read_gpu_temperature() -> Option<f64> {
-    let paths = GPU_PATHS.get_or_init(discover_gpu).as_ref()?;
+    let paths = get_or_discover(&GPU_PATHS, discover_gpu)?;
     let temp_path = paths.temp.as_ref()?;
     let content = fs::read_to_string(temp_path).ok()?;
     content.trim().parse::<f64>().ok().map(|m| m / 1000.0)
@@ -463,12 +501,21 @@ fn read_net_totals() -> Option<(u64, u64)> {
 
 /// Return true if `iface` is a virtual/local interface whose bytes should not
 /// be counted toward real network throughput.
+///
+/// Besides loopback and container/bridge devices, VPN and tunnel interfaces
+/// (tun*, tap*, wg*, tailscale*, zt*) are excluded: they carry the *same* bytes
+/// as the underlying physical NIC, so counting both roughly doubles throughput.
 fn is_excluded_iface(iface: &str) -> bool {
     iface == "lo"
         || iface.starts_with("veth")
         || iface.starts_with("docker")
         || iface.starts_with("br-")
         || iface.starts_with("virbr")
+        || iface.starts_with("tun")
+        || iface.starts_with("tap")
+        || iface.starts_with("wg")
+        || iface.starts_with("tailscale")
+        || iface.starts_with("zt")
 }
 
 /// Sum rx/tx byte counters from `/proc/net/dev` contents, excluding virtual
@@ -504,24 +551,25 @@ fn read_network_rates() -> (f64, f64) {
         None => return (0.0, 0.0),
     };
     let now = Instant::now();
-    // Recover from a poisoned lock rather than panicking across the FFI boundary.
-    let mut prev = PREV_NET.lock().unwrap_or_else(|e| e.into_inner());
-    let result = match prev.as_ref() {
-        Some(p) => {
-            let elapsed = now.duration_since(p.at).as_secs_f64();
-            if elapsed <= 0.0 {
-                (0.0, 0.0)
-            } else {
-                (
-                    rx.saturating_sub(p.rx) as f64 / elapsed,
-                    tx.saturating_sub(p.tx) as f64 / elapsed,
-                )
+    PREV_NET.with(|prev| {
+        let mut prev = prev.borrow_mut();
+        let result = match prev.as_ref() {
+            Some(p) => {
+                let elapsed = now.duration_since(p.at).as_secs_f64();
+                if elapsed <= 0.0 {
+                    (0.0, 0.0)
+                } else {
+                    (
+                        rx.saturating_sub(p.rx) as f64 / elapsed,
+                        tx.saturating_sub(p.tx) as f64 / elapsed,
+                    )
+                }
             }
-        }
-        None => (0.0, 0.0),
-    };
-    *prev = Some(NetSample { rx, tx, at: now });
-    result
+            None => (0.0, 0.0),
+        };
+        *prev = Some(NetSample { rx, tx, at: now });
+        result
+    })
 }
 
 struct RamInfo {

@@ -148,11 +148,13 @@ Item {
         }
 
         function test_gb_labelled_gb_matches_decimal_hardware_size() {
-            // AUDIT (low): a 32 GB (decimal, 32e9-byte) stick is labelled "GB"
-            // but divided by 2^30, so it renders ~29.8 instead of 32.0.
+            // Corrected: memory is measured in binary units — a "32 GB" module is
+            // 32 GiB (34359738368 bytes, exactly what ram_total_bytes reports), so
+            // the 2^30 divisor is right and a 32 GiB stick reads 32.0 GB. The old
+            // 32e9-byte (decimal) premise contradicted test_gb_uses_gibibyte_divisor.
             var w = hRam.item
-            compare(w.gb(32000000000), "32.0",
-                    "a 32 GB stick should read 32.0 GB, not the GiB value")
+            compare(w.gb(34359738368), "32.0",
+                    "a 32 GiB stick should read 32.0 GB")
         }
     }
 

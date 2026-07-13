@@ -12,7 +12,11 @@ WidgetChrome {
     property var store: null
     property string instanceId: ""
 
-    title: "Now Playing"; iconName: "media"; accentColor: w.effAccent
+    // accentColor MUST be a concrete colour: effAccent falls back to accentColor
+    // (WidgetChrome), so `accentColor: effAccent` was a binding loop → the play
+    // glyph/art rendered black. Content still uses w.effAccent (resolves the
+    // per-widget accent preset, else this base).
+    title: "Now Playing"; iconName: "media"; accentColor: theme.catEntertainment
     big: expanded
 
     property bool avail: (typeof media !== "undefined") && media && media.available
@@ -80,14 +84,21 @@ WidgetChrome {
                 text: w.avail ? media.title : ""; font.pixelSize: 26; font.bold: true
                 color: theme.textPrimary; elide: Text.ElideRight }
             Text { Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter
-                text: w.avail ? (media.artist + (media.album ? "  ·  " + media.album : "")) : ""
+                // Join artist + album with a middot, but omit the separator (and any
+                // stray leading " · ") when either side is empty (podcasts/streams).
+                text: w.avail
+                    ? (media.artist
+                        ? (media.artist + (media.album ? "  ·  " + media.album : ""))
+                        : (media.album || ""))
+                    : ""
                 font.pixelSize: 15; color: theme.textSecondary; elide: Text.ElideRight }
         }
         Rectangle {
             Layout.fillWidth: true; Layout.preferredHeight: 6; radius: 3; color: theme.cardBorder
             Rectangle { height: parent.height; radius: 3; color: w.effAccent
                 width: parent.width * Math.max(0, Math.min(1, w.avail ? media.position : 0))
-                Behavior on width { NumberAnimation { duration: 400 } } }
+                // Honor reduce-motion: snap instead of a 400ms sweep.
+                Behavior on width { NumberAnimation { duration: theme.reduceMotion ? 0 : 400 } } }
         }
         RowLayout {
             Layout.alignment: Qt.AlignHCenter; spacing: theme.spacingXl

@@ -33,7 +33,7 @@ Item {
         if (v !== undefined) return v
         return field.dflt !== undefined ? field.dflt : ""
     }
-    function setV(v) { if (st) st.setSetting(instanceId, field.key, v) }
+    function setV(v) { if (st && instanceId !== "") st.setSetting(instanceId, field.key, v) }
     function numStr() {
         var n = Number(cur())
         if (isNaN(n)) n = 0
@@ -83,6 +83,7 @@ Item {
     Component {
         id: textC
         TextField {
+            id: txtIn
             implicitHeight: f.ctlH
             text: f.cur()
             placeholderText: f.field.placeholder || ""
@@ -92,6 +93,10 @@ Item {
             background: Rectangle { radius: 8; color: f.col.bg; border.width: 1
                 border.color: parent.activeFocus ? f.col.accent : f.col.border }
             onEditingFinished: f.setV(text)
+            // S2: typing severs the `text:` binding, so re-assert from the store on
+            // any external push (Manager live mirror / geocode) when not being edited.
+            Connections { target: f.st
+                function onRevisionChanged() { if (!txtIn.activeFocus) txtIn.text = f.cur() } }
         }
     }
     Component {
@@ -107,7 +112,12 @@ Item {
                     placeholderText: f.field.placeholder || ""
                     color: f.col.textPrimary; placeholderTextColor: f.col.textSecondary
                     font.pixelSize: f.fontBase; background: null
-                    onTextChanged: if (text !== f.cur()) f.setV(text)
+                    // Commit on blur, not on every keystroke — otherwise each character
+                    // bumps store.revision and re-runs every revision-bound binding.
+                    onActiveFocusChanged: if (!activeFocus && text !== f.cur()) f.setV(text)
+                    // S2: re-assert from the store on external pushes when not editing.
+                    Connections { target: f.st
+                        function onRevisionChanged() { if (!ta.activeFocus) ta.text = f.cur() } }
                 }
             }
         }
@@ -118,30 +128,59 @@ Item {
             spacing: 10
             function step() { return f.field.step || 1 }
             function clamp(v) {
-                var lo = f.field.min !== undefined ? f.field.min : -1e9
-                var hi = f.field.max !== undefined ? f.field.max : 1e9
+                var isHour = f.field.type === "hour"
+                var lo = f.field.min !== undefined ? f.field.min : (isHour ? 0 : -1e9)
+                var hi = f.field.max !== undefined ? f.field.max : (isHour ? 23 : 1e9)
                 return Math.max(lo, Math.min(hi, v))
+            }
+            // Snap to the field's step precision so sub-1 steps (lat/lon, 0.01)
+            // don't accumulate binary FP error into the persisted config.
+            function snap(v) {
+                var s = step()
+                if (s < 1) {
+                    var frac = String(s).split(".")[1]
+                    return Number(v.toFixed(frac ? frac.length : 2))
+                }
+                return Math.round(v)
             }
             Rectangle {
                 Layout.preferredWidth: f.ctlH; Layout.preferredHeight: f.ctlH
                 radius: 10; color: dec.pressed ? f.col.accent : f.col.panelAlt; border.width: 1; border.color: f.col.border
                 AppIcon { anchors.centerIn: parent; name: "ui-minus"; size: 18; color: f.col.textPrimary }
-                MouseArea { id: dec; anchors.fill: parent; onClicked: f.setV(parent.parent.clamp(Number(f.cur()) - parent.parent.step())) }
+                MouseArea { id: dec; anchors.fill: parent; onClicked: f.setV(parent.parent.snap(parent.parent.clamp(Number(f.cur()) - parent.parent.step()))) }
             }
             Rectangle {
                 Layout.fillWidth: true; Layout.preferredHeight: f.ctlH; radius: 10
-                color: f.col.bg; border.width: 1; border.color: f.col.border
-                Text {
-                    anchors.centerIn: parent
+                color: f.col.bg; border.width: 1
+                border.color: numIn.activeFocus ? f.col.accent : f.col.border
+                // Keyboard entry path — steppers alone can't reach e.g. lat/lon at
+                // step 0.01. Typed input is parsed, clamped and snapped on commit.
+                TextField {
+                    id: numIn
+                    anchors.fill: parent
                     text: f.numStr()
+                    horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
                     color: f.col.textPrimary; font.pixelSize: f.fontBase + 3; font.bold: true
+                    background: null; selectByMouse: true
+                    inputMethodHints: Qt.ImhFormattedNumbersOnly
+                    onEditingFinished: {
+                        var raw = String(text)
+                        var n = (f.field.type === "hour") ? parseInt(raw, 10)
+                                                          : parseFloat(raw.replace(/[^0-9.eE+\-]/g, ""))
+                        if (isNaN(n)) { text = f.numStr(); return }
+                        f.setV(parent.parent.snap(parent.parent.clamp(n)))
+                    }
+                    // S2: re-assert the display after a stepper/external push (typing
+                    // severs the `text:` binding).
+                    Connections { target: f.st
+                        function onRevisionChanged() { if (!numIn.activeFocus) numIn.text = f.numStr() } }
                 }
             }
             Rectangle {
                 Layout.preferredWidth: f.ctlH; Layout.preferredHeight: f.ctlH
                 radius: 10; color: inc.pressed ? f.col.accent : f.col.panelAlt; border.width: 1; border.color: f.col.border
                 AppIcon { anchors.centerIn: parent; name: "ui-plus"; size: 18; color: f.col.textPrimary }
-                MouseArea { id: inc; anchors.fill: parent; onClicked: f.setV(parent.parent.clamp(Number(f.cur()) + parent.parent.step())) }
+                MouseArea { id: inc; anchors.fill: parent; onClicked: f.setV(parent.parent.snap(parent.parent.clamp(Number(f.cur()) + parent.parent.step()))) }
             }
         }
     }
@@ -211,14 +250,23 @@ Item {
     Component {
         id: dateC
         TextField {
+            id: dateIn
             implicitHeight: f.ctlH
             text: f.cur(); inputMask: "9999-99-99"
             placeholderText: "YYYY-MM-DD"
             color: f.col.textPrimary; placeholderTextColor: f.col.textSecondary; font.pixelSize: f.fontBase
             leftPadding: 12
+            // The mask restricts to digits but still allows impossible dates
+            // (2026-19-45); the validator rejects out-of-range month/day and keeps
+            // partial input in the Intermediate state (feedback, not committed).
+            validator: RegularExpressionValidator {
+                regularExpression: /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/ }
             background: Rectangle { radius: 8; color: f.col.bg; border.width: 1
                 border.color: parent.activeFocus ? f.col.accent : f.col.border }
             onEditingFinished: f.setV(text)
+            // S2: re-assert from the store on external pushes when not editing.
+            Connections { target: f.st
+                function onRevisionChanged() { if (!dateIn.activeFocus) dateIn.text = f.cur() } }
         }
     }
     Component {
@@ -252,7 +300,8 @@ Item {
                     required property var modelData
                     Layout.fillWidth: true; spacing: 8
                     Rectangle {
-                        width: 30; height: 30; radius: 6
+                        // Scale with ctlH but keep >= 44px touch minimum on the Edge.
+                        width: Math.min(48, Math.max(44, f.ctlH - 14)); height: width; radius: 6
                         color: modelData.done ? f.col.accent : "transparent"
                         border.width: 2; border.color: modelData.done ? f.col.accent : f.col.border
                         AppIcon { anchors.centerIn: parent; visible: modelData.done; name: "ui-check"; size: 16; color: "#0D1117" }
@@ -271,7 +320,8 @@ Item {
                         }
                     }
                     Rectangle {
-                        width: 34; height: 34; radius: 6; color: f.col.panelAlt
+                        // Scale with ctlH but keep >= 44px touch minimum on the Edge.
+                        width: Math.min(48, Math.max(44, f.ctlH - 12)); height: width; radius: 6; color: f.col.panelAlt
                         AppIcon { anchors.centerIn: parent; name: "ui-close"; size: 13; color: f.col.textSecondary }
                         MouseArea { anchors.fill: parent; onClicked: {
                             var a = (f.cur() || []).slice(); a.splice(index, 1); f.setV(a) } }

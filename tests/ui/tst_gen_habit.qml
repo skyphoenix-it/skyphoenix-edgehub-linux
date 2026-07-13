@@ -19,11 +19,13 @@ Item {
     id: root
     width: 480; height: 900
 
+    // Non-overlapping layout so mouseClick() hit-testing reaches each harness's
+    // own widget (a topmost sibling at the same origin would swallow the click).
     WidgetHarness { id: hHabit;   anchors.fill: parent; widgetFile: "HabitWidget.qml"; expanded: true }
     // A 1x1-sized compact tile to reproduce the clipped check-in button.
-    WidgetHarness { id: hCompact; width: 150; height: 150; widgetFile: "HabitWidget.qml"; expanded: false }
+    WidgetHarness { id: hCompact; x: 280; y: 0;   width: 150; height: 150; widgetFile: "HabitWidget.qml"; expanded: false }
     // A widget whose store is forcibly nulled to test the guard path.
-    WidgetHarness { id: hNull;    width: 200; height: 200; widgetFile: "HabitWidget.qml"; expanded: false }
+    WidgetHarness { id: hNull;    x: 280; y: 200; width: 200; height: 200; widgetFile: "HabitWidget.qml"; expanded: false }
 
     // Recursively collect nodes matching a predicate.
     function findAll(node, pred, acc) {

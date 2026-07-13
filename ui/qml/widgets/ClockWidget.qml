@@ -13,7 +13,13 @@ WidgetChrome {
 
     title: "Clock"; iconName: "clock"; accentColor: theme.catSystem
     big: expanded
-    status: (w.tick, Qt.formatDate(w.zonedNow(), "ddd"))
+    // Header weekday only when it ISN'T already shown elsewhere: hidden when the
+    // date row is off (showDate=false hides ALL date info) and when the full date
+    // row already spells out the weekday (avoid duplicating it). Short style
+    // ("dd/MM") carries no weekday, so the header still supplies it.
+    status: (w.showDate && w.dateStyle !== "full")
+            ? (w.tick, Qt.formatDate(w.zonedNow(), "ddd"))
+            : ""
 
     // Live per-instance config (see WidgetConfigSchema "clock"). Clone-on-read
     // (JSON round-trip) so a new object is returned each revision — otherwise QML
@@ -62,27 +68,39 @@ WidgetChrome {
     }
 
     ColumnLayout {
+        id: col
         anchors.centerIn: parent
+        // Fill the content body width so children can be width-constrained and
+        // shrink-to-fit rather than overflow the tile (S12).
+        width: parent.width
         spacing: w.expanded ? 8 : 2
-        // Zone name (world-clock mode).
+        // Zone name (world-clock mode). Any custom zone shows an indicator — even a
+        // non-expanded tile with no label falls back to the UTC offset, so foreign
+        // time is never mistaken for a wrong local clock.
         Text {
             Layout.alignment: Qt.AlignHCenter
-            visible: w.customZone && (w.zoneLabel.length > 0 || w.expanded)
+            visible: w.customZone
             text: w.zoneLabel.length ? w.zoneLabel : w.offsetLabel()
             font.pixelSize: w.expanded ? 22 : 12; font.bold: true
             font.family: theme.fontDisplay; color: w.effAccent
-            elide: Text.ElideRight; Layout.maximumWidth: w.width * 0.9
+            elide: Text.ElideRight; Layout.maximumWidth: col.width * 0.95
         }
         Text {
-            Layout.alignment: Qt.AlignHCenter
+            Layout.fillWidth: true
+            horizontalAlignment: Text.AlignHCenter
             text: (w.tick, Qt.formatTime(w.zonedNow(), w.timeFmt))
             font.pixelSize: w.expanded ? 168 : Math.max(30, Math.min(w.width * 0.24, 74))
+            fontSizeMode: Text.HorizontalFit; minimumPixelSize: 12
+            elide: Text.ElideRight
             font.bold: true; font.family: theme.fontMono; color: theme.textPrimary
         }
         Text {
-            Layout.alignment: Qt.AlignHCenter; visible: w.showDate
+            Layout.fillWidth: true; visible: w.showDate
+            horizontalAlignment: Text.AlignHCenter
             text: (w.tick, Qt.formatDate(w.zonedNow(), w.dateFmt))
             font.pixelSize: w.expanded ? 26 : 13; color: theme.textSecondary
+            fontSizeMode: Text.HorizontalFit; minimumPixelSize: 9
+            elide: Text.ElideRight
         }
     }
 }

@@ -191,8 +191,10 @@ Item {
         function test_dailyIdx_matches_day_of_year_mod_pool() {
             var w = hQuote.item
             var n = new Date()
-            var start = new Date(n.getFullYear(), 0, 0)
-            var doy = Math.floor((n - start) / 86400000)
+            // DST-safe day-of-year (UTC calendar midnights) — matches the widget's
+            // fixed computation; a raw local ms delta drifts an hour across DST.
+            var doy = Math.round((Date.UTC(n.getFullYear(), n.getMonth(), n.getDate())
+                                  - Date.UTC(n.getFullYear(), 0, 0)) / 86400000)
             var expected = doy % Math.max(1, w.pool.length)
             compare(w.dailyIdx, expected, "dailyIdx = day-of-year % pool.length")
         }

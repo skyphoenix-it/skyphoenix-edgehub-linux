@@ -8,6 +8,10 @@ Loader {
     id: bl
     property string style: "orbs"
     property bool running: true
+    // Optional accent override (S7): threaded into the loaded backdrop so a
+    // per-widget/per-page accent recolours the backdrop's primary tint. Defaults
+    // to theme.accent, so an unset override leaves every style's look unchanged.
+    property color accent: theme.accent
 
     readonly property var _map: ({
         "orbs": orbsC, "waves": wavesC, "stars": starsC,
@@ -18,7 +22,12 @@ Loader {
     // would stay LOADED and keep animating invisibly, burning GPU for nothing.
     active: visible && style !== "none" && style !== "gradient" && _map[style] !== undefined
     sourceComponent: _map[style] || null
-    onLoaded: if (item) item.active = Qt.binding(function () { return bl.running })
+    onLoaded: {
+        if (item) {
+            item.active = Qt.binding(function () { return bl.running })
+            item.accent = Qt.binding(function () { return bl.accent })
+        }
+    }
 
     Component { id: orbsC;   AnimatedBackground { } }
     Component { id: wavesC;  WavesBackground { } }

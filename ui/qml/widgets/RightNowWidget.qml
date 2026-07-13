@@ -11,6 +11,7 @@ WidgetChrome {
     property bool active: true
     property var store: null
     property string instanceId: ""
+    property int tick: 0
 
     title: "Right Now"; iconName: "rightnow"; accentColor: theme.catProductivity
     big: expanded; showHeader: expanded
@@ -20,12 +21,24 @@ WidgetChrome {
         return (store && instanceId) ? JSON.parse(JSON.stringify(store.settingsFor(instanceId))) : ({})
     }
     readonly property string current: cfg.text || ""
-    property string todayKey: Qt.formatDate(new Date(), "yyyy-MM-dd")
-    property int finishedToday: cfg.day === todayKey ? (cfg.finishedToday || 0) : 0
-    function setText(t) { if (store) store.setSetting(instanceId, "text", t) }
+    // A focus counts only if it has real (non-whitespace) content.
+    readonly property bool hasFocus: current.trim().length > 0
+    // Reactive on `tick` (bumped every second by the Dashboard) so it rolls over
+    // at local midnight on a 24/7 device instead of freezing at load time.
+    property string todayKey: (w.tick, Qt.formatDate(new Date(), "yyyy-MM-dd"))
+    // Recompute the real current day here rather than trusting the todayKey
+    // property: even if that ever went stale, the counter still resets correctly.
+    property int finishedToday: {
+        var _ = w.tick
+        var key = Qt.formatDate(new Date(), "yyyy-MM-dd")
+        return cfg.day === key ? (cfg.finishedToday || 0) : 0
+    }
+    function setText(t) { if (store && t !== w.current) store.setSetting(instanceId, "text", t) }
     // Finishing a focus is a small win — count it and celebrate, then clear.
-    function finish() {
-        var had = w.current.trim().length > 0
+    // Operates on the visible text when given (Done!), else the saved focus.
+    function finish(explicitText) {
+        var t = explicitText !== undefined ? explicitText : w.current
+        var had = t.trim().length > 0
         var patch = { text: "" }
         if (had) { patch.finishedToday = finishedToday + 1; patch.day = todayKey; celebrateNow("🎉 Done!") }
         if (store) store.patchSettings(instanceId, patch)
@@ -67,10 +80,11 @@ WidgetChrome {
         Text {
             anchors.centerIn: parent; width: parent.width * 0.9
             horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
-            text: w.current.length ? w.current : "Tap to set your one focus"
-            font.pixelSize: w.current.length ? Math.max(16, Math.min(parent.width * 0.11, 30)) : 14
-            font.bold: w.current.length > 0
-            color: w.current.length ? theme.textPrimary : theme.textTertiary
+            text: w.hasFocus ? w.current : "Tap to set your one focus"
+            font.pixelSize: w.hasFocus ? Math.max(16, Math.min(parent.width * 0.11, 30)) : 14
+            font.bold: w.hasFocus
+            // Hero content adopts the per-instance accent (S7); placeholder stays muted.
+            color: w.hasFocus ? w.effAccent : theme.textTertiary
             maximumLineCount: 3; elide: Text.ElideRight
         }
     }
@@ -102,7 +116,7 @@ WidgetChrome {
         Text {
             Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter
             visible: w.finishedToday > 0
-            text: "✓ " + w.finishedToday + (w.finishedToday === 1 ? " finished today" : " finished today")
+            text: "✓ " + w.finishedToday + (w.finishedToday === 1 ? " thing finished today" : " things finished today")
             font.pixelSize: 15; color: theme.textTertiary
         }
         RowLayout {
@@ -110,8 +124,9 @@ WidgetChrome {
             PillButton { label: "Save"; glyph: "✓"; primary: true; tint: w.effAccent
                 onClicked: w.setText(field.text) }
             PillButton { label: "Done!"; glyph: "🎉"; tint: theme.textSecondary
-                enabled: w.current.trim().length > 0
-                onClicked: { field.text = ""; w.finish() } }
+                // Act on the text the user actually sees, not the stale saved value.
+                enabled: field.text.trim().length > 0
+                onClicked: { w.finish(field.text); field.text = "" } }
         }
         Item { Layout.fillHeight: true }
     }

@@ -3,6 +3,11 @@ use std::fs;
 use std::io;
 use std::path::PathBuf;
 
+/// Schema version this build understands. A loaded config is migrated to this
+/// version; a config claiming a higher (foreign) version is clamped rather than
+/// silently accepted verbatim.
+pub const CURRENT_SCHEMA_VERSION: u32 = 1;
+
 /// Top-level application configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
@@ -128,7 +133,7 @@ fn default_true() -> bool {
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
-            schema_version: 1,
+            schema_version: CURRENT_SCHEMA_VERSION,
             first_run_complete: false,
             display: DisplayConfig {
                 target_edid_hash: None,
@@ -185,23 +190,77 @@ fn load_config_from(path: &std::path::Path) -> Result<AppConfig, ConfigError> {
     let config: AppConfig = match toml::from_str(&contents) {
         Ok(cfg) => cfg,
         Err(e) => {
-            // A corrupt or schema-incompatible file must not brick startup.
-            // Preserve it as a .bak for recovery and continue with defaults.
+            // A corrupt file must not brick startup, but a full reset is data
+            // loss: it re-triggers the first-run wizard and drops the saved
+            // dashboard layout. Preserve the corrupt file under a *timestamped*
+            // backup (so a good `.bak` is never clobbered), then salvage any
+            // recoverable fields instead of returning bare defaults.
             tracing::error!(
                 path = %path.display(),
                 error = %e,
-                "Config parse failed; backing up and starting from defaults"
+                "Config parse failed; backing up and salvaging recoverable state"
             );
-            if let Err(be) = backup_config_of(path) {
+            if let Err(be) = backup_corrupt_config(path) {
                 tracing::warn!(error = %be, "Failed to back up unparseable config");
             }
-            return Ok(AppConfig::default());
+            return Ok(salvage_partial_config(&contents));
         }
     };
 
-    // Future: run schema migrations here based on config.schema_version
+    Ok(migrate_config(config))
+}
 
-    Ok(config)
+/// Normalize a parsed config to the schema version this build supports.
+///
+/// A lower version is migrated up (currently a no-op field-compatible bump); a
+/// higher (foreign) version is clamped so newer keys we do not understand are
+/// not persisted back verbatim under a version we cannot honor.
+fn migrate_config(mut config: AppConfig) -> AppConfig {
+    if config.schema_version > CURRENT_SCHEMA_VERSION {
+        tracing::warn!(
+            found = config.schema_version,
+            supported = CURRENT_SCHEMA_VERSION,
+            "Config schema is newer than this build; clamping to supported version"
+        );
+        config.schema_version = CURRENT_SCHEMA_VERSION;
+    } else if config.schema_version < CURRENT_SCHEMA_VERSION {
+        // Future: apply stepwise migrations here (v1 -> v2 -> ...).
+        config.schema_version = CURRENT_SCHEMA_VERSION;
+    }
+    config
+}
+
+/// Best-effort recovery of scalar fields from an unparseable config file.
+///
+/// TOML parsing already failed as a whole, so this does a lenient line scan for
+/// the handful of fields whose loss is user-visible (the completed-setup flag
+/// and the opaque UI-state document). Everything else falls back to defaults.
+fn salvage_partial_config(contents: &str) -> AppConfig {
+    let mut config = AppConfig::default();
+    for line in contents.lines() {
+        let line = line.trim();
+        let (key, value) = match line.split_once('=') {
+            Some((k, v)) => (k.trim(), v.trim()),
+            None => continue,
+        };
+        match key {
+            "first_run_complete" => {
+                if value.starts_with("tru") {
+                    config.first_run_complete = true;
+                } else if value.starts_with("fal") {
+                    config.first_run_complete = false;
+                }
+            }
+            "ui_state" => {
+                let v = value.trim_matches('"');
+                if !v.is_empty() {
+                    config.ui_state = Some(v.to_string());
+                }
+            }
+            _ => {}
+        }
+    }
+    config
 }
 
 /// Save configuration to the default XDG config path.
@@ -256,6 +315,10 @@ pub fn backup_config() -> Result<(), ConfigError> {
 }
 
 /// Back up `path` to a fixed `<name>.toml.bak` beside it. Extracted for testing.
+///
+/// This is the *canonical* good-config backup (single, overwritten each time a
+/// known-good config is backed up). Corrupt configs must NOT use this — see
+/// `backup_corrupt_config` — or they would clobber the last recoverable copy.
 fn backup_config_of(path: &std::path::Path) -> Result<(), ConfigError> {
     if !path.exists() {
         return Ok(());
@@ -266,6 +329,34 @@ fn backup_config_of(path: &std::path::Path) -> Result<(), ConfigError> {
         source: e,
     })?;
     Ok(())
+}
+
+/// Back up an unparseable `path` to a unique, timestamped file beside it so a
+/// previously-saved good `.bak` is never overwritten by corrupt content.
+/// Returns the backup path on success.
+fn backup_corrupt_config(path: &std::path::Path) -> Result<PathBuf, ConfigError> {
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let file_name = path
+        .file_name()
+        .map(|f| f.to_string_lossy().to_string())
+        .unwrap_or_else(|| "config.toml".to_string());
+
+    // Guarantee uniqueness even for repeated corruption within the same second.
+    let mut backup = path.with_file_name(format!("{file_name}.corrupt-{ts}.bak"));
+    let mut counter: u32 = 1;
+    while backup.exists() {
+        backup = path.with_file_name(format!("{file_name}.corrupt-{ts}-{counter}.bak"));
+        counter += 1;
+    }
+
+    fs::copy(path, &backup).map_err(|e| ConfigError::Io {
+        path: backup.clone(),
+        source: e,
+    })?;
+    Ok(backup)
 }
 
 /// Reset configuration to defaults.

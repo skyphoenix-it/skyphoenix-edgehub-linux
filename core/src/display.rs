@@ -10,16 +10,27 @@ pub fn compute_edid_hash(edid: &[u8]) -> String {
 }
 
 /// Parse the manufacturer ID from EDID bytes 8-9.
-/// The manufacturer ID is a 3-letter PNP ID encoded in 2 bytes.
+/// The manufacturer ID is a 3-letter PNP ID encoded in 2 bytes as three 5-bit
+/// groups, each in the range 1..=26 mapping to 'A'..='Z'. A group of 0 (or >26)
+/// is not a valid PNP letter, so an out-of-range group makes the whole ID
+/// invalid and yields `None` rather than emitting control/symbol garbage.
 pub fn parse_manufacturer(edid: &[u8]) -> Option<String> {
     if edid.len() < 10 {
         return None;
     }
     let mfg = u16::from_be_bytes([edid[8], edid[9]]);
-    let c1 = ((mfg >> 10) & 0x1F) as u8 + b'A' - 1;
-    let c2 = ((mfg >> 5) & 0x1F) as u8 + b'A' - 1;
-    let c3 = (mfg & 0x1F) as u8 + b'A' - 1;
-    Some(format!("{}{}{}", c1 as char, c2 as char, c3 as char))
+    let letter = |group: u16| -> Option<char> {
+        let g = group & 0x1F;
+        if (1..=26).contains(&g) {
+            Some((g as u8 + b'A' - 1) as char)
+        } else {
+            None
+        }
+    };
+    let c1 = letter(mfg >> 10)?;
+    let c2 = letter(mfg >> 5)?;
+    let c3 = letter(mfg)?;
+    Some(format!("{c1}{c2}{c3}"))
 }
 
 /// Parse the model name from EDID descriptor blocks.

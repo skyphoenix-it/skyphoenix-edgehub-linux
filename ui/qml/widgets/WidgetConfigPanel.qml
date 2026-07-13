@@ -52,7 +52,7 @@ Item {
             Repeater {
                 // The "About this widget" section duplicates the header description
                 // shown above the panel, so don't render it here.
-                model: panel.schema
+                model: (panel.schema && panel.schema.sections)
                        ? panel.schema.sections.filter(function (s) { return s.title !== "About this widget" })
                        : []
                 delegate: Rectangle {

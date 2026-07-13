@@ -21,7 +21,12 @@ WidgetChrome {
     }
     property real lat: cfg.lat !== undefined ? cfg.lat : 52.52
     property real lon: cfg.lon !== undefined ? cfg.lon : 13.405
-    property string place: cfg.place || "Berlin"
+    // Only default to "Berlin" when no coordinates are configured either — a
+    // custom location with a blanked place field must not be mislabelled Berlin;
+    // fall back to the coordinates instead.
+    property string place: cfg.place ? cfg.place
+        : ((cfg.lat === undefined && cfg.lon === undefined) ? "Berlin"
+           : (Number(lat).toFixed(2) + ", " + Number(lon).toFixed(2)))
     readonly property string units: cfg.units || "celsius"
     readonly property int forecastDays: cfg.forecastDays !== undefined ? cfg.forecastDays : 4
     readonly property string degSym: units === "fahrenheit" ? "°F" : "°C"
@@ -69,10 +74,12 @@ WidgetChrome {
             if (xhr.readyState !== XMLHttpRequest.DONE) return
             if (w._fxhr !== xhr) return   // superseded by a newer request
             w._fxhr = null
-            if (xhr.status !== 200) { w.errorText = "Offline"; return }
+            // On any failure, stop presenting the last reading as if it were live
+            // (curTemp/days still hold the previous city's numbers — clear `loaded`).
+            if (xhr.status !== 200) { w.loaded = false; w.errorText = "Offline"; return }
             try {
                 var d = JSON.parse(xhr.responseText)
-                if (!d || !d.current || !d.daily || !d.daily.time) { w.errorText = "No data"; return }
+                if (!d || !d.current || !d.daily || !d.daily.time) { w.loaded = false; w.errorText = "No data"; return }
                 w.curTemp = d.current.temperature_2m
                 w.feels = d.current.apparent_temperature
                 w.curCode = d.current.weather_code
@@ -90,7 +97,7 @@ WidgetChrome {
                                min: Math.round(d.daily.temperature_2m_min[i]) })
                 }
                 w.days = out; w.loaded = true; w.errorText = ""
-            } catch (e) { w.errorText = "Parse error" }
+            } catch (e) { w.loaded = false; w.errorText = "Parse error" }
         }
         try { xhr.open("GET", url); xhr.send() } catch (e) { w._fxhr = null; w.errorText = "Offline" }
     }
@@ -128,7 +135,14 @@ WidgetChrome {
 
     // Debounce: lat and lon both "change" as settings load — coalesce to one fetch.
     property string locKey: lat + "," + lon + "," + units + "," + forecastDays
-    onLocKeyChanged: refreshDebounce.restart()
+    // Honor `active` (S3): don't fetch/repaint on the inactive (non-driver)
+    // instance; refetch once when it becomes active again.
+    onLocKeyChanged: if (w.active) refreshDebounce.restart()
+    onActiveChanged: if (w.active) refreshDebounce.restart()
+    // A units flip changes degSym synchronously, but curTemp still holds the old
+    // reading in the previous unit — invalidate it so the tile never relabels a
+    // Celsius number as "°F" until the refetch lands.
+    onUnitsChanged: w.loaded = false
     Component.onCompleted: refreshDebounce.restart()
     Timer { id: refreshDebounce; interval: 350; onTriggered: w.refresh() }
     Timer { interval: 1800000; repeat: true; running: w.active; onTriggered: w.refresh() }
@@ -142,7 +156,7 @@ WidgetChrome {
             Text { text: w.loaded ? w.weatherGlyph(w.curCode) : "…"; font.pixelSize: w.expanded ? 72 : 34 }
             ColumnLayout {
                 spacing: 0
-                Text { text: w.loaded ? Math.round(w.curTemp) + w.degSym : (w.errorText.length ? "—" : "…")
+                Text { text: (w.loaded && !w.errorText.length) ? Math.round(w.curTemp) + w.degSym : (w.errorText.length ? "—" : "…")
                     font.pixelSize: w.expanded ? 64 : 28; font.bold: true; color: theme.textPrimary }
                 Text { visible: w.expanded && w.loaded; text: "Feels " + Math.round(w.feels) + w.degSym + "  ·  " + w.place
                     font.pixelSize: 14; color: theme.textSecondary }
@@ -150,6 +164,9 @@ WidgetChrome {
         }
         Text {
             Layout.alignment: Qt.AlignHCenter
+            Layout.fillWidth: true
+            horizontalAlignment: Text.AlignHCenter
+            elide: Text.ElideRight               // S12: long place/error must not overflow the tile
             // Compact: place (or the error). Expanded: surface the error reason too
             // (otherwise the big "—" gives no hint why there's no data).
             visible: !w.expanded || w.errorText.length > 0
@@ -166,7 +183,10 @@ WidgetChrome {
                     Text { Layout.alignment: Qt.AlignHCenter; text: modelData.day; font.pixelSize: 13; color: theme.textSecondary }
                     Text { Layout.alignment: Qt.AlignHCenter; text: w.weatherGlyph(modelData.code); font.pixelSize: 26 }
                     Text { Layout.alignment: Qt.AlignHCenter; text: modelData.max + w.degSym + " / " + modelData.min + w.degSym
-                        font.pixelSize: 13; color: theme.textPrimary }
+                        font.pixelSize: 13; color: theme.textPrimary
+                        // S12: shrink-to-fit the day's hi/lo so a wide 7-day °F row
+                        // (e.g. "108°F / -12°F") never clips the panel.
+                        fontSizeMode: Text.HorizontalFit; minimumPixelSize: 9; elide: Text.ElideRight }
                 }
             }
         }

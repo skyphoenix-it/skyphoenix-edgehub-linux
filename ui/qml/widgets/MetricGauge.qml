@@ -40,7 +40,11 @@ Item {
                 Text {
                     Layout.alignment: Qt.AlignHCenter
                     text: g.big
-                    font.pixelSize: Math.min(ring.width * 0.34, g.expanded ? 108 : 60)
+                    // ring.width is 0 until the layout settles; fall back to the
+                    // gauge's own size so the number is never rendered at 0px
+                    // (invisible) on the first frame.
+                    font.pixelSize: Math.min((ring.width > 0 ? ring.width : Math.min(g.width, g.height)) * 0.34,
+                                             g.expanded ? 108 : 60)
                     font.bold: true; font.family: theme.fontMono
                     color: g.ok ? g.color : theme.textTertiary
                 }
@@ -54,13 +58,18 @@ Item {
             }
         }
 
-        // History sparkline hugs the bottom.
-        Sparkline {
+        // History sparkline hugs the bottom. The slot always reserves its height
+        // (even while the sparkline itself is hidden) so the fillHeight ring above
+        // does not visibly shrink when the sparkline pops in at the 2nd sample.
+        Item {
             Layout.fillWidth: true
             Layout.preferredHeight: g.expanded ? 110 : Math.max(30, g.height * 0.17)
-            values: g.history
-            color: g.color
-            visible: g.ok && g.history && g.history.length > 1
+            Sparkline {
+                anchors.fill: parent
+                values: g.history
+                color: g.color
+                visible: g.ok && g.history && g.history.length > 1
+            }
         }
     }
 }

@@ -11,7 +11,10 @@ WidgetChrome {
     property string instanceId: ""
     property int tick: 0
 
-    title: "Hydration"; iconName: "hydration"; accentColor: theme.catInfo
+    // Water-teal accent, deliberately distinct from theme.success: the count text
+    // recolours to `success` when the goal is reached, so the resting accent must
+    // differ or that reward is invisible (catInfo happens to equal success).
+    title: "Hydration"; iconName: "hydration"; accentColor: theme.catServices
     big: expanded
 
     readonly property var cfg: {
@@ -40,23 +43,34 @@ WidgetChrome {
 
     // Overfilling past the goal is allowed (extra-credit dopamine); capped only to
     // keep the glass grid sane.
+    // Credit today's goal attainment into `patch` (streak + lastGoalDay) and
+    // celebrate — but only the FIRST time the goal is reached today. Re-crossing
+    // the same day keeps the streak and does not replay the celebration.
+    function _creditGoalReached(patch) {
+        var firstToday = cfg.lastGoalDay !== todayKey
+        var s
+        if (cfg.lastGoalDay === todayKey) s = cfg.streak || 1
+        else s = (cfg.lastGoalDay === _yesterdayKey()) ? (cfg.streak || 0) + 1 : 1
+        patch.streak = s; patch.lastGoalDay = todayKey
+        if (firstToday) celebrateNow("🎉 Goal reached!")
+    }
     function set(n) {
         if (!store) return
         var v = Math.max(0, Math.min(50, n))
         var was = w.count
         var patch = { "day": todayKey, "count": v }
         // First crossing of the goal today → bump the streak + celebrate.
-        if (was < goal && v >= goal) {
-            var s
-            if (cfg.lastGoalDay === todayKey) s = cfg.streak || 1
-            else s = (cfg.lastGoalDay === _yesterdayKey()) ? (cfg.streak || 0) + 1 : 1
-            patch.streak = s; patch.lastGoalDay = todayKey
-            celebrateNow("🎉 Goal reached!")
-        }
+        if (was < goal && v >= goal) _creditGoalReached(patch)
         store.patchSettings(instanceId, patch)
     }
     function setGoal(g) {
-        if (store) store.patchSettings(instanceId, { "goal": Math.max(1, Math.min(20, g)) })
+        if (!store) return
+        var ng = Math.max(1, Math.min(20, g))
+        var patch = { "goal": ng }
+        // Lowering the goal to at/below the current count meets it just like a
+        // glass tap would — credit the streak (only if it wasn't already met).
+        if (w.count < w.goal && w.count >= ng) _creditGoalReached(patch)
+        store.patchSettings(instanceId, patch)
     }
 
     // Celebration pop (mirrors FocusWidget).
@@ -100,9 +114,11 @@ WidgetChrome {
                     opacity: index < w.count ? 1 : 0.35; font.pixelSize: 16 }
             }
         }
-        Text { Layout.alignment: Qt.AlignHCenter; text: w.count + " of " + w.goal + " glasses"
+        Text { Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter
+            text: w.count + " of " + w.goal + " glasses"; elide: Text.ElideRight
             font.pixelSize: 12; color: theme.textSecondary }
-        Text { Layout.alignment: Qt.AlignHCenter; visible: w.streakDisplay > 1
+        Text { Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter
+            visible: w.streakDisplay > 1; elide: Text.ElideRight
             text: "🔥 " + w.streakDisplay + "-day streak"; font.pixelSize: 11; color: theme.textTertiary }
         // Compact "+1" — a bounded target so the rest of the tile still expands
         // on tap (a full-tile MouseArea here used to swallow the expand gesture).

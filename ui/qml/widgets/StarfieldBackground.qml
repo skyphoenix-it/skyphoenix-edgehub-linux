@@ -7,6 +7,8 @@ Item {
     id: root
     property bool active: true
     property color tint: "#CFE3FF"
+    // Accent for the twinkling stars (S7). Overridable via BackdropLayer.
+    property color accent: theme.accent
     clip: true
 
     component StarLayer: Canvas {
@@ -32,6 +34,9 @@ Item {
         }
         onWidthChanged: requestPaint()
         onHeightChanged: requestPaint()
+        // The star colour is baked into the Canvas texture, so a theme/tint change
+        // needs an explicit repaint to take effect.
+        onColorChanged: requestPaint()
         Component.onCompleted: requestPaint()
     }
 
@@ -44,7 +49,7 @@ Item {
         delegate: Rectangle {
             required property int index
             width: 4; height: 4; radius: 2
-            color: theme.accent
+            color: root.accent
             x: (((index * 733 + 91) % 1000) / 1000) * root.width
             y: (((index * 421 + 197) % 1000) / 1000) * root.height
             SequentialAnimation on opacity {

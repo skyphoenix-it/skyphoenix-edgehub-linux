@@ -66,6 +66,7 @@ WidgetChrome {
             var sep = ln.indexOf(" — ")
             if (sep < 0) sep = ln.indexOf(" -- ")
             if (sep < 0) sep = ln.indexOf(" | ")
+            if (sep < 0) sep = ln.indexOf(" - ")   // plain ASCII hyphen (on-device keyboards)
             if (sep >= 0) out.push({ t: ln.substring(0, sep).trim(), a: ln.substring(sep + 3).trim() })
             else out.push({ t: ln, a: "" })
         }
@@ -77,18 +78,44 @@ WidgetChrome {
         return library[w.category] || library["focus"]
     }
 
+    // Calendar day key (local) → changes exactly once per local midnight when the
+    // dashboard bumps `tick`. Drives both the daily rotation and the release of a
+    // manual shuffle, so a pinned quote can't survive forever (S6).
+    readonly property string todayKey: {
+        w.tick
+        var d = new Date()
+        return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate()
+    }
     // Day-of-year index → stable for the whole day, rotates at midnight (via tick).
+    // Uses UTC calendar-date midnights so the count can't drift an hour across a
+    // DST boundary the way a raw ms delta between local timestamps would (S6).
     property int dailyIdx: {
         w.tick
         var n = new Date()
-        var start = new Date(n.getFullYear(), 0, 0)
-        var doy = Math.floor((n - start) / 86400000)
+        var doy = Math.round((Date.UTC(n.getFullYear(), n.getMonth(), n.getDate())
+                              - Date.UTC(n.getFullYear(), 0, 0)) / 86400000)
         return doy % Math.max(1, w.pool.length)
     }
     // A manual "shuffle" overrides the daily pick until the next day / reset.
     property int manualIdx: -1
+    // Identity of the manually-pinned quote, captured when the pin is set, so an
+    // edit to the custom list (which reindexes the pool) keeps the same quote
+    // pinned instead of silently repointing to whatever slid into that index.
+    property string pinnedText: ""
+    onManualIdxChanged: pinnedText = (w.manualIdx >= 0 && w.manualIdx < w.pool.length)
+                                     ? w.pool[w.manualIdx].t : ""
     onCategoryChanged: manualIdx = -1
-    property int idx: (w.manualIdx >= 0 && w.manualIdx < w.pool.length) ? w.manualIdx : w.dailyIdx
+    onTodayKeyChanged: manualIdx = -1        // release yesterday's shuffle at midnight
+    property int idx: {
+        if (w.manualIdx >= 0) {
+            if (w.pinnedText.length) {
+                for (var i = 0; i < w.pool.length; i++)
+                    if (w.pool[i].t === w.pinnedText) return i
+            }
+            if (w.manualIdx < w.pool.length) return w.manualIdx
+        }
+        return w.dailyIdx
+    }
     property var q: w.pool[idx] || ({ t: "", a: "" })
     function shuffle() {
         if (w.pool.length <= 1) return
@@ -108,9 +135,14 @@ WidgetChrome {
             text: w.q.t; font.italic: true; color: theme.textPrimary
             font.pixelSize: w.expanded ? 30 : Math.max(12, Math.min(w.width * 0.075, 16))
             maximumLineCount: w.expanded ? 6 : 4; elide: Text.ElideRight
+            fontSizeMode: Text.Fit; minimumPixelSize: 10
         }
-        Text { Layout.alignment: Qt.AlignHCenter; visible: w.q.a.length > 0; text: "— " + w.q.a
-            font.pixelSize: w.expanded ? 18 : 12; color: theme.textSecondary }
+        Text {
+            Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter
+            visible: w.q.a.length > 0; text: "— " + w.q.a
+            font.pixelSize: w.expanded ? 18 : 12; color: theme.textSecondary
+            elide: Text.ElideRight; maximumLineCount: 1
+        }
         PillButton {
             Layout.alignment: Qt.AlignHCenter; Layout.topMargin: theme.spacingSm
             visible: w.expanded && w.pool.length > 1

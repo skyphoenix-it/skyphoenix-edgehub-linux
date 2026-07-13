@@ -12,7 +12,7 @@
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 
-use crate::config::{self, AppConfig};
+use crate::config::{self, AppConfig, FallbackBehavior, WidgetInstance};
 use crate::display;
 use crate::logging;
 use crate::metrics::{self, SystemMetrics};
@@ -367,6 +367,140 @@ pub extern "C" fn xeneon_config_set_notify_disconnect(
     0
 }
 
+/// Set the display fallback behavior. Accepts "hide", "notify", or "ask".
+/// Returns 0 on success, -1 on null handle / null or unrecognized value.
+#[no_mangle]
+pub extern "C" fn xeneon_config_set_fallback_behavior(
+    handle: *mut ConfigHandle,
+    behavior: *const c_char,
+) -> i32 {
+    if handle.is_null() || behavior.is_null() {
+        return -1;
+    }
+    let s = unsafe { CStr::from_ptr(behavior) }.to_string_lossy();
+    let parsed = match s.as_ref() {
+        "hide" => FallbackBehavior::Hide,
+        "notify" => FallbackBehavior::Notify,
+        "ask" => FallbackBehavior::Ask,
+        _ => return -1,
+    };
+    unsafe { &mut *handle }.config.display.fallback_behavior = parsed;
+    0
+}
+
+/// Get the display fallback behavior as "hide" / "notify" / "ask". Caller frees.
+#[no_mangle]
+pub extern "C" fn xeneon_config_get_fallback_behavior(
+    handle: *const ConfigHandle,
+) -> *mut c_char {
+    if handle.is_null() {
+        return std::ptr::null_mut();
+    }
+    let s = match unsafe { &*handle }.config.display.fallback_behavior {
+        FallbackBehavior::Hide => "hide",
+        FallbackBehavior::Notify => "notify",
+        FallbackBehavior::Ask => "ask",
+    };
+    to_c_string(s)
+}
+
+/// Set the "reduce motion" accessibility preference.
+#[no_mangle]
+pub extern "C" fn xeneon_config_set_reduced_motion(
+    handle: *mut ConfigHandle,
+    enabled: i32,
+) -> i32 {
+    if handle.is_null() {
+        return -1;
+    }
+    unsafe { &mut *handle }.config.theme.reduced_motion = enabled != 0;
+    0
+}
+
+/// Get the "reduce motion" preference. Returns 1 if enabled, 0 if not, -1 on error.
+#[no_mangle]
+pub extern "C" fn xeneon_config_get_reduced_motion(handle: *const ConfigHandle) -> i32 {
+    if handle.is_null() {
+        return -1;
+    }
+    if unsafe { &*handle }.config.theme.reduced_motion {
+        1
+    } else {
+        0
+    }
+}
+
+/// Append a typed widget instance to `widgets.instances`.
+///
+/// `settings_json` is an opaque JSON object for the widget's settings; an empty
+/// or invalid string is stored as a JSON null. Returns 0 on success, -1 on a
+/// null handle or null `id`/`widget_type`.
+#[no_mangle]
+pub extern "C" fn xeneon_config_add_widget(
+    handle: *mut ConfigHandle,
+    id: *const c_char,
+    widget_type: *const c_char,
+    enabled: i32,
+    settings_json: *const c_char,
+) -> i32 {
+    if handle.is_null() || id.is_null() || widget_type.is_null() {
+        return -1;
+    }
+    let id = unsafe { CStr::from_ptr(id) }.to_string_lossy().to_string();
+    let widget_type = unsafe { CStr::from_ptr(widget_type) }
+        .to_string_lossy()
+        .to_string();
+    let settings = if settings_json.is_null() {
+        serde_json::Value::Null
+    } else {
+        let raw = unsafe { CStr::from_ptr(settings_json) }.to_string_lossy();
+        serde_json::from_str(&raw).unwrap_or(serde_json::Value::Null)
+    };
+    unsafe { &mut *handle }
+        .config
+        .widgets
+        .instances
+        .push(WidgetInstance {
+            id,
+            widget_type,
+            enabled: enabled != 0,
+            settings,
+        });
+    0
+}
+
+/// Number of typed widget instances. Returns -1 on a null handle.
+#[no_mangle]
+pub extern "C" fn xeneon_config_widget_count(handle: *const ConfigHandle) -> i32 {
+    if handle.is_null() {
+        return -1;
+    }
+    unsafe { &*handle }.config.widgets.instances.len() as i32
+}
+
+/// Remove all typed widget instances. Returns 0 on success, -1 on a null handle.
+#[no_mangle]
+pub extern "C" fn xeneon_config_clear_widgets(handle: *mut ConfigHandle) -> i32 {
+    if handle.is_null() {
+        return -1;
+    }
+    unsafe { &mut *handle }.config.widgets.instances.clear();
+    0
+}
+
+/// Get the typed widget instances as a JSON array. Caller must free.
+#[no_mangle]
+pub extern "C" fn xeneon_config_get_widgets_json(handle: *const ConfigHandle) -> *mut c_char {
+    if handle.is_null() {
+        return std::ptr::null_mut();
+    }
+    let h = unsafe { &*handle };
+    match serde_json::to_string(&h.config.widgets.instances) {
+        Ok(json) => to_c_string(json),
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
 /// Set the starter layout ID (e.g. "productivity", "gaming", "minimal", "blank").
 #[no_mangle]
 pub extern "C" fn xeneon_config_set_starter_layout(
@@ -533,13 +667,22 @@ pub extern "C" fn xeneon_metrics_get_cpu_usage(handle: *const MetricsHandle) -> 
     unsafe { &*handle }.metrics.cpu_usage_percent
 }
 
-/// Get CPU temperature in Celsius. Returns -1.0 if unavailable.
+/// Get CPU temperature in Celsius. Returns NaN if unavailable.
+///
+/// Availability is signalled with NaN (check `isnan()` on the C++ side) rather
+/// than the old `-1.0`, which collided with a genuine sub-zero reading. The
+/// reserved legacy value `-1.0` is treated as unavailable; every other reading
+/// (including other negative temperatures) is passed through intact. A null
+/// handle still returns `-1.0` for backward compatibility.
 #[no_mangle]
 pub extern "C" fn xeneon_metrics_get_cpu_temp(handle: *const MetricsHandle) -> f64 {
     if handle.is_null() {
         return -1.0;
     }
-    unsafe { &*handle }.metrics.cpu_temp_celsius.unwrap_or(-1.0)
+    match unsafe { &*handle }.metrics.cpu_temp_celsius {
+        Some(t) if t != -1.0 => t,
+        _ => f64::NAN,
+    }
 }
 
 /// Get RAM usage percentage (0.0 - 100.0).
@@ -590,13 +733,20 @@ pub extern "C" fn xeneon_metrics_get_gpu_usage(handle: *const MetricsHandle) -> 
         .unwrap_or(-1.0)
 }
 
-/// Get GPU temperature in Celsius. Returns -1.0 if unavailable.
+/// Get GPU temperature in Celsius. Returns NaN if unavailable.
+///
+/// Uses NaN (check `isnan()`) rather than the old `-1.0`, which collided with a
+/// genuine sub-zero reading; see `xeneon_metrics_get_cpu_temp`. A null handle
+/// still returns `-1.0` for backward compatibility.
 #[no_mangle]
 pub extern "C" fn xeneon_metrics_get_gpu_temp(handle: *const MetricsHandle) -> f64 {
     if handle.is_null() {
         return -1.0;
     }
-    unsafe { &*handle }.metrics.gpu_temp_celsius.unwrap_or(-1.0)
+    match unsafe { &*handle }.metrics.gpu_temp_celsius {
+        Some(t) if t != -1.0 => t,
+        _ => f64::NAN,
+    }
 }
 
 /// Get network receive rate in bytes/second.
@@ -828,7 +978,8 @@ mod tests {
             config: AppConfig::default(),
         };
         let p = &mut h as *mut ConfigHandle;
-        // (No setter exists to call here — that is the bug.)
+        let notify = cstr("notify");
+        assert_eq!(xeneon_config_set_fallback_behavior(p, notify.as_ptr()), 0);
         let json = unsafe { take(xeneon_config_to_json(p)) };
         let v: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert_eq!(
@@ -847,7 +998,7 @@ mod tests {
             config: AppConfig::default(),
         };
         let p = &mut h as *mut ConfigHandle;
-        // (No xeneon_config_set_reduced_motion exists to call here.)
+        assert_eq!(xeneon_config_set_reduced_motion(p, 1), 0);
         let json = unsafe { take(xeneon_config_to_json(p)) };
         let v: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert_eq!(
@@ -867,6 +1018,14 @@ mod tests {
             config: AppConfig::default(),
         };
         let p = &mut h as *mut ConfigHandle;
+        let id = cstr("clock-1");
+        let ty = cstr("clock");
+        let settings = cstr(r#"{"format":"24h"}"#);
+        assert_eq!(
+            xeneon_config_add_widget(p, id.as_ptr(), ty.as_ptr(), 1, settings.as_ptr()),
+            0
+        );
+        assert_eq!(xeneon_config_widget_count(p), 1);
         let json = unsafe { take(xeneon_config_to_json(p)) };
         let v: serde_json::Value = serde_json::from_str(&json).unwrap();
         let instances = v["widgets"]["instances"].as_array().unwrap();

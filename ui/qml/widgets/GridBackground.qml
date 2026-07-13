@@ -10,7 +10,9 @@ import QtQuick
 Item {
     id: root
     property bool active: true
-    property color tint: theme.accent
+    // Primary tint (S7). Defaults to theme.accent; overridable via BackdropLayer.
+    property color accent: theme.accent
+    property color tint: accent
     clip: true
 
     // Scroll phase (0..1) — one unit == one row of forward motion; loops seamlessly.
@@ -78,5 +80,8 @@ Item {
         onWidthChanged: requestPaint()
         onHeightChanged: requestPaint()
         Component.onCompleted: requestPaint()
+        // When motion is off the timer is stopped, so nothing else repaints this
+        // layer — react to tint changes explicitly so a theme/accent switch takes.
+        Connections { target: root; function onTintChanged() { dynamicGrid.requestPaint() } }
     }
 }

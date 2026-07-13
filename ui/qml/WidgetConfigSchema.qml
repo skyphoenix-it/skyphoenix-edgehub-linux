@@ -4,7 +4,7 @@ import QtQuick
 // on-device (hub) config view and the desktop Manager. The config renderer turns
 // these into a professional, sectioned form. Field types:
 //   text | textarea | number | slider | toggle | segmented | date | hour |
-//   tasks | action | info
+//   tasks | action | info | accent
 // Fields may carry `help` (a one-line hint under the label). Every widget gets a
 // "General" section (custom title) and an "About" section describing it.
 //
@@ -207,8 +207,8 @@ QtObject {
 
         case "eod": return { sections: [
             { title: "Work hours", cols: 2, fields: [
-                { key: "startHour", label: "Start hour", type: "hour", dflt: 9 },
-                { key: "endHour", label: "End hour", type: "hour", dflt: 17 } ] },
+                { key: "startHour", label: "Start hour", type: "hour", min: 0, max: 23, step: 1, dflt: 9 },
+                { key: "endHour", label: "End hour", type: "hour", min: 0, max: 23, step: 1, dflt: 17 } ] },
             { title: "Display", cols: 1, fields: [
                 { key: "progressStyle", label: "Progress style", type: "segmented", dflt: "bar", options: [
                     { value: "bar", label: "Bar" },

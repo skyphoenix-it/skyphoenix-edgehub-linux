@@ -33,16 +33,47 @@ WidgetChrome {
             // Step down to Kbps for small values so it doesn't read "0.0 Mbps".
             return mb < 1 ? (bps * 8 / 1e3).toFixed(0) + " Kbps" : mb.toFixed(1) + " Mbps"
         }
-        if (bps >= 1048576) return (bps / 1048576).toFixed(1) + " MB/s"
-        if (bps >= 1024) return (bps / 1024).toFixed(0) + " KB/s"
-        return Math.round(bps) + " B/s"
+        // Round to whole bytes FIRST, then pick the unit — otherwise a value like
+        // 1023.7 takes the B/s branch and rounds up to a nonsensical "1024 B/s".
+        var b = Math.round(bps)
+        if (b >= 1048576) return (b / 1048576).toFixed(1) + " MB/s"
+        if (b >= 1024) return (b / 1024).toFixed(0) + " KB/s"
+        return b + " B/s"
     }
 
+    // Session peaks + sparkline history live in the shared store (keyed by
+    // instanceId) so a tile and its expanded overlay — separate instances — share
+    // the same accumulated state instead of resetting to 0/empty on every open (S5).
+    function _persist() {
+        if (!store || !instanceId) return
+        store.patchSettings(instanceId, { hist: w.hist, peakRx: w.peakRx, peakTx: w.peakTx })
+    }
+    function _restoreState() {
+        if (!store || !instanceId) return
+        var s = store.settingsFor(instanceId)
+        if (s.hist !== undefined) w.hist = JSON.parse(JSON.stringify(s.hist))
+        if (s.peakRx !== undefined) w.peakRx = s.peakRx
+        if (s.peakTx !== undefined) w.peakTx = s.peakTx
+        spark.requestPaint()
+    }
+    onStoreChanged: _restoreState()
+
     onMetricsChanged: {
-        hist.push({ r: rx, t: tx })
+        // Honour `active`: an off-page/hidden instance must not keep accumulating
+        // (S3). Read the freshly-changed `metrics` directly — the derived rx/tx
+        // bindings lag one frame behind this handler.
+        if (!w.active) return
+        var m = w.metrics || ({})
+        var r = m.net_rx_bytes_per_sec
+        var t = m.net_tx_bytes_per_sec
+        // Skip frames with no net data so history isn't poisoned with fake 0s (S4).
+        if (r === undefined && t === undefined) return
+        r = r || 0; t = t || 0
+        hist.push({ r: r, t: t })
         if (hist.length > 60) hist.shift()
-        if (rx > peakRx) peakRx = rx
-        if (tx > peakTx) peakTx = tx
+        if (r > peakRx) peakRx = r
+        if (t > peakTx) peakTx = t
+        _persist()
         spark.requestPaint()
     }
     onEffAccentChanged: spark.requestPaint()
@@ -55,13 +86,15 @@ WidgetChrome {
         RowLayout {
             Layout.fillWidth: true; spacing: theme.spacingLg
             ColumnLayout {
+                Layout.fillWidth: true
                 spacing: 0
                 Text { text: "↓ " + w.fmt(w.rx); color: theme.success; font.bold: true
-                    font.family: theme.fontMono; font.pixelSize: w.expanded ? 30 : 15 }
+                    font.family: theme.fontMono; font.pixelSize: w.expanded ? 30 : 15
+                    Layout.fillWidth: true; elide: Text.ElideRight }
                 Text { text: "↑ " + w.fmt(w.tx); color: w.effAccent; font.bold: true
-                    font.family: theme.fontMono; font.pixelSize: w.expanded ? 30 : 15 }
+                    font.family: theme.fontMono; font.pixelSize: w.expanded ? 30 : 15
+                    Layout.fillWidth: true; elide: Text.ElideRight }
             }
-            Item { Layout.fillWidth: true }
             // Session peaks — a small "best so far" readout (expanded only).
             ColumnLayout {
                 visible: w.expanded; spacing: 0
