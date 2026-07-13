@@ -3,6 +3,8 @@ import QtTest
 import "../../ui/qml" as App
 import "../../ui/qml/widgets" as Widgets
 
+// COVERS: schema:endHour, schema:progressStyle, schema:showPercent, schema:startHour
+
 // ─────────────────────────────────────────────────────────────────────────
 // Comprehensive tests for widget:eod — ui/qml/widgets/EndOfDayWidget.qml
 // (the "End of Day" workday-progress widget) plus the shared config schema /

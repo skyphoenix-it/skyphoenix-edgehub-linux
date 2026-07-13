@@ -390,9 +390,7 @@ pub extern "C" fn xeneon_config_set_fallback_behavior(
 
 /// Get the display fallback behavior as "hide" / "notify" / "ask". Caller frees.
 #[no_mangle]
-pub extern "C" fn xeneon_config_get_fallback_behavior(
-    handle: *const ConfigHandle,
-) -> *mut c_char {
+pub extern "C" fn xeneon_config_get_fallback_behavior(handle: *const ConfigHandle) -> *mut c_char {
     if handle.is_null() {
         return std::ptr::null_mut();
     }
@@ -404,12 +402,35 @@ pub extern "C" fn xeneon_config_get_fallback_behavior(
     to_c_string(s)
 }
 
+/// Get the reconnect-on-hotplug preference. Returns 1 if enabled, 0 if not, -1 on error.
+#[no_mangle]
+pub extern "C" fn xeneon_config_get_reconnect(handle: *const ConfigHandle) -> i32 {
+    if handle.is_null() {
+        return -1;
+    }
+    if unsafe { &*handle }.config.startup.reconnect_on_hotplug {
+        1
+    } else {
+        0
+    }
+}
+
+/// Get the notify-on-disconnect preference. Returns 1 if enabled, 0 if not, -1 on error.
+#[no_mangle]
+pub extern "C" fn xeneon_config_get_notify_disconnect(handle: *const ConfigHandle) -> i32 {
+    if handle.is_null() {
+        return -1;
+    }
+    if unsafe { &*handle }.config.startup.notify_on_disconnect {
+        1
+    } else {
+        0
+    }
+}
+
 /// Set the "reduce motion" accessibility preference.
 #[no_mangle]
-pub extern "C" fn xeneon_config_set_reduced_motion(
-    handle: *mut ConfigHandle,
-    enabled: i32,
-) -> i32 {
+pub extern "C" fn xeneon_config_set_reduced_motion(handle: *mut ConfigHandle, enabled: i32) -> i32 {
     if handle.is_null() {
         return -1;
     }
@@ -669,20 +690,21 @@ pub extern "C" fn xeneon_metrics_get_cpu_usage(handle: *const MetricsHandle) -> 
 
 /// Get CPU temperature in Celsius. Returns NaN if unavailable.
 ///
-/// Availability is signalled with NaN (check `isnan()` on the C++ side) rather
-/// than the old `-1.0`, which collided with a genuine sub-zero reading. The
-/// reserved legacy value `-1.0` is treated as unavailable; every other reading
-/// (including other negative temperatures) is passed through intact. A null
-/// handle still returns `-1.0` for backward compatibility.
+/// "Unavailable" (no sensor / unreadable) is signalled with NaN — the C++ side
+/// must check `isnan()`, never `== -1.0`. Every genuine reading is passed
+/// through intact, INCLUDING a real `-1.0` °C (which is a valid sub-zero
+/// temperature, not a sentinel): only `None` maps to NaN. A null handle still
+/// returns `-1.0` for backward compatibility with the FFI error convention.
 #[no_mangle]
 pub extern "C" fn xeneon_metrics_get_cpu_temp(handle: *const MetricsHandle) -> f64 {
     if handle.is_null() {
         return -1.0;
     }
-    match unsafe { &*handle }.metrics.cpu_temp_celsius {
-        Some(t) if t != -1.0 => t,
-        _ => f64::NAN,
-    }
+    // Only `None` maps to NaN; every real reading (incl. -1.0) passes through.
+    unsafe { &*handle }
+        .metrics
+        .cpu_temp_celsius
+        .unwrap_or(f64::NAN)
 }
 
 /// Get RAM usage percentage (0.0 - 100.0).
@@ -735,18 +757,20 @@ pub extern "C" fn xeneon_metrics_get_gpu_usage(handle: *const MetricsHandle) -> 
 
 /// Get GPU temperature in Celsius. Returns NaN if unavailable.
 ///
-/// Uses NaN (check `isnan()`) rather than the old `-1.0`, which collided with a
-/// genuine sub-zero reading; see `xeneon_metrics_get_cpu_temp`. A null handle
-/// still returns `-1.0` for backward compatibility.
+/// Uses NaN (check `isnan()`) for "unavailable"; every real reading — including
+/// a genuine `-1.0` °C — is passed through, only `None` maps to NaN. See
+/// `xeneon_metrics_get_cpu_temp`. A null handle still returns `-1.0` for
+/// backward compatibility.
 #[no_mangle]
 pub extern "C" fn xeneon_metrics_get_gpu_temp(handle: *const MetricsHandle) -> f64 {
     if handle.is_null() {
         return -1.0;
     }
-    match unsafe { &*handle }.metrics.gpu_temp_celsius {
-        Some(t) if t != -1.0 => t,
-        _ => f64::NAN,
-    }
+    // Only `None` maps to NaN; every real reading (incl. -1.0) passes through.
+    unsafe { &*handle }
+        .metrics
+        .gpu_temp_celsius
+        .unwrap_or(f64::NAN)
 }
 
 /// Get network receive rate in bytes/second.
@@ -1039,33 +1063,55 @@ mod tests {
 
     #[test]
     fn bug_cpu_temp_sentinel_collides_with_subzero_reading() {
-        // A genuine -1.0 °C reading (cold ambient / chilled rig) is reported by
-        // the FFI as -1.0, which C++ treats as "no sensor".
-        let h = MetricsHandle {
+        // Unavailable (None) is the ONLY thing that maps to the NaN "no sensor"
+        // signal.
+        let none = MetricsHandle {
+            metrics: SystemMetrics {
+                cpu_temp_celsius: None,
+                ..Default::default()
+            },
+        };
+        assert!(
+            xeneon_metrics_get_cpu_temp(&none as *const MetricsHandle).is_nan(),
+            "an unavailable CPU temp (None) must be signalled with NaN"
+        );
+        // A genuine -1.0 °C reading (cold ambient / chilled rig) is a real value
+        // and must be passed through EXACTLY, not swallowed as "unavailable".
+        let real = MetricsHandle {
             metrics: SystemMetrics {
                 cpu_temp_celsius: Some(-1.0),
                 ..Default::default()
             },
         };
-        let v = xeneon_metrics_get_cpu_temp(&h as *const MetricsHandle);
-        assert_ne!(
-            v, -1.0,
-            "BUG: a real -1.0 °C CPU reading is indistinguishable from the 'unavailable' sentinel"
+        assert_eq!(
+            xeneon_metrics_get_cpu_temp(&real as *const MetricsHandle),
+            -1.0,
+            "a real -1.0 °C CPU reading must pass through, not collide with the 'unavailable' signal"
         );
     }
 
     #[test]
     fn bug_gpu_temp_sentinel_collides_with_subzero_reading() {
-        let h = MetricsHandle {
+        let none = MetricsHandle {
+            metrics: SystemMetrics {
+                gpu_temp_celsius: None,
+                ..Default::default()
+            },
+        };
+        assert!(
+            xeneon_metrics_get_gpu_temp(&none as *const MetricsHandle).is_nan(),
+            "an unavailable GPU temp (None) must be signalled with NaN"
+        );
+        let real = MetricsHandle {
             metrics: SystemMetrics {
                 gpu_temp_celsius: Some(-1.0),
                 ..Default::default()
             },
         };
-        let v = xeneon_metrics_get_gpu_temp(&h as *const MetricsHandle);
-        assert_ne!(
-            v, -1.0,
-            "BUG: a real -1.0 °C GPU reading is indistinguishable from the 'unavailable' sentinel"
+        assert_eq!(
+            xeneon_metrics_get_gpu_temp(&real as *const MetricsHandle),
+            -1.0,
+            "a real -1.0 °C GPU reading must pass through, not collide with the 'unavailable' signal"
         );
     }
 
@@ -1131,5 +1177,503 @@ mod tests {
         let v: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert_eq!(v["cpu_temp_celsius"], 42.0);
         assert_eq!(v["gpu_temp_celsius"], 50.0);
+    }
+
+    // --- Logging FFI: init + log at every level, null-tolerant ---
+
+    #[test]
+    fn logging_ffi_init_and_log_all_levels() {
+        // Null level → defaults to "info"; a valid level string is honored.
+        xeneon_logging_init(std::ptr::null());
+        let dbg = cstr("debug");
+        xeneon_logging_init(dbg.as_ptr());
+
+        let file = cstr("ffi.rs");
+        let msg = cstr("hello from C");
+        for level in 0..=4 {
+            xeneon_logging_log(level, file.as_ptr(), 42, msg.as_ptr());
+        }
+        // Out-of-range level falls into the trace arm; null file/message tolerated.
+        xeneon_logging_log(99, std::ptr::null(), 0, std::ptr::null());
+    }
+
+    // --- Config: target edid/connector/model setter↔getter round-trips ---
+
+    #[test]
+    fn config_target_fields_roundtrip_and_clear() {
+        let mut h = ConfigHandle {
+            config: AppConfig::default(),
+        };
+        let p = &mut h as *mut ConfigHandle;
+
+        let edid = cstr("deadbeef");
+        let conn = cstr("DP-3");
+        let model = cstr("XENEON EDGE");
+        assert_eq!(xeneon_config_set_target_edid_hash(p, edid.as_ptr()), 0);
+        assert_eq!(xeneon_config_set_target_connector(p, conn.as_ptr()), 0);
+        assert_eq!(xeneon_config_set_target_model(p, model.as_ptr()), 0);
+
+        unsafe {
+            assert_eq!(take(xeneon_config_get_target_edid_hash(p)), "deadbeef");
+            assert_eq!(take(xeneon_config_get_target_connector(p)), "DP-3");
+            assert_eq!(take(xeneon_config_get_target_model(p)), "XENEON EDGE");
+        }
+
+        // Passing null clears each field → getters return null.
+        assert_eq!(xeneon_config_set_target_edid_hash(p, std::ptr::null()), 0);
+        assert_eq!(xeneon_config_set_target_connector(p, std::ptr::null()), 0);
+        assert_eq!(xeneon_config_set_target_model(p, std::ptr::null()), 0);
+        assert!(xeneon_config_get_target_edid_hash(p).is_null());
+        assert!(xeneon_config_get_target_connector(p).is_null());
+        assert!(xeneon_config_get_target_model(p).is_null());
+    }
+
+    // --- Config: fallback_behavior all variants + invalid + getter ---
+
+    #[test]
+    fn config_fallback_behavior_roundtrip_all_variants() {
+        let mut h = ConfigHandle {
+            config: AppConfig::default(),
+        };
+        let p = &mut h as *mut ConfigHandle;
+
+        for value in ["hide", "notify", "ask"] {
+            let c = cstr(value);
+            assert_eq!(xeneon_config_set_fallback_behavior(p, c.as_ptr()), 0);
+            let got = unsafe { take(xeneon_config_get_fallback_behavior(p)) };
+            assert_eq!(got, value);
+        }
+        // An unrecognized value is rejected with -1 and leaves the prior value.
+        let bad = cstr("explode");
+        assert_eq!(xeneon_config_set_fallback_behavior(p, bad.as_ptr()), -1);
+        let still = unsafe { take(xeneon_config_get_fallback_behavior(p)) };
+        assert_eq!(still, "ask");
+        // Null handle / null value guards.
+        assert_eq!(
+            xeneon_config_set_fallback_behavior(std::ptr::null_mut(), bad.as_ptr()),
+            -1
+        );
+        assert_eq!(xeneon_config_set_fallback_behavior(p, std::ptr::null()), -1);
+        assert!(xeneon_config_get_fallback_behavior(std::ptr::null()).is_null());
+    }
+
+    // --- Config: reconnect + notify_disconnect getters (S10 disconnect wiring) ---
+
+    #[test]
+    fn config_reconnect_and_notify_disconnect_getters_roundtrip() {
+        let mut h = ConfigHandle {
+            config: AppConfig::default(),
+        };
+        let p = &mut h as *mut ConfigHandle;
+
+        // Getters read whatever the setters wrote (independent of the defaults).
+        assert_eq!(xeneon_config_set_reconnect(p, 1), 0);
+        assert_eq!(xeneon_config_get_reconnect(p), 1);
+        assert_eq!(xeneon_config_set_reconnect(p, 0), 0);
+        assert_eq!(xeneon_config_get_reconnect(p), 0);
+
+        assert_eq!(xeneon_config_set_notify_disconnect(p, 1), 0);
+        assert_eq!(xeneon_config_get_notify_disconnect(p), 1);
+        assert_eq!(xeneon_config_set_notify_disconnect(p, 0), 0);
+        assert_eq!(xeneon_config_get_notify_disconnect(p), 0);
+
+        // Null handle → -1 sentinel.
+        assert_eq!(xeneon_config_get_reconnect(std::ptr::null()), -1);
+        assert_eq!(xeneon_config_get_notify_disconnect(std::ptr::null()), -1);
+    }
+
+    // --- Config: reduced_motion setter↔getter ---
+
+    #[test]
+    fn config_reduced_motion_roundtrip() {
+        let mut h = ConfigHandle {
+            config: AppConfig::default(),
+        };
+        let p = &mut h as *mut ConfigHandle;
+        assert_eq!(xeneon_config_get_reduced_motion(p), 0);
+        assert_eq!(xeneon_config_set_reduced_motion(p, 1), 0);
+        assert_eq!(xeneon_config_get_reduced_motion(p), 1);
+        assert_eq!(xeneon_config_set_reduced_motion(p, 0), 0);
+        assert_eq!(xeneon_config_get_reduced_motion(p), 0);
+        assert_eq!(xeneon_config_get_reduced_motion(std::ptr::null()), -1);
+        assert_eq!(
+            xeneon_config_set_reduced_motion(std::ptr::null_mut(), 1),
+            -1
+        );
+    }
+
+    // --- Config: is_first_run + theme_mode getter + config_dir ---
+
+    #[test]
+    fn config_first_run_theme_and_dir() {
+        // `xeneon_config_dir()` reads the process-global `XDG_CONFIG_HOME`; hold
+        // the shared env lock so we don't race a concurrent locked writer
+        // (`std::env::set_var` is unsound when another thread reads/writes env
+        // concurrently).
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let mut h = ConfigHandle {
+            config: AppConfig::default(),
+        };
+        let p = &mut h as *mut ConfigHandle;
+        assert_eq!(xeneon_config_is_first_run(p), 1);
+        assert_eq!(xeneon_config_set_first_run_complete(p), 0);
+        assert_eq!(xeneon_config_is_first_run(p), 0);
+
+        let mode = unsafe { take(xeneon_config_get_theme_mode(p)) };
+        assert_eq!(mode, "dark");
+
+        // config_dir does not require a handle and always returns a non-empty path.
+        let dir = unsafe { take(xeneon_config_dir()) };
+        assert!(dir.contains("xeneon-edge-hub"));
+    }
+
+    // --- Config: typed widget accessors ---
+
+    #[test]
+    fn config_widget_accessors_full_cycle() {
+        let mut h = ConfigHandle {
+            config: AppConfig::default(),
+        };
+        let p = &mut h as *mut ConfigHandle;
+        assert_eq!(xeneon_config_widget_count(p), 0);
+
+        let id = cstr("w1");
+        let ty = cstr("clock");
+        let settings = cstr(r#"{"format":"24h"}"#);
+        assert_eq!(
+            xeneon_config_add_widget(p, id.as_ptr(), ty.as_ptr(), 1, settings.as_ptr()),
+            0
+        );
+        // Null settings_json → stored as JSON null, still counts.
+        let id2 = cstr("w2");
+        let ty2 = cstr("weather");
+        assert_eq!(
+            xeneon_config_add_widget(p, id2.as_ptr(), ty2.as_ptr(), 0, std::ptr::null()),
+            0
+        );
+        assert_eq!(xeneon_config_widget_count(p), 2);
+
+        let json = unsafe { take(xeneon_config_get_widgets_json(p)) };
+        let arr: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(arr.as_array().unwrap().len(), 2);
+
+        assert_eq!(xeneon_config_clear_widgets(p), 0);
+        assert_eq!(xeneon_config_widget_count(p), 0);
+
+        // Null-handle / null-id guards.
+        assert_eq!(
+            xeneon_config_add_widget(
+                std::ptr::null_mut(),
+                id.as_ptr(),
+                ty.as_ptr(),
+                1,
+                std::ptr::null()
+            ),
+            -1
+        );
+        assert_eq!(
+            xeneon_config_add_widget(p, std::ptr::null(), ty.as_ptr(), 1, std::ptr::null()),
+            -1
+        );
+        assert_eq!(xeneon_config_clear_widgets(std::ptr::null_mut()), -1);
+        assert_eq!(xeneon_config_widget_count(std::ptr::null()), -1);
+        assert!(xeneon_config_get_widgets_json(std::ptr::null()).is_null());
+    }
+
+    // --- Config: starter_layout + ui_state null-clear branches ---
+
+    #[test]
+    fn config_starter_layout_and_ui_state_clear() {
+        let mut h = ConfigHandle {
+            config: AppConfig::default(),
+        };
+        let p = &mut h as *mut ConfigHandle;
+        // Absent → getter null.
+        assert!(xeneon_config_get_starter_layout(p).is_null());
+        assert!(xeneon_config_get_ui_state(p).is_null());
+
+        let layout = cstr("minimal");
+        assert_eq!(xeneon_config_set_starter_layout(p, layout.as_ptr()), 0);
+        assert_eq!(
+            unsafe { take(xeneon_config_get_starter_layout(p)) },
+            "minimal"
+        );
+        // Null clears it back to None.
+        assert_eq!(xeneon_config_set_starter_layout(p, std::ptr::null()), 0);
+        assert!(xeneon_config_get_starter_layout(p).is_null());
+
+        let ui = cstr("STATE");
+        assert_eq!(xeneon_config_set_ui_state(p, ui.as_ptr()), 0);
+        assert_eq!(unsafe { take(xeneon_config_get_ui_state(p)) }, "STATE");
+        assert_eq!(xeneon_config_set_ui_state(p, std::ptr::null()), 0);
+        assert!(xeneon_config_get_ui_state(p).is_null());
+    }
+
+    // --- Invalid UTF-8 must not panic across the ABI ---
+
+    #[test]
+    fn setters_tolerate_invalid_utf8_without_panic() {
+        // 0xFF/0xFE are valid C-string bytes (no interior NUL) but invalid UTF-8.
+        let bad = CString::new(vec![0x66, 0xff, 0xfe, 0x6f]).unwrap();
+        let mut h = ConfigHandle {
+            config: AppConfig::default(),
+        };
+        let p = &mut h as *mut ConfigHandle;
+        // to_string_lossy replaces the invalid bytes rather than panicking.
+        assert_eq!(xeneon_config_set_theme_mode(p, bad.as_ptr()), 0);
+        assert_eq!(xeneon_config_set_theme_accent(p, bad.as_ptr()), 0);
+        assert_eq!(xeneon_config_set_target_connector(p, bad.as_ptr()), 0);
+        assert_eq!(xeneon_config_set_ui_state(p, bad.as_ptr()), 0);
+        // Round-trips back through JSON without crashing.
+        let json = unsafe { take(xeneon_config_to_json(p)) };
+        assert!(json.contains("theme"));
+    }
+
+    // --- Display FFI over real EDID bytes ---
+
+    fn sample_edid() -> Vec<u8> {
+        let mut edid = vec![0u8; 128];
+        edid[0..8].copy_from_slice(&[0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00]);
+        // Manufacturer COR.
+        let mfg: u16 = ((3u16) << 10) | ((15u16) << 5) | 18u16;
+        edid[8] = (mfg >> 8) as u8;
+        edid[9] = (mfg & 0xFF) as u8;
+        edid[21] = 39;
+        edid[22] = 11;
+        // Monitor-name descriptor in the second slot.
+        edid[72 + 3] = 0xFC;
+        for (i, b) in b"EDGE".iter().enumerate() {
+            edid[72 + 5 + i] = *b;
+        }
+        for i in b"EDGE".len()..13 {
+            edid[72 + 5 + i] = 0x0A;
+        }
+        edid
+    }
+
+    #[test]
+    fn display_ffi_over_real_edid() {
+        let edid = sample_edid();
+        let ptr = edid.as_ptr();
+        let len = edid.len();
+
+        let hash = unsafe { take(xeneon_display_compute_edid_hash(ptr, len)) };
+        assert_eq!(hash.len(), 64);
+        let mfg = unsafe { take(xeneon_display_parse_manufacturer(ptr, len)) };
+        assert_eq!(mfg, "COR");
+        let name = unsafe { take(xeneon_display_parse_model_name(ptr, len)) };
+        assert_eq!(name, "EDGE");
+        assert_eq!(xeneon_display_is_xeneon_edge(ptr, len), 1);
+
+        // Null/empty guards.
+        assert!(xeneon_display_compute_edid_hash(std::ptr::null(), 0).is_null());
+        assert!(xeneon_display_compute_edid_hash(ptr, 0).is_null());
+        assert!(xeneon_display_parse_model_name(std::ptr::null(), 0).is_null());
+        assert_eq!(xeneon_display_is_xeneon_edge(std::ptr::null(), 0), 0);
+        // A non-Edge (all-zero) 128-byte EDID → not an Edge.
+        let zero = [0u8; 128];
+        assert_eq!(xeneon_display_is_xeneon_edge(zero.as_ptr(), zero.len()), 0);
+
+        // Parsers that yield None must return null (not a bogus string). An
+        // all-zero EDID has an invalid (0) manufacturer group and no 0xFC block.
+        assert!(xeneon_display_parse_manufacturer(zero.as_ptr(), zero.len()).is_null());
+        assert!(xeneon_display_parse_model_name(zero.as_ptr(), zero.len()).is_null());
+    }
+
+    // --- Metrics FFI: collect real handle and hit every accessor ---
+
+    #[test]
+    fn metrics_ffi_collect_and_all_getters() {
+        let handle = xeneon_metrics_collect();
+        assert!(!handle.is_null());
+        let hc = handle as *const MetricsHandle;
+
+        assert!(xeneon_metrics_get_cpu_usage(hc) >= 0.0);
+        // Temp is either a real number or NaN, never a panic.
+        let _ = xeneon_metrics_get_cpu_temp(hc);
+        assert!(xeneon_metrics_get_ram_usage(hc) >= 0.0);
+        assert!(xeneon_metrics_get_ram_total(hc) > 0);
+        let _ = xeneon_metrics_get_ram_used(hc);
+        assert!(xeneon_metrics_get_cpu_cores(hc) > 0);
+        let _ = xeneon_metrics_get_gpu_usage(hc);
+        let _ = xeneon_metrics_get_gpu_temp(hc);
+        assert!(xeneon_metrics_get_net_rx(hc) >= 0.0);
+        assert!(xeneon_metrics_get_net_tx(hc) >= 0.0);
+        assert!(xeneon_metrics_get_disk_total(hc) > 0);
+        let _ = xeneon_metrics_get_disk_used(hc);
+
+        let json = unsafe { take(xeneon_metrics_to_json(hc)) };
+        assert!(json.contains("cpu_usage_percent"));
+
+        xeneon_metrics_free(handle);
+    }
+
+    #[test]
+    fn cpu_temp_passes_through_ordinary_subzero_and_present() {
+        // A present non-(-1.0) temperature is passed through unchanged, including
+        // an ordinary sub-zero reading.
+        let h = MetricsHandle {
+            metrics: SystemMetrics {
+                cpu_temp_celsius: Some(-5.0),
+                gpu_temp_celsius: Some(-5.0),
+                ..Default::default()
+            },
+        };
+        assert_eq!(
+            xeneon_metrics_get_cpu_temp(&h as *const MetricsHandle),
+            -5.0
+        );
+        assert_eq!(
+            xeneon_metrics_get_gpu_temp(&h as *const MetricsHandle),
+            -5.0
+        );
+    }
+
+    #[test]
+    fn gpu_usage_present_value_passthrough() {
+        let h = MetricsHandle {
+            metrics: SystemMetrics {
+                gpu_usage_percent: Some(73.0),
+                ..Default::default()
+            },
+        };
+        assert_eq!(
+            xeneon_metrics_get_gpu_usage(&h as *const MetricsHandle),
+            73.0
+        );
+    }
+
+    // --- Config handle lifecycle via XDG_CONFIG_HOME override ---
+
+    /// Serialize env-var-mutating tests; `XDG_CONFIG_HOME` is process-global.
+    /// Shared crate-wide so config.rs and ffi.rs tests can't race each other.
+    use crate::TEST_ENV_LOCK as ENV_LOCK;
+
+    #[test]
+    fn config_handle_load_mutate_save_free_lifecycle() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        std::env::set_var("XDG_CONFIG_HOME", dir.path());
+
+        // Load (no file yet → defaults), mutate, save, free.
+        let h = xeneon_config_load();
+        assert!(!h.is_null());
+        assert_eq!(xeneon_config_set_first_run_complete(h), 0);
+        let mode = cstr("light");
+        assert_eq!(xeneon_config_set_theme_mode(h, mode.as_ptr()), 0);
+        let ui = cstr("PERSISTED");
+        assert_eq!(xeneon_config_set_ui_state(h, ui.as_ptr()), 0);
+        assert_eq!(xeneon_config_save(h as *const ConfigHandle), 0);
+        xeneon_config_free(h);
+
+        // Reload from disk: the mutations survived.
+        let h2 = xeneon_config_load();
+        assert!(!h2.is_null());
+        assert_eq!(xeneon_config_is_first_run(h2), 0);
+        assert_eq!(unsafe { take(xeneon_config_get_ui_state(h2)) }, "PERSISTED");
+        xeneon_config_free(h2);
+
+        // Reset returns a fresh default handle.
+        let h3 = xeneon_config_reset();
+        assert!(!h3.is_null());
+        assert_eq!(xeneon_config_is_first_run(h3), 1);
+        xeneon_config_free(h3);
+
+        std::env::remove_var("XDG_CONFIG_HOME");
+    }
+}
+
+#[cfg(test)]
+mod proptests {
+    use super::*;
+    use proptest::prelude::*;
+
+    /// Round-trip a live C-string back to Rust and free it.
+    unsafe fn take(p: *mut c_char) -> String {
+        assert!(!p.is_null());
+        let s = CStr::from_ptr(p).to_string_lossy().into_owned();
+        xeneon_string_free(p);
+        s
+    }
+
+    proptest! {
+        /// `xeneon_metrics_to_json` emits every key and losslessly round-trips all
+        /// numeric fields for arbitrary finite metric values.
+        #[test]
+        fn metrics_to_json_roundtrips_all_fields(
+            cpu in 0.0f64..100.0, ram in 0.0f64..100.0, disk in 0.0f64..100.0,
+            ram_total in 0u64..u64::MAX, ram_used in 0u64..u64::MAX,
+            cores in 0u32..1024,
+            gpu in prop::option::of(0.0f64..100.0),
+            cpu_temp in prop::option::of(-50.0f64..150.0),
+            rx in 0.0f64..1e12, tx in 0.0f64..1e12,
+        ) {
+            let h = MetricsHandle {
+                metrics: SystemMetrics {
+                    cpu_usage_percent: cpu,
+                    cpu_temp_celsius: cpu_temp,
+                    ram_usage_percent: ram,
+                    ram_total_bytes: ram_total,
+                    ram_used_bytes: ram_used,
+                    cpu_core_count: cores,
+                    gpu_usage_percent: gpu,
+                    gpu_temp_celsius: None,
+                    net_rx_bytes_per_sec: rx,
+                    net_tx_bytes_per_sec: tx,
+                    disk_total_bytes: 100,
+                    disk_used_bytes: 50,
+                    disk_usage_percent: disk,
+                },
+            };
+            let json = unsafe { take(xeneon_metrics_to_json(&h as *const MetricsHandle)) };
+            let v: serde_json::Value = serde_json::from_str(&json).unwrap();
+            for key in [
+                "cpu_usage_percent", "cpu_temp_celsius", "ram_usage_percent",
+                "ram_total_bytes", "ram_used_bytes", "cpu_core_count",
+                "gpu_usage_percent", "gpu_temp_celsius", "net_rx_bytes_per_sec",
+                "net_tx_bytes_per_sec", "disk_total_bytes", "disk_used_bytes",
+                "disk_usage_percent",
+            ] {
+                prop_assert!(v.get(key).is_some(), "missing key {}", key);
+            }
+            prop_assert_eq!(v["ram_total_bytes"].as_u64().unwrap(), ram_total);
+            prop_assert_eq!(v["ram_used_bytes"].as_u64().unwrap(), ram_used);
+            prop_assert_eq!(v["cpu_core_count"].as_u64().unwrap(), cores as u64);
+            // Value-check every float field, not just key-presence: a
+            // wrong-value-under-right-key regression must fail. The JSON
+            // round-trip can differ by a single ULP, so compare within a tight
+            // relative tolerance (still orders of magnitude below any real
+            // wrong-value bug).
+            let close = |a: f64, b: f64| (a - b).abs() <= 1e-9 * a.abs().max(1.0);
+            prop_assert!(close(v["cpu_usage_percent"].as_f64().unwrap(), cpu));
+            prop_assert!(close(v["ram_usage_percent"].as_f64().unwrap(), ram));
+            prop_assert!(close(v["disk_usage_percent"].as_f64().unwrap(), disk));
+            prop_assert!(close(v["net_rx_bytes_per_sec"].as_f64().unwrap(), rx));
+            prop_assert!(close(v["net_tx_bytes_per_sec"].as_f64().unwrap(), tx));
+            match cpu_temp {
+                Some(t) => prop_assert!(close(v["cpu_temp_celsius"].as_f64().unwrap(), t)),
+                None => prop_assert!(v["cpu_temp_celsius"].is_null()),
+            }
+            match gpu {
+                Some(g) => prop_assert!(close(v["gpu_usage_percent"].as_f64().unwrap(), g)),
+                None => prop_assert!(v["gpu_usage_percent"].is_null()),
+            }
+        }
+
+        /// Config setters never panic on arbitrary (NUL-free) C-string input,
+        /// including non-UTF-8 byte sequences, and the handle stays serializable.
+        #[test]
+        fn config_setters_survive_arbitrary_cstring_input(
+            bytes in prop::collection::vec(1u8..=255, 0..32)
+        ) {
+            let c = CString::new(bytes).unwrap();
+            let mut h = ConfigHandle { config: AppConfig::default() };
+            let p = &mut h as *mut ConfigHandle;
+            prop_assert_eq!(xeneon_config_set_theme_mode(p, c.as_ptr()), 0);
+            prop_assert_eq!(xeneon_config_set_target_model(p, c.as_ptr()), 0);
+            prop_assert_eq!(xeneon_config_set_ui_state(p, c.as_ptr()), 0);
+            let json = unsafe { take(xeneon_config_to_json(p)) };
+            prop_assert!(serde_json::from_str::<serde_json::Value>(&json).is_ok());
+        }
     }
 }

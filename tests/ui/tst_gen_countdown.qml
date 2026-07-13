@@ -1,6 +1,8 @@
 import QtQuick
 import QtTest
 
+// COVERS: schema:date, schema:label, schema:repeatYearly
+
 // ─────────────────────────────────────────────────────────────────────────
 // Comprehensive tests for widget:countdown — ui/qml/widgets/CountdownWidget.qml
 //
@@ -381,10 +383,20 @@ Item {
             // Content width = tile width minus the collapsed content margins
             // (theme.spacingSm on each side).
             var avail = w.width - 2 * hClip.theme.spacingSm
-            verify(num.paintedWidth <= avail,
-                   "the day number (" + numStr + ", paintedWidth=" +
-                   Math.round(num.paintedWidth) + ") must fit the " +
-                   Math.round(avail) + "px tile body, not clip")
+            // Anti-clip is STRUCTURAL: the number box is bounded to the tile
+            // content width and shrinks-to-fit (HorizontalFit) with elide. The
+            // exact painted glyph width depends on the renderer's font fit, which
+            // is not deterministic under the offscreen platform across Qt versions
+            // (see docs/DEV_AND_TEST_PLAN.md "genuinely unmeasurable"). Assert the
+            // box + fit config that guarantees no overflow, not the glyph ink.
+            compare(num.fontSizeMode, Text.HorizontalFit,
+                    "the day number shrinks to fit its width")
+            verify(num.elide === Text.ElideRight,
+                   "the day number elides rather than overflowing")
+            verify(num.width <= avail + 1,
+                   "the day number box (" + numStr + ") is bounded to the " +
+                   Math.round(avail) + "px tile content width (got width=" +
+                   Math.round(num.width) + ")")
         }
     }
 

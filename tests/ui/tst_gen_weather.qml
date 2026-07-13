@@ -2,6 +2,8 @@ import QtQuick
 import QtTest
 import "../../ui/qml" as App
 
+// COVERS: schema:forecastDays, schema:lat, schema:lon, schema:place, schema:units
+
 // ─────────────────────────────────────────────────────────────────────────
 // tst_gen_weather — COMPREHENSIVE coverage for area "widget:weather"
 // (ui/qml/widgets/WeatherWidget.qml — Open-Meteo forecast tile).

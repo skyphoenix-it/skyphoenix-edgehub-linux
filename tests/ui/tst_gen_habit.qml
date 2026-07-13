@@ -1,6 +1,8 @@
 import QtQuick
 import QtTest
 
+// COVERS: schema:name
+
 // ─────────────────────────────────────────────────────────────────────────
 // Comprehensive coverage for the Habit streak widget
 // (ui/qml/widgets/HabitWidget.qml).

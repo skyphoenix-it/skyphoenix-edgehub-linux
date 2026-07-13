@@ -1,6 +1,8 @@
 import QtQuick
 import QtTest
 
+// COVERS: schema:warnPercent
+
 // Comprehensive coverage for the Disk widget (ui/qml/widgets/DiskWidget.qml).
 //
 // Exercises: warnPercent config reading + reactivity, the col() colour bands

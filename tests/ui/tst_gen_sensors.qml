@@ -1,6 +1,8 @@
 import QtQuick
 import QtTest
 
+// COVERS: schema:showCpu, schema:showDisk, schema:showGpu, schema:showRam, schema:showTemps
+
 // Comprehensive coverage for area "widget:sensors" (ui/qml/widgets/SensorsWidget.qml).
 //
 // Drives config through the DashboardStore the harness owns and asserts on the

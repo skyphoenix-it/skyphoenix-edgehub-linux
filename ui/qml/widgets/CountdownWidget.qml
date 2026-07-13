@@ -71,6 +71,11 @@ WidgetChrome {
             Layout.alignment: Qt.AlignHCenter
             // Constrain to the tile's content width and shrink-to-fit so a large
             // (5-digit) day count never overflows/clips the narrow collapsed tile.
+            // preferredWidth (not just maximumWidth) forces the layout to allocate
+            // exactly this width, so HorizontalFit has a fixed box to shrink into —
+            // a bare maximumWidth cap is ignored for an oversized implicitWidth on
+            // some Qt versions (e.g. 6.7), letting the number overflow.
+            Layout.preferredWidth: w.width - 2 * w.contentMargins
             Layout.maximumWidth: w.width - 2 * w.contentMargins
             horizontalAlignment: Text.AlignHCenter
             text: !w.valid ? "—" : (w.days > 0 ? w.days : (w.days === 0 ? "🎉" : Math.abs(w.days)))

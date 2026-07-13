@@ -385,6 +385,9 @@ pub enum ConfigError {
 
 #[cfg(test)]
 mod tests {
+    // Tests build configs by mutating a `default()` for readability; the
+    // field-reassign lint would otherwise force verbose nested struct literals.
+    #![allow(clippy::field_reassign_with_default)]
     use super::*;
 
     #[test]
@@ -567,6 +570,162 @@ instances = []
 
     // --- BUG: schema_version migrations are unimplemented (no-op) ---
 
+    // --- Salvage branch coverage (direct, no disk) ---
+
+    #[test]
+    fn salvage_recovers_ui_state_and_false_flag() {
+        // Exercises the `fal` branch and the ui_state recovery branch.
+        let corrupt = "\
+first_run_complete = false
+ui_state = \"LAYOUT_KEEP\"
+this line has no equals sign
+= leading equals
+broken = = toml
+";
+        let cfg = salvage_partial_config(corrupt);
+        assert!(!cfg.first_run_complete);
+        assert_eq!(cfg.ui_state.as_deref(), Some("LAYOUT_KEEP"));
+    }
+
+    #[test]
+    fn salvage_ignores_empty_ui_state_and_unknown_flag() {
+        // Empty ui_state stays None; a non-true/false flag value is left default.
+        let cfg = salvage_partial_config("first_run_complete = maybe\nui_state = \"\"\n");
+        assert!(!cfg.first_run_complete);
+        assert!(cfg.ui_state.is_none());
+    }
+
+    // --- migrate_config: lower schema version is bumped up ---
+
+    #[test]
+    fn migrate_bumps_lower_schema_version() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        let mut cfg = AppConfig::default();
+        cfg.schema_version = 0; // older than this build supports
+        fs::write(&path, toml::to_string_pretty(&cfg).unwrap()).unwrap();
+        let loaded = load_config_from(&path).unwrap();
+        assert_eq!(loaded.schema_version, CURRENT_SCHEMA_VERSION);
+    }
+
+    // --- load_config_from: unreadable path (a directory) surfaces an Io error ---
+
+    #[test]
+    fn load_config_from_directory_is_io_error() {
+        let dir = tempfile::tempdir().unwrap();
+        // The "config" path is itself a directory → read_to_string fails.
+        let path = dir.path().join("as_dir");
+        fs::create_dir(&path).unwrap();
+        let err = load_config_from(&path).unwrap_err();
+        assert!(matches!(err, ConfigError::Io { .. }));
+    }
+
+    // --- backup_corrupt_config: timestamped + collision-safe uniqueness ---
+
+    #[test]
+    fn backup_corrupt_config_never_clobbers() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        fs::write(&path, "garbage = = =").unwrap();
+
+        let b1 = backup_corrupt_config(&path).unwrap();
+        let b2 = backup_corrupt_config(&path).unwrap();
+        let b3 = backup_corrupt_config(&path).unwrap();
+        // Three backups of the same file must all be distinct paths.
+        assert_ne!(b1, b2);
+        assert_ne!(b2, b3);
+        assert_ne!(b1, b3);
+        assert!(b1.exists() && b2.exists() && b3.exists());
+    }
+
+    #[test]
+    fn backup_config_of_missing_file_is_ok() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("nope.toml");
+        // Nothing to back up → Ok and no file created.
+        assert!(backup_config_of(&path).is_ok());
+        assert!(!path.with_extension("toml.bak").exists());
+    }
+
+    // --- Global-path functions (save/load/reset/backup/dir) via XDG override ---
+
+    /// Serialize env-var-mutating tests: `XDG_CONFIG_HOME` is process-global.
+    /// Shared crate-wide so config.rs and ffi.rs tests can't race each other.
+    use crate::TEST_ENV_LOCK as ENV_LOCK;
+
+    #[test]
+    fn global_path_save_load_backup_reset_roundtrip() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        std::env::set_var("XDG_CONFIG_HOME", dir.path());
+
+        // config_dir/config_path derive from XDG_CONFIG_HOME.
+        assert!(config_dir().starts_with(dir.path()));
+        assert!(config_path().ends_with("config.toml"));
+
+        // No file yet → defaults.
+        let fresh = load_config().unwrap();
+        assert!(!fresh.first_run_complete);
+
+        // Save a populated config, then reload it.
+        let mut cfg = AppConfig::default();
+        cfg.first_run_complete = true;
+        cfg.theme.mode = "light".to_string();
+        cfg.ui_state = Some("SAVED_LAYOUT".to_string());
+        save_config(&cfg).unwrap();
+        assert!(config_path().exists());
+
+        let loaded = load_config().unwrap();
+        assert!(loaded.first_run_complete);
+        assert_eq!(loaded.theme.mode, "light");
+        assert_eq!(loaded.ui_state.as_deref(), Some("SAVED_LAYOUT"));
+
+        // backup_config copies the live file to the canonical .bak.
+        backup_config().unwrap();
+        assert!(config_path().with_extension("toml.bak").exists());
+
+        // reset_config removes the file and returns defaults.
+        let reset = reset_config().unwrap();
+        assert!(!reset.first_run_complete);
+        assert!(!config_path().exists());
+        // reset on an already-absent file is still Ok.
+        assert!(reset_config().is_ok());
+
+        std::env::remove_var("XDG_CONFIG_HOME");
+    }
+
+    #[test]
+    fn legacy_config_without_reconnect_uses_default_true() {
+        // A config file predating `reconnect_on_hotplug` must default it to true
+        // via `default_true` (exercises the serde default function).
+        let legacy = "\
+schema_version = 1
+first_run_complete = true
+[display]
+[theme]
+[startup]
+[widgets]
+version = 1
+";
+        let cfg: AppConfig = toml::from_str(legacy).unwrap();
+        assert!(cfg.startup.reconnect_on_hotplug);
+    }
+
+    #[test]
+    fn save_config_fails_when_config_dir_cannot_be_created() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        // Make XDG_CONFIG_HOME live *under* a regular file, so create_dir_all fails.
+        let blocker = dir.path().join("blocker");
+        fs::write(&blocker, "not a dir").unwrap();
+        std::env::set_var("XDG_CONFIG_HOME", blocker.join("nested"));
+
+        let err = save_config(&AppConfig::default()).unwrap_err();
+        assert!(matches!(err, ConfigError::Io { .. }));
+
+        std::env::remove_var("XDG_CONFIG_HOME");
+    }
+
     #[test]
     fn bug_higher_schema_version_is_not_migrated() {
         let dir = tempfile::tempdir().unwrap();
@@ -584,5 +743,81 @@ instances = []
             loaded.schema_version, 1,
             "BUG: schema migrations are unimplemented; foreign schema_version loaded verbatim"
         );
+    }
+}
+
+#[cfg(test)]
+mod proptests {
+    #![allow(clippy::field_reassign_with_default)]
+    use super::*;
+    use proptest::prelude::*;
+
+    /// Build an `AppConfig` from arbitrary primitive fields.
+    fn arb_config() -> impl Strategy<Value = AppConfig> {
+        (
+            any::<bool>(),
+            "[a-z]{1,8}",
+            "#[0-9A-Fa-f]{6}",
+            any::<bool>(),
+            any::<bool>(),
+            any::<bool>(),
+            prop::option::of("[A-Za-z0-9 ]{0,16}"),
+            prop::option::of("[A-Za-z0-9\\-]{0,12}"),
+            prop_oneof![
+                Just(FallbackBehavior::Hide),
+                Just(FallbackBehavior::Notify),
+                Just(FallbackBehavior::Ask)
+            ],
+            prop::option::of("[A-Za-z0-9 _\\-{}\":,\\[\\]]{0,40}"),
+        )
+            .prop_map(
+                |(
+                    first_run,
+                    mode,
+                    accent,
+                    reduced,
+                    autostart,
+                    notify,
+                    model,
+                    connector,
+                    fb,
+                    ui,
+                )| {
+                    let mut c = AppConfig::default();
+                    c.first_run_complete = first_run;
+                    c.theme.mode = mode;
+                    c.theme.accent_color = accent;
+                    c.theme.reduced_motion = reduced;
+                    c.startup.autostart = autostart;
+                    c.startup.notify_on_disconnect = notify;
+                    c.display.target_model = model;
+                    c.display.target_connector = connector;
+                    c.display.fallback_behavior = fb;
+                    c.ui_state = ui;
+                    c
+                },
+            )
+    }
+
+    proptest! {
+        /// Any config round-trips losslessly through both TOML and JSON.
+        #[test]
+        fn config_roundtrips_through_toml_and_json(cfg in arb_config()) {
+            let toml_s = toml::to_string_pretty(&cfg).unwrap();
+            let from_toml: AppConfig = toml::from_str(&toml_s).unwrap();
+            prop_assert_eq!(from_toml.first_run_complete, cfg.first_run_complete);
+            prop_assert_eq!(&from_toml.theme.mode, &cfg.theme.mode);
+            prop_assert_eq!(&from_toml.theme.accent_color, &cfg.theme.accent_color);
+            prop_assert_eq!(from_toml.theme.reduced_motion, cfg.theme.reduced_motion);
+            prop_assert_eq!(from_toml.display.fallback_behavior.clone(), cfg.display.fallback_behavior.clone());
+            prop_assert_eq!(&from_toml.display.target_model, &cfg.display.target_model);
+            prop_assert_eq!(&from_toml.ui_state, &cfg.ui_state);
+
+            let json_s = serde_json::to_string(&cfg).unwrap();
+            let from_json: AppConfig = serde_json::from_str(&json_s).unwrap();
+            prop_assert_eq!(from_json.startup.autostart, cfg.startup.autostart);
+            prop_assert_eq!(from_json.display.fallback_behavior, cfg.display.fallback_behavior);
+            prop_assert_eq!(&from_json.ui_state, &cfg.ui_state);
+        }
     }
 }

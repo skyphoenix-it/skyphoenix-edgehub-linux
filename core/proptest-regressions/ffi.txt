@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc f7f96b982250d83f1fb24704ab83f40d1b2aad506aaa068442fc9be7f23e657b # shrinks to cpu = 0.0, ram = 90.72990524955449, disk = 0.0, ram_total = 0, ram_used = 0, cores = 0, gpu = None, cpu_temp = None, rx = 0.0, tx = 0.0

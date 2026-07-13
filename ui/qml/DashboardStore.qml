@@ -88,6 +88,24 @@ Item {
         if (!doc.appearance) doc.appearance = {}
         if (!doc.settings) doc.settings = {}
         if (!doc.pages) doc.pages = []
+        // De-duplicate page names on load. renamePage/addPage reject NEW collisions,
+        // but a config that already carries two identical page names (the real "two
+        // Page 5 tabs" bug) was never reconciled. Walk in order, keep the first
+        // occurrence, and disambiguate later duplicates deterministically by
+        // appending " 2", " 3", … — tiles/order/all other fields are untouched.
+        var seenNames = {}
+        for (var n = 0; n < doc.pages.length; n++) {
+            var pg = doc.pages[n]
+            if (pg.name === undefined || pg.name === null) continue
+            var nm = String(pg.name)
+            if (seenNames[nm]) {
+                var suffix = 2
+                while (seenNames[nm + " " + suffix]) suffix++
+                nm = nm + " " + suffix
+                pg.name = nm
+            }
+            seenNames[nm] = true
+        }
         var live = {}
         for (var i = 0; i < doc.pages.length; i++) {
             var p = doc.pages[i]

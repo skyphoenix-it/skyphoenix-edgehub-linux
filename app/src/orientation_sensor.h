@@ -27,6 +27,18 @@ public:
     // Current content rotation (0/90/180/270), or -1 if unknown/no reading yet.
     int rotation() const { return m_rotation; }
 
+    // Map an orientation byte (report[7]) to a content rotation, or -1 if unknown.
+    //   0x03→0, 0x00→270, 0x01→180, 0x02→90, else→-1
+    // Public + static so it can be unit-tested without opening a hidraw node.
+    static int byteToRotation(unsigned char b);
+
+    // ── Test seams (no hardware) ──
+    // Open + watch an arbitrary path (e.g. a FIFO) as if it were the Edge hidraw
+    // node, so the read/EOF/error → retry-timer path can be exercised headlessly.
+    bool openForTest(const QString& path) { return openAndWatch(path); }
+    // Whether the reopen retry timer is currently armed (device-lost recovery).
+    bool retryActiveForTest() const { return m_retry.isActive(); }
+
 signals:
     void rotationChanged(int rotation);
 
@@ -48,8 +60,6 @@ private:
     void queryInitialOrientation();
     // Scan /sys/class/hidraw for the Edge; returns "/dev/hidrawN" or empty.
     static QString findEdgeHidraw();
-    // Map an orientation byte (report[7]) to a content rotation, or -1 if unknown.
-    static int byteToRotation(unsigned char b);
 
     int m_fd = -1;
     int m_rotation = -1;

@@ -300,7 +300,9 @@ mod tests {
         // whose decoded groups include a 0 group and assert no control/symbol
         // characters leak out.
         let mut edid = vec![0u8; 128];
-        // group1 = 1 ('A'), group2 = 0 ('@' — invalid), group3 = 1 ('A')
+        // group1 = 1 ('A'), group2 = 0 ('@' — invalid), group3 = 1 ('A').
+        // Explicit bit layout kept for documentation despite the zero group.
+        #[allow(clippy::identity_op)]
         let mfg_bits: u16 = (1u16 << 10) | (0u16 << 5) | 1u16;
         edid[8] = (mfg_bits >> 8) as u8;
         edid[9] = (mfg_bits & 0xFF) as u8;
@@ -309,6 +311,40 @@ mod tests {
                 code.chars().all(|c| c.is_ascii_uppercase()),
                 "BUG: manufacturer code {code:?} contains non-alphabetic characters"
             );
+        }
+    }
+}
+
+#[cfg(test)]
+mod proptests {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        /// Arbitrary bytes must never panic and must produce bounded, well-formed,
+        /// deterministic output across every display parser.
+        #[test]
+        fn display_parsers_are_panic_free_bounded_and_deterministic(bytes in prop::collection::vec(any::<u8>(), 0..300)) {
+            let hash = compute_edid_hash(&bytes);
+            // SHA-256 hex is always 64 lowercase hex chars, regardless of input.
+            prop_assert_eq!(hash.len(), 64);
+            prop_assert!(hash.chars().all(|c| c.is_ascii_hexdigit()));
+            prop_assert_eq!(&hash, &compute_edid_hash(&bytes)); // deterministic
+
+            let mfg = parse_manufacturer(&bytes);
+            if let Some(ref m) = mfg {
+                // A valid PNP id is exactly 3 uppercase letters.
+                prop_assert_eq!(m.len(), 3);
+                prop_assert!(m.chars().all(|c| c.is_ascii_uppercase()));
+            }
+            prop_assert_eq!(&mfg, &parse_manufacturer(&bytes)); // deterministic
+
+            let model = parse_model_name(&bytes);
+            prop_assert_eq!(&model, &parse_model_name(&bytes));
+
+            // is_xeneon_edge is a pure predicate — deterministic, never panics.
+            let edge = is_xeneon_edge(&bytes);
+            prop_assert_eq!(edge, is_xeneon_edge(&bytes));
         }
     }
 }

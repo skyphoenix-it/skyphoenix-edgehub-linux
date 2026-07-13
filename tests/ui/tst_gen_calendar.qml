@@ -2,6 +2,8 @@ import QtQuick
 import QtTest
 import "../../ui/qml" as App
 
+// COVERS: schema:maxEvents, schema:url
+
 // ─────────────────────────────────────────────────────────────────────────
 // tst_gen_calendar — COMPREHENSIVE coverage for area "widget:calendar"
 // (ui/qml/widgets/CalendarWidget.qml, an ICS agenda widget).
@@ -124,8 +126,8 @@ Item {
         function test_tzid_is_not_treated_as_floating_local() {
             var w = h.item
             var tzid  = w.parseDT("20260712T090000", "DTSTART;TZID=America/New_York")
-            var float = w.parseDT("20260712T090000", "DTSTART")
-            verify(tzid.getTime() !== float.getTime(),
+            var floatDt = w.parseDT("20260712T090000", "DTSTART")
+            verify(tzid.getTime() !== floatDt.getTime(),
                    "TZID=America/New_York must not resolve to the same instant as a floating local time")
         }
         function test_malformed_dtstart_is_skipped_no_invalid_date() {

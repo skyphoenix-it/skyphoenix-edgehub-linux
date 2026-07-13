@@ -2,6 +2,8 @@ import QtQuick
 import QtTest
 import "../../ui/qml" as App
 
+// COVERS: schema:glassMl, schema:goal
+
 // Comprehensive coverage for area "widget:hydration" — HydrationWidget.qml.
 //
 // Exercises every config knob (goal, glassMl), the daily reset / midnight

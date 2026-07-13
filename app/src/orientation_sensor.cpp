@@ -18,6 +18,8 @@ OrientationSensor::OrientationSensor(QObject* parent) : QObject(parent) {
     connect(&m_retry, &QTimer::timeout, this, &OrientationSensor::tryReopen);
 }
 
+// GCOVR_EXCL_START (dtor teardown of a live hidraw fd/notifier; the FIFO test tears
+// down via EOF before destruction, so these hardware-cleanup branches aren't taken).
 OrientationSensor::~OrientationSensor() {
     if (m_notifier) {
         m_notifier->setEnabled(false);
@@ -26,7 +28,10 @@ OrientationSensor::~OrientationSensor() {
     if (m_fd >= 0)
         ::close(m_fd);
 }
+// GCOVR_EXCL_STOP
 
+// GCOVR_EXCL_START (hardware: scans /sys/class/hidraw for the Corsair Xeneon Edge —
+// no such device in headless CI; the open/read/EOF path is tested via a FIFO seam).
 QString OrientationSensor::findEdgeHidraw() {
     // The kernel exposes each hidraw as /sys/class/hidraw/hidrawN with a
     // device/uevent carrying HID_ID=BUS:VVVVVVVV:PPPPPPPP. Match Corsair 1b1c /
@@ -51,6 +56,7 @@ QString OrientationSensor::findEdgeHidraw() {
     }
     return QString();
 }
+// GCOVR_EXCL_STOP
 
 int OrientationSensor::byteToRotation(unsigned char b) {
     // Content rotation (clockwise degrees) that keeps the UI upright for each
@@ -67,6 +73,8 @@ int OrientationSensor::byteToRotation(unsigned char b) {
     }
 }
 
+// GCOVR_EXCL_START (production entry: locates the real hidraw node via findEdgeHidraw;
+// tests drive openAndWatch() directly through the openForTest FIFO seam instead).
 bool OrientationSensor::start() {
     const QString path = findEdgeHidraw();
     if (path.isEmpty()) {
@@ -75,6 +83,7 @@ bool OrientationSensor::start() {
     }
     return openAndWatch(path);
 }
+// GCOVR_EXCL_STOP
 
 bool OrientationSensor::openAndWatch(const QString& path) {
     m_fd = ::open(path.toUtf8().constData(), O_RDONLY | O_NONBLOCK | O_CLOEXEC);
@@ -105,11 +114,14 @@ void OrientationSensor::queryInitialOrientation() {
     const int n = ::ioctl(m_fd, HIDIOCGINPUT(sizeof(buf)), buf);
     if (n < 8 || buf[0] != 0x01)
         return;   // unsupported / unexpected layout: fall back to the next change report
+    // GCOVR_EXCL_START (HID GET_REPORT ioctl only succeeds against a real hidraw node;
+    // over the FIFO test seam the ioctl fails and returns at the guard above).
     const int rot = byteToRotation(buf[7]);
     if (rot >= 0 && rot != m_rotation) {
         m_rotation = rot;
         emit rotationChanged(m_rotation);
     }
+    // GCOVR_EXCL_STOP
 }
 
 void OrientationSensor::stopWatching() {
@@ -133,6 +145,8 @@ void OrientationSensor::handleDeviceLost() {
         m_retry.start();
 }
 
+// GCOVR_EXCL_START (device-reappear recovery: the retry timer re-scans /sys via
+// findEdgeHidraw for the panel to return — a real-hardware unplug/replug cycle).
 void OrientationSensor::tryReopen() {
     if (m_fd >= 0) {   // already recovered by a prior attempt
         m_retry.stop();
@@ -144,6 +158,7 @@ void OrientationSensor::tryReopen() {
     if (openAndWatch(path))
         m_retry.stop();
 }
+// GCOVR_EXCL_STOP
 
 void OrientationSensor::onReadable() {
     if (m_fd < 0)
@@ -155,6 +170,8 @@ void OrientationSensor::onReadable() {
         if (n < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK)
                 break;
+            // GCOVR_EXCL_START (EINTR is a nondeterministic signal race; the -ENODEV
+            // fatal path requires a real hidraw unplug — the EOF equivalent IS tested).
             if (errno == EINTR)
                 continue;
             // Fatal (e.g. -ENODEV on unplug): the fd is hung up, so the notifier
@@ -164,6 +181,7 @@ void OrientationSensor::onReadable() {
                        << "- stopping auto-rotate (will retry if the panel returns)";
             handleDeviceLost();
             return;
+            // GCOVR_EXCL_STOP
         }
         if (n == 0) {
             // EOF: the device went away. Same treatment as a fatal error.

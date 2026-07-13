@@ -3,6 +3,8 @@ import QtTest
 import "../../ui/qml" as App
 import "../../ui/qml/widgets" as W
 
+// COVERS: schema:accent, schema:cardBackdrop
+
 // ─────────────────────────────────────────────────────────────────────────
 // Comprehensive coverage for the SHARED config plumbing:
 //   ui/qml/WidgetConfigSchema.qml  (per-widget field schema)

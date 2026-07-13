@@ -1,12 +1,20 @@
 # Session handoff — continue from here
 
-_Last updated: 2026-07-13. Branch: `master` (pushed to `origin/master`)._
+_Last updated: 2026-07-13 (test-push session). Branch: `master` (working tree — NOT yet committed)._
 
-## Current state: GREEN
+## Current state: GREEN — 95%+ coverage across all layers
+
+Full plan + results: `docs/DEV_AND_TEST_PLAN.md`. Run everything: `./scripts/run_all_tests.sh`
+(→ `RESULT: SUCCESS`); measure coverage: `./scripts/coverage.sh`.
 
 - **Build**: `./scripts/build.sh release` — clean (hub + manager).
-- **QML tests**: `./scripts/run_ui_tests.sh` — ALL UI TESTS PASSED.
-- **Rust tests**: `cd core && cargo test` — 63 passed, 0 failed.
+- **QML tests**: `./scripts/run_ui_tests.sh` — ALL UI TESTS PASSED (68 files). Behavior
+  matrix `python3 scripts/qml_coverage.py` — **99.4%** (163/164).
+- **Rust tests**: `cd core && cargo test` — **110 passed**, 0 failed; **96.44%** line
+  (`cargo llvm-cov --lib --summary-only`).
+- **C++ tests (NEW)**: `./scripts/run_cpp_tests.sh` — **13/13 ctest** (unit+integration+smoke);
+  **97%** filtered line coverage. Harness in `tests/cpp/`, built with
+  `-DXENEON_BUILD_TESTS=ON` (+`-DXENEON_COVERAGE=ON` for gcov).
 - **On-device**: hub dashboard, Manager, and an expanded widget config all verified
   via `XENEON_GRAB` captures on the real Edge (DP-3). Wallpaper with spaces + `#`
   in the path loads correctly through `configBridge.imageUrl()`.
@@ -34,17 +42,21 @@ _Last updated: 2026-07-13. Branch: `master` (pushed to `origin/master`)._
 
 ## Remaining work (prioritized)
 
-1. **S10 — write-only FFI config keys** (low priority, deferrable). `reconnect`,
-   `notify_disconnect`, `fallback_behavior` are written (wizard/settings) but never read
-   back into hub behavior. FFI getters exist in `core/src/ffi.rs`; the hub QML doesn't
-   consume them. These govern what the hub does when the Edge display disconnects
-   (auto-reopen / toast). Niche — accent/reduce-motion already persist via
-   `ui_state.appearance`, so the visible settings work.
-2. **Two-writer atomic-save race** — now *rare* (saves only on startup/shutdown/real edits)
-   rather than every 2s, so no failures observed. A full fix would make config a single
-   writer (hub owns the file; Manager mutates only via IPC). Not urgent.
-3. Optional: prune the pre-existing duplicate "Page 5" pages in the live config (the
-   Manager now rejects NEW empty/dup names, but old dupes persist in `config.toml`).
+The three former items are now **DONE** this session:
+1. ~~**S10 — write-only FFI config keys**~~ ✅ Added `xeneon_config_get_reconnect` +
+   `get_notify_disconnect` to `ffi.rs`/`xeneon_core.h`, exposed all three via `ConfigBridge`
+   (`reconnectOnHotplug`/`notifyOnDisconnect`/`fallbackBehavior`), and wired the hub
+   `screenAdded`/`screenRemoved` handlers to honor them (reconnect→re-match+migrate window;
+   notify→disconnect notice; fallback=="hide"→blank). Gated by `tst_config_bridge`.
+2. ~~**Two-writer atomic-save race**~~ ✅ Single-writer: when the hub is connected the Manager
+   pushes `setUiState` over IPC only and does NOT write `config.toml`; it writes directly only
+   when offline. Gated by `tst_manager_backend_sync` (+ the #7 edit-loss fix).
+3. ~~**Duplicate "Page 5" pages**~~ ✅ `_normaliseDoc` now de-dupes `pages[].name` on
+   `load`/`applyExternal` (appends " 2", " 3", …). Gated by `tst_store_dedup`.
+
+Still open (documented, non-blocking): `config.rs` at 93% line (total gate passes; a
+corrupt-path IO test would close it); `mpris_bridge.cpp` D-Bus fan-out uncovered (needs a
+session bus). Nothing is committed yet — the working tree holds all 86 changed/added files.
 
 ## Key context for continuing
 

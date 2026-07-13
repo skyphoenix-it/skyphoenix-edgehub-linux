@@ -23,6 +23,19 @@ Rust tests live **inline** in `core/src/{config,display,metrics}.rs`.
 metrics), drives real mouse/key input on controls, and asserts touch-target sizes.
 Add a `tests/ui/tst_*.qml` `TestCase` for new widget behavior.
 
+**C++ tests (QtTest):** `./scripts/run_cpp_tests.sh` configures with
+`-DXENEON_BUILD_TESTS=ON`, builds, and runs `ctest` (offscreen). Tests live in
+`tests/cpp/` and link the real `libxeneon_core.a` against a temp `XDG_CONFIG_HOME`.
+Logic classes are extracted into headers (`app/src/config_bridge.h`,
+`manager/src/manager_backend.h`, `manager/src/reconcile.*`, `app/src/display_match.*`,
+etc.) so they're unit-testable; `main.cpp` is bootstrap-only.
+
+**Everything + coverage:** `./scripts/run_all_tests.sh` (rust + qml + ctest + behavior
+matrix). `./scripts/coverage.sh` measures Rust (`cargo-llvm-cov`) + C++ (`gcovr`, build
+with `-DXENEON_COVERAGE=ON`) and gates ≥95%. QML uses a behavior matrix
+(`scripts/qml_coverage.py`, `// COVERS:` headers), not line coverage — see
+`docs/DEV_AND_TEST_PLAN.md`. **CI runs on `master`** (`.github/workflows/ci.yml`).
+
 ## Project layout
 
 | Dir | Lang | Role |

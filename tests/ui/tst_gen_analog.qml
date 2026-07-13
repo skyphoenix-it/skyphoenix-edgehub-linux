@@ -2,6 +2,8 @@ import QtQuick
 import QtTest
 import "../../ui/qml" as App
 
+// COVERS: schema:showNumerals
+
 // ─────────────────────────────────────────────────────────────────────────
 // widget:analog — comprehensive coverage for AnalogClockWidget.qml plus its
 // shared config surfaces (WidgetConfigSchema "analog" + DashboardStore).

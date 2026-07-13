@@ -16,6 +16,14 @@ endif()
 include(CheckIPOSupported)
 check_ipo_supported(RESULT IPO_SUPPORTED OUTPUT IPO_ERROR)
 
+# --- Test / coverage options ---
+# OFF by default so a normal `cmake --build` stays a pure product build. Turn on
+# with -DXENEON_BUILD_TESTS=ON (adds the QtTest C++ suite under tests/cpp) and
+# optionally -DXENEON_COVERAGE=ON (compiles the tested logic + test exes with
+# --coverage for gcov/gcovr line coverage).
+option(XENEON_BUILD_TESTS "Build the C++ (QtTest) test suite" OFF)
+option(XENEON_COVERAGE "Instrument tested C++ for gcov/gcovr coverage" OFF)
+
 # Find Qt6
 find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Quick Qml DBus VirtualKeyboard Network Svg QuickControls2)
 
@@ -63,6 +71,10 @@ add_executable(xeneon-edge-hub
     app/src/mpris_bridge.cpp
     app/src/control_server.cpp
     app/src/orientation_sensor.cpp
+    app/src/autostart.cpp
+    app/src/display_match.cpp
+    app/src/config_bridge.h
+    app/src/metrics_worker.h
     ${CMAKE_SOURCE_DIR}/ui/qml.qrc
     ${CMAKE_SOURCE_DIR}/assets/icons.qrc
     ${CMAKE_SOURCE_DIR}/assets/wallpapers.qrc
@@ -119,6 +131,8 @@ endif()
 # local socket for live updates.
 add_executable(xeneon-edge-manager
     manager/src/main.cpp
+    manager/src/reconcile.cpp
+    manager/src/manager_backend.h
     ${CMAKE_SOURCE_DIR}/manager/manager.qrc
     ${CMAKE_SOURCE_DIR}/assets/icons.qrc
     ${CMAKE_SOURCE_DIR}/assets/wallpapers.qrc
@@ -152,6 +166,16 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebI
         set_target_properties(xeneon-edge-manager PROPERTIES INTERPROCEDURAL_OPTIMIZATION TRUE)
     endif()
     target_compile_options(xeneon-edge-manager PRIVATE -O3)
+endif()
+
+# --- C++ tests (QtTest) ---
+# Opt-in: -DXENEON_BUILD_TESTS=ON. Adds per-test executables + ctest registration
+# under tests/cpp. They link the REAL libxeneon_core.a (no fake) against a per-test
+# temp XDG_CONFIG_HOME so config round-trips are hermetic.
+if(XENEON_BUILD_TESTS)
+    enable_testing()
+    find_package(Qt6 6.5 REQUIRED COMPONENTS Test)
+    add_subdirectory(tests/cpp)
 endif()
 
 # Install

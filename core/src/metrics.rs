@@ -208,8 +208,14 @@ fn read_cpu_usage() -> f64 {
 fn cpu_usage_from_times(prev: &CpuTimes, current: &CpuTimes) -> f64 {
     let idle1 = prev.idle + prev.iowait;
     let idle2 = current.idle + current.iowait;
-    let total1: u64 =
-        prev.user + prev.nice + prev.system + prev.idle + prev.iowait + prev.irq + prev.softirq + prev.steal;
+    let total1: u64 = prev.user
+        + prev.nice
+        + prev.system
+        + prev.idle
+        + prev.iowait
+        + prev.irq
+        + prev.softirq
+        + prev.steal;
     let total2: u64 = current.user
         + current.nice
         + current.system
@@ -223,7 +229,10 @@ fn cpu_usage_from_times(prev: &CpuTimes, current: &CpuTimes) -> f64 {
     if total_delta == 0 {
         0.0
     } else {
-        ((total_delta - idle_delta) as f64 / total_delta as f64) * 100.0
+        // `saturating_sub`: with real (monotonic) counters `idle_delta` never
+        // exceeds `total_delta`, but computing the two deltas independently means
+        // a non-monotonic input could underflow. Clamp to keep the ratio in 0..=1.
+        (total_delta.saturating_sub(idle_delta) as f64 / total_delta as f64) * 100.0
     }
 }
 
@@ -241,8 +250,18 @@ struct CpuTimes {
 fn read_proc_stat_cpu() -> Option<CpuTimes> {
     let content = fs::read_to_string("/proc/stat").ok()?;
     let line = content.lines().find(|l| l.starts_with("cpu "))?;
+    parse_cpu_line(line)
+}
 
-    // Format: cpu  user nice system idle iowait irq softirq steal ...
+/// Parse the aggregate `cpu ...` line of `/proc/stat` into [`CpuTimes`].
+///
+/// Format: `cpu  user nice system idle iowait irq softirq steal [guest ...]`.
+/// Requires the 8 core counters (`user`..`softirq` plus the label); `steal`
+/// (field 8) is optional and defaults to 0 on legacy kernels that omit it.
+/// Returns `None` if there are fewer than 8 fields or any required field is
+/// non-numeric. Extracted from `read_proc_stat_cpu` so it can be tested without
+/// reading real `/proc/stat`.
+fn parse_cpu_line(line: &str) -> Option<CpuTimes> {
     let fields: Vec<&str> = line.split_whitespace().collect();
     if fields.len() < 8 {
         return None;
@@ -281,7 +300,15 @@ fn get_cpu_core_count() -> u32 {
 fn read_cpu_temperature() -> Option<f64> {
     let path = get_or_discover(&TEMP_SENSOR, discover_temp_sensor)?;
     let content = fs::read_to_string(&path).ok()?;
-    let millideg = content.trim().parse::<f64>().ok()?;
+    millideg_to_celsius(&content)
+}
+
+/// Parse a sysfs millidegree-Celsius reading (e.g. `"38000"`) into Celsius
+/// (`38.0`). Tolerates surrounding whitespace; returns `None` on non-numeric or
+/// empty input. Every finite value is passed through, including negatives
+/// (`"-1000"` → `-1.0`) — the caller reserves `None`, not `-1.0`, for "no sensor".
+fn millideg_to_celsius(raw: &str) -> Option<f64> {
+    let millideg = raw.trim().parse::<f64>().ok()?;
     Some(millideg / 1000.0)
 }
 
@@ -310,7 +337,14 @@ fn discover_temp_sensor() -> Option<String> {
         "/sys/class/hwmon/hwmon*/temp2_input",
         "/sys/class/thermal/thermal_zone*/temp",
     ];
-    for pattern in &patterns {
+    discover_temp_from_patterns(&patterns)
+}
+
+/// Return the first path matched by `patterns` (via [`glob_simple`]) whose
+/// contents parse as a number. Extracted from `discover_temp_sensor` so the
+/// last-resort scan can be tested against a temp directory.
+fn discover_temp_from_patterns(patterns: &[&str]) -> Option<String> {
+    for pattern in patterns {
         if let Ok(paths) = glob_simple(pattern) {
             for path in paths {
                 if let Ok(content) = fs::read_to_string(&path) {
@@ -321,14 +355,20 @@ fn discover_temp_sensor() -> Option<String> {
             }
         }
     }
-
     None
 }
 
 /// Return the first `tempN_input` under a hwmon device whose `name` matches one
 /// of `names` and reads as a valid number.
 fn find_hwmon_by_name(names: &[&str]) -> Option<String> {
-    let dirs = std::fs::read_dir("/sys/class/hwmon").ok()?;
+    find_hwmon_by_name_in(std::path::Path::new("/sys/class/hwmon"), names)
+}
+
+/// Scan `hwmon_root` for a device whose `name` file matches one of `names` and
+/// return its first numeric `tempN_input`. Extracted so the name-matching logic
+/// can be tested against a synthetic hwmon tree rather than real `/sys`.
+fn find_hwmon_by_name_in(hwmon_root: &std::path::Path, names: &[&str]) -> Option<String> {
+    let dirs = std::fs::read_dir(hwmon_root).ok()?;
     for dir in dirs.flatten() {
         let name = match fs::read_to_string(dir.path().join("name")) {
             Ok(n) => n.trim().to_string(),
@@ -415,7 +455,7 @@ fn read_gpu_temperature() -> Option<f64> {
     let paths = get_or_discover(&GPU_PATHS, discover_gpu)?;
     let temp_path = paths.temp.as_ref()?;
     let content = fs::read_to_string(temp_path).ok()?;
-    content.trim().parse::<f64>().ok().map(|m| m / 1000.0)
+    millideg_to_celsius(&content)
 }
 
 /// Discover the primary GPU's sysfs paths and cache them.
@@ -659,7 +699,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_read_ram_info_from_fake_meminfo() {
+    fn test_read_ram_info_from_real_proc() {
         // This test reads the real /proc/meminfo.
         // It should always be available on Linux.
         let info = read_ram_info();
@@ -756,6 +796,16 @@ mod tests {
         assert_eq!(d.percent, 0.0);
     }
 
+    #[test]
+    fn test_disk_info_from_statvfs_zero_denominator_is_zero_percent() {
+        // total > 0 but used + avail == 0 (all free, none available) → 0% (no
+        // divide-by-zero). blocks=100, bfree=100 → used=0; bavail=0 → avail=0.
+        let d = disk_info_from_statvfs(100, 100, 0, 4096);
+        assert_eq!(d.total, 100 * 4096);
+        assert_eq!(d.used, 0);
+        assert_eq!(d.percent, 0.0);
+    }
+
     // --- RAM parsing (synthetic /proc/meminfo) ---
 
     #[test]
@@ -771,7 +821,11 @@ Cached:          4000000 kB
         // used = total - available = 16000000 - 8000000 = 8000000 kB
         assert_eq!(info.total, 16_000_000 * 1024);
         assert_eq!(info.used, 8_000_000 * 1024);
-        assert!((info.percent - 50.0).abs() < 1e-6, "percent={}", info.percent);
+        assert!(
+            (info.percent - 50.0).abs() < 1e-6,
+            "percent={}",
+            info.percent
+        );
     }
 
     #[test]
@@ -797,14 +851,33 @@ Cached:          4000000 kB
         assert_eq!(info.percent, 0.0);
     }
 
+    #[test]
+    fn test_ram_info_skips_blank_lines_and_unknown_labels() {
+        // A blank line (no first token) must be skipped, and an unrecognized
+        // label (e.g. SwapTotal) must be ignored — not mis-parsed as a field.
+        let meminfo = "\
+MemTotal:       16000000 kB
+
+SwapTotal:       2000000 kB
+MemAvailable:    4000000 kB
+";
+        let info = ram_info_from_meminfo(meminfo);
+        // used = total - available = 16000000 - 4000000 = 12000000 kB (75%).
+        assert_eq!(info.total, 16_000_000 * 1024);
+        assert_eq!(info.used, 12_000_000 * 1024);
+        assert!(
+            (info.percent - 75.0).abs() < 1e-6,
+            "percent={}",
+            info.percent
+        );
+    }
+
     // --- Network interface filtering (synthetic /proc/net/dev) ---
 
     /// One /proc/net/dev data line: iface + 16 numeric fields (rx bytes first,
     /// tx bytes at index 8).
     fn net_line(iface: &str, rx: u64, tx: u64) -> String {
-        format!(
-            "{iface}: {rx} 0 0 0 0 0 0 0 {tx} 0 0 0 0 0 0 0\n"
-        )
+        format!("{iface}: {rx} 0 0 0 0 0 0 0 {tx} 0 0 0 0 0 0 0\n")
     }
 
     #[test]
@@ -929,14 +1002,273 @@ Cached:          4000000 kB
                     for _ in 0..25 {
                         let m = collect_metrics();
                         assert!(m.cpu_usage_percent.is_finite() && m.cpu_usage_percent >= 0.0);
-                        assert!(m.net_rx_bytes_per_sec.is_finite() && m.net_rx_bytes_per_sec >= 0.0);
-                        assert!(m.net_tx_bytes_per_sec.is_finite() && m.net_tx_bytes_per_sec >= 0.0);
+                        assert!(
+                            m.net_rx_bytes_per_sec.is_finite() && m.net_rx_bytes_per_sec >= 0.0
+                        );
+                        assert!(
+                            m.net_tx_bytes_per_sec.is_finite() && m.net_tx_bytes_per_sec >= 0.0
+                        );
                     }
                 })
             })
             .collect();
         for h in handles {
             h.join().expect("worker thread panicked");
+        }
+    }
+
+    // --- Discovered<T> / get_or_discover bounded-retry semantics ---
+
+    #[test]
+    fn get_or_discover_caches_first_success() {
+        let cache: Mutex<Discovered<u32>> = Mutex::new(Discovered::new());
+        let calls = std::cell::Cell::new(0);
+        // First call discovers and caches.
+        let v = get_or_discover(&cache, || {
+            calls.set(calls.get() + 1);
+            Some(7)
+        });
+        assert_eq!(v, Some(7));
+        // Subsequent calls return the cached value without re-running `discover`.
+        let v2 = get_or_discover(&cache, || {
+            calls.set(calls.get() + 1);
+            Some(999)
+        });
+        assert_eq!(v2, Some(7));
+        assert_eq!(
+            calls.get(),
+            1,
+            "discover should run only once after success"
+        );
+    }
+
+    #[test]
+    fn get_or_discover_retries_up_to_the_bound_then_stops() {
+        let cache: Mutex<Discovered<u32>> = Mutex::new(Discovered::new());
+        let calls = std::cell::Cell::new(0);
+        // A perpetually-absent sensor is retried, but only up to the bound.
+        for _ in 0..(MAX_DISCOVERY_ATTEMPTS + 5) {
+            let v = get_or_discover(&cache, || {
+                calls.set(calls.get() + 1);
+                None
+            });
+            assert_eq!(v, None);
+        }
+        assert_eq!(
+            calls.get(),
+            MAX_DISCOVERY_ATTEMPTS,
+            "retries must be bounded by MAX_DISCOVERY_ATTEMPTS"
+        );
+    }
+
+    #[test]
+    fn get_or_discover_recovers_from_transient_absence() {
+        let cache: Mutex<Discovered<u32>> = Mutex::new(Discovered::new());
+        // Absent on the first two attempts, then appears — must be picked up.
+        let attempt = std::cell::Cell::new(0);
+        let mut last = None;
+        for _ in 0..4 {
+            last = get_or_discover(&cache, || {
+                let a = attempt.get();
+                attempt.set(a + 1);
+                if a >= 2 {
+                    Some(42)
+                } else {
+                    None
+                }
+            });
+        }
+        assert_eq!(last, Some(42));
+    }
+
+    // --- discover_gpu_temp over a synthetic hwmon directory ---
+
+    #[test]
+    fn discover_gpu_temp_prefers_edge_label() {
+        let dir = tempfile::tempdir().unwrap();
+        let hwmon = dir.path().join("hwmon0");
+        std::fs::create_dir_all(&hwmon).unwrap();
+        // temp1 is a non-edge sensor (fallback), temp2 is the edge sensor.
+        std::fs::write(hwmon.join("temp1_input"), "40000").unwrap();
+        std::fs::write(hwmon.join("temp1_label"), "junction").unwrap();
+        std::fs::write(hwmon.join("temp2_input"), "38000").unwrap();
+        std::fs::write(hwmon.join("temp2_label"), "edge").unwrap();
+
+        let found = discover_gpu_temp(dir.path()).unwrap();
+        assert!(found.ends_with("temp2_input"), "should prefer edge sensor");
+    }
+
+    #[test]
+    fn discover_gpu_temp_falls_back_without_edge_label() {
+        let dir = tempfile::tempdir().unwrap();
+        let hwmon = dir.path().join("hwmon3");
+        std::fs::create_dir_all(&hwmon).unwrap();
+        std::fs::write(hwmon.join("temp1_input"), "45000").unwrap();
+        // No label file → falls through to the first available input.
+        let found = discover_gpu_temp(dir.path()).unwrap();
+        assert!(found.ends_with("temp1_input"));
+
+        // A directory with no temp inputs at all yields None.
+        let empty = tempfile::tempdir().unwrap();
+        assert!(discover_gpu_temp(empty.path()).is_none());
+    }
+
+    // --- CPU temp discovery over synthetic hwmon trees ---
+
+    #[test]
+    fn find_hwmon_by_name_in_matches_named_device() {
+        let root = tempfile::tempdir().unwrap();
+        // hwmon0: an unrelated NVMe sensor (must be skipped).
+        let hwmon0 = root.path().join("hwmon0");
+        std::fs::create_dir_all(&hwmon0).unwrap();
+        std::fs::write(hwmon0.join("name"), "nvme\n").unwrap();
+        std::fs::write(hwmon0.join("temp1_input"), "30000").unwrap();
+        // hwmon1: the real CPU sensor.
+        let hwmon1 = root.path().join("hwmon1");
+        std::fs::create_dir_all(&hwmon1).unwrap();
+        std::fs::write(hwmon1.join("name"), "k10temp\n").unwrap();
+        std::fs::write(hwmon1.join("temp1_input"), "45000").unwrap();
+
+        let found = find_hwmon_by_name_in(root.path(), &["k10temp", "coretemp"]).unwrap();
+        assert!(found.starts_with(hwmon1.to_string_lossy().as_ref()));
+        assert!(found.ends_with("temp1_input"));
+
+        // No matching name → None.
+        assert!(find_hwmon_by_name_in(root.path(), &["does-not-exist"]).is_none());
+        // A device that matches by name but exposes no numeric temp → None.
+        let hwmon2 = root.path().join("hwmon2");
+        std::fs::create_dir_all(&hwmon2).unwrap();
+        std::fs::write(hwmon2.join("name"), "acpitz\n").unwrap();
+        assert!(find_hwmon_by_name_in(root.path(), &["acpitz"]).is_none());
+        // A non-existent root is handled gracefully.
+        assert!(find_hwmon_by_name_in(root.path().join("nope").as_path(), &["k10temp"]).is_none());
+    }
+
+    #[test]
+    fn discover_temp_from_patterns_scans_and_validates() {
+        let root = tempfile::tempdir().unwrap();
+        // A device whose temp file holds non-numeric junk is skipped.
+        let bad = root.path().join("sensorA");
+        std::fs::create_dir_all(&bad).unwrap();
+        std::fs::write(bad.join("temp"), "not-a-number").unwrap();
+        // A device with a valid reading is selected.
+        let good = root.path().join("sensorB");
+        std::fs::create_dir_all(&good).unwrap();
+        std::fs::write(good.join("temp"), "52000").unwrap();
+
+        let pattern = format!("{}/sensor*/temp", root.path().to_string_lossy());
+        let found = discover_temp_from_patterns(&[&pattern]).unwrap();
+        assert!(found.ends_with("temp"));
+        assert!(fs::read_to_string(&found)
+            .unwrap()
+            .trim()
+            .parse::<f64>()
+            .is_ok());
+
+        // Patterns that match nothing → None.
+        assert!(discover_temp_from_patterns(&["/nonexistent/zzz*/temp"]).is_none());
+    }
+
+    // --- millidegree → Celsius parsing (extracted from the temp readers) ---
+
+    #[test]
+    fn millideg_to_celsius_parses_scales_and_rejects_junk() {
+        assert_eq!(millideg_to_celsius("38000"), Some(38.0));
+        // A genuine negative reading is passed through, NOT treated as a sentinel.
+        assert_eq!(millideg_to_celsius("-1000"), Some(-1.0));
+        // Surrounding whitespace / trailing newline is tolerated.
+        assert_eq!(millideg_to_celsius(" 45000\n"), Some(45.0));
+        // Non-numeric and empty input → None.
+        assert_eq!(millideg_to_celsius("junk"), None);
+        assert_eq!(millideg_to_celsius(""), None);
+    }
+
+    // --- /proc/stat cpu-line parsing (extracted from read_proc_stat_cpu) ---
+
+    #[test]
+    fn parse_cpu_line_full_modern_line() {
+        // cpu + user nice system idle iowait irq softirq steal guest guest_nice.
+        let t = parse_cpu_line("cpu 10 20 30 40 50 60 70 80 90 100").unwrap();
+        assert_eq!(t.user, 10);
+        assert_eq!(t.nice, 20);
+        assert_eq!(t.system, 30);
+        assert_eq!(t.idle, 40);
+        assert_eq!(t.iowait, 50);
+        assert_eq!(t.irq, 60);
+        assert_eq!(t.softirq, 70);
+        assert_eq!(t.steal, 80);
+    }
+
+    #[test]
+    fn parse_cpu_line_legacy_line_defaults_steal_to_zero() {
+        // Legacy kernel: cpu + user nice system idle iowait irq softirq (8 fields,
+        // no steal). steal must default to 0 rather than failing.
+        let t = parse_cpu_line("cpu 1 2 3 4 5 6 7").unwrap();
+        assert_eq!(t.softirq, 7);
+        assert_eq!(t.steal, 0, "steal defaults to 0 when the field is absent");
+    }
+
+    #[test]
+    fn parse_cpu_line_too_few_fields_is_none() {
+        // Fewer than 8 fields (label + 6 counters) → None, no panic/index-OOB.
+        assert!(parse_cpu_line("cpu 1 2 3 4 5 6").is_none());
+    }
+
+    #[test]
+    fn cpu_usage_from_times_non_monotonic_is_clamped_to_zero() {
+        // Non-monotonic counters: idle jumps forward while another counter drops,
+        // so idle_delta (200) > total_delta (100). The saturating_sub must clamp
+        // the busy fraction to 0.0 and never underflow/panic.
+        let prev = cpu_times(100, 0, 0); // total = 100, idle = 0
+        let cur = cpu_times(0, 0, 200); // total = 200, idle = 200
+        let usage = cpu_usage_from_times(&prev, &cur);
+        assert_eq!(usage, 0.0);
+        assert!(usage.is_finite());
+    }
+}
+
+#[cfg(test)]
+mod proptests {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        /// CPU utilization from any pair of counter samples stays within 0..=100
+        /// and is always finite (guards against negative/overflow ratios).
+        #[test]
+        fn cpu_usage_is_always_bounded(
+            u1 in 0u64..1_000_000, s1 in 0u64..1_000_000, i1 in 0u64..1_000_000,
+            u2 in 0u64..1_000_000, s2 in 0u64..1_000_000, i2 in 0u64..1_000_000,
+        ) {
+            let prev = CpuTimes { user: u1, nice: 0, system: s1, idle: i1, iowait: 0, irq: 0, softirq: 0, steal: 0 };
+            let cur  = CpuTimes { user: u2, nice: 0, system: s2, idle: i2, iowait: 0, irq: 0, softirq: 0, steal: 0 };
+            let usage = cpu_usage_from_times(&prev, &cur);
+            prop_assert!(usage.is_finite());
+            prop_assert!((0.0..=100.0).contains(&usage), "usage out of range: {}", usage);
+        }
+
+        /// Disk usage percent derived from arbitrary statvfs counters is always a
+        /// finite value in 0..=100.
+        #[test]
+        fn disk_percent_is_always_bounded(
+            blocks in 0u64..1_000_000, bfree in 0u64..1_000_000,
+            bavail in 0u64..1_000_000, frsize in 1u64..65536,
+        ) {
+            let d = disk_info_from_statvfs(blocks, bfree, bavail, frsize);
+            prop_assert!(d.percent.is_finite());
+            prop_assert!((0.0..=100.0).contains(&d.percent), "percent out of range: {}", d.percent);
+            prop_assert!(d.used <= d.total);
+        }
+
+        /// RAM percent from arbitrary meminfo-shaped input is finite and in range.
+        #[test]
+        fn ram_percent_is_always_bounded(
+            total in 0u64..64_000_000, avail in 0u64..64_000_000,
+        ) {
+            let content = format!("MemTotal: {total} kB\nMemAvailable: {avail} kB\n");
+            let info = ram_info_from_meminfo(&content);
+            prop_assert!(info.percent.is_finite());
+            prop_assert!((0.0..=100.0).contains(&info.percent), "percent={}", info.percent);
         }
     }
 }

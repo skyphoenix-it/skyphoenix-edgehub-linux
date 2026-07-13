@@ -43,13 +43,26 @@ WidgetChrome {
         return p > 92 ? theme.error : p > 75 ? theme.warning : w.effAccent
     }
 
+    // Rolling history. Mirrored into the shared store (keyed by instanceId) so a
+    // tile and its expanded overlay — two separate instances — draw one graph
+    // instead of the overlay opening blank (S5). `hist` is an EPHEMERAL store key,
+    // so the per-sample write bumps reactivity but never touches disk.
     property var hist: []
+    function _seedHist() {
+        if (w.store && w.instanceId && (!w.hist || w.hist.length === 0)) {
+            var s = w.store.settingsFor(w.instanceId)
+            if (s.hist && s.hist.length) w.hist = s.hist.slice()
+        }
+    }
+    onStoreChanged: _seedHist()
+    onInstanceIdChanged: _seedHist()
     onMetricsChanged: {
         if (!w.active) return           // paused (expanded / off-page) → stop sampling
         if (!w.avail) return
         var h = w.hist.slice(); h.push(w.v / 100)
         if (h.length > 48) h.shift()
         w.hist = h
+        if (w.store && w.instanceId) w.store.setSetting(w.instanceId, "hist", h)
     }
 
     MetricGauge {

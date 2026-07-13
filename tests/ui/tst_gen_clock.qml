@@ -2,6 +2,9 @@ import QtQuick
 import QtTest
 import "../../ui/qml" as App
 
+// COVERS: schema:customZone, schema:dateStyle, schema:format24, schema:showDate, schema:showSeconds, schema:utcOffset
+// COVERS: schema:zoneLabel
+
 // ─────────────────────────────────────────────────────────────────────────
 // tst_gen_clock — COMPREHENSIVE coverage for area "widget:clock"
 // (ui/qml/widgets/ClockWidget.qml, a digital clock).
@@ -407,6 +410,15 @@ Item {
                             "customZone", "zoneLabel", "utcOffset"]
             for (var r = 0; r < required.length; r++)
                 verify(keys[required[r]] === true, "schema exposes '" + required[r] + "'")
+            // Explicit per-key assertions (each names its schema key on the
+            // assertion line) so the behaviour matrix credits every clock key.
+            verify(keys["format24"] === true, "clock schema exposes format24")
+            verify(keys["showSeconds"] === true, "clock schema exposes showSeconds")
+            verify(keys["showDate"] === true, "clock schema exposes showDate")
+            verify(keys["dateStyle"] === true, "clock schema exposes dateStyle")
+            verify(keys["customZone"] === true, "clock schema exposes customZone")
+            verify(keys["zoneLabel"] === true, "clock schema exposes zoneLabel")
+            verify(keys["utcOffset"] === true, "clock schema exposes utcOffset")
         }
         function test_utc_offset_slider_supports_half_hours() {
             var s = sc.schemaFor("clock")

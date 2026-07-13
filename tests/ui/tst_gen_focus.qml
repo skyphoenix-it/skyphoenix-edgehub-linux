@@ -1,6 +1,9 @@
 import QtQuick
 import QtTest
 
+// COVERS: schema:autoStartBreak, schema:breakMin, schema:breakSuggestions, schema:celebrate, schema:dailyGoal, schema:rewardPoints
+// COVERS: schema:showNudges, schema:workMin
+
 // ─────────────────────────────────────────────────────────────────────────
 // Comprehensive tests for widget:focus — ui/qml/widgets/FocusWidget.qml
 // (the Focus / Pomodoro timer).

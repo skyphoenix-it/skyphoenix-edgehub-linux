@@ -1,6 +1,8 @@
 import QtQuick
 import QtTest
 
+// COVERS: schema:unit
+
 // Comprehensive coverage for the Network widget (ui/qml/widgets/NetWidget.qml).
 //
 // Exercises: rate reading from the Rust metrics JSON, byte/bit formatting and

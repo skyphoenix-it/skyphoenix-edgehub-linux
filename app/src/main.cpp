@@ -25,21 +25,11 @@
 #include "mpris_bridge.h"
 #include "control_server.h"
 #include "orientation_sensor.h"
-
-// --- RAII string wrapper ---
-
-class XeneonString {
-    char* ptr;
-public:
-    explicit XeneonString(char* p) : ptr(p) {}
-    ~XeneonString() { if (ptr) xeneon_string_free(ptr); }
-    XeneonString(const XeneonString&) = delete;
-    XeneonString& operator=(const XeneonString&) = delete;
-    const char* c_str() const { return ptr; }
-    QString qstring() const { return ptr ? QString::fromUtf8(ptr) : QString(); }
-    bool isNull() const { return ptr == nullptr; }
-    operator bool() const { return ptr != nullptr; }
-};
+#include "xeneon_string.h"
+#include "autostart.h"
+#include "display_match.h"
+#include "config_bridge.h"
+#include "metrics_worker.h"
 
 // --- Global handle for signal handler access ---
 static ConfigHandle* g_config = nullptr;
@@ -63,61 +53,7 @@ static void qtLogBridge(QtMsgType type, const QMessageLogContext& ctx, const QSt
     xeneon_logging_log(qtMsgTypeToXeneon(type), file, line, msg.toUtf8().constData());
 }
 
-// --- Metrics helper ---
-
-static QJsonObject metricsToJson() {
-    MetricsHandle* m = xeneon_metrics_collect();
-    if (!m) return QJsonObject();
-    XeneonString json(xeneon_metrics_to_json(m));
-    xeneon_metrics_free(m);
-    if (!json) return QJsonObject();
-    QJsonParseError err;
-    QJsonDocument doc = QJsonDocument::fromJson(QByteArray(json.c_str()), &err);
-    if (err.error != QJsonParseError::NoError) {
-        static bool warned = false;
-        if (!warned) { qWarning() << "metricsToJson: malformed metrics JSON:" << err.errorString(); warned = true; }
-        return QJsonObject();
-    }
-    return doc.object();
-}
-
-// MetricsWorker — runs the (potentially slow) Rust metrics collection + JSON
-// serialization on a dedicated thread so the 2s poll never blocks/janks the GUI
-// event loop. It emits the compact JSON to the GUI thread, which pushes it onto
-// the QML roots. begin()/stop() run ON the worker thread (invoked via the thread's
-// event loop), so the QTimer lives and fires there.
-class MetricsWorker : public QObject {
-    Q_OBJECT
-public:
-    Q_INVOKABLE void begin() {
-        m_timer = new QTimer(this);
-        connect(m_timer, &QTimer::timeout, this, &MetricsWorker::poll);
-        m_timer->start(2000);
-        poll();   // emit an initial sample immediately
-    }
-    Q_INVOKABLE void stop() {
-        if (m_timer) { m_timer->stop(); delete m_timer; m_timer = nullptr; }
-    }
-signals:
-    void metricsReady(const QByteArray& json);
-private:
-    void poll() { emit metricsReady(QJsonDocument(metricsToJson()).toJson(QJsonDocument::Compact)); }
-    QTimer* m_timer = nullptr;
-};
-
 // --- Display helper ---
-
-// Canonical orientation spelling (hyphenated), shared by the initial screens
-// payload and the live sensor push so QML never sees two spellings.
-static QString orientationName(Qt::ScreenOrientation o) {
-    switch (o) {
-    case Qt::LandscapeOrientation: return QStringLiteral("landscape");
-    case Qt::PortraitOrientation: return QStringLiteral("portrait");
-    case Qt::InvertedLandscapeOrientation: return QStringLiteral("inverted-landscape");
-    case Qt::InvertedPortraitOrientation: return QStringLiteral("inverted-portrait");
-    default: return QString();
-    }
-}
 
 static QJsonObject screenToJson(QScreen* screen) {
     QJsonObject obj;
@@ -155,15 +91,8 @@ static QJsonObject screenToJson(QScreen* screen) {
         {"height", screen->size().height()}
     };
 
-    QByteArray identityData;
-    identityData.append(screen->name().toUtf8());
-    identityData.append(screen->model().toUtf8());
-    identityData.append(screen->manufacturer().toUtf8());
-    identityData.append(screen->serialNumber().toUtf8());
-    XeneonString hash(xeneon_display_compute_edid_hash(
-        reinterpret_cast<const uint8_t*>(identityData.constData()),
-        identityData.size()));
-    obj["edidHash"] = hash.qstring();
+    obj["edidHash"] = screenIdentityHash(screen->name(), screen->model(),
+                                         screen->manufacturer(), screen->serialNumber());
 
     obj["likelyXeneonEdge"] = (screen->model().contains("XENEON", Qt::CaseInsensitive)
         || screen->manufacturer().contains("Corsair", Qt::CaseInsensitive)
@@ -204,14 +133,9 @@ static QScreen* findTargetScreen(ConfigHandle* config) {
     // Try EDID hash match first
     if (targetHash) {
         for (auto* s : screens) {
-            QByteArray id;
-            id.append(s->name().toUtf8());
-            id.append(s->model().toUtf8());
-            id.append(s->manufacturer().toUtf8());
-            id.append(s->serialNumber().toUtf8());
-            XeneonString hash(xeneon_display_compute_edid_hash(
-                reinterpret_cast<const uint8_t*>(id.constData()), id.size()));
-            if (hash.qstring() == targetHash.qstring()) {
+            const QString hash = screenIdentityHash(s->name(), s->model(),
+                                                    s->manufacturer(), s->serialNumber());
+            if (hash == targetHash.qstring()) {
                 qInfo() << "Target found by EDID hash:" << s->name();
                 return s;
             }
@@ -261,173 +185,6 @@ static QScreen* findTargetScreen(ConfigHandle* config) {
                << (primary ? primary->name() : QStringLiteral("<none>"));
     return primary;
 }
-
-// --- Autostart: install/remove an XDG autostart .desktop entry ---
-// Writes ~/.config/autostart/xeneon-edge-hub.desktop pointing at the current
-// binary, so "start on login" actually takes effect (previously a no-op).
-static bool applyAutostart(bool enabled) {
-    const QString dir = QDir::homePath() + "/.config/autostart";
-    const QString path = dir + "/xeneon-edge-hub.desktop";
-    if (!enabled) {
-        QFile::remove(path);
-        return true;
-    }
-    if (!QDir().mkpath(dir))
-        return false;
-    QFile f(path);
-    if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        qWarning() << "Could not write autostart entry:" << path;
-        return false;
-    }
-    // Quote the Exec path if it contains spaces (an install dir with a space
-    // would otherwise produce a broken Exec line per the .desktop spec).
-    QString execPath = QCoreApplication::applicationFilePath();
-    if (execPath.contains(QLatin1Char(' ')))
-        execPath = QLatin1Char('"') + execPath + QLatin1Char('"');
-    QTextStream ts(&f);
-    ts << "[Desktop Entry]\n"
-       << "Type=Application\n"
-       << "Name=Xeneon Edge Linux Hub\n"
-       << "Comment=Native Linux widget platform for secondary touchscreen displays\n"
-       << "Exec=" << execPath << "\n"
-       << "Icon=xeneon-edge-hub\n"
-       << "Categories=Utility;\n"
-       << "Terminal=false\n"
-       << "X-GNOME-Autostart-enabled=true\n";
-    f.close();
-    qInfo() << "Autostart entry written:" << path;
-    return true;
-}
-
-// --- WizardBridge: QObject exposed to QML for first-run persistence ---
-
-class WizardBridge : public QObject {
-    Q_OBJECT
-public:
-    explicit WizardBridge(ConfigHandle* config, QObject* parent = nullptr)
-        : QObject(parent), m_config(config) {}
-
-    Q_INVOKABLE bool completeWizard(const QString& edidHash, const QString& connector,
-                                     const QString& model, const QString& layout,
-                                     const QString& themeMode, const QString& themeAccent,
-                                     bool autostart, bool reconnect, bool notifyDisconnect) {
-        if (!m_config) return false;
-
-        // Persist display identity
-        if (!edidHash.isEmpty())
-            xeneon_config_set_target_edid_hash(m_config, edidHash.toUtf8().constData());
-        if (!connector.isEmpty())
-            xeneon_config_set_target_connector(m_config, connector.toUtf8().constData());
-        if (!model.isEmpty())
-            xeneon_config_set_target_model(m_config, model.toUtf8().constData());
-
-        // Persist layout choice
-        if (!layout.isEmpty())
-            xeneon_config_set_starter_layout(m_config, layout.toUtf8().constData());
-
-        // Persist theme
-        if (!themeMode.isEmpty())
-            xeneon_config_set_theme_mode(m_config, themeMode.toUtf8().constData());
-        if (!themeAccent.isEmpty())
-            xeneon_config_set_theme_accent(m_config, themeAccent.toUtf8().constData());
-
-        // Persist startup preferences
-        xeneon_config_set_autostart(m_config, autostart ? 1 : 0);
-        xeneon_config_set_reconnect(m_config, reconnect ? 1 : 0);
-        xeneon_config_set_notify_disconnect(m_config, notifyDisconnect ? 1 : 0);
-
-        // Actually install/remove the XDG autostart entry to match the choice.
-        applyAutostart(autostart);
-
-        // Mark first-run complete
-        xeneon_config_set_first_run_complete(m_config);
-
-        // Save to disk
-        int saved = xeneon_config_save(m_config);
-        if (saved == 0) {
-            qInfo() << "Wizard complete. Target:" << model << "Layout:" << layout
-                     << "Theme:" << themeMode << "Autostart:" << autostart;
-        } else {
-            qWarning() << "Wizard complete but config save failed";
-        }
-        return saved == 0;
-    }
-
-    // Detach from the Rust config handle before it is freed at shutdown, so any
-    // late QML call becomes a guarded no-op instead of a use-after-free.
-    void detach() { m_config = nullptr; }
-
-private:
-    ConfigHandle* m_config;
-};
-
-// --- ConfigBridge: runtime config access for QML (layout persistence, etc.) ---
-
-class ConfigBridge : public QObject {
-    Q_OBJECT
-public:
-    explicit ConfigBridge(ConfigHandle* config, QObject* parent = nullptr)
-        : QObject(parent), m_config(config) {}
-
-    // Opaque UI-state JSON (dashboard layout + per-widget settings + appearance).
-    Q_INVOKABLE QString uiState() const {
-        if (!m_config) return QString();
-        XeneonString s(xeneon_config_get_ui_state(m_config));
-        return s.qstring();
-    }
-
-    // Persist the UI-state JSON and flush to disk atomically. Returns success.
-    Q_INVOKABLE bool saveUiState(const QString& json) {
-        if (!m_config) return false;
-        xeneon_config_set_ui_state(m_config, json.toUtf8().constData());
-        bool ok = xeneon_config_save(m_config) == 0;
-        if (!ok) qWarning() << "Failed to persist UI state";
-        return ok;
-    }
-
-    // Apply a UI-state document pushed from the companion Manager app over IPC:
-    // persist it to the in-memory config + disk. The live reload is handled by
-    // main() re-pushing the JSON to QML. Kept separate from saveUiState so intent
-    // is explicit at the call site.
-    bool applyExternalUiState(const QString& json) {
-        if (!m_config || json.isEmpty()) return false;
-        xeneon_config_set_ui_state(m_config, json.toUtf8().constData());
-        return xeneon_config_save(m_config) == 0;
-    }
-
-    // Starter layout id chosen during the wizard ("productivity"/"gaming"/…).
-    Q_INVOKABLE QString starterLayout() const {
-        if (!m_config) return QString();
-        XeneonString s(xeneon_config_get_starter_layout(m_config));
-        return s.qstring();
-    }
-
-    // Resolve a wallpaper/image path to a loadable URL. Scheme URLs (qrc:, http:,
-    // file:) pass through untouched; a local path is percent-encoded via QUrl so
-    // spaces / '#' / other reserved characters don't produce a malformed URL that
-    // silently fails to load. Mirrors the Manager's backend.imageUrl() so the same
-    // stored appearance.wallpaper resolves identically in the hub and the Manager.
-    Q_INVOKABLE QString imageUrl(const QString& path) const {
-        if (path.isEmpty()) return QString();
-        if (path.contains("://")) return path;
-        if (path.startsWith('/')) return QUrl::fromLocalFile(path).toString();
-        return path;
-    }
-
-    // Full pretty-printed config JSON (for the Diagnostics → Config tab).
-    Q_INVOKABLE QString configJson() const {
-        if (!m_config) return QString();
-        XeneonString s(xeneon_config_to_json(m_config));
-        return s.qstring();
-    }
-
-    // Detach from the Rust config handle before it is freed at shutdown, so any
-    // late QML call becomes a guarded no-op instead of a use-after-free.
-    void detach() { m_config = nullptr; }
-
-private:
-    ConfigHandle* m_config;
-};
 
 int main(int argc, char *argv[]) {
     // Initialize Rust core logging FIRST
@@ -582,7 +339,14 @@ int main(int argc, char *argv[]) {
         // Trigger a live reload in QML (main.qml forwards this to the dashboard).
         for (auto* obj : engine.rootObjects())
             obj->setProperty("externalUiState", json);
-    });
+    // EXPLICIT Qt::DirectConnection is REQUIRED, not incidental: both the ack
+    // correctness and the validity of the `bool* ok` argument depend on SAME-THREAD
+    // synchronous delivery — the slot must run and write *ok BEFORE handleLine() reads
+    // it (the pointer is into handleLine's stack frame). If ControlServer were ever
+    // moved to another thread, an auto/queued connection would (a) deliver AFTER emit
+    // returns → the ack always reports false, and (b) write *ok into a since-unwound
+    // stack frame → a use-after-free. Keep this Direct.
+    }, Qt::DirectConnection);
     // Manager "Stop hub" → quit cleanly. Defer briefly so the "ok" ack flushes to
     // the socket before the event loop tears down.
     QObject::connect(controlServer, &ControlServer::shutdownRequested, &engine, [] {
@@ -677,16 +441,58 @@ int main(int argc, char *argv[]) {
         for (auto* obj : engine.rootObjects())
             obj->setProperty("screensData", json);
     };
+
+    // S10: honor the display disconnect/reconnect keys on live hotplug.
+    //  - notify_disconnect → surface a "display disconnected" notice when the
+    //    TARGET screen vanishes.
+    //  - fallback_behavior "hide" → blank/hide the hub window on target loss.
+    //  - reconnect          → re-run the target match and migrate the window back
+    //    onto the Edge when it returns.
+    // `targetScreen` is tracked live so we know which physical screen is ours, and
+    // `targetHidden` remembers a fallback-hide so we can un-hide on reconnect.
+    const bool windowedMode = parser.isSet(windowedOpt);
+    bool targetHidden = false;
     QObject::connect(&app, &QGuiApplication::screenAdded, &engine,
-                     [&engine, pushScreens](QScreen* screen) {
+                     [&engine, config, &targetScreen, &targetHidden, &mainWindow,
+                      windowedMode, pushScreens](QScreen* screen) {
         qInfo() << "Screen added:" << screen->name();
+        const bool reconnectEnabled = xeneon_config_get_reconnect(config) == 1;
+        QScreen* newTarget = findTargetScreen(config);
+        if (shouldReconnectToScreen(reconnectEnabled, newTarget == screen) && mainWindow) {
+            qInfo() << "Hub: target display returned — migrating window to" << screen->name();
+            targetScreen = screen;
+            const QRect geo = screen->geometry();
+            mainWindow->setScreen(screen);
+            mainWindow->setPosition(geo.x(), geo.y());
+            mainWindow->resize(geo.width(), geo.height());
+            if (windowedMode) mainWindow->show();
+            else              mainWindow->showFullScreen();
+            mainWindow->setVisible(true);
+            targetHidden = false;
+        }
         for (auto* obj : engine.rootObjects())
             obj->setProperty("screenAddedChanged", screen->name());
         pushScreens();
     });
     QObject::connect(&app, &QGuiApplication::screenRemoved, &engine,
-                     [&engine, pushScreens](QScreen* screen) {
+                     [&engine, config, &targetScreen, &targetHidden, &mainWindow,
+                      pushScreens](QScreen* screen) {
         qInfo() << "Screen removed:" << screen->name();
+        const bool wasTarget = (screen == targetScreen);
+        XeneonString fb(xeneon_config_get_fallback_behavior(config));
+        const bool notifyDisconnect = xeneon_config_get_notify_disconnect(config) == 1;
+        const DisconnectDecision d = decideOnScreenRemoved(wasTarget, fb.qstring(), notifyDisconnect);
+        if (d.notify) {
+            qWarning() << "Hub: target display disconnected:" << screen->name();
+            for (auto* obj : engine.rootObjects())
+                obj->setProperty("displayDisconnected", screen->name());
+        }
+        if (d.hideWindow && mainWindow) {
+            qInfo() << "Hub: hiding window (fallback=hide) after target loss";
+            mainWindow->setVisible(false);
+            targetHidden = true;
+        }
+        if (wasTarget) targetScreen = nullptr;   // target gone until it returns
         for (auto* obj : engine.rootObjects())
             obj->setProperty("screenRemovedChanged", screen->name());
         pushScreens();
@@ -711,7 +517,7 @@ int main(int argc, char *argv[]) {
             }
         }
         QObject* root = engine.rootObjects().first();
-        QTimer::singleShot(2200, [root, &grabPath]() {
+        QTimer::singleShot(2200, [root, grabPath]() {
             auto* win = qobject_cast<QQuickWindow*>(root);
             if (win) {
                 const QImage img = win->grabWindow();
@@ -750,5 +556,3 @@ int main(int argc, char *argv[]) {
 
     return result;
 }
-
-#include "main.moc"

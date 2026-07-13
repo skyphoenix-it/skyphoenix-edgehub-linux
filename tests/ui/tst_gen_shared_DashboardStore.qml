@@ -2,6 +2,14 @@ import QtQuick
 import QtTest
 import "../../ui/qml" as App
 
+// COVERS: fn:DashboardStore._bucket, fn:DashboardStore._clone, fn:DashboardStore._commitStructure, fn:DashboardStore._flush, fn:DashboardStore._hasBridge, fn:DashboardStore._isEphemeralKey
+// COVERS: fn:DashboardStore._mk, fn:DashboardStore._newId, fn:DashboardStore._normaliseDoc, fn:DashboardStore._page, fn:DashboardStore._persistableData, fn:DashboardStore._touchSettings
+// COVERS: fn:DashboardStore._uniquePageName, fn:DashboardStore.addPage, fn:DashboardStore.addTile, fn:DashboardStore.appearance, fn:DashboardStore.applyExternal, fn:DashboardStore.ensureSettings
+// COVERS: fn:DashboardStore.flushNow, fn:DashboardStore.load, fn:DashboardStore.moveTile, fn:DashboardStore.pageBackground, fn:DashboardStore.pageColumns, fn:DashboardStore.pageCount
+// COVERS: fn:DashboardStore.pages, fn:DashboardStore.patchSettings, fn:DashboardStore.removePage, fn:DashboardStore.removeTile, fn:DashboardStore.renamePage, fn:DashboardStore.resetSettings
+// COVERS: fn:DashboardStore.resetTo, fn:DashboardStore.seed, fn:DashboardStore.setAppearance, fn:DashboardStore.setPageBackground, fn:DashboardStore.setPageColumns, fn:DashboardStore.setSetting
+// COVERS: fn:DashboardStore.setTileSize, fn:DashboardStore.settingsFor
+
 // ─────────────────────────────────────────────────────────────────────────
 // Comprehensive coverage for the shared area  ui/qml/DashboardStore.qml.
 //
@@ -494,6 +502,100 @@ Item {
                 verify(seen[id] === undefined, "addTile id reused: " + id)
                 seen[id] = true
             }
+        }
+    }
+
+    // ── 9. Direct API contract for the store's helpers / mutators ────────────
+    // Each helper is exercised directly and its OWN result/effect asserted (the
+    // behaviour-matrix backing), complementing the effect-level tests above.
+    TestCase {
+        name: "StoreApiContract"
+        when: windowShown
+        function init() { _bridge.reset(); store.load("blank") }
+
+        // Bridge detection + ephemeral-key classification.
+        function test_hasBridge_and_ephemeral_keys() {
+            verify(store._hasBridge(), "_hasBridge detects the injected configBridge")
+            verify(store._isEphemeralKey("hist"), "_isEphemeralKey flags a volatile metric key")
+            verify(!store._isEphemeralKey("place"), "_isEphemeralKey passes a real setting key")
+        }
+
+        // _bucket get-or-create semantics + ensureSettings seed-and-return.
+        function test_bucket_and_ensureSettings() {
+            compare(store._bucket(""), null, "_bucket rejects an empty id")
+            verify(store._bucket("api-1") !== null, "_bucket materialises a real bucket")
+            compare(store.ensureSettings("api-2", { seeded: 7 }).seeded, 7,
+                    "ensureSettings seeds the default and returns the bucket")
+        }
+
+        // Id generation is type-prefixed and unique per call.
+        function test_newId_prefix_and_uniqueness() {
+            verify(store._newId("cpu").indexOf("cpu-") === 0, "_newId prefixes the id with the type")
+            verify(store._newId("cpu") !== store._newId("cpu"), "_newId is unique per call")
+        }
+
+        // _clone is a deep copy; mutating the clone cannot reach the source.
+        function test_clone_is_deep() {
+            var src = { a: [1, 2] }
+            var cl = store._clone(src); cl.a.push(3)
+            compare(src.a.length, 2, "_clone deep-copies (clone edits never touch the source)")
+        }
+
+        // _normaliseDoc backfills the standard maps and a tiles array per page.
+        function test_normaliseDoc_backfills() {
+            var nd = store._normaliseDoc({})
+            verify(nd.pages !== undefined && nd.settings !== undefined && nd.appearance !== undefined,
+                   "_normaliseDoc backfills pages/settings/appearance")
+            var nd2 = store._normaliseDoc({ pages: [ { name: "P" } ] })
+            verify(nd2.pages[0].tiles !== undefined, "_normaliseDoc gives every page a tiles array")
+        }
+
+        // _persistableData returns the versioned on-disk doc (volatile keys stripped).
+        function test_persistableData_returns_doc() {
+            verify(store._persistableData().version === 1,
+                   "_persistableData returns the versioned on-disk document")
+        }
+
+        // _uniquePageName yields a collision-free "Page N" name.
+        function test_uniquePageName_shape() {
+            verify(store._uniquePageName().indexOf("Page ") === 0, "_uniquePageName yields a 'Page N' name")
+        }
+
+        // _mk stamps an {id,type} tile record; _page builds a {name,tiles} page.
+        function test_mk_and_page_builders() {
+            compare(store._mk("clock").type, "clock", "_mk stamps the tile type")
+            var pg = store._page("PX", ["cpu", "gpu"])
+            compare(pg.name, "PX", "_page sets the page name")
+            compare(pg.tiles.length, 2, "_page builds one tile per requested type")
+        }
+
+        // Reactivity primitives: _touchSettings bumps revision, _commitStructure
+        // bumps structureRevision (and revision).
+        function test_touch_and_commit_bump_revisions() {
+            var r = store.revision; store._touchSettings()
+            verify(store.revision > r, "_touchSettings bumps revision for reactivity")
+            var sr = store.structureRevision; store._commitStructure()
+            verify(store.structureRevision > sr, "_commitStructure bumps structureRevision")
+        }
+
+        // Direct tile/page mutators name themselves on the assertion of their effect.
+        function test_setTileSize_addPage_rename_remove() {
+            var tid = store.addTile(0, "cpu")
+            store.setTileSize(0, tid, 2, 2)
+            compare(store.pages()[0].tiles[0].w, 2, "setTileSize applied the new width span")
+            var pc = store.pageCount(); store.addPage("Added")
+            compare(store.pageCount(), pc + 1, "addPage appended a page")
+            store.renamePage(store.pageCount() - 1, "Renamed")
+            compare(store.pages()[store.pageCount() - 1].name, "Renamed", "renamePage set the new name")
+            var pc2 = store.pageCount(); store.removePage(store.pageCount() - 1)
+            compare(store.pageCount(), pc2 - 1, "removePage dropped exactly one page")
+        }
+
+        // _flush / flushNow persist the current document through the bridge.
+        function test_flush_and_flushNow_persist() {
+            store.addTile(0, "cpu")
+            _bridge.reset(); store.flushNow()
+            verify(_bridge.saveCount >= 1, "flushNow drives an immediate _flush through the bridge")
         }
     }
 }
