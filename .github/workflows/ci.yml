@@ -162,7 +162,13 @@ jobs:
       - name: Install build + coverage tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake g++ gcovr libgl1-mesa-dev
+          sudo apt-get install -y cmake g++ libgl1-mesa-dev
+          # Use a modern gcovr (via pipx, preinstalled on the runner): the apt
+          # gcovr does not honor the in-source GCOVR_EXCL_START/STOP hardware/glue
+          # exclusion markers, so it counts the excluded lines and understates
+          # coverage. pipx gcovr matches the version used locally.
+          pipx install gcovr
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Build Rust core (static lib for C++ tests)
         run: cargo build --release
         working-directory: core
