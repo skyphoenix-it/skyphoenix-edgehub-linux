@@ -887,7 +887,10 @@ ApplicationWindow {
 
     // Display target state.
     property var screens: {
-        try { return JSON.parse(backend.screensJson()) } catch (e) { return [] }
+        // Array.isArray guard: screensJson() should be an array, but a valid
+        // non-array JSON ("{}") would otherwise reach the Repeater model as an object.
+        try { var s = JSON.parse(backend.screensJson()); return Array.isArray(s) ? s : [] }
+        catch (e) { return [] }
     }
     property string currentTarget: backend.targetConnector()
 
@@ -905,7 +908,7 @@ ApplicationWindow {
         }
         // Display hotplug.
         function onScreensChanged() {
-            try { win.screens = JSON.parse(backend.screensJson() || "[]") } catch (e) { win.screens = [] }
+            try { var s = JSON.parse(backend.screensJson() || "[]"); win.screens = Array.isArray(s) ? s : [] } catch (e) { win.screens = [] }
             win.currentTarget = backend.targetConnector()
         }
         // Clear the "Starting hub…" state once the hub actually connects.
@@ -915,7 +918,7 @@ ApplicationWindow {
     // Pull the hub's latest + refresh live state whenever the Manager regains focus.
     onActiveChanged: if (active) {
         backend.syncFromHub()
-        try { win.screens = JSON.parse(backend.screensJson() || "[]") } catch (e) {}
+        try { var s = JSON.parse(backend.screensJson() || "[]"); if (Array.isArray(s)) win.screens = s } catch (e) {}
         if (autostartSwitch) autostartSwitch.checked = backend.isAutostart()
     }
 }
