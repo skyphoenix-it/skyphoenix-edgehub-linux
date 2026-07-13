@@ -505,6 +505,13 @@ private:
             m_pendingPush.clear();
             m_pendingPushAwaitingHub = false;
             writeMsg(QJsonObject{{"type", "setUiState"}, {"state", uiStateJson}});
+            // The hub will apply + persist this, so its authoritative state is now
+            // uiStateJson. Record it as our baseline: otherwise, if the hub restarts
+            // shortly after (before the periodic pull refreshes the baseline) and we
+            // reconnect with a NEWER offline edit buffered, reconcileOnPull would see
+            // the hub reporting THIS push against a stale older baseline, judge it a
+            // foreign device-side change, and DROP the newer offline edit.
+            m_lastHubState = uiStateJson;
         } else {
             // connectToServer is async — buffer and flush on the `connected` signal
             // so the edit is never silently lost (was the "first save dropped" bug).

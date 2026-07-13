@@ -286,6 +286,40 @@ private slots:
                  "stale buffered edit A was re-pushed AFTER the newer live edit B");
     }
 
+    // ── #1 (deep-review) regression: an offline edit made AFTER a connected edit must
+    //    survive a hub restart + reconnect. A prior pull set a non-empty baseline S0;
+    //    a connected push of A must update that baseline, else the reconnect reconcile
+    //    sees the hub reporting our own A against the stale S0, judges it a device-side
+    //    change, and DROPS the newer offline edit B. ──
+    void offlineEditSurvivesReconnectAfterConnectedEdit() {
+        ManagerBackend b;
+        b.setClockForTest([this] { return clockMs_; });
+        clockMs_ = 100000;
+        {
+            // hub1 reports a non-empty baseline S0 → b pulls it and records m_lastHubState.
+            FakeHub hub1; hub1.getReply = QStringLiteral("{\"S0\":1}");
+            QVERIFY(hub1.start());
+            QVERIFY(b.startHub());
+            QTRY_VERIFY_WITH_TIMEOUT(b.hubConnected(), 8000);
+            QTRY_VERIFY_WITH_TIMEOUT(b.uiState() == QStringLiteral("{\"S0\":1}"), 8000);
+            // Connected edit A — the fix records that the hub will now hold A.
+            b.saveUiState(QStringLiteral("{\"A\":1}"));
+            QTRY_VERIFY_WITH_TIMEOUT(hub1.setStates.contains(QStringLiteral("{\"A\":1}")), 8000);
+        }  // hub1 destroyed → the socket drops → b disconnects
+        QTRY_VERIFY_WITH_TIMEOUT(!b.hubConnected(), 8000);
+
+        // Offline edit B (buffered while disconnected).
+        b.saveUiState(QStringLiteral("{\"B\":2}"));
+
+        // Hub restarts persisting A (the last thing it applied). b auto-reconnects,
+        // pulls A, and must KEEP + push the newer offline edit B — not drop it.
+        FakeHub hub2; hub2.getReply = QStringLiteral("{\"A\":1}");
+        QVERIFY(hub2.start());
+        QTRY_VERIFY_WITH_TIMEOUT(b.hubConnected(), 12000);
+        QTRY_VERIFY_WITH_TIMEOUT(hub2.setStates.contains(QStringLiteral("{\"B\":2}")), 12000);
+        QCOMPARE(hub2.setStates.last(), QStringLiteral("{\"B\":2}"));
+    }
+
     // ── #7 companion: DropEdit integration. After a real disconnect the hub's state
     //    CHANGED (differs from the tracked lastHubState); on reconnect the buffered
     //    offline edit is stale and must be DROPPED — no setUiState is sent. ──
