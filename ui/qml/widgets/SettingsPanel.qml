@@ -95,6 +95,12 @@ Rectangle {
                                     { v: "vaporwave",     l: "Vaporwave", c1: "#3A1A52", c2: "#140A20" },
                                     { v: "rose_gold",     l: "Rose Gold", c1: "#3A1E2C", c2: "#170C12" },
                                     { v: "matrix",        l: "Matrix",    c1: "#0A160A", c2: "#000000" },
+                                    { v: "nord",          l: "Nord",      c1: "#3B4252", c2: "#272B35" },
+                                    { v: "dracula",       l: "Dracula",   c1: "#343746", c2: "#21222C" },
+                                    { v: "solarized",     l: "Solarized", c1: "#073642", c2: "#00212B" },
+                                    { v: "gruvbox",       l: "Gruvbox",   c1: "#32302F", c2: "#1D2021" },
+                                    { v: "catppuccin",    l: "Catppuccin",c1: "#181825", c2: "#11111B" },
+                                    { v: "tokyonight",    l: "Tokyo Night",c1: "#24283B", c2: "#16161E" },
                                     { v: "oled",          l: "OLED",      c1: "#0A0A0A", c2: "#000000" },
                                     { v: "light",         l: "Light",     c1: "#F6F8FA", c2: "#E4E9F0" },
                                     { v: "high_contrast", l: "Contrast",  c1: "#1A1A1A", c2: "#000000" }

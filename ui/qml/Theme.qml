@@ -177,6 +177,36 @@ QtObject {
             cardBackground = "#050D05"; cardBackgroundAlt = "#0A160A"; cardBorder = "#164016"
             textPrimary = "#B6FFB6"; textSecondary = "#5FCF5F"; textTertiary = "#3E8F3E"
             radiusSm = 4; radiusMd = 6; radiusLg = 9; radiusXl = 12; decorative = true; cardBorderWidth = 1; break
+        case "nord":
+            backgroundColor = "#2E3440"; backgroundColor2 = "#3B4252"; backgroundColor3 = "#272B35"
+            cardBackground = "#3B4252"; cardBackgroundAlt = "#434C5E"; cardBorder = "#4C566A"
+            textPrimary = "#ECEFF4"; textSecondary = "#D8DEE9"; textTertiary = "#7B8494"
+            radiusSm = 10; radiusMd = 16; radiusLg = 22; radiusXl = 28; decorative = true; cardBorderWidth = 1; break
+        case "dracula":
+            backgroundColor = "#282A36"; backgroundColor2 = "#343746"; backgroundColor3 = "#21222C"
+            cardBackground = "#343746"; cardBackgroundAlt = "#3C3F51"; cardBorder = "#44475A"
+            textPrimary = "#F8F8F2"; textSecondary = "#BFBFD0"; textTertiary = "#6272A4"
+            radiusSm = 10; radiusMd = 16; radiusLg = 22; radiusXl = 28; decorative = true; cardBorderWidth = 1; break
+        case "solarized":
+            backgroundColor = "#002B36"; backgroundColor2 = "#073642"; backgroundColor3 = "#00212B"
+            cardBackground = "#073642"; cardBackgroundAlt = "#0E4B59"; cardBorder = "#17616B"
+            textPrimary = "#EEE8D5"; textSecondary = "#93A1A1"; textTertiary = "#657B83"
+            radiusSm = 10; radiusMd = 16; radiusLg = 22; radiusXl = 28; decorative = true; cardBorderWidth = 1; break
+        case "gruvbox":
+            backgroundColor = "#282828"; backgroundColor2 = "#32302F"; backgroundColor3 = "#1D2021"
+            cardBackground = "#3C3836"; cardBackgroundAlt = "#504945"; cardBorder = "#665C54"
+            textPrimary = "#EBDBB2"; textSecondary = "#D5C4A1"; textTertiary = "#A89984"
+            radiusSm = 10; radiusMd = 16; radiusLg = 22; radiusXl = 28; decorative = true; cardBorderWidth = 1; break
+        case "catppuccin":
+            backgroundColor = "#1E1E2E"; backgroundColor2 = "#181825"; backgroundColor3 = "#11111B"
+            cardBackground = "#313244"; cardBackgroundAlt = "#45475A"; cardBorder = "#585B70"
+            textPrimary = "#CDD6F4"; textSecondary = "#A6ADC8"; textTertiary = "#7F849C"
+            radiusSm = 10; radiusMd = 16; radiusLg = 22; radiusXl = 28; decorative = true; cardBorderWidth = 1; break
+        case "tokyonight":
+            backgroundColor = "#1A1B26"; backgroundColor2 = "#24283B"; backgroundColor3 = "#16161E"
+            cardBackground = "#24283B"; cardBackgroundAlt = "#2F344D"; cardBorder = "#3B4261"
+            textPrimary = "#C0CAF5"; textSecondary = "#A9B1D6"; textTertiary = "#565F89"
+            radiusSm = 10; radiusMd = 16; radiusLg = 22; radiusXl = 28; decorative = true; cardBorderWidth = 1; break
         default:
             backgroundColor = "#0D1117"; backgroundColor2 = "#0A0E14"; backgroundColor3 = "#0A0E14"
             cardBackground = "#161B22"; cardBackgroundAlt = "#1C222B"; cardBorder = "#30363D"

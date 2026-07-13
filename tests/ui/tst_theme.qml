@@ -106,6 +106,14 @@ Item {
         function test_applyTheme_rose_gold()   { _assertThemeCoherent("rose_gold",   "#21121A", true) }
         function test_applyTheme_matrix()      { _assertThemeCoherent("matrix",      "#000000", true) }
 
+        // ── Well-loved developer palettes (all dark, all decorative) ─────────
+        function test_applyTheme_nord()        { _assertThemeCoherent("nord",        "#2E3440", true) }
+        function test_applyTheme_dracula()     { _assertThemeCoherent("dracula",     "#282A36", true) }
+        function test_applyTheme_solarized()   { _assertThemeCoherent("solarized",   "#002B36", true) }
+        function test_applyTheme_gruvbox()     { _assertThemeCoherent("gruvbox",     "#282828", true) }
+        function test_applyTheme_catppuccin()  { _assertThemeCoherent("catppuccin",  "#1E1E2E", true) }
+        function test_applyTheme_tokyonight()  { _assertThemeCoherent("tokyonight",  "#1A1B26", true) }
+
         function test_new_accents_have_tones() {
             var names = ["cyan","indigo","mint","coral","amber","magenta"]
             for (var i = 0; i < names.length; i++) {

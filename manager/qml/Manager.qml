@@ -451,6 +451,12 @@ ApplicationWindow {
                                 { k: "vaporwave",     n: "Vaporwave", c1: "#3A1A52", c2: "#140A20" },
                                 { k: "rose_gold",     n: "Rose Gold", c1: "#3A1E2C", c2: "#170C12" },
                                 { k: "matrix",        n: "Matrix",    c1: "#0A160A", c2: "#000000" },
+                                { k: "nord",          n: "Nord",      c1: "#3B4252", c2: "#272B35" },
+                                { k: "dracula",       n: "Dracula",   c1: "#343746", c2: "#21222C" },
+                                { k: "solarized",     n: "Solarized", c1: "#073642", c2: "#00212B" },
+                                { k: "gruvbox",       n: "Gruvbox",   c1: "#32302F", c2: "#1D2021" },
+                                { k: "catppuccin",    n: "Catppuccin",c1: "#181825", c2: "#11111B" },
+                                { k: "tokyonight",    n: "Tokyo Night",c1: "#24283B", c2: "#16161E" },
                                 { k: "oled",          n: "OLED",      c1: "#0A0A0A", c2: "#000000" },
                                 { k: "light",         n: "Light",     c1: "#F6F8FA", c2: "#E4E9F0" },
                                 { k: "high_contrast", n: "Contrast",  c1: "#1A1A1A", c2: "#000000" }
