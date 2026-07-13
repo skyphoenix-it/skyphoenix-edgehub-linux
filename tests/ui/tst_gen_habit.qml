@@ -386,6 +386,109 @@ Item {
         }
     }
 
+    // ── P1: streak persists past the 28-day heatmap window ─────────────────
+    // The streak is a stored NUMBER, decoupled from the pruned `checkins` array,
+    // so long runs report their true length and milestones past 14 can fire.
+    TestCase {
+        name: "HabitLongStreak"
+        when: windowShown
+        function init() {
+            tryVerify(function () { return hHabit.ready }, 3000)
+            clearSettings(hHabit)
+            hHabit.item.celebrateMsg = ""
+            // Reset any overridden today key from a prior test (rebind to now).
+            hHabit.item.todayKey = Qt.binding(function () {
+                return (hHabit.item.tick, hHabit.item.key(new Date()))
+            })
+        }
+        function cfg() { return hHabit.storeCtl.settingsFor("test-instance") }
+
+        // (a) A 40-consecutive-day streak, accrued via daily check-ins, reports
+        // 40 (NOT capped at 28) while the heatmap array stays pruned; best ≥ 40.
+        // Days are advanced deterministically by overriding todayKey, never the
+        // wall clock.
+        function test_forty_day_streak_reports_40_not_28() {
+            var w = hHabit.item
+            hHabit.storeCtl.patchSettings("test-instance", { checkins: [] })
+            // Walk from 39 days ago up to today, checking in each calendar day.
+            var d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - 39)
+            for (var i = 0; i < 40; i++) {
+                w.todayKey = w.key(d)
+                w.toggleToday()
+                d.setDate(d.getDate() + 1)
+            }
+            compare(w.streak, 40, "40 consecutive check-ins report a 40-day streak")
+            verify(w.bestStreak >= 40, "bestStreak tracks the full run (got " + w.bestStreak + ")")
+            verify(cfg().checkins.length <= 28,
+                   "heatmap array is still pruned to its window (got " + cfg().checkins.length + ")")
+            compare(cfg().streak, 40, "the streak number is persisted independently")
+        }
+
+        // (b) A milestone past 14 (30) is reachable — impossible while the streak
+        // was capped at ~28.
+        function test_milestone_30_is_reachable() {
+            var w = hHabit.item
+            var today = w.key(new Date())
+            var yesterday = w.prevDayKey(today)
+            // Seed a maintained 29-run ending yesterday; today not yet checked.
+            hHabit.storeCtl.patchSettings("test-instance",
+                { checkins: [], streak: 29, lastCheckinDay: yesterday, bestStreak: 29 })
+            compare(w.streak, 29, "grace day: a 29-run ending yesterday still counts")
+            w.celebrateMsg = ""
+            w.toggleToday()   // check in today → 30
+            compare(w.streak, 30, "crossed into a 30-day run")
+            compare(w.celebrateMsg, "🏆 30-day milestone!", "30-day milestone celebration fires")
+        }
+
+        // (c) A gap (last check-in older than the grace day) resets the streak to
+        // 1 on the next check-in, while the best-ever is preserved.
+        function test_gap_resets_streak_to_one() {
+            var w = hHabit.item
+            var d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - 3)
+            var threeAgo = w.key(d)
+            hHabit.storeCtl.patchSettings("test-instance",
+                { checkins: [threeAgo], streak: 20, lastCheckinDay: threeAgo, bestStreak: 20 })
+            compare(w.streak, 0, "a lapsed streak (gap beyond the grace day) reads 0")
+            w.celebrateMsg = ""
+            w.toggleToday()   // check in today after the gap
+            compare(w.streak, 1, "the gap starts a fresh 1-day streak")
+            compare(w.bestStreak, 20, "the best-ever streak is preserved across the gap")
+            compare(w.celebrateMsg, "🔥 1 day!", "no false milestone on the reset")
+        }
+
+        // (d) Checking in when today is already counted is idempotent — it must
+        // not double-increment the stored number.
+        function test_same_day_checkin_is_idempotent() {
+            var w = hHabit.item
+            var today = w.key(new Date())
+            // Defensive state: streak recorded for today, but today's key absent
+            // from the (pruned) array — the check-in branch must still not bump.
+            hHabit.storeCtl.patchSettings("test-instance",
+                { checkins: [], streak: 5, lastCheckinDay: today, bestStreak: 5 })
+            w.toggleToday()   // check-in branch, but today is already the last day
+            compare(w.streak, 5, "re-checking the same day does not double-increment")
+            compare(w.bestStreak, 5, "best-ever unchanged by an idempotent check-in")
+            compare(cfg().streak, 5, "persisted number unchanged")
+        }
+
+        // (e) A legacy config that only has a long `checkins` array (no stored
+        // streak/lastCheckinDay) derives a sensible initial streak and then keeps
+        // maintaining the number forward — no crash, no reset.
+        function test_legacy_config_derives_then_maintains() {
+            var w = hHabit.item
+            // 25-day consecutive run ending today; ONLY the array is stored.
+            hHabit.storeCtl.patchSettings("test-instance", { checkins: consecutiveDays(w, 25, 0) })
+            verify(cfg().streak === undefined, "legacy: no stored streak number yet")
+            compare(w.streak, 25, "legacy streak is derived from the check-in array")
+            // Un-check then re-check today: the number is maintained forward.
+            w.toggleToday()   // uncheck today → 24
+            compare(w.streak, 24, "maintained down to 24 after un-checking today")
+            w.toggleToday()   // recheck today → 25
+            compare(w.streak, 25, "maintained back to 25, no legacy-derivation reset")
+            compare(cfg().streak, 25, "the number is now persisted")
+        }
+    }
+
     // ── store == null guard ────────────────────────────────────────────────
     TestCase {
         name: "HabitNullStore"

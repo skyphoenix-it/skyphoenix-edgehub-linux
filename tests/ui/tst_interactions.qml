@@ -116,7 +116,14 @@ Item {
     TestCase {
         name: "Habit"
         when: windowShown
-        function init() { tryVerify(function () { return hHabit.ready }, 3000) }
+        // Reset the habit instance before each test: toggleToday() now persists a
+        // `streak`/`lastCheckinDay` number, and QtTest runs functions alphabetically,
+        // so without this the check-in test's stored streak leaks into the
+        // legacy-derive tests (which set only `checkins`).
+        function init() {
+            tryVerify(function () { return hHabit.ready }, 3000)
+            hHabit.storeCtl.resetSettings("test-instance", {})
+        }
 
         function test_checkin_toggles_and_streak() {
             var w = hHabit.item

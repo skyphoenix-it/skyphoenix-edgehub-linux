@@ -27,11 +27,19 @@ WidgetChrome {
     // setDate() so a fixed-24h jump can never skip/duplicate a date across a
     // spring-forward / fall-back boundary near midnight.
     function prevDay(d) { var n = new Date(d); n.setHours(12, 0, 0, 0); n.setDate(n.getDate() - 1); return n }
+    // Parse a "yyyy-MM-dd" key into a local-noon Date (mirrors CountdownWidget's
+    // component-wise construction — never `new Date(str)`, which is UTC).
+    function parseKey(k) { var p = String(k).split("-"); return new Date(+p[0], (+p[1]) - 1, +p[2], 12, 0, 0, 0) }
+    // Calendar day immediately before a key, DST-safe.
+    function prevDayKey(k) { return key(prevDay(parseKey(k))) }
     property string todayKey: (w.tick, key(new Date()))
     property bool doneToday: checkins.indexOf(todayKey) >= 0
 
-    // Streak from an arbitrary check-in list (reused for the live value + the
-    // post-check-in value used to drive milestones/best-streak).
+    // Streak from an arbitrary check-in list — used ONLY to (a) derive an initial
+    // streak from a legacy config that predates the stored number, and (b)
+    // recompute after un-checking today. The live streak itself is a persisted
+    // NUMBER (see `streak` / `streakState`), so it is NOT capped by the pruned
+    // heatmap window the way `streakOf(checkins)` alone would be.
     function streakOf(arr) {
         if (!arr.length) return 0
         var set = {}
@@ -42,7 +50,30 @@ WidgetChrome {
         while (set[key(d)]) { n++; d = prevDay(d) }
         return n
     }
-    property int streak: (w.tick, streakOf(checkins))
+    // The maintained streak state, from storage when present, else derived once
+    // from the (possibly pruned) check-in array for BACKWARD COMPAT with old
+    // configs that only ever stored `checkins`. Returns { n, last }.
+    function streakState() {
+        if (cfg.streak !== undefined && cfg.lastCheckinDay !== undefined)
+            return { n: cfg.streak, last: cfg.lastCheckinDay }
+        var arr = checkins
+        if (!arr.length) return { n: 0, last: "" }
+        var sorted = arr.slice().sort()
+        return { n: streakOf(arr), last: sorted[sorted.length - 1] }
+    }
+    // Live current streak: the stored number, valid while its last check-in is
+    // today or yesterday (grace day); a wider gap means the run has lapsed → 0.
+    // Falls back to array-derivation for legacy configs (no stored number).
+    property int streak: {
+        w.tick
+        if (cfg.streak !== undefined && cfg.lastCheckinDay !== undefined) {
+            var last = cfg.lastCheckinDay
+            if (last === todayKey) return cfg.streak
+            if (last === prevDayKey(todayKey)) return cfg.streak   // grace day
+            return 0                                               // lapsed
+        }
+        return streakOf(checkins)                                  // legacy derive
+    }
     // Best streak ever — persisted, but never less than the current run.
     readonly property int bestStreak: Math.max(cfg.bestStreak || 0, streak)
     status: w.expanded ? "" : w.streak + "🔥"
@@ -53,29 +84,48 @@ WidgetChrome {
         return "🔥 " + n + (n === 1 ? " day!" : " days!")
     }
 
-    // Only the most recent HEATMAP_DAYS check-ins are ever shown, and the streak
-    // only walks backwards from today — so persisted storage is bounded to that
-    // window (prevents unbounded growth of the config document over years of use).
+    // Only the most recent HEATMAP_DAYS check-ins are ever shown, so the stored
+    // `checkins` array is pruned to that window (prevents unbounded growth of the
+    // config over years of use). The STREAK is stored independently as a number,
+    // so it is not capped by this pruning — a 40-day run reports 40, not 28.
     readonly property int heatmapDays: 28
     function toggleToday() {
         if (!store) return
         var a = checkins.slice()
         var i = a.indexOf(todayKey)
         var checking = i < 0
-        if (i >= 0) a.splice(i, 1); else a.push(todayKey)
-        // Best-ever and milestone are computed from the FULL run before pruning.
-        var ns = streakOf(a)
         var prevBest = w.bestStreak
         if (checking) {
+            a.push(todayKey)
+            var st = streakState()
+            var ns
+            if (st.last === todayKey) ns = st.n                       // idempotent: already counted today
+            else if (st.last === prevDayKey(todayKey)) ns = st.n + 1  // consecutive → continue the run
+            else ns = 1                                               // gap or first-ever → fresh streak
+            var newBest = Math.max(prevBest, ns)
             // Announce a milestone only when it's a genuinely NEW best; a plain
             // re-check of an already-reached day shows the flame message instead.
             celebrateNow(ns > prevBest ? milestoneMsg(ns)
                                        : "🔥 " + ns + (ns === 1 ? " day!" : " days!"))
+            // Prune the heatmap array (keys sort chronologically as strings), but
+            // persist the full streak NUMBER + the last check-in day.
+            a.sort()
+            if (a.length > heatmapDays) a = a.slice(a.length - heatmapDays)
+            store.patchSettings(instanceId, { checkins: a, streak: ns,
+                                lastCheckinDay: todayKey, bestStreak: newBest })
+        } else {
+            // Un-check today: recompute the maintained number from the shorter
+            // array (best-effort, walks back from today/yesterday); never lower
+            // the best-ever.
+            a.splice(i, 1)
+            var recomputed = streakOf(a)
+            var sorted = a.slice().sort()
+            var newLast = sorted.length ? sorted[sorted.length - 1] : ""
+            a.sort()
+            if (a.length > heatmapDays) a = a.slice(a.length - heatmapDays)
+            store.patchSettings(instanceId, { checkins: a, streak: recomputed,
+                                lastCheckinDay: newLast, bestStreak: prevBest })
         }
-        // Prune to the displayable window (keys sort chronologically as strings).
-        a.sort()
-        if (a.length > heatmapDays) a = a.slice(a.length - heatmapDays)
-        store.patchSettings(instanceId, { checkins: a, bestStreak: Math.max(prevBest, ns) })
     }
 
     // Celebration pop (mirrors FocusWidget) — the check-in dopamine hit.
