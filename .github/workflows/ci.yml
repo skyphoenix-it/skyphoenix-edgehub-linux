@@ -2,9 +2,14 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
-    branches: [main]
+    branches: [main, master]
+
+# Cancel superseded runs on the same ref (e.g. rapid pushes to a PR branch).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
@@ -96,3 +101,124 @@ jobs:
         continue-on-error: true
         with:
           use-quiet-mode: 'yes'
+
+  # --- QML behavior matrix ---
+  qml-test:
+    name: QML Tests + Behavior Matrix
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Qt6 (declarative + qmltestrunner)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qt6-declarative-dev qt6-base-dev
+      - name: Run QML GUI tests (offscreen)
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: ./scripts/run_ui_tests.sh
+      - name: Enforce QML behavior-matrix coverage (>= 95%)
+        run: python3 scripts/qml_coverage.py | tee coverage-qml.txt
+      - name: Upload uncovered-behavior list
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qml-behavior-coverage
+          path: coverage-qml.txt
+
+  # --- C++ tests + coverage capture ---
+  cpp-test:
+    name: C++ Tests + Coverage
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qt6-base-dev qt6-declarative-dev qt6-wayland-dev qt6-tools-dev cmake g++ gcovr
+      - name: Build Rust core (static lib for C++ tests)
+        run: cargo build --release
+        working-directory: core
+      - name: Configure CMake (tests + coverage)
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DXENEON_BUILD_TESTS=ON -DXENEON_COVERAGE=ON
+      - name: Build
+        run: cmake --build build -j$(nproc)
+      - name: Run C++ tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: ctest --test-dir build --output-on-failure
+      - name: Capture C++ coverage (lcov)
+        run: |
+          mkdir -p coverage
+          gcovr --root . \
+            --filter 'app/src/' --filter 'manager/src/' \
+            --exclude '.*main\.cpp' \
+            --lcov coverage/cpp-lcov.info \
+            build
+      - name: Upload C++ lcov
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpp-lcov
+          path: coverage/cpp-lcov.info
+
+  # --- Rust + C++ merged coverage gate ---
+  coverage:
+    name: Coverage Gate (Rust + C++ >= 95%)
+    runs-on: ubuntu-24.04
+    needs: [test, cpp-test]
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+      - name: Install cargo-llvm-cov + lcov + gcovr
+        run: |
+          cargo install cargo-llvm-cov --locked
+          sudo apt-get update
+          sudo apt-get install -y lcov gcovr
+      - name: Rust coverage (lcov + JSON summary)
+        working-directory: core
+        run: |
+          mkdir -p ../coverage
+          cargo llvm-cov --lib --lcov --output-path ../coverage/rust-lcov.info
+          cargo llvm-cov --lib --json --summary-only --output-path ../coverage/rust-summary.json
+      - name: Enforce Rust >= 95%
+        run: |
+          pct=$(python3 -c 'import json; print(json.load(open("coverage/rust-summary.json"))["data"][0]["totals"]["lines"]["percent"])')
+          echo "Rust line coverage: ${pct}%"
+          python3 -c "import sys; sys.exit(0 if float('${pct}') >= 95 else 1)"
+      - name: Download C++ lcov artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: cpp-lcov
+          path: coverage
+      - name: Merge Rust + C++ lcov
+        run: |
+          lcov --add-tracefile coverage/rust-lcov.info \
+               --add-tracefile coverage/cpp-lcov.info \
+               --output-file coverage/merged-lcov.info
+      - name: Enforce merged (Rust + C++) >= 95%
+        run: |
+          pct=$(python3 - <<'PY'
+          total = hit = 0
+          for line in open("coverage/merged-lcov.info"):
+              if line.startswith("DA:"):
+                  p = line[3:].strip().split(",")
+                  if len(p) >= 2:
+                      total += 1
+                      if int(p[1]) > 0:
+                          hit += 1
+          print("%.2f" % (100.0 * hit / total if total else 100.0))
+          PY
+          )
+          echo "Merged (Rust + C++) line coverage: ${pct}%"
+          python3 -c "import sys; sys.exit(0 if float('${pct}') >= 95 else 1)"
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
