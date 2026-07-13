@@ -162,7 +162,12 @@ static void signalHandler(int sig) {
 
 // --- Find target display ---
 
-static QScreen* findTargetScreen(ConfigHandle* config) {
+// Positive identity match ONLY (hash → model → connector → XENEON → resolution).
+// Returns nullptr when nothing matches — NO primary-screen fallback. Used to decide
+// whether a hotplugged screen is genuinely the Edge: the primary fallback must not
+// count as a match there, or plugging in an unrelated (primary) monitor while the
+// Edge is absent would hijack it fullscreen.
+static QScreen* findTargetScreenStrict(ConfigHandle* config) {
     XeneonString targetHash(xeneon_config_get_target_edid_hash(config));
     XeneonString targetModel(xeneon_config_get_target_model(config));
     XeneonString targetConnector(xeneon_config_get_target_connector(config));
@@ -224,6 +229,15 @@ static QScreen* findTargetScreen(ConfigHandle* config) {
         }
     }
 
+    return nullptr;   // no positive match — caller decides on the fallback
+}
+
+// Boot-time placement helper: the positive identity match, else the primary screen
+// as a last resort so the hub still shows somewhere on first run / Edge-absent boot.
+static QScreen* findTargetScreen(ConfigHandle* config) {
+    QScreen* s = findTargetScreenStrict(config);
+    if (s)
+        return s;
     QScreen* primary = QGuiApplication::primaryScreen();
     qWarning() << "No Xeneon Edge detected, falling back to primary screen:"
                << (primary ? primary->name() : QStringLiteral("<none>"));
@@ -519,8 +533,12 @@ int main(int argc, char *argv[]) {
                       windowedMode, pushScreens](QScreen* screen) {
         qInfo() << "Screen added:" << screen->name();
         const bool reconnectEnabled = xeneon_config_get_reconnect(config) == 1;
-        QScreen* newTarget = findTargetScreen(config);
-        if (shouldReconnectToScreen(reconnectEnabled, newTarget == screen) && mainWindow) {
+        // STRICT match (no primary fallback): only migrate onto the hotplugged
+        // screen when it POSITIVELY identifies as the target. Otherwise plugging in
+        // any unrelated (primary) monitor while the Edge is absent would make the hub
+        // hijack it fullscreen and mislabel it as the target.
+        QScreen* newTarget = findTargetScreenStrict(config);
+        if (newTarget && shouldReconnectToScreen(reconnectEnabled, newTarget == screen) && mainWindow) {
             qInfo() << "Hub: target display returned — migrating window to" << screen->name();
             targetScreen = screen;
             const QRect geo = screen->geometry();
