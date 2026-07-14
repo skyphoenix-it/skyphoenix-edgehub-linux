@@ -65,12 +65,14 @@ terminal (closes stray instances first): `pkill -f xeneon-edge; sudo pacman -U
   The single-instance guard + IPC-only ui_state cover the common churn; this is the
   remaining edge. `manager/src/manager_backend.h:setTargetDisplay/setAutostart`.
 
-### One design question for you (left unchanged — your call)
-- **FocusWidget goal bonus/celebration re-fires every session past the daily goal.**
-  With a goal of 4, sessions 5/6/7… each award +50 pts and re-show "🎯 Goal reached!".
-  The code comment says this ("reaching OR exceeding") is intended, so I did NOT change
-  it. If you'd prefer a one-time daily celebration (fire once when `done` crosses the
-  goal), say so and it's a small change in `FocusWidget.advance()`.
+### Resolved: FocusWidget goal bonus now fires once
+- **FocusWidget goal bonus/celebration is now ONE-TIME.** Previously it re-fired every
+  session past the daily goal (`done >= dailyGoal`). Changed to `done === dailyGoal` in
+  `FocusWidget.advance()`, so the +50 bonus + "🎯 Goal reached!" fire only on the session
+  that crosses the goal; later sessions get the ordinary +10. Regression gates:
+  `tst_gen_focus.qml::test_reaching_goal_awards_bonus` (crossing → +60) and
+  `test_goal_bonus_does_not_refire_when_exceeding` (past goal → +10, no re-celebration);
+  `tst_focus.qml::test_reward_points_and_goal_bonus` still green.
 
 ### Prior test-push (PR #1)
 - **On-device**: hub dashboard, Manager, and an expanded widget config all verified

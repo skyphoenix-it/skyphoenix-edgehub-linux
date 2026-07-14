@@ -24,8 +24,9 @@ import QtTest
 //
 // Some assertions encode the INTENDED behaviour and currently FAIL because of
 // real bugs in the widget (skip counting as a completed session, Reset/preset
-// wiping the daily count, custom accent not reaching the content, addFive NaN,
-// >= goal celebration). Those failures are the point — they are left in.
+// wiping the daily count, custom accent not reaching the content, addFive NaN).
+// Those failures are the point — they are left in. (The former ">= goal"
+// re-celebration bug is now fixed: the bonus fires once, on the crossing session.)
 // ─────────────────────────────────────────────────────────────────────────
 Item {
     id: root
@@ -183,15 +184,18 @@ Item {
             compare(cfg().points, 60, "goal session awards +10 and +50 bonus")
             verify(w.celebrateMsg.indexOf("Goal") >= 0, "goal celebration fired")
         }
-        // BUG (low): goal bonus only fires on exact `done === dailyGoal`. After
-        // lowering the goal below the current count, reaching/exceeding it never
-        // re-triggers the bonus even though done >= dailyGoal.
-        function test_goal_bonus_when_exceeding_after_lowered_goal() {
+        // The goal bonus/celebration is ONE-TIME: it fires only on the session
+        // that crosses the goal (done === dailyGoal). A session that merely
+        // exceeds an already-reached goal earns the ordinary +10, no second +50
+        // and no "Goal reached!" re-celebration.
+        function test_goal_bonus_does_not_refire_when_exceeding() {
             var w = hFocus.item
             patch({ phase: "work", day: todayStr(), doneToday: 4, points: 0,
                     dailyGoal: 3, rewardPoints: true, celebrate: true })
-            w.advance(true)   // done becomes 5, which is >= goal 3
-            compare(cfg().points, 60, "reaching/exceeding the goal should still award the +50 bonus")
+            w.celebrateMsg = ""
+            w.advance(true)   // done becomes 5 (already past goal 3) → +10 only
+            compare(cfg().points, 10, "a session past the goal earns +10, not another +50")
+            verify(w.celebrateMsg.indexOf("Goal") < 0, "no goal re-celebration past the goal")
         }
         // rewardPoints=false → no accumulation.
         function test_reward_points_off_stops_accumulation() {

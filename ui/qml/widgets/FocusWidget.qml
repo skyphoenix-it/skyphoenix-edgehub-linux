@@ -116,10 +116,12 @@ WidgetChrome {
             // or celebrate (the `natural` flag was previously dead).
             if (natural) {
                 done = cw + 1
-                // Reward: points per session (+ a bonus for reaching the daily
-                // goal), and a celebration — a small, honest dopamine hit. Fires
-                // on reaching OR exceeding the goal, not only on the exact hit.
-                var hitGoal = (done >= dailyGoal)
+                // Reward: points per session (+ a ONE-TIME bonus for the session
+                // that reaches the daily goal), and a celebration — a small, honest
+                // dopamine hit. The goal bonus/celebration fires only on the session
+                // that CROSSES the goal (done === dailyGoal), not on every session
+                // at/after it; later sessions get the ordinary per-session reward.
+                var hitGoal = (done === dailyGoal)
                 if (rewardPoints) pts += 10 + (hitGoal ? 50 : 0)
                 if (celebrate) celebrateNow(hitGoal ? "🎯 Goal reached!  +50" : "🎉 Nice! Session done")
             }
