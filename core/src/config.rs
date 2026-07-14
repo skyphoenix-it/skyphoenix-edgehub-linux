@@ -281,9 +281,35 @@ pub fn save_config(config: &AppConfig) -> Result<(), ConfigError> {
 
     // Write + flush + fsync so the bytes are durable on disk before the rename;
     // otherwise a crash between rename and writeback can leave a truncated file.
+    //
+    // Mode 0600, set at CREATION (not chmod'd after): ui_state can carry user
+    // secrets — the HTTP/JSON and KPI widgets have a Bearer-token field, and the
+    // calendar takes a secret ICS URL. `File::create` uses 0666 & ~umask, i.e.
+    // 0644 on a default box, leaving those readable by every local user. Creating
+    // the temp file 0600 also closes the window where the token is briefly
+    // world-readable before a post-hoc chmod, and rename() preserves the mode.
     let write_result = (|| -> io::Result<()> {
         use std::io::Write;
+        #[cfg(unix)]
+        let mut f = {
+            use std::os::unix::fs::OpenOptionsExt;
+            fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .mode(0o600)
+                .open(&tmp_path)?
+        };
+        #[cfg(not(unix))]
         let mut f = fs::File::create(&tmp_path)?;
+        // .mode() only applies when the file is CREATED. A stale config.tmp (left
+        // by a SIGKILL between create and rename) would be reopened with whatever
+        // mode it already had, so re-assert it on the handle we hold.
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            f.set_permissions(fs::Permissions::from_mode(0o600))?;
+        }
         f.write_all(contents.as_bytes())?;
         f.sync_all()?;
         Ok(())
@@ -834,6 +860,64 @@ version = 1
         assert!(matches!(err, ConfigError::Io { .. }));
         // The temp file must not be left behind after a failed rename.
         assert!(!config_path().with_extension("tmp").exists());
+
+        std::env::remove_var("XDG_CONFIG_HOME");
+    }
+
+    // --- save_config: the file must never be readable by other local users ---
+
+    // ui_state carries user secrets (the HTTP/JSON + KPI Bearer token, the
+    // calendar's secret ICS URL). File::create() would give 0644 under a default
+    // umask, exposing them to every account on the box.
+    #[cfg(unix)]
+    #[test]
+    fn save_config_writes_owner_only_mode() {
+        use std::os::unix::fs::PermissionsExt;
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        std::env::set_var("XDG_CONFIG_HOME", dir.path());
+
+        let mut cfg = AppConfig::default();
+        cfg.ui_state = Some(r#"{"settings":{"httpjson-1":{"authToken":"secret"}}}"#.to_string());
+        save_config(&cfg).unwrap();
+
+        let mode = fs::metadata(config_path()).unwrap().permissions().mode();
+        assert_eq!(
+            mode & 0o777,
+            0o600,
+            "config.toml must be owner-only (was {:o})",
+            mode & 0o777
+        );
+
+        std::env::remove_var("XDG_CONFIG_HOME");
+    }
+
+    // .mode() only applies at CREATION, so a stale config.tmp left by a SIGKILL
+    // between create and rename would otherwise be reused with its old, loose mode
+    // and rename() would carry that onto config.toml.
+    #[cfg(unix)]
+    #[test]
+    fn save_config_tightens_mode_of_a_stale_temp_file() {
+        use std::os::unix::fs::PermissionsExt;
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        std::env::set_var("XDG_CONFIG_HOME", dir.path());
+
+        let hub = config_dir();
+        fs::create_dir_all(&hub).unwrap();
+        let tmp_path = config_path().with_extension("tmp");
+        fs::write(&tmp_path, "stale").unwrap();
+        fs::set_permissions(&tmp_path, fs::Permissions::from_mode(0o644)).unwrap();
+
+        save_config(&AppConfig::default()).unwrap();
+
+        let mode = fs::metadata(config_path()).unwrap().permissions().mode();
+        assert_eq!(
+            mode & 0o777,
+            0o600,
+            "a stale temp file must not leak a loose mode onto config.toml (was {:o})",
+            mode & 0o777
+        );
 
         std::env::remove_var("XDG_CONFIG_HOME");
     }
