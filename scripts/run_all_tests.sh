@@ -6,6 +6,8 @@
 #   2. QML GUI              : scripts/run_ui_tests.sh (offscreen qmltestrunner)
 #   3. C++ (ctest)         : only if a build dir with tests already exists
 #   4. QML behavior matrix : python3 scripts/qml_coverage.py
+#   5. Runtime E2E         : tests/runtime/run_focus_goal_bonus.sh (needs a hub
+#                            binary; SKIPs if none is built/installed)
 #
 # Exits non-zero if any suite fails. Prints a clear per-suite summary.
 set -euo pipefail
@@ -53,6 +55,23 @@ fi
 
 # 4. QML behavior-matrix coverage gate.
 run_suite "QML behavior matrix (qml_coverage.py)" python3 "$PROJECT_DIR/scripts/qml_coverage.py"
+
+# 5. Runtime E2E — drives the real hub binary. Exit 77 = SKIP (no binary built
+#    or installed); anything else is PASS/FAIL as usual.
+echo ""
+echo "==================================================================="
+echo "==> Runtime E2E (run_focus_goal_bonus.sh)"
+echo "==================================================================="
+names+=("Runtime E2E (focus goal bonus)")
+# `if` guards against `set -e` aborting on a non-zero (fail/skip) exit.
+if bash "$PROJECT_DIR/tests/runtime/run_focus_goal_bonus.sh"; then rt_rc=0; else rt_rc=$?; fi
+if [ "$rt_rc" -eq 0 ]; then
+    results+=("PASS"); echo "--- Runtime E2E: PASS"
+elif [ "$rt_rc" -eq 77 ]; then
+    results+=("SKIP"); echo "--- Runtime E2E: SKIPPED (no hub binary)"
+else
+    results+=("FAIL"); echo "--- Runtime E2E: FAIL"
+fi
 
 # --- Summary ---
 echo ""
