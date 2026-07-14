@@ -66,8 +66,12 @@ add_qt_test(orientation_reopen SOURCES "${APP_SRC}/orientation_sensor.cpp")
 add_executable(smoke_hub tst_smoke_hub.cpp)
 set_target_properties(smoke_hub PROPERTIES AUTOMOC ON)
 target_link_libraries(smoke_hub PRIVATE Qt6::Test Qt6::Core Qt6::Gui)
+# QA_HOOKS_BUILD tells the test whether the binary it launches can honor
+# XENEON_GRAB at all; without the hook the hub never exits and the test would
+# fail on a 30s timeout instead of reporting the real reason. See the QSKIP.
 target_compile_definitions(smoke_hub PRIVATE
-    HUB_BIN="$<TARGET_FILE:xeneon-edge-hub>")
+    HUB_BIN="$<TARGET_FILE:xeneon-edge-hub>"
+    QA_HOOKS_BUILD=$<BOOL:${XENEON_QA_HOOKS}>)
 add_dependencies(smoke_hub xeneon-edge-hub)
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/tmp/smoke_hub/config"
                     "${CMAKE_CURRENT_BINARY_DIR}/tmp/smoke_hub/run")
@@ -80,7 +84,8 @@ add_executable(smoke_manager tst_smoke_manager.cpp)
 set_target_properties(smoke_manager PROPERTIES AUTOMOC ON)
 target_link_libraries(smoke_manager PRIVATE Qt6::Test Qt6::Core Qt6::Gui)
 target_compile_definitions(smoke_manager PRIVATE
-    MGR_BIN="$<TARGET_FILE:xeneon-edge-manager>")
+    MGR_BIN="$<TARGET_FILE:xeneon-edge-manager>"
+    QA_HOOKS_BUILD=$<BOOL:${XENEON_QA_HOOKS}>)
 add_dependencies(smoke_manager xeneon-edge-manager)
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/tmp/smoke_manager/config"
                     "${CMAKE_CURRENT_BINARY_DIR}/tmp/smoke_manager/run")

@@ -15,9 +15,15 @@ command -v "$CTEST" >/dev/null || CTEST="$HOME/.local/bin/ctest"
 COVERAGE_FLAG="-DXENEON_COVERAGE=${XENEON_COVERAGE:-OFF}"
 
 echo "== Configuring ($BUILD_DIR) with C++ tests =="
+# XENEON_QA_HOOKS=ON is REQUIRED for the smoke tests: they drive the real
+# binaries via XENEON_GRAB (render one frame → PNG → exit), and that hook is
+# compiled out by default (product builds must ignore it). Without this the
+# binaries ignore the grab, never exit, and smoke_hub/smoke_manager fail on a
+# 30s timeout. The tests QSKIP rather than hang if it is ever off.
 "$CMAKE" -B "$BUILD_DIR" -S "$REPO_ROOT" \
     -DCMAKE_BUILD_TYPE=Release \
     -DXENEON_BUILD_TESTS=ON \
+    -DXENEON_QA_HOOKS=ON \
     "$COVERAGE_FLAG"
 
 echo "== Building =="

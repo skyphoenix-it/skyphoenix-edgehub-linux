@@ -173,7 +173,10 @@ jobs:
         run: cargo build --release
         working-directory: core
       - name: Configure CMake (tests + coverage)
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DXENEON_BUILD_TESTS=ON -DXENEON_COVERAGE=ON
+        # XENEON_QA_HOOKS=ON is required by the smoke tests, which drive the real
+        # binaries via XENEON_GRAB. It defaults to OFF so product builds ignore
+        # the hook; the "Build" job above covers that default/product config.
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug -DXENEON_BUILD_TESTS=ON -DXENEON_COVERAGE=ON -DXENEON_QA_HOOKS=ON
       - name: Build
         run: cmake --build build -j$(nproc)
       - name: Run C++ tests

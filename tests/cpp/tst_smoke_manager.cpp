@@ -12,6 +12,13 @@ class TstSmokeManager : public QObject {
     Q_OBJECT
 private slots:
     void grabsAndExitsClean() {
+        // See tst_smoke_hub.cpp: XENEON_GRAB is compiled out unless
+        // -DXENEON_QA_HOOKS=ON, so without it the manager never exits and this
+        // test could only time out. Skip with the real reason.
+        if (!QA_HOOKS_BUILD)
+            QSKIP("manager built without XENEON_QA_HOOKS: XENEON_GRAB is compiled out, "
+                  "so it cannot render-and-exit. Configure -DXENEON_QA_HOOKS=ON.");
+
         const QString grab = QDir::tempPath() + "/xeneon-smoke-manager.png";
         QFile::remove(grab);
 
