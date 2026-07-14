@@ -32,8 +32,32 @@ epics in sequence; Sequence-0 (licensing/docs/QA-hook guard) already landed.
     currently use system/time primitives; they gain HTTP/JSON + KPI tiles once **E1** lands.
   - Follow-up noted: first-run wizard welcome still reads "Xeneon Edge Linux Hub" (nominative
     line kept per rebrand decision — revisit if a cleaner descriptor is wanted).
-- **NEXT**: E1 — generic primitive widgets (HTTP/JSON, KPI number) via a `NetHub.qml`
-  egress gate; then E5 wellness widgets, E4 a11y foundation, etc. (see plan §5).
+- **E1 — generic primitive widgets + egress gate — DONE** (`eb552c1`, verified on real Edge).
+  - `ui/qml/widgets/NetHub.qml`: the single egress choke point — the ONLY place a QML
+    `XMLHttpRequest` may be constructed. `request()` enforces offline kill-switch →
+    host allowlist → local-file bypass, counts requests per host (attestation), returns
+    the XHR for abort. Dashboard injects one app-global instance into every net widget
+    (`injectWidget`, keyed on `hasOwnProperty("netHub")`); a per-widget fallback keeps
+    widgets self-contained in tests.
+  - `HttpJsonWidget`: poll URL → dot/bracket JSON path → value/gauge/list, warn/crit
+    threshold colouring, Bearer-token → Authorization header.
+  - `KpiWidget`: one number from HTTP **or a local file** (JSON or bare number, works
+    offline), label/unit/normal+inverted thresholds.
+  - Live poll results are stored EPHEMERAL in shared per-instance settings (`httpVal/
+    httpText/httpErr/httpList/httpAt` added to `DashboardStore._ephemeralKeys`) → no
+    config.toml churn per poll, compact+overlay share one reading.
+  - Egress lint `scripts/check_no_raw_xhr.sh` (wired into run_all_tests as its own suite)
+    fails on any raw XHR outside NetHub; Weather/Calendar/Manager-preview-dialog are
+    grandfathered pending their **E8** migration onto NetHub.
+  - `app/manager main.cpp`: `qputenv("QML_XHR_ALLOW_FILE_READ","1")` so the KPI local-file
+    source works (Qt gates file:// XHR behind it; local read only, opens no network path).
+  - Tests: `tst_nethub` (13), `tst_httpjson_net` (16+schema), `tst_kpi_net` (11+schema);
+    behavior matrix back at 100%. Full suite green. Real-Edge grab showed live GitHub
+    stars/forks + a local-file KPI colouring amber past its threshold.
+- **NEXT** (alpha, plan §5): optionally enrich the "⟶ enrich" presets (developer, homelab,
+  trading-desk, analyst, enterprise) with unconfigured HTTP/KPI tiles now that E1 exists;
+  then E5 wellness widgets, E4 a11y foundation, E6 DST/world clocks, E7 secrets, E8 egress
+  UI + Weather/Calendar migration, E9 enterprise pack.
 
 ## Current state: GREEN — 95%+ coverage across all layers
 
