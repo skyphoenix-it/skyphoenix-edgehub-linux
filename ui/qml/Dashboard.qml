@@ -372,25 +372,17 @@ Item {
                                 scale: tapMA.pressed && !dashboard.editMode ? 0.98 : 1.0
                                 Behavior on scale { NumberAnimation { duration: theme.motionFast; easing.type: Easing.OutCubic } }
 
-                                // Tap on empty tile area to expand (disabled while editing).
-                                // Declared BEFORE the widget Loader so it sits UNDERNEATH it:
-                                // a widget's own controls (MouseAreas on top) handle their taps,
-                                // while taps on inert areas fall through here and open the
-                                // expanded view. Previously this was on top and swallowed every
-                                // tap, making compact controls (Media transport, Break "Done",
-                                // task toggles) dead.
+                                // Body taps NO LONGER open config — only the top-right
+                                // corner button does (see below). This frees the whole
+                                // widget body for the widget's own in-place controls
+                                // (start a timer, log a glass, toggle a task…) so basic
+                                // usability lives on the tile and only "advanced" settings
+                                // require opening the config view. Kept as a disabled
+                                // sibling only so `scale: tapMA.pressed` stays valid.
                                 MouseArea {
                                     id: tapMA
                                     anchors.fill: parent
-                                    enabled: !dashboard.editMode
-                                    onClicked: {
-                                        // Set id BEFORE type: assigning expandedType triggers the
-                                        // (synchronous) overlay load + injectWidget, which reads expandedId.
-                                        // expandedColor is a binding on the tile's own accent — no manual set.
-                                        dashboard.cfgStatus = ""   // don't carry a stale geocode status over
-                                        dashboard.expandedId = cell.modelData.id
-                                        dashboard.expandedType = cell.modelData.type
-                                    }
+                                    enabled: false
                                 }
 
                                 Loader {
@@ -428,15 +420,24 @@ Item {
                                     width: theme.touchSecondary; height: theme.touchSecondary
                                     z: 20
                                     visible: !dashboard.editMode
+                                    Rectangle {
+                                        anchors.fill: parent; anchors.margins: theme.spacingXs
+                                        radius: theme.radiusSm
+                                        color: cfgMA.containsMouse ? Qt.rgba(1, 1, 1, 0.10) : "transparent"
+                                    }
                                     AppIcon {
                                         anchors.right: parent.right; anchors.top: parent.top
                                         anchors.margins: theme.spacingSm
                                         name: "ui-expand"; size: theme.iconSm
-                                        color: theme.textTertiary; opacity: 0.5
+                                        color: theme.textTertiary
+                                        opacity: cfgMA.containsMouse ? 0.95 : 0.55
                                     }
                                     MouseArea {
+                                        id: cfgMA
                                         anchors.fill: parent
                                         enabled: !dashboard.editMode
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
                                         onClicked: {
                                             dashboard.cfgStatus = ""
                                             dashboard.expandedId = cell.modelData.id

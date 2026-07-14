@@ -174,6 +174,16 @@ WidgetChrome {
             text: "✓ " + w.breaksToday + (w.breaksToday === 1 ? " break today" : " breaks today")
             font.pixelSize: 14; color: theme.textSecondary
         }
+        // Compact controls — pause/resume and reset straight from the tile.
+        RowLayout {
+            Layout.alignment: Qt.AlignHCenter; Layout.topMargin: theme.spacingXs
+            visible: !w.expanded && !w.due; spacing: theme.spacingSm
+            PillButton { implicitHeight: 36
+                label: w.running ? "Pause" : "Resume"; glyph: w.running ? "⏸" : "▶"
+                onClicked: w.toggleRun() }
+            PillButton { implicitHeight: 36
+                label: "Reset"; glyph: "⟲"; tint: w.effAccent; onClicked: w.reset() }
+        }
         // Quick acknowledge from the compact tile.
         PillButton { Layout.alignment: Qt.AlignHCenter; visible: !w.expanded && w.due
             label: "Done"; primary: true; tint: w.effAccent; onClicked: w.takeBreak() }

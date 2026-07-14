@@ -251,17 +251,23 @@ ApplicationWindow {
                           : appSettings.chromeTheme === "default" ? "qrc:/manager/branding/sky-color.png"
                           : "qrc:/manager/branding/sky-white.png"
                 }
-                Text { text: "EdgeHub"; color: m.textPrimary; font.pixelSize: 20; font.bold: true }
-                Text { text: "Manager"; color: m.accent; font.pixelSize: 14 }
+                // Brand lockup: big "EdgeHub" wordmark over a small "by SKYPhoenix IT"
+                // maker line. The version moved to the About view.
                 Text {
-                    text: (backend && backend.appVersion ? backend.appVersion() : "?")
-                    color: m.textSecondary; font.pixelSize: 11; font.family: theme.fontMono
-                    Layout.bottomMargin: 12; Layout.fillWidth: true; elide: Text.ElideRight
+                    text: "EdgeHub"; color: m.textPrimary
+                    font.family: theme.fontDisplay; font.pixelSize: 27; font.bold: true
+                    font.letterSpacing: -0.5
+                }
+                Text {
+                    text: "by SKYPhoenix IT"; color: m.textSecondary
+                    font.family: theme.fontMono; font.pixelSize: 11; font.letterSpacing: 0.5
+                    Layout.bottomMargin: 12
                 }
 
                 Repeater {
                     model: [ { l: "Layout", i: "ui-layout" }, { l: "Appearance", i: "ui-palette" },
-                             { l: "Images", i: "ui-image" }, { l: "Display", i: "ui-display" } ]
+                             { l: "Images", i: "ui-image" }, { l: "Display", i: "ui-display" },
+                             { l: "About", i: "ui-settings" } ]
                     delegate: Rectangle {
                         required property int index
                         required property var modelData
@@ -852,6 +858,94 @@ ApplicationWindow {
                             backend.setAutostart(checked)
                             checked = backend.isAutostart()
                         }
+                    }
+                    Item { Layout.preferredHeight: 12 }   // bottom padding
+                }
+              }
+            }
+
+            // ═══ 5. ABOUT ═══
+            Item {
+              ScrollView {
+                id: abScroll
+                anchors.fill: parent; clip: true
+                contentWidth: availableWidth
+                ColumnLayout {
+                    width: abScroll.availableWidth - 48
+                    x: 24; y: 24; spacing: 14
+
+                    Text { text: "About"; color: m.textPrimary; font.pixelSize: 24; font.bold: true }
+
+                    // Brand card: theme-aware logo + wordmark + maker line.
+                    Rectangle {
+                        Layout.fillWidth: true; Layout.topMargin: 4
+                        radius: m.radius; color: m.panel
+                        border.width: 1; border.color: m.border
+                        implicitHeight: aboutBrand.implicitHeight + 40
+                        ColumnLayout {
+                            id: aboutBrand
+                            anchors.left: parent.left; anchors.right: parent.right
+                            anchors.top: parent.top
+                            anchors.margins: 20; spacing: 4
+                            Image {
+                                Layout.preferredWidth: 180; Layout.preferredHeight: 110
+                                Layout.bottomMargin: 6
+                                fillMode: Image.PreserveAspectFit; horizontalAlignment: Image.AlignLeft
+                                smooth: true; asynchronous: true; mipmap: true
+                                source: appSettings.chromeTheme === "light" ? "qrc:/manager/branding/sky-black.png"
+                                      : appSettings.chromeTheme === "default" ? "qrc:/manager/branding/sky-color.png"
+                                      : "qrc:/manager/branding/sky-white.png"
+                            }
+                            Text {
+                                text: "EdgeHub"; color: m.textPrimary
+                                font.family: theme.fontDisplay; font.pixelSize: 34; font.bold: true
+                                font.letterSpacing: -0.5
+                            }
+                            Text {
+                                text: "by SKYPhoenix IT"; color: m.textSecondary
+                                font.family: theme.fontMono; font.pixelSize: 12; font.letterSpacing: 0.5
+                            }
+                        }
+                    }
+
+                    // Version + description.
+                    RowLayout {
+                        Layout.fillWidth: true; Layout.topMargin: 6; spacing: 8
+                        Text { text: "Version:"; color: m.textSecondary; font.pixelSize: 14 }
+                        Text {
+                            text: (backend && backend.appVersion ? backend.appVersion() : "?")
+                            color: m.textPrimary; font.pixelSize: 14; font.family: theme.fontMono
+                            Layout.fillWidth: true; elide: Text.ElideRight
+                        }
+                    }
+                    Text {
+                        text: "A native Linux widget dashboard for your second screen."
+                        color: m.textPrimary; font.pixelSize: 14
+                        Layout.fillWidth: true; wrapMode: Text.WordWrap
+                    }
+
+                    // Links.
+                    RowLayout {
+                        Layout.fillWidth: true; Layout.topMargin: 6; spacing: 8
+                        MButton {
+                            text: "Website"; iconName: "ui-display"
+                            onClicked: Qt.openUrlExternally("https://www.skyphoenix-it.com")
+                        }
+                        MButton {
+                            text: "GitHub"; iconName: "ui-settings"
+                            onClicked: Qt.openUrlExternally("#")
+                        }
+                        Item { Layout.fillWidth: true }
+                    }
+                    Text {
+                        text: "www.skyphoenix-it.com"
+                        color: m.textSecondary; font.pixelSize: 12; font.family: theme.fontMono
+                    }
+
+                    Text {
+                        text: "© 2026 SKYPhoenix IT · Independent product"
+                        color: m.textSecondary; font.pixelSize: 12
+                        Layout.topMargin: 8; Layout.fillWidth: true; wrapMode: Text.WordWrap
                     }
                     Item { Layout.preferredHeight: 12 }   // bottom padding
                 }

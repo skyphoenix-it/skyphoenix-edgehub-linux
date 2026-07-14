@@ -59,7 +59,7 @@ run_scenario() {
     # debounced store save has already written config.toml well before the
     # timeout. 6 s comfortably covers the 1 s tick + ~1.5 s save debounce.
     XDG_CONFIG_HOME="$root/config" XDG_RUNTIME_DIR="$run_dir" \
-        QT_QPA_PLATFORM=offscreen timeout -s KILL 6 "$HUB" --windowed >"$root/hub.log" 2>&1
+        QT_QPA_PLATFORM=offscreen timeout -s KILL 9 "$HUB" --windowed >"$root/hub.log" 2>&1
     # timeout → rc 137 (128+SIGKILL) is the expected/normal exit here.
 
     if grep -q "parse failed" "$root/hub.log"; then

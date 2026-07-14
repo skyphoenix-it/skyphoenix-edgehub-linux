@@ -142,16 +142,16 @@ WidgetChrome {
                         Text { anchors.centerIn: parent; visible: modelData.done; text: "✓"
                             color: "#0D1117"; font.bold: true; font.pixelSize: w.expanded ? 17 : 10 }
                     }
-                    // Only interactive when expanded — in compact a tap must reach the
-                    // host so the whole tile expands (not silently toggle a task).
-                    MouseArea { anchors.fill: parent; enabled: w.expanded; onClicked: w.toggle(modelData.idx) }
+                    // Tapping the box toggles done in BOTH modes — the compact tile
+                    // is now a live control surface (config lives in the corner).
+                    MouseArea { anchors.fill: parent; onClicked: w.toggle(modelData.idx) }
                 }
                 Text {
                     Layout.fillWidth: true; Layout.fillHeight: true; verticalAlignment: Text.AlignVCenter
                     text: modelData.text !== undefined ? modelData.text : ""; elide: Text.ElideRight
                     font.pixelSize: w.expanded ? 18 : 12; font.strikeout: modelData.done
                     color: modelData.done ? theme.textTertiary : theme.textPrimary
-                    MouseArea { anchors.fill: parent; enabled: w.expanded; onClicked: w.toggle(modelData.idx) }
+                    MouseArea { anchors.fill: parent; onClicked: w.toggle(modelData.idx) }
                 }
                 // Remove in a >=44px touch cell.
                 Item {
@@ -173,20 +173,23 @@ WidgetChrome {
             color: theme.textTertiary; font.pixelSize: w.expanded ? 15 : 12
         }
 
+        // Quick add — available in BOTH modes (compact gets a shorter field + a
+        // glyph-only ＋ button so it fits a small tile); both paths call add().
         RowLayout {
-            Layout.fillWidth: true; visible: w.expanded; spacing: theme.spacingSm
+            Layout.fillWidth: true; spacing: theme.spacingSm
             TextField {
                 id: input
                 Layout.fillWidth: true
-                Layout.preferredHeight: theme.touchSecondary
-                placeholderText: "Add a task…"
-                color: theme.textPrimary; font.pixelSize: 16
+                Layout.preferredHeight: w.expanded ? theme.touchSecondary : 40
+                placeholderText: w.expanded ? "Add a task…" : "Add…"
+                color: theme.textPrimary; font.pixelSize: w.expanded ? 16 : 13
                 placeholderTextColor: theme.textTertiary
                 background: Rectangle { radius: theme.radiusSm; color: theme.backgroundColor
                     border.color: input.activeFocus ? w.effAccent : theme.cardBorder; border.width: 1 }
                 onAccepted: { w.add(text); text = "" }
             }
-            PillButton { label: "Add"; glyph: "＋"; primary: true; tint: w.effAccent
+            PillButton { label: w.expanded ? "Add" : ""; glyph: "＋"; primary: true; tint: w.effAccent
+                Layout.preferredHeight: w.expanded ? implicitHeight : 40
                 onClicked: { w.add(input.text); input.text = "" } }
         }
         // Bulk "clear completed" — only when there's something to clear.

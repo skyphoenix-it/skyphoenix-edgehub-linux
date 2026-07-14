@@ -149,4 +149,22 @@ WidgetChrome {
             label: "Shuffle"; glyph: "🔀"; tint: w.effAccent; onClicked: w.shuffle()
         }
     }
+
+    // Compact shuffle — the one useful basic action in the collapsed tile. The
+    // top-right is reserved for config, so it sits bottom-right, clear of the
+    // centred quote text. Reuses the same shuffle() the expanded pill calls.
+    Rectangle {
+        id: shuffleCompact
+        visible: !w.expanded && w.pool.length > 1
+        anchors.right: parent.right; anchors.bottom: parent.bottom
+        anchors.rightMargin: theme.spacingXs; anchors.bottomMargin: theme.spacingXs
+        width: 36; height: 36; radius: width / 2
+        color: Qt.rgba(w.effAccent.r, w.effAccent.g, w.effAccent.b,
+                       shufMA.pressed ? 0.32 : (shufMA.containsMouse ? 0.22 : 0.14))
+        Text { anchors.centerIn: parent; text: "🔀"; font.pixelSize: 16 }
+        MouseArea {
+            id: shufMA; anchors.fill: parent; hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor; onClicked: w.shuffle()
+        }
+    }
 }

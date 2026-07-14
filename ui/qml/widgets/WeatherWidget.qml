@@ -208,4 +208,22 @@ WidgetChrome {
                 onClicked: w.geocode(cityField.text) }
         }
     }
+
+    // Compact refresh — re-fetch the forecast without expanding. Bottom-right
+    // keeps clear of the config affordance (top-right) and the centred temp,
+    // and the collapsed body has no bottom content to overlap. Reuses refresh().
+    Rectangle {
+        id: refreshCompact
+        visible: !w.expanded
+        anchors.right: parent.right; anchors.bottom: parent.bottom
+        anchors.rightMargin: theme.spacingXs; anchors.bottomMargin: theme.spacingXs
+        width: 36; height: 36; radius: width / 2
+        color: Qt.rgba(w.effAccent.r, w.effAccent.g, w.effAccent.b,
+                       refMA.pressed ? 0.32 : (refMA.containsMouse ? 0.22 : 0.14))
+        Text { anchors.centerIn: parent; text: "⟳"; font.pixelSize: 20; color: w.effAccent }
+        MouseArea {
+            id: refMA; anchors.fill: parent; hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor; onClicked: w.refresh()
+        }
+    }
 }

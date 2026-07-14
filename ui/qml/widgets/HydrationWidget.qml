@@ -120,12 +120,21 @@ WidgetChrome {
         Text { Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter
             visible: w.streakDisplay > 1; elide: Text.ElideRight
             text: "🔥 " + w.streakDisplay + "-day streak"; font.pixelSize: 11; color: theme.textTertiary }
-        // Compact "+1" — a bounded target so the rest of the tile still expands
-        // on tap (a full-tile MouseArea here used to swallow the expand gesture).
-        PillButton {
+        // Compact −1 / +1 — bounded touch targets (each ≥44px via PillButton) so
+        // quick logging works right in the tile. Both call the existing set();
+        // the pair stays narrow (~128px) to fit even a 1x1 tile.
+        RowLayout {
             Layout.alignment: Qt.AlignHCenter
-            label: "+1 glass"; glyph: "💧"; primary: true; tint: w.effAccent
-            onClicked: w.set(w.count + 1)
+            spacing: theme.spacingSm
+            PillButton {
+                label: "−"; tint: w.effAccent
+                enabledState: w.count > 0
+                onClicked: w.set(w.count - 1)
+            }
+            PillButton {
+                label: "+1"; glyph: "💧"; primary: true; tint: w.effAccent
+                onClicked: w.set(w.count + 1)
+            }
         }
     }
 

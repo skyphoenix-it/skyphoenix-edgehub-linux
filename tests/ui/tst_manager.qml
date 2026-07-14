@@ -5,7 +5,7 @@ import QtTest
 // COVERS: fn:Manager.onScreensChanged, fn:Manager.pageTiles, fn:Manager.refreshImages, fn:Manager.syncTheme
 //
 // manager/qml/Manager.qml (hosted with a STUBBED `backend`) —
-//   • the 4-tab StackLayout (Layout/Appearance/Images/Display) switches
+//   • the 5-tab StackLayout (Layout/Appearance/Images/Display/About) switches
 //   • pageTiles(): current-page tiles, revision-reactive
 //   • refreshImages(): rebuilds imagesModel from backend.listImages()
 //   • confirmDeleteImage(): sets the confirm message + onConfirm, and the
@@ -112,7 +112,7 @@ Item {
             _theme = findPred(win, function (x) {
                 return x && x.accentPresets !== undefined && typeof x.applyAccent === "function" })
             _nav = findPred(win, function (x) {
-                return x && x.currentIndex !== undefined && x.count === 4 && x.count !== undefined })
+                return x && x.currentIndex !== undefined && x.count === 5 && x.count !== undefined })
             _images = findPred(win, function (x) {
                 return x && x.count !== undefined && typeof x.append === "function"
                        && typeof x.clear === "function" && typeof x.get === "function" })
@@ -120,7 +120,7 @@ Item {
                 return x && x.message !== undefined && ("onConfirm" in x) && typeof x.open === "function" })
             verify(_store, "found store")
             verify(_theme, "found theme")
-            verify(_nav, "found the 4-tab StackLayout")
+            verify(_nav, "found the 5-tab StackLayout")
             verify(_images, "found imagesModel")
             verify(_confirm, "found confirmDialog")
         }
@@ -137,8 +137,8 @@ Item {
 
         // ── tabs ──────────────────────────────────────────────────────────────
         function test_four_tabs_switch() {
-            compare(_nav.count, 4, "Layout / Appearance / Images / Display")
-            for (var i = 0; i < 4; i++) {
+            compare(_nav.count, 5, "Layout / Appearance / Images / Display / About")
+            for (var i = 0; i < 5; i++) {
                 _nav.currentIndex = i
                 compare(_nav.currentIndex, i, "switched to tab " + i)
             }

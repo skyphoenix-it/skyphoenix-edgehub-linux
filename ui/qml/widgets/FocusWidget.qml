@@ -208,7 +208,8 @@ WidgetChrome {
             progressColor: w.phaseColor(); progressColor2: w.phaseColor()
         }
         ColumnLayout {
-            anchors.centerIn: parent; spacing: 0
+            anchors.centerIn: parent; anchors.verticalCenterOffset: -theme.spacingMd
+            spacing: 0
             Text { Layout.alignment: Qt.AlignHCenter; text: w.fmt(w.remaining)
                 font.pixelSize: Math.max(20, Math.min(parent.width * 0.26, 34))
                 font.family: theme.fontMono; font.bold: true
@@ -216,6 +217,21 @@ WidgetChrome {
             Text { Layout.alignment: Qt.AlignHCenter; Layout.maximumWidth: parent.width
                 text: w.phaseLabel(); elide: Text.ElideRight
                 font.pixelSize: 12; color: theme.textSecondary }
+        }
+        // Compact controls — operate the timer straight from the tile (no expand).
+        RowLayout {
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: parent.bottom; anchors.bottomMargin: theme.spacingSm
+            spacing: theme.spacingSm
+            PillButton {
+                implicitHeight: 36
+                label: w.running ? "Pause" : "Start"; glyph: w.running ? "⏸" : "▶"
+                primary: true; tint: w.phaseColor(); onClicked: w.toggle()
+            }
+            PillButton {
+                implicitHeight: 36
+                label: "Skip"; glyph: "⏭"; tint: theme.textSecondary; onClicked: w.skip()
+            }
         }
     }
 
