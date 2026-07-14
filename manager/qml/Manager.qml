@@ -200,7 +200,25 @@ ApplicationWindow {
                 anchors.margins: 16
                 spacing: 8
 
-                Text { text: "Xeneon Edge"; color: m.textPrimary; font.pixelSize: 20; font.bold: true }
+                // SKYPhoenix IT logo. The variant follows the surface it sits on so it
+                // stays legible: white on a dark background, black on a light one, and
+                // the colour lockup on a mid/neutral tone. The Manager's sidebar is
+                // `m.panel` (currently a fixed dark tone → white), but keying off the
+                // real background means it adapts automatically if the chrome is themed.
+                Image {
+                    Layout.preferredWidth: 150; Layout.preferredHeight: 92
+                    Layout.bottomMargin: 4
+                    fillMode: Image.PreserveAspectFit; horizontalAlignment: Image.AlignLeft
+                    smooth: true; asynchronous: true; mipmap: true
+                    source: {
+                        var c = m.panel
+                        var lum = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b
+                        return lum > 0.6 ? "qrc:/manager/branding/sky-black.png"
+                             : lum < 0.3 ? "qrc:/manager/branding/sky-white.png"
+                             : "qrc:/manager/branding/sky-color.png"
+                    }
+                }
+                Text { text: "EdgeHub"; color: m.textPrimary; font.pixelSize: 20; font.bold: true }
                 Text { text: "Manager"; color: m.accent; font.pixelSize: 14 }
                 Text {
                     text: (backend && backend.appVersion ? backend.appVersion() : "?")
