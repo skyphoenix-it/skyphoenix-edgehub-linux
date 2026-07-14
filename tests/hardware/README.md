@@ -51,3 +51,38 @@ It **backs up and restores** `~/.config/xeneon-edge-hub/config.toml` (a live
 - **Physical rotation → auto-rotate**: the sensor is read from `/dev/hidraw5` and the
   pipeline is wired + debounced, but only a person can physically turn the panel.
 - Subjective feel (animation smoothness, readability at arm's length).
+
+---
+
+## `edge_e2e.py` — comprehensive E2E suite (hub + Manager)
+
+The big one. Drives the **real hub on the Edge** and the **Manager**, covering
+"everything", and reports a single pass/fail. Uses an **isolated
+`XDG_CONFIG_HOME`** (keeping the real `XDG_RUNTIME_DIR` for Wayland + the control
+socket), so the live config is never touched — no backup/restore needed.
+
+```sh
+python3 tests/hardware/edge_e2e.py                 # full run (~20–30 min)
+E2E_SOAK_SECONDS=5 python3 tests/hardware/edge_e2e.py   # quick smoke (~2 min)
+```
+
+**Coverage (~199 checks):**
+- **Widget lifecycle** — add / render / no-error / resize (1↔2) / remove for **all
+  22 widget types** (via IPC `setUiState`/`getUiState` + Edge screenshots).
+- **Theming** — every theme, every background style, per-widget accent override,
+  glass/glow, each verified in state + grabbed.
+- **Interaction (synthetic touch)** — compact widget controls (Focus Start/Pause,
+  Hydration ±, Task toggle) verified over IPC; **page-swipe navigation** verified
+  by distinct per-page wallpapers (average-colour distance).
+- **IPC** — malformed/partial/oversized input (no crash), latency p50/p99 over 200
+  round-trips, 20 concurrent connections.
+- **Soak** — sustained **mixed** operations (add/remove/resize/theme/background/
+  multi-page + periodic swipes) for `E2E_SOAK_SECONDS` (default 1200 → ~20 min);
+  the bulk of the runtime and the real stability signal.
+- **Manager** — Dark / Light / Default chrome all render with 0 QML errors.
+
+Modules: `e2e_harness.py` (launch/IPC/touch/grab primitives), `e2e_widgets.py`,
+`e2e_theming.py`, `e2e_interaction.py`, orchestrated by `edge_e2e.py`.
+
+The Manager's **drag-reorder** logic (incl. the "name-tag stuck in air" regression)
+is covered deterministically offscreen by `tests/ui/tst_edgeclone_drag.qml`.
