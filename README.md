@@ -24,17 +24,46 @@ The Corsair Xeneon Edge is a 2560×720 portrait secondary touchscreen. EdgeHub g
 
 ## Features
 
-### 22 widgets
+### 15 ready-made screens
+
+You don't start from a blank grid. Pick the screen for what you're doing and it's
+built for you — a real designed layout, not a widget dump:
+
+**Calm Focus** · **Home & Ambient** · **Remote Work** · **Developer** · **Homelab Ops** ·
+**Gaming Cockpit** · **Trading Desk** · **Health & Routine** · **Creator** ·
+**System Monitor** · **Minimal** · **Analyst / Data** · **Student / Study** ·
+**Productivity** · **Enterprise / Locked**
+
+Applying a preset keeps *your* theme and accent — it changes the screen, not your taste.
+
+### 24 widgets
 
 | Category | Widgets |
 |----------|---------|
 | **System** | CPU load & temp, GPU (AMD Radeon utilization & temp), Memory, Network throughput, Disk usage, combined Sensors |
-| **Time & ambient** | Clock, Analog Clock, Moon Phase |
+| **Data** | **HTTP / JSON** (poll any endpoint → pull a value out by path → number, gauge or list), **KPI** (one number that matters, from a URL *or a local file*, with colour-coded thresholds) |
+| **Time & ambient** | Clock (**real IANA time zones — daylight saving included**), Analog Clock, Moon Phase |
 | **Focus & life** | Focus Timer (Pomodoro), Tasks, Right Now, Quick Note, Habit Streak, Hydration, Break Reminder |
 | **Media** | Now Playing (MPRIS — Spotify, browsers, any player) |
 | **Info** | Calendar (subscribe via ICS URL), Weather (Open-Meteo), Countdown, End of Day, Daily Quote |
 
-System metrics come straight from the Rust core / the kernel. Focus, task, note, habit and hydration widgets persist your data locally. Calendar and Weather only reach the network for the feeds you configure.
+System metrics come straight from the Rust core / the kernel. Focus, task, note, habit and hydration widgets persist your data locally.
+
+### Connect your own data — without giving anything away
+
+The **HTTP/JSON** and **KPI** widgets point at *your* endpoint: a CI status, a queue
+depth, a P&L number, a Prometheus query, a file on disk. No integration, no account,
+no vendor.
+
+Credentials are **references, not secrets**: write `${env:MY_TOKEN}` or
+`file:/run/secrets/token` and the value is read at request time and **never written
+to your config**. A token typed in directly still works, and the app tells you it's
+in plain text.
+
+Every request — from any widget — goes through **one audited gate**. That's what makes
+the privacy claim checkable rather than a promise: there is exactly one place in the
+code that can open a socket, a global offline switch that covers all of it, and a
+lint that fails the build if anything tries to go around it.
 
 ### Make it yours
 
@@ -61,7 +90,16 @@ A themeable desktop app (Dark / Light / Default chrome) that mirrors your Edge i
 
 - **~3.5% CPU** worst-case with every animation running; **~0.5%** with reduced motion.
 - **~378 MB** RSS steady-state.
-- **No telemetry. No account. Local-only configuration** (plain TOML on your machine). EdgeHub only touches the network for widgets you explicitly configure — e.g. Weather (Open-Meteo) or a Calendar (ICS) feed.
+- **No telemetry. No account. Local-only configuration** (plain TOML on your machine, written owner-only `0600`). EdgeHub only touches the network for widgets you explicitly configure — e.g. Weather (Open-Meteo) or a Calendar (ICS) feed.
+- **The no-telemetry claim is enforced, not asserted.** Every outbound request in the
+  app goes through a single gate (`NetHub`): it is the only place a network call can
+  be constructed, it owns a global offline kill switch and a host allowlist, and it
+  counts what was sent per host. A build-time lint fails if any code tries to bypass
+  it, and a scheme the gate cannot classify is refused rather than guessed at.
+- **The Rust core has no network stack at all** — "no outbound" is true by
+  construction there, not by policy.
+- **Secrets stay out of your config.** Credentials are stored as references
+  (`${env:VAR}`, `file:/path`) and resolved only when a request is made.
 
 ---
 
