@@ -2,8 +2,10 @@ import QtQuick
 import QtTest
 import "../../ui/qml" as App
 
-// COVERS: regression — the floating drag "name-tag" must NOT stay stuck after a
+// REGRESSION: the floating drag "name-tag" must NOT stay stuck after a
 // drag-and-drop reorder in manager/qml/EdgeClone.qml.
+// (Prose, not a COVERS claim — the behavior ids this file credits are the
+// fn:EdgeClone.* ones asserted below.)
 //
 // The bug: on drop, EdgeClone reset its drag state (clone.dragIndex = -1) AFTER
 // calling store.moveTile(...). moveTile reorders the model, which can destroy the

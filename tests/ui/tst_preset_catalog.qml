@@ -14,6 +14,7 @@ Item {
 
     App.PresetCatalog { id: presets }
     App.WidgetCatalog { id: catalog }
+    App.WidgetConfigSchema { id: sc }
     App.DashboardStore { id: store }
     // The store resolves `configBridge` by unqualified name via the scope chain;
     // null = no persistence bridge (pure in-memory), so nothing touches disk.
@@ -54,6 +55,63 @@ Item {
                                p.id + ": tile type '" + tiles[t].type + "' exists in WidgetCatalog")
                     }
                 }
+            }
+        }
+
+        // A preset ships per-tile `settings`, but nothing at runtime validates them:
+        // an unknown key is silently ignored, so a typo (`listmax`) would ship a tile
+        // that quietly doesn't do what the preset intends. Every key must therefore be
+        // either universal (honoured by WidgetChrome for ANY widget, see
+        // Dashboard.injectWidget) or declared in that type's config schema.
+        function test_preset_settings_keys_are_real() {
+            var universal = { "title": 1, "accent": 1, "cardBackdrop": 1 }
+            var list = presets.list()
+            for (var i = 0; i < list.length; i++) {
+                var p = list[i]
+                for (var pg = 0; pg < p.pages.length; pg++) {
+                    var tiles = p.pages[pg].tiles
+                    for (var t = 0; t < tiles.length; t++) {
+                        if (!tiles[t].settings) continue
+                        var known = ({})
+                        var schema = sc.schemaFor(tiles[t].type)
+                        for (var s = 0; s < schema.sections.length; s++) {
+                            var fields = schema.sections[s].fields || []
+                            for (var f = 0; f < fields.length; f++) known[fields[f].key] = 1
+                        }
+                        for (var k in tiles[t].settings)
+                            verify(universal[k] === 1 || known[k] === 1,
+                                   p.id + ": tile '" + tiles[t].type + "' setting '" + k +
+                                   "' is a real config key (universal or in its schema)")
+                    }
+                }
+            }
+        }
+
+        // The data-connected presets are the payoff of the primitive widgets (E1):
+        // they must actually carry a data tile, and must ship it UNCONFIGURED — the
+        // endpoint is the user's to supply, so a preset must never guess a URL (which
+        // would poll a stranger's host on first run). A blank url/filePath also means
+        // the widget's own polling stays off until the user connects it.
+        function test_data_presets_ship_labelled_but_unconnected_tiles() {
+            var expected = ["developer", "homelab", "trading-desk", "analyst", "enterprise"]
+            for (var i = 0; i < expected.length; i++) {
+                var p = presets.def(expected[i])
+                verify(p !== null, expected[i] + " exists")
+                var dataTiles = 0
+                for (var pg = 0; pg < p.pages.length; pg++) {
+                    var tiles = p.pages[pg].tiles
+                    for (var t = 0; t < tiles.length; t++) {
+                        var ty = tiles[t].type
+                        if (ty !== "httpjson" && ty !== "kpi") continue
+                        dataTiles++
+                        var st = tiles[t].settings || {}
+                        verify(st.title && st.title.length,
+                               expected[i] + ": data tile is labelled (a named slot, not a bare 'HTTP / JSON')")
+                        verify(!st.url, expected[i] + ": data tile ships with NO url — the user connects it")
+                        verify(!st.filePath, expected[i] + ": data tile ships with NO filePath")
+                    }
+                }
+                verify(dataTiles >= 1, expected[i] + " carries at least one HTTP/JSON or KPI tile")
             }
         }
 

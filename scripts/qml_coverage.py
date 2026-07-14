@@ -40,6 +40,7 @@ FUNCTION_SOURCES = [
     "ui/qml/Dashboard.qml",
     "ui/qml/main.qml",
     "ui/qml/DashboardStore.qml",
+    "ui/qml/PresetCatalog.qml",
     "manager/qml/Manager.qml",
     "manager/qml/EdgeClone.qml",
 ]

@@ -11,7 +11,9 @@
         <file alias="focus.svg">icons/focus.svg</file>
         <file alias="gpu.svg">icons/gpu.svg</file>
         <file alias="habit.svg">icons/habit.svg</file>
+        <file alias="httpjson.svg">icons/httpjson.svg</file>
         <file alias="hydration.svg">icons/hydration.svg</file>
+        <file alias="kpi.svg">icons/kpi.svg</file>
         <file alias="media.svg">icons/media.svg</file>
         <file alias="moon.svg">icons/moon.svg</file>
         <file alias="net.svg">icons/net.svg</file>
