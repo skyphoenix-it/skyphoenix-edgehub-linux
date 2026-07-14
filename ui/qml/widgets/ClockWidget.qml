@@ -18,7 +18,7 @@ WidgetChrome {
     // row already spells out the weekday (avoid duplicating it). Short style
     // ("dd/MM") carries no weekday, so the header still supplies it.
     status: (w.showDate && w.dateStyle !== "full")
-            ? (w.tick, Qt.formatDate(w.zonedNow(), "ddd"))
+            ? (w.tick, w.formatAt("ddd"))
             : ""
 
     // Live per-instance config (see WidgetConfigSchema "clock"). Clone-on-read
@@ -43,119 +43,69 @@ WidgetChrome {
     readonly property string zoneLabel: cfg.zoneLabel || ""
 
     // ── IANA zones ───────────────────────────────────────────────────────────
-    // Qt's V4 engine ships no ECMA-402, so there is no `Intl` to ask: probing it
-    // on 6.11 (AHEAD of CI's 6.7, and engines gain features rather than lose them)
-    // gives `typeof Intl === "undefined"`. Worse, Date.toLocaleString SILENTLY
-    // IGNORES a { timeZone } option and returns local time — a wrong clock with no
-    // error. QTimeZone has no QML binding either, so the DST rules are carried here.
-    //
-    // `std` is the standard (winter) offset in hours; `rule` names the DST law,
-    // which is +1h while in force. Encoding laws (not a per-year transition
-    // table) is what keeps this correct in future years without a data refresh.
-    // Valid for the current rules: US post-2007, EU post-1996, São Paulo post-2019
-    // (DST abolished). Historical instants before those reforms are not modelled —
-    // a clock shows present time, so this is a deliberate limit.
-    readonly property var zoneTable: ({
-        "UTC":                   { std:   0,   rule: "none", city: "UTC" },
-        "Pacific/Honolulu":      { std: -10,   rule: "none", city: "Honolulu" },
-        "America/Los_Angeles":   { std:  -8,   rule: "us",   city: "Los Angeles" },
-        "America/Denver":        { std:  -7,   rule: "us",   city: "Denver" },
-        "America/Chicago":       { std:  -6,   rule: "us",   city: "Chicago" },
-        "America/New_York":      { std:  -5,   rule: "us",   city: "New York" },
-        "America/Sao_Paulo":     { std:  -3,   rule: "none", city: "São Paulo" },
-        "Europe/London":         { std:   0,   rule: "eu",   city: "London" },
-        "Europe/Paris":          { std:   1,   rule: "eu",   city: "Paris" },
-        "Europe/Berlin":         { std:   1,   rule: "eu",   city: "Berlin" },
-        "Europe/Athens":         { std:   2,   rule: "eu",   city: "Athens" },
-        "Africa/Johannesburg":   { std:   2,   rule: "none", city: "Johannesburg" },
-        "Europe/Moscow":         { std:   3,   rule: "none", city: "Moscow" },
-        "Asia/Dubai":            { std:   4,   rule: "none", city: "Dubai" },
-        "Asia/Kolkata":          { std:   5.5, rule: "none", city: "Mumbai" },
-        "Asia/Singapore":        { std:   8,   rule: "none", city: "Singapore" },
-        "Asia/Hong_Kong":        { std:   8,   rule: "none", city: "Hong Kong" },
-        "Asia/Tokyo":            { std:   9,   rule: "none", city: "Tokyo" },
-        "Australia/Sydney":      { std:  10,   rule: "au",   city: "Sydney" },
-        "Pacific/Auckland":      { std:  12,   rule: "nz",   city: "Auckland" }
-    })
+    // Resolved by the C++ TimeZoneBridge (app/src/timezone_bridge.h), injected as
+    // `timeZones`. QML cannot do this itself and the near-misses are traps: Qt's V4
+    // engine has NO `Intl` (probed on 6.11, which is ahead of CI's 6.7), and
+    // Date.toLocaleString SILENTLY IGNORES a { timeZone } option, returning local
+    // time — a wrong clock with no error. The bridge is backed by the OS tzdata, so
+    // every IANA zone works and the rules stay correct through a tzdata update; a
+    // hand-written rule table would cover only listed zones and go quietly wrong the
+    // day a country changes its law.
+    property var timeZones: null
+    function _tz() { return w.timeZones ? w.timeZones : (typeof timeZones !== "undefined" ? timeZones : null) }
 
-    // UTC ms of the nth (1-based) Sunday of month `m`, 00:00 UTC.
-    function _nthSundayUtc(y, m, n) {
-        var first = new Date(Date.UTC(y, m, 1))
-        return Date.UTC(y, m, 1 + (7 - first.getUTCDay()) % 7 + (n - 1) * 7)
+    // True when a real zone is picked AND resolvable here. A zoneId from a newer
+    // build (or a tzdata this box lacks) is NOT resolvable, and must fall back to
+    // the user's stored offset rather than render a confidently wrong time.
+    function zoneResolvable() {
+        var tz = w._tz()
+        return !!(tz && w.zoneId.length && tz.isValid(w.zoneId))
     }
-    // UTC ms of the last Sunday of month `m`, 00:00 UTC.
-    function _lastSundayUtc(y, m) {
-        var last = new Date(Date.UTC(y, m + 1, 0))
-        return Date.UTC(y, m, last.getUTCDate() - last.getUTCDay())
-    }
-    // Is DST in force at UTC instant `t` (ms)? Each law's switchover is defined in
-    // LOCAL wall time, so it converts to UTC by subtracting the offset in force
-    // just before the switch — standard when springing forward, DST when falling
-    // back. Southern rules (au/nz) straddle New Year, hence the OR.
-    function _isDst(rule, std, t) {
-        var y = new Date(t).getUTCFullYear(), start, end
-        switch (rule) {
-        case "us": // 2nd Sun Mar 02:00 std → 1st Sun Nov 02:00 dst
-            start = w._nthSundayUtc(y, 2, 2) + (2 - std) * 3600000
-            end   = w._nthSundayUtc(y, 10, 1) + (2 - (std + 1)) * 3600000
-            return t >= start && t < end
-        case "eu": // last Sun Mar → last Sun Oct, both at 01:00 UTC everywhere
-            start = w._lastSundayUtc(y, 2) + 3600000
-            end   = w._lastSundayUtc(y, 9) + 3600000
-            return t >= start && t < end
-        case "au": // 1st Sun Oct 02:00 std → 1st Sun Apr 03:00 dst
-            start = w._nthSundayUtc(y, 9, 1) + (2 - std) * 3600000
-            end   = w._nthSundayUtc(y, 3, 1) + (3 - (std + 1)) * 3600000
-            return t >= start || t < end
-        case "nz": // last Sun Sep 02:00 std → 1st Sun Apr 03:00 dst
-            start = w._lastSundayUtc(y, 8) + (2 - std) * 3600000
-            end   = w._nthSundayUtc(y, 3, 1) + (3 - (std + 1)) * 3600000
-            return t >= start || t < end
-        }
-        return false
-    }
+
     // The zone's UTC offset in hours at instant `at`, or undefined if unknown.
-    // hasOwnProperty-guarded: zoneId is user/file-supplied text, and a bare lookup
-    // of e.g. "constructor" would hit Object.prototype and yield a NaN offset.
     function zoneOffsetAt(zoneId, at) {
-        if (!zoneId || !w.zoneTable.hasOwnProperty(zoneId)) return undefined
-        var z = w.zoneTable[zoneId]
-        return z.std + (w._isDst(z.rule, z.std, at.getTime()) ? 1 : 0)
+        var tz = w._tz()
+        if (!tz || !zoneId || !tz.isValid(zoneId)) return undefined
+        return tz.offsetSecsAt(zoneId, at.getTime()) / 3600
     }
-    // The offset actually used: the real zone when one is picked, else the legacy
-    // fixed offset (which is also the fallback for a zoneId this build can't map,
-    // so a config from a newer build degrades to the user's offset, not to UTC).
+    // The offset actually used: the real zone when resolvable, else the legacy fixed
+    // offset (also the fallback for an unmappable zoneId — degrade to the user's
+    // offset, never to UTC).
     function effectiveOffsetAt(at) {
         var o = w.zoneOffsetAt(w.zoneId, at)
         return o !== undefined ? o : w.utcOffset
     }
-    // The configured zone's city name, when a real zone is picked.
+    // The configured zone's city, derived from the IANA id ("America/New_York" ->
+    // "New York"). Only a display fallback: zoneLabel wins when the user set one.
     function zoneCity() {
-        return w.zoneTable.hasOwnProperty(w.zoneId) ? w.zoneTable[w.zoneId].city : ""
+        if (!w.zoneResolvable()) return ""
+        var seg = w.zoneId.split("/")
+        return seg[seg.length - 1].replace(/_/g, " ")
     }
 
     // The local zone's own UTC offset in ms at instant `ms`.
     function _localOffsetMs(ms) { return -new Date(ms).getTimezoneOffset() * 60000 }
 
-    // The time in the configured zone at instant `at` (local unless customZone).
-    // Shifts the instant so the LOCAL-zone formatters print the target's wall clock.
-    // The shift is resolved TWICE: Qt renders the shifted instant with whatever
-    // offset the local zone has *there*, so when the shift jumps across the local
-    // zone's own DST switch, cancelling with the offset at `at` leaves the tile an
-    // hour out (e.g. a Berlin desk showing Tokyo around Berlin's March change).
-    // Re-cancelling with the offset actually in force at the shifted instant is
-    // what makes the printed wall clock the target's in every local zone.
-    // Measured over 2026 (6 zones x hourly) this cuts wrong hours from 77-121/yr to
-    // 5-6/yr on a DST-observing host. The remainder is irreducible here: they are the
-    // instants whose target wall clock falls inside the LOCAL zone's spring-forward
-    // gap — an hour that does not exist locally, so no local Date can render it, and
-    // Qt only ever formats in local time. Hand-rolling the formatting would trade
-    // Qt's locale-aware date strings for ~1 hour a year, so it is left as is.
+    // LEGACY path only: shift the instant so local formatters print the target's
+    // wall clock. Used when no real zone is resolvable (stored utcOffset, no bridge).
+    // Resolved twice because the shift can cross the HOST's own DST switch, which
+    // would otherwise leave the tile an hour out. Even so it cannot represent an
+    // instant whose target wall clock lands in the host's spring-forward gap — which
+    // is precisely why the zone path formats in C++ instead and has no such gap.
     function zonedAt(at) {
         if (!w.customZone) return at
         var t = at.getTime(), target = w.effectiveOffsetAt(at) * 3600000
         var shifted = t - w._localOffsetMs(t) + target
         return new Date(t - w._localOffsetMs(shifted) + target)
+    }
+
+    // Format `at` in the configured zone using a Qt date/time format spec.
+    // The zone path never builds a local Date, so the host's DST gap cannot bite.
+    function formatAt(fmt, at) {
+        at = at || new Date()
+        if (!w.customZone) return Qt.formatDateTime(at, fmt)
+        if (w.zoneResolvable()) return w._tz().format(w.zoneId, at.getTime(), fmt)
+        return Qt.formatDateTime(w.zonedAt(at), fmt)
     }
     function zonedNow() { return w.zonedAt(new Date()) }
 
@@ -203,7 +153,7 @@ WidgetChrome {
         Text {
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignHCenter
-            text: (w.tick, Qt.formatTime(w.zonedNow(), w.timeFmt))
+            text: (w.tick, w.formatAt(w.timeFmt))
             font.pixelSize: w.expanded ? 168 : Math.max(30, Math.min(w.width * 0.24, 74))
             fontSizeMode: Text.HorizontalFit; minimumPixelSize: 12
             elide: Text.ElideRight
@@ -212,7 +162,7 @@ WidgetChrome {
         Text {
             Layout.fillWidth: true; visible: w.showDate
             horizontalAlignment: Text.AlignHCenter
-            text: (w.tick, Qt.formatDate(w.zonedNow(), w.dateFmt))
+            text: (w.tick, w.formatAt(w.dateFmt))
             font.pixelSize: w.expanded ? 26 : 13; color: theme.textSecondary
             fontSizeMode: Text.HorizontalFit; minimumPixelSize: 9
             elide: Text.ElideRight

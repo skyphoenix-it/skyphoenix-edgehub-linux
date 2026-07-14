@@ -58,176 +58,121 @@ Item {
         // The bug this epic exists for: a fixed offset cannot follow daylight saving,
         // so a "New York" clock built from utcOffset:-5 is an hour wrong for ~8 months.
         // A real zone must report DIFFERENT offsets in winter and summer.
-        function test_dst_zone_offset_follows_the_season() {
-            var w = h.item
-            var jan = new Date(Date.UTC(2026, 0, 15, 12, 0, 0))
-            var jul = new Date(Date.UTC(2026, 6, 15, 12, 0, 0))
-
-            compare(w.zoneOffsetAt("America/New_York", jan), -5, "New York is UTC-5 in January (EST)")
-            compare(w.zoneOffsetAt("America/New_York", jul), -4, "New York is UTC-4 in July (EDT)")
-            verify(w.zoneOffsetAt("America/New_York", jan) !== w.zoneOffsetAt("America/New_York", jul),
-                   "a DST zone's offset is not constant across the year")
-
-            compare(w.zoneOffsetAt("Europe/London", jan), 0, "London is UTC+0 in January (GMT)")
-            compare(w.zoneOffsetAt("Europe/London", jul), 1, "London is UTC+1 in July (BST)")
-
-            // Southern hemisphere: DST is INVERTED — summer is January.
-            compare(w.zoneOffsetAt("Australia/Sydney", jan), 11, "Sydney is UTC+11 in January (AEDT)")
-            compare(w.zoneOffsetAt("Australia/Sydney", jul), 10, "Sydney is UTC+10 in July (AEST)")
-            compare(w.zoneOffsetAt("Pacific/Auckland", jan), 13, "Auckland is UTC+13 in January (NZDT)")
-            compare(w.zoneOffsetAt("Pacific/Auckland", jul), 12, "Auckland is UTC+12 in July (NZST)")
-
-            // Zones with no DST law must stay put across the same instants.
-            compare(w.zoneOffsetAt("Asia/Tokyo", jan), 9, "Tokyo has no DST")
-            compare(w.zoneOffsetAt("Asia/Tokyo", jul), 9, "Tokyo has no DST")
-            compare(w.zoneOffsetAt("Asia/Kolkata", jan), 5.5, "Mumbai is a half-hour zone, no DST")
-            compare(w.zoneOffsetAt("Asia/Kolkata", jul), 5.5, "Mumbai is a half-hour zone, no DST")
-        }
-
-        // The switchover must land on the exact tzdata instant, not merely somewhere
-        // in the right month — an off-by-one-week rule is invisible to a season test.
-        // US law: 2nd Sunday March 02:00 local → 1st Sunday November 02:00 local.
-        function test_dst_transition_instants_are_exact() {
-            var w = h.item
-            var z = "America/New_York"
-            compare(w.zoneOffsetAt(z, new Date(Date.UTC(2026, 2, 8, 6, 59, 59))), -5, "still EST one second before spring-forward")
-            compare(w.zoneOffsetAt(z, new Date(Date.UTC(2026, 2, 8, 7, 0, 0))), -4, "EDT exactly at spring-forward (07:00 UTC)")
-            compare(w.zoneOffsetAt(z, new Date(Date.UTC(2026, 10, 1, 5, 59, 59))), -4, "still EDT one second before fall-back")
-            compare(w.zoneOffsetAt(z, new Date(Date.UTC(2026, 10, 1, 6, 0, 0))), -5, "EST exactly at fall-back (06:00 UTC)")
-            // The rule is a law, not a 2026 lookup: a different year moves the date.
-            compare(w.zoneOffsetAt(z, new Date(Date.UTC(2027, 2, 14, 6, 59, 59))), -5, "2027 spring-forward is a week later (Mar 14)")
-            compare(w.zoneOffsetAt(z, new Date(Date.UTC(2027, 2, 14, 7, 0, 0))), -4, "2027 spring-forward at 07:00 UTC")
-            // EU law differs from US: last Sunday, and at 01:00 UTC everywhere.
-            compare(w.zoneOffsetAt("Europe/Berlin", new Date(Date.UTC(2026, 2, 29, 0, 59, 59))), 1, "Berlin CET until 01:00 UTC")
-            compare(w.zoneOffsetAt("Europe/Berlin", new Date(Date.UTC(2026, 2, 29, 1, 0, 0))), 2, "Berlin CEST at 01:00 UTC, last Sunday March")
-        }
-
-        // A saved config predates zoneId, so it carries ONLY customZone/utcOffset.
-        // It must keep meaning exactly what it meant: a fixed offset.
-        function test_legacy_fixed_offset_config_still_honoured() {
-            var w = h.item
-            set("customZone", true)
-            set("utcOffset", 5.5)
-            compare(w.zoneId, "", "a legacy config has no zoneId")
-            var jan = new Date(Date.UTC(2026, 0, 15, 12, 0, 0))
-            var jul = new Date(Date.UTC(2026, 6, 15, 12, 0, 0))
-            compare(w.effectiveOffsetAt(jan), 5.5, "legacy offset honoured, not reinterpreted")
-            compare(w.effectiveOffsetAt(jul), 5.5, "a fixed offset stays fixed all year (the old contract)")
-        }
-
-        // A picked zone must WIN over any stale utcOffset left in the same config.
-        function test_zone_id_overrides_the_legacy_offset() {
-            var w = h.item
-            set("customZone", true)
-            set("utcOffset", -5)
-            set("zoneId", "America/New_York")
-            compare(w.zoneId, "America/New_York", "zoneId is read from config")
-            compare(w.effectiveOffsetAt(new Date(Date.UTC(2026, 6, 15, 12, 0, 0))), -4,
-                    "the real zone's summer offset wins over the stale -5")
-        }
-
-        // A zone this build cannot map (a newer build's config) must fall back to the
-        // user's own offset rather than silently snapping the clock to UTC.
-        function test_unknown_zone_falls_back_to_the_offset() {
-            var w = h.item
-            set("customZone", true)
-            set("utcOffset", 3)
-            set("zoneId", "Mars/Olympus_Mons")
-            compare(w.zoneOffsetAt("Mars/Olympus_Mons", new Date(Date.UTC(2026, 0, 15))), undefined, "unknown zone has no offset")
-            compare(w.effectiveOffsetAt(new Date(Date.UTC(2026, 0, 15))), 3, "falls back to the configured offset")
-        }
-
-        // Every city offered in the config form must be a zone the widget can map,
-        // otherwise picking it would silently fall back to the fixed offset.
-        function test_every_schema_zone_is_known_to_the_widget() {
-            var w = h.item
-            var schema = sc.schemaFor("clock")
-            var field = null
-            for (var s = 0; s < schema.sections.length; s++) {
-                var fields = schema.sections[s].fields || []
-                for (var f = 0; f < fields.length; f++)
-                    if (fields[f].key === "zoneId") field = fields[f]
-            }
-            verify(field !== null, "the clock schema offers a zoneId field")
-            verify(field.options.length > 1, "it offers cities, not just the fixed-offset entry")
-            for (var i = 0; i < field.options.length; i++) {
-                var v = field.options[i].value
-                if (v === "") continue
-                verify(w.zoneTable.hasOwnProperty(v), "schema city '" + v + "' exists in the widget's zone table")
-            }
-        }
-
-        // The wall clock shown must actually be the zone's, not just the offset maths.
-        function test_zoned_time_renders_the_target_wall_clock() {
-            var w = h.item
-            set("customZone", true)
-            set("zoneId", "America/New_York")
-            // 2026-07-15 16:30 UTC is 12:30 in New York (EDT, UTC-4).
-            var t = new Date(Date.UTC(2026, 6, 15, 16, 30, 0))
-            compare(Qt.formatTime(w.zonedAt(t), "HH:mm"), "12:30", "renders New York's wall clock in July")
-            // The same instant in January (16:30 UTC) is 11:30 EST — one hour earlier.
-            var winter = new Date(Date.UTC(2026, 0, 15, 16, 30, 0))
-            compare(Qt.formatTime(w.zonedAt(winter), "HH:mm"), "11:30", "and its winter wall clock")
-            // Local mode is untouched by any of this.
-            set("customZone", false)
-            compare(w.zonedAt(t).getTime(), t.getTime(), "local mode returns the instant unchanged")
-        }
-
-        // Rendering shifts the instant and lets Qt format it in LOCAL time, so the
-        // shift can jump across the HOST's own DST switch and print an hour out.
-        // Asserted against the host's real transitions, whatever zone CI runs in:
-        // the wall clock must be the target's at every hour around each local switch.
-        function test_rendering_survives_the_hosts_own_dst_switch() {
-            var w = h.item
-            set("customZone", true)
-            set("zoneId", "Asia/Tokyo") // always UTC+9, so any error is the host's doing
-            function localOffMs(ms) { return -new Date(ms).getTimezoneOffset() * 60000 }
-            // The host's own 2026 transitions, discovered from its offset.
-            var switches = []
-            for (var t = Date.UTC(2026, 0, 1); t < Date.UTC(2027, 0, 1); t += 3600000)
-                if (localOffMs(t) !== localOffMs(t - 3600000)) switches.push(t)
-            // A UTC host has no switches; the July probe then covers the flat case.
-            var probes = switches.concat([Date.UTC(2026, 6, 15)])
-            var asserted = 0
-            for (var s = 0; s < probes.length; s++) {
-                for (var k = -14; k <= 14; k++) {
-                    var at = new Date(probes[s] + k * 3600000)
-                    // Wall clock the tile must show, as an "as-if-UTC" epoch.
-                    var wall = at.getTime() + 9 * 3600000
-                    // Skip only a wall time the host CANNOT represent: its spring-forward
-                    // gap. Derived from the host's transitions, never from whether the
-                    // assertion happens to fail (that would hide the very bug this guards).
-                    var inGap = false
-                    for (var g = 0; g < switches.length; g++) {
-                        var before = localOffMs(switches[g] - 1000), after = localOffMs(switches[g])
-                        if (after <= before) continue // fall-back: no gap
-                        var gapStart = switches[g] + before
-                        if (wall >= gapStart && wall < gapStart + (after - before)) inGap = true
-                    }
-                    if (inGap) continue
-                    var exp = new Date(wall)
-                    compare(Qt.formatTime(w.zonedAt(at), "HH:mm"),
-                            ("0" + exp.getUTCHours()).slice(-2) + ":" + ("0" + exp.getUTCMinutes()).slice(-2),
-                            "Tokyo wall clock at " + at.toISOString() + " (near the host's DST switch)")
-                    asserted++
+        // ── Zones ────────────────────────────────────────────────────────────
+        // The widget resolves zones through the injected `timeZones` bridge
+        // (app/src/timezone_bridge.h), because QML cannot do it at all: Qt's V4 has
+        // no Intl, and Date.toLocaleString SILENTLY IGNORES a { timeZone } option.
+        //
+        // So the split of responsibility is: the REAL DST correctness (every zone,
+        // every transition, to the second) is proven against the OS tzdata in
+        // tests/cpp/tst_timezone_bridge.cpp. What is provable HERE is the part QML
+        // owns — that the widget asks the bridge, and that it degrades safely when
+        // the bridge is absent or the zone unknown. A fake keeps that deterministic
+        // and independent of the host's tzdata.
+        function fakeTz(offsetsByZone) {
+            return {
+                isValid: function (z) { return offsetsByZone.hasOwnProperty(z) },
+                offsetSecsAt: function (z, ms) {
+                    var o = offsetsByZone[z]
+                    return Math.round((typeof o === "function" ? o(ms) : o) * 3600)
+                },
+                format: function (z, ms, fmt) {
+                    // Marker, not a real formatter: proves the widget routed the
+                    // request here (and with which zone) rather than formatting a
+                    // locally-shifted Date itself.
+                    return "TZ[" + z + "|" + fmt + "]"
                 }
             }
-            verify(asserted >= 29, "the probe actually asserted (got " + asserted + ")")
         }
 
-        // The label falls back to the picked zone's city, so a tile is never a
-        // nameless foreign time; the offset chip tracks DST.
-        function test_zone_city_and_offset_label() {
+        // The picker offers a curated set of chips (a `segmented` field cannot show
+        // ~600 zones), but every value must be a REAL IANA id: a typo would ship a
+        // city chip that silently falls back to the fixed offset — the exact class
+        // of silent wrongness this epic exists to remove. Shape-checked here; the
+        // ids themselves are resolved against the OS tzdata in the C++ suite.
+        function test_schema_zone_options_are_well_formed_iana_ids() {
+            var secs = sc.schemaFor("clock").sections, f = null
+            for (var i = 0; i < secs.length && !f; i++) {
+                var fields = secs[i].fields || []
+                for (var j = 0; j < fields.length; j++)
+                    if (fields[j].key === "zoneId") { f = fields[j]; break }
+            }
+            verify(f !== null, "the clock schema still exposes a zoneId field")
+            compare(f.dflt, "", "dflt MUST stay empty: a city default would silently " +
+                                "re-point every saved world clock")
+            var opts = f.options || []
+            verify(opts.length > 1, "the picker offers cities, got " + opts.length)
+            for (var k = 0; k < opts.length; k++) {
+                var v = opts[k].value
+                verify(v === "" || v === "UTC" || /^[A-Za-z_]+\/[A-Za-z0-9_+\/-]+$/.test(v),
+                       "zoneId option '" + v + "' is an IANA id (Region/City), not a label")
+                verify(opts[k].label && opts[k].label.length, "option '" + v + "' has a label")
+            }
+        }
+
+        function test_zone_is_resolved_through_the_bridge_not_locally() {
             var w = h.item
-            set("customZone", true)
-            set("zoneId", "Asia/Tokyo")
-            compare(w.zoneCity(), "Tokyo", "city derived from the zone id")
-            compare(w.offsetLabel(new Date(Date.UTC(2026, 0, 15))), "UTC+9", "Tokyo is always UTC+9")
-            set("zoneId", "America/New_York")
-            compare(w.offsetLabel(new Date(Date.UTC(2026, 0, 15))), "UTC-5", "New York reads UTC-5 in winter")
-            compare(w.offsetLabel(new Date(Date.UTC(2026, 6, 15))), "UTC-4", "and UTC-4 in summer")
-            set("zoneId", "Asia/Kolkata")
-            compare(w.offsetLabel(new Date(Date.UTC(2026, 0, 15))), "UTC+5:30", "half-hour zones keep their minutes")
+            w.timeZones = fakeTz({ "America/New_York": -4 })
+            set("customZone", true); set("zoneId", "America/New_York")
+            verify(w.zoneResolvable(), "a zone the bridge knows is resolvable")
+            compare(w.formatAt("HH:mm"), "TZ[America/New_York|HH:mm]",
+                    "formatting is delegated to the bridge, not done on a shifted local Date")
+            w.timeZones = null
+        }
+
+        // The offset must come from the bridge per-instant — that is what makes it
+        // follow DST rather than being a constant.
+        function test_offset_comes_from_the_bridge_per_instant() {
+            var w = h.item
+            var jan = new Date(Date.UTC(2026, 0, 15, 12))
+            var jul = new Date(Date.UTC(2026, 6, 15, 12))
+            // A zone whose offset genuinely varies by instant, as a real DST zone does.
+            w.timeZones = fakeTz({ "America/New_York": function (ms) {
+                return ms < Date.UTC(2026, 3, 1) ? -5 : -4 } })
+            compare(w.zoneOffsetAt("America/New_York", jan), -5, "winter offset read at that instant")
+            compare(w.zoneOffsetAt("America/New_York", jul), -4, "summer offset read at that instant")
+            verify(w.zoneOffsetAt("America/New_York", jan) !== w.zoneOffsetAt("America/New_York", jul),
+                   "the offset is instant-dependent, not a constant")
+            // Half-hour zones must survive the seconds->hours conversion.
+            w.timeZones = fakeTz({ "Asia/Kolkata": 5.5 })
+            compare(w.zoneOffsetAt("Asia/Kolkata", jul), 5.5, "a half-hour zone is not rounded")
+            w.timeZones = null
+        }
+
+        // A zoneId this build/tzdata cannot resolve must fall back to the user's
+        // stored offset — never render a confidently wrong time, and never UTC.
+        function test_unresolvable_zone_falls_back_to_the_stored_offset() {
+            var w = h.item
+            w.timeZones = fakeTz({ "America/New_York": -4 })
+            set("customZone", true); set("zoneId", "Mars/Olympus_Mons"); set("utcOffset", 3)
+            verify(!w.zoneResolvable(), "an unknown zone is not resolvable")
+            compare(w.effectiveOffsetAt(new Date(Date.UTC(2026, 6, 15, 12))), 3,
+                    "falls back to the user's offset, not to UTC")
+            verify(w.formatAt("HH:mm").indexOf("TZ[") < 0, "does not ask the bridge for a zone it rejected")
+            w.timeZones = null
+        }
+
+        // No bridge at all (a standalone host): the legacy fixed-offset path must
+        // still work rather than the clock breaking.
+        function test_without_a_bridge_the_legacy_offset_path_still_works() {
+            var w = h.item
+            w.timeZones = null
+            set("customZone", true); set("zoneId", "America/New_York"); set("utcOffset", -5)
+            verify(!w.zoneResolvable(), "nothing to resolve with")
+            compare(w.effectiveOffsetAt(new Date(Date.UTC(2026, 6, 15, 12))), -5,
+                    "the stored offset drives the clock")
+        }
+
+        function test_zone_city_is_derived_from_the_iana_id() {
+            var w = h.item
+            w.timeZones = fakeTz({ "America/New_York": -4, "Europe/Berlin": 2 })
+            set("customZone", true); set("zoneId", "America/New_York")
+            compare(w.zoneCity(), "New York", "underscores become spaces, region is dropped")
+            set("zoneId", "Europe/Berlin")
+            compare(w.zoneCity(), "Berlin")
+            set("zoneId", "Mars/Olympus_Mons")
+            compare(w.zoneCity(), "", "no city for a zone the bridge rejects")
+            w.timeZones = null
         }
 
         function test_world_clock_offset() {

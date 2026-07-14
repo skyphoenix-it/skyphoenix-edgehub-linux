@@ -304,6 +304,11 @@ Item {
         item.instanceId = id
         item.store = store
         if (item.hasOwnProperty("netHub")) item.netHub = netHub
+        // Real IANA zones (app/src/timezone_bridge.h). Absent in the QML test
+        // harness and in any standalone host, where the clock falls back to its
+        // stored fixed offset rather than rendering a confidently wrong time.
+        if (item.hasOwnProperty("timeZones"))
+            item.timeZones = (typeof timeZones !== "undefined") ? timeZones : null
         item.expanded = isExpanded
         item.metrics = Qt.binding(function () { return dashboard.metrics })
         if (item.hasOwnProperty("titleOverride"))

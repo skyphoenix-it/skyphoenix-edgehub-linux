@@ -22,6 +22,7 @@
 #include <cstdio>
 
 #include "single_instance.h"
+#include "timezone_bridge.h"
 #include <QColor>
 #include <csignal>
 #include <unistd.h>
@@ -412,6 +413,11 @@ int main(int argc, char *argv[]) {
     // Expose ConfigBridge for runtime layout/state persistence + diagnostics.
     ConfigBridge* configBridge = new ConfigBridge(config, &engine);
     engine.rootContext()->setContextProperty("configBridge", configBridge);
+
+    // Real IANA time zones. QML cannot resolve one at all (no Intl; the timeZone
+    // option on toLocaleString is silently ignored), so the clock needs this.
+    TimeZoneBridge* timeZoneBridge = new TimeZoneBridge(&engine);
+    engine.rootContext()->setContextProperty("timeZones", timeZoneBridge);
 
     // Expose the MPRIS media bridge (Now Playing + transport control).
     MprisBridge* mediaBridge = new MprisBridge(&engine);

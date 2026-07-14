@@ -99,6 +99,7 @@ add_executable(xeneon-edge-hub
     app/src/display_match.cpp
     app/src/config_bridge.h
     app/src/metrics_worker.h
+    app/src/timezone_bridge.h
     ${CMAKE_SOURCE_DIR}/ui/qml.qrc
     ${CMAKE_SOURCE_DIR}/assets/icons.qrc
     ${CMAKE_SOURCE_DIR}/assets/wallpapers.qrc
@@ -157,6 +158,7 @@ add_executable(xeneon-edge-manager
     manager/src/main.cpp
     manager/src/reconcile.cpp
     manager/src/manager_backend.h
+    app/src/timezone_bridge.h
     ${CMAKE_SOURCE_DIR}/manager/manager.qrc
     ${CMAKE_SOURCE_DIR}/assets/icons.qrc
     ${CMAKE_SOURCE_DIR}/assets/wallpapers.qrc

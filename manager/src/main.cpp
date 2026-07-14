@@ -22,6 +22,7 @@
 #include "manager_backend.h"
 #include <cstdio>
 #include "../../app/src/single_instance.h"
+#include "../../app/src/timezone_bridge.h"
 
 // Build a dark QPalette from the app's dark design tokens. Fusion (set below)
 // draws every Qt Quick control that ISN'T hand-restyled (Switch/Slider/Button/
@@ -104,6 +105,12 @@ int main(int argc, char* argv[]) {
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty("configBridge", &backend);
     engine.rootContext()->setContextProperty("backend", &backend);
+
+    // The Manager renders live widget PREVIEWS of the same QML, so it needs the
+    // same time-zone bridge the hub has — without it a world clock in the preview
+    // would silently fall back to a fixed offset and disagree with the Edge.
+    TimeZoneBridge timeZoneBridge;
+    engine.rootContext()->setContextProperty("timeZones", &timeZoneBridge);
 
     engine.load(QUrl(QStringLiteral("qrc:/manager/Manager.qml")));
     if (engine.rootObjects().isEmpty()) {

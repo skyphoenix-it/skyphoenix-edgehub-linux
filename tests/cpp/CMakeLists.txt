@@ -61,6 +61,10 @@ add_qt_test(single_instance)
 # ── Headless negative (crafted FIFO / closed fd, no hardware) ──
 add_qt_test(orientation_reopen SOURCES "${APP_SRC}/orientation_sensor.cpp")
 
+# Real IANA zones for QML. The Q_OBJECT header is listed as a source so AUTOMOC
+# generates its moc (otherwise: undefined reference to vtable).
+add_qt_test(timezone_bridge SOURCES "${APP_SRC}/timezone_bridge.h" LINK Qt6::Gui)
+
 # ── Smoke: launch the REAL binaries offscreen (main()/screen match/thread lifecycle;
 #    doubles as the XENEON_GRAB UAF regression) ──
 add_executable(smoke_hub tst_smoke_hub.cpp)
