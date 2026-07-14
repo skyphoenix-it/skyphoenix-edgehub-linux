@@ -128,7 +128,7 @@ For a widget of type `hello` (file `HelloWidget.qml`):
      source: "qrc:/qml/HelloWidget.qml", defaults: { who: "world" } },
    ```
    `defaults` seeds a fresh instance's settings. `category` groups it in the picker
-   (reuse an existing one: System / Time / Focus / Media / Info).
+   (reuse an existing one: System / Time / Focus / Media / Data / Info).
 
 2. **Description** — add to the `_desc` map in the same file (shown in the
    expanded header):
@@ -142,7 +142,14 @@ For a widget of type `hello` (file `HelloWidget.qml`):
    <file alias="hello.svg">icons/hello.svg</file>
    ```
    Icons are [Phosphor](https://phosphoricons.com) SVGs normalised to `fill="#FFFFFF"`
-   (AppIcon tints them). Keep the `viewBox="0 0 256 256"`.
+   (AppIcon tints them). Keep the `viewBox="0 0 256 256"`. A stroked glyph
+   (`fill="none" stroke="#FFFFFF" stroke-width="16"`) tints identically — match the
+   existing weight either way.
+
+   The picker resolves the icon **by type** (`AppIcon { name: modelData.type }`), so
+   a missing SVG renders a blank tile. The QML suite cannot see this (it runs against
+   the source tree, with no qrc), so `scripts/check_widget_icons.sh` gates it: every
+   catalog type must have an SVG on disk **and** a line in `assets/icons.qrc`.
 
 4. **Bundle for the hub** — add to `ui/qml.qrc`:
    ```xml
@@ -168,10 +175,30 @@ For a widget of type `hello` (file `HelloWidget.qml`):
    `case`, the widget still works and gets a General (custom title) section by
    default. **Whatever options you declare, read them via `cfg` and honour them.**
 
+7. **Networking** *(only if the widget fetches something)* — **never construct an
+   `XMLHttpRequest`.** All egress goes through the `NetHub` gate, which owns the
+   global offline switch, the host allowlist and the request counters — the single
+   audited choke point behind the "no telemetry / local-only" claim:
+   ```qml
+   property var netHub: null          // injected by Dashboard (one app-global hub)
+   NetHub { id: _fallbackHub }        // fallback keeps the widget standalone in tests
+   function _hub() { return netHub ? netHub : _fallbackHub }
+
+   _hub().request({ url: w.url, headers: h, xhrFactory: w.xhrFactory,
+                    onDone: function (status, body) { … },
+                    onError: function (reason) { … } })   // offline|blocked|timeout|http <n>
+   ```
+   `scripts/check_no_raw_xhr.sh` fails the build if a raw XHR appears outside the
+   gate. Poll results must be mirrored into **ephemeral** store keys
+   (`DashboardStore._ephemeralKeys`) or every poll rewrites `config.toml` (flash
+   wear + a save race with the Manager). See `HttpJsonWidget.qml` for the full shape.
+
 > ⚠️ **The #1 gotcha:** forgetting steps 4/5. The QML test suite loads widgets from
 > the source tree and will pass, but the real app loads from the compiled `qrc`
 > and fails at runtime with `HelloWidget is not a type`. Always rebuild and launch
-> the actual hub to verify.
+> the actual hub to verify. The same blind spot hides missing icons (step 3) — both
+> are now gated by lints in `run_all_tests.sh`, but a real grab is still the only
+> thing that proves it *looks* right.
 
 ---
 

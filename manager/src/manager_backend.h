@@ -181,10 +181,17 @@ public:
         return true;
     }
 
-    // Dev/doc affordances (headless capture).
+    // Dev/doc affordances (headless capture) — compiled in only under
+    // XENEON_QA_HOOKS; return inert defaults in production packages.
+#ifdef XENEON_QA_HOOKS
     Q_INVOKABLE QString grabPath() const { return qEnvironmentVariable("XENEON_GRAB"); }
     Q_INVOKABLE int startTab() const { return qEnvironmentVariable("XENEON_TAB", "0").toInt(); }
     Q_INVOKABLE QString autoConfig() const { return qEnvironmentVariable("XENEON_CFG"); }
+#else
+    Q_INVOKABLE QString grabPath() const { return QString(); }
+    Q_INVOKABLE int startTab() const { return 0; }
+    Q_INVOKABLE QString autoConfig() const { return QString(); }
+#endif
 
     // Build version, injected at compile time via -DXENEON_VERSION (git describe;
     // or the pkgver for packaged builds). Falls back to "dev" for syntax-only builds.

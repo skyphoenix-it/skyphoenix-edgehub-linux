@@ -1,7 +1,86 @@
 # Session handoff — continue from here
 
-_Last updated: 2026-07-14 (Manager UI/UX + robustness + overnight autonomous session). On
-`master`; PR #1 (`552729c`) plus follow-up direct-to-master commits, CI green._
+_Last updated: 2026-07-14 (E1 follow-up + branch cleanup after a mid-session crash). The
+alpha track is merged into `master`; `v1.0-alpha` stays alive for E4–E9._
+
+## v1.0 ALPHA — in progress (branch `v1.0-alpha`)
+
+Plan: `~/.claude/plans/glittery-sauteeing-sonnet.md` (approved). Building the alpha
+epics in sequence; Sequence-0 (licensing/docs/QA-hook guard) already landed.
+
+- **E2 — curated preset library — DONE** (`917ca25`). `ui/qml/PresetCatalog.qml`: 15
+  purpose-built, non-overloaded preset screens (calm-focus, home-ambient, remote-work,
+  developer, homelab, gaming, trading-desk, health, creator, system-monitor, minimal,
+  analyst, study, productivity, enterprise). `buildDoc(id)` materialises a full
+  `ui_state` with freshly-minted `type-N` tile ids + per-tile settings; appearance sets
+  only bg/motion/glow (never theme/accent, to preserve user colours). `DashboardStore.seed()`
+  routes through it (unknown→productivity, blank→blank). `FirstRunWizard.qml` picker is now
+  a scrollable grid of all presets. Registered in both qrc files.
+  - Tests: new `tests/ui/tst_preset_catalog.qml` (well-formed / real widget types / 1–6
+    tiles per page / applies through the real store). Updated `tst_store_tiles.qml` +
+    `tst_gen_shared_DashboardStore.qml` for the new preset-backed seed mechanism. Full
+    suite green (`run_all_tests.sh` → SUCCESS).
+  - **Verified on the real Edge**: 6 presets grabbed populated + calm + not overloaded, plus
+    the first-run wizard (fixed a `pixelSize: 12.5`→`13` int-assignment bug in the wizard
+    that had broken the QML suite). Grab recipe: `XDG_CONFIG_HOME` pointed at a temp config
+    built from the real `~/.config/.../config.toml` (strict deser needs `schema_version` +
+    `first_run_complete` + all sections) with `ui_state` swapped in; launch with
+    `--windowed` (avoids fullscreen-hijacking the live Edge) + `XENEON_GRAB` (grab mode
+    bypasses the single-instance lock). Force qml console output with
+    `QT_ASSUME_STDERR_HAS_CONSOLE=1`.
+  - Presets marked "⟶ enrich" (developer, homelab, trading-desk, analyst, enterprise)
+    used system/time primitives only; they gained HTTP/JSON + KPI tiles once **E1**
+    landed — done in `7025bd2`, see the E1-follow-up entry below.
+  - Follow-up noted: first-run wizard welcome still reads "Xeneon Edge Linux Hub" (nominative
+    line kept per rebrand decision — revisit if a cleaner descriptor is wanted).
+- **E1 — generic primitive widgets + egress gate — DONE** (`eb552c1`, verified on real Edge).
+  - `ui/qml/widgets/NetHub.qml`: the single egress choke point — the ONLY place a QML
+    `XMLHttpRequest` may be constructed. `request()` enforces offline kill-switch →
+    host allowlist → local-file bypass, counts requests per host (attestation), returns
+    the XHR for abort. Dashboard injects one app-global instance into every net widget
+    (`injectWidget`, keyed on `hasOwnProperty("netHub")`); a per-widget fallback keeps
+    widgets self-contained in tests.
+  - `HttpJsonWidget`: poll URL → dot/bracket JSON path → value/gauge/list, warn/crit
+    threshold colouring, Bearer-token → Authorization header.
+  - `KpiWidget`: one number from HTTP **or a local file** (JSON or bare number, works
+    offline), label/unit/normal+inverted thresholds.
+  - Live poll results are stored EPHEMERAL in shared per-instance settings (`httpVal/
+    httpText/httpErr/httpList/httpAt` added to `DashboardStore._ephemeralKeys`) → no
+    config.toml churn per poll, compact+overlay share one reading.
+  - Egress lint `scripts/check_no_raw_xhr.sh` (wired into run_all_tests as its own suite)
+    fails on any raw XHR outside NetHub; Weather/Calendar/Manager-preview-dialog are
+    grandfathered pending their **E8** migration onto NetHub.
+  - `app/manager main.cpp`: `qputenv("QML_XHR_ALLOW_FILE_READ","1")` so the KPI local-file
+    source works (Qt gates file:// XHR behind it; local read only, opens no network path).
+  - Tests: `tst_nethub` (13), `tst_httpjson_net` (16+schema), `tst_kpi_net` (11+schema);
+    behavior matrix back at 100%. Full suite green. Real-Edge grab showed live GitHub
+    stars/forks + a local-file KPI colouring amber past its threshold.
+- **E1 follow-up — data-connected presets + icon lint — DONE** (`7025bd2`). Closes the
+  E1/E2 loop: the primitives existed but nothing used them, and both new types shipped
+  with **no icon** (the picker rendered blank tiles — visible only as a
+  `Cannot open: qrc:/icons/<type>.svg` warning in a real-device grab).
+  - Presets developer / homelab / trading-desk / analyst / enterprise now carry
+    httpjson/kpi tiles with a purposeful `title` but a **blank url/filePath**: the
+    endpoint is the one thing only the user can supply, so a tile ships as a labelled,
+    self-explaining slot rather than a wrong guess — and nothing polls until connected.
+    (A preset must never guess a URL: first run would poll a stranger's host.)
+  - `assets/icons/httpjson.svg` + `kpi.svg`, both registered in `assets/icons.qrc`.
+  - **`scripts/check_widget_icons.sh`** (new suite in `run_all_tests.sh`): every
+    `WidgetCatalog` type must have an SVG on disk AND a qrc line. The QML suite is
+    structurally blind to this — it runs source-tree with no qrc — so nothing else
+    catches a missing icon short of a grab.
+  - `MetricGauge`: value capped to the ring's inner diameter (`HorizontalFit` + elide).
+    System tiles only pass short readings ("42%"); an HTTP/JSON gauge shows arbitrary
+    values ("128ms") that used to spill over the ring.
+  - Tests: preset settings keys must be real (universal or in that type's schema — a
+    typo like `listmax` would silently ship a no-op tile); data presets must ship
+    labelled-but-unconnected. `PresetCatalog.qml` added to the coverage matrix.
+- **NEXT** (alpha, plan §5): **E5** wellness widgets, **E4** a11y foundation, **E6**
+  DST/world clocks, **E7** secrets, **E8** egress UI + Weather/Calendar migration
+  (removes the last raw-XHR grandfathering), **E9** enterprise pack.
+  - Note for E6: `trading-desk` ships a second clock as a **fixed UTC offset** (New York,
+    -5) because that is all the world-clock model supports today — it does not follow US
+    daylight-saving. E6 (DST/world clocks) should re-point that tile at a real zone.
 
 ## Current state: GREEN — 95%+ coverage across all layers
 
@@ -10,7 +89,7 @@ everything: `./scripts/run_all_tests.sh` (→ `RESULT: SUCCESS`); coverage: `./s
 
 - **Build**: `./scripts/build.sh release` — clean (hub + manager).
 - **QML**: `./scripts/run_ui_tests.sh` — ALL UI TESTS PASSED. Behavior matrix
-  `python3 scripts/qml_coverage.py` — **100%** (165/165).
+  `python3 scripts/qml_coverage.py` — **100%** (183/183).
 - **Rust**: `cd core && cargo test` — **116 passed**; **97.4%** line (config.rs 98.3%).
 - **C++**: `./scripts/run_cpp_tests.sh` — **15/15 ctest**; ~97% filtered line.
 - **Runtime E2E**: `tests/runtime/run_focus_goal_bonus.sh` — drives the real hub

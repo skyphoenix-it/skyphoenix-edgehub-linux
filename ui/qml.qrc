@@ -6,6 +6,7 @@
         <file>qml/Diagnostics.qml</file>
         <file>qml/DashboardStore.qml</file>
         <file>qml/WidgetCatalog.qml</file>
+        <file>qml/PresetCatalog.qml</file>
         <file>qml/WallpaperCatalog.qml</file>
         <file>qml/BackgroundCatalog.qml</file>
         <file>qml/WidgetConfigSchema.qml</file>
@@ -49,6 +50,9 @@
         <file alias="qml/MediaWidget.qml">qml/widgets/MediaWidget.qml</file>
         <file alias="qml/CalendarWidget.qml">qml/widgets/CalendarWidget.qml</file>
         <file alias="qml/WeatherWidget.qml">qml/widgets/WeatherWidget.qml</file>
+        <file alias="qml/HttpJsonWidget.qml">qml/widgets/HttpJsonWidget.qml</file>
+        <file alias="qml/KpiWidget.qml">qml/widgets/KpiWidget.qml</file>
+        <file alias="qml/NetHub.qml">qml/widgets/NetHub.qml</file>
         <file alias="qml/QuoteWidget.qml">qml/widgets/QuoteWidget.qml</file>
         <file alias="qml/HabitWidget.qml">qml/widgets/HabitWidget.qml</file>
         <file alias="qml/HydrationWidget.qml">qml/widgets/HydrationWidget.qml</file>

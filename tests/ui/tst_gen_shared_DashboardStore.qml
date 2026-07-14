@@ -481,17 +481,23 @@ Item {
         when: windowShown
         function init() { _bridge.reset(); store.load("blank") }
 
-        // (BUG) seed()/_mk() mint ids as `type-<idSeq>` with no revision suffix,
-        // and _idSeq resets to 0 every launch — so a fresh-launch seed reproduces
-        // an id that a persisted tile still owns settings for, silently sharing state.
-        function test_seed_ids_can_collide_with_persisted_settings() {
+        // (OK) seed() now materialises a preset via PresetCatalog.buildDoc(), which
+        // mints each tile id from a per-document counter (`type-1`, `type-2`, …) and
+        // ships a self-contained `settings` map keyed only by those new ids. A stale
+        // per-tile settings bucket left over from a prior session is therefore never
+        // silently inherited by a freshly-seeded tile.
+        function test_seed_ids_do_not_inherit_persisted_settings() {
             store.setSetting("clock-0", "persisted", 1)   // as if left over from a prior session
-            store._idSeq = 0                               // simulate the fresh-launch counter reset
+            store._idSeq = 0                               // even after a fresh-launch counter reset…
             var doc = store.seed("minimal")                // first tile type is "clock"
             var firstId = doc.pages[0].tiles[0].id
-            compare(firstId, "clock-0", "mechanism: _mk reproduces clock-0 after the counter reset")
-            verify(!store.data.settings.hasOwnProperty(firstId),
-                "a freshly-seeded id must not collide with an existing tile's persisted settings")
+            verify(firstId && firstId.indexOf("clock-") === 0,
+                "seeded ids are freshly minted from the preset (type-N)")
+            verify(firstId !== "clock-0",
+                "a seeded id must not reproduce the stale clock-0 an old tile still owns settings for")
+            // The seeded doc only carries the preset's own settings, never the leftover bucket.
+            verify(!doc.settings || !doc.settings.hasOwnProperty("clock-0"),
+                "a stale persisted id is not carried into the seeded document")
         }
 
         // (OK) Within a live session, addTile ids are globally distinct.

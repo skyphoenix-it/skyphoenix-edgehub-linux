@@ -17,6 +17,9 @@ BackgroundPicker 1.0 widgets/BackgroundPicker.qml
 BokehBackground 1.0 widgets/BokehBackground.qml
 BreakWidget 1.0 widgets/BreakWidget.qml
 CalendarWidget 1.0 widgets/CalendarWidget.qml
+HttpJsonWidget 1.0 widgets/HttpJsonWidget.qml
+KpiWidget 1.0 widgets/KpiWidget.qml
+NetHub 1.0 widgets/NetHub.qml
 ClockWidget 1.0 widgets/ClockWidget.qml
 ConfigField 1.0 widgets/ConfigField.qml
 CountdownWidget 1.0 widgets/CountdownWidget.qml

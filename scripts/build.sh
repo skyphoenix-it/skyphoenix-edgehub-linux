@@ -73,7 +73,11 @@ echo "==> Configuring CMake..."
 cd "${PROJECT_DIR}"
 cmake -B "${BUILD_DIR}" \
     -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" \
+    -DXENEON_QA_HOOKS=ON \
     -G "Unix Makefiles"
+# Dev builds enable the QA automation hooks (screenshot capture / auto-open) so
+# the test + hardware-E2E suites and marketing-capture flows work. Production
+# packaging (packaging/aur/PKGBUILD, CPack) leaves them OFF.
 
 # Step 3: Build
 echo ""

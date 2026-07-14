@@ -61,6 +61,10 @@ static QPalette darkPalette() {
 }
 
 int main(int argc, char* argv[]) {
+    // KPI "local file" source reads a file:// path via QML XMLHttpRequest; Qt
+    // gates that behind this flag. Local read only — no network path is opened.
+    qputenv("QML_XHR_ALLOW_FILE_READ", "1");
+
     xeneon_logging_init("info");
     QGuiApplication app(argc, argv);
     app.setApplicationName("Xeneon Edge Manager");
@@ -72,10 +76,20 @@ int main(int argc, char* argv[]) {
     QQuickStyle::setStyle(QStringLiteral("Fusion"));
     QGuiApplication::setPalette(darkPalette());
 
+    // QA automation hooks compiled in only under XENEON_QA_HOOKS (CI/tests/
+    // marketing); inert in production packages.
+#ifdef XENEON_QA_HOOKS
+    const bool    qaGrabMode = qEnvironmentVariableIsSet("XENEON_GRAB");
+    const QString qaGrabPath = qEnvironmentVariable("XENEON_GRAB");
+#else
+    const bool    qaGrabMode = false;
+    const QString qaGrabPath;
+#endif
+
     // Single-instance guard — multiple managers writing config.toml race the hub
     // and each other. Skipped in grab mode for headless QA captures.
     auto instanceLock = xeneon::acquireSingleInstance(
-        QStringLiteral("manager"), qEnvironmentVariableIsSet("XENEON_GRAB"));
+        QStringLiteral("manager"), qaGrabMode);
     if (!instanceLock) {
         // fprintf (not qWarning): Qt's default handler routes to journald when
         // stderr isn't a TTY, so a plain write guarantees the message is visible.
@@ -98,7 +112,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Doc/review capture: XENEON_GRAB=<path> renders the window to a PNG and quits.
-    const QString grabPath = qEnvironmentVariable("XENEON_GRAB");
+    const QString grabPath = qaGrabPath;   // empty unless built with XENEON_QA_HOOKS
     if (!grabPath.isEmpty()) {
         QObject* root = engine.rootObjects().first();
         QTimer::singleShot(1800, [root, grabPath]() {

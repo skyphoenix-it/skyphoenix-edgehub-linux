@@ -38,6 +38,12 @@ QtObject {
         // Media
         { type: "media",    title: "Now Playing", category: "Media", source: "qrc:/qml/MediaWidget.qml", defaults: {} },
 
+        // Data (generic, connect-anything primitives — devs, homelab, enterprise)
+        { type: "httpjson", title: "HTTP / JSON", category: "Data", source: "qrc:/qml/HttpJsonWidget.qml",
+          defaults: { url: "", jsonPath: "", pollSec: 60, mode: "value", unit: "", gaugeMax: 100, listMax: 5, authToken: "", warnAt: "", critAt: "" } },
+        { type: "kpi",      title: "KPI",         category: "Data", source: "qrc:/qml/KpiWidget.qml",
+          defaults: { source: "http", url: "", filePath: "", jsonPath: "", label: "", unit: "", pollSec: 60, authToken: "", invert: false, warnAt: "", critAt: "" } },
+
         // Info
         { type: "calendar", title: "Calendar",    category: "Info", source: "qrc:/qml/CalendarWidget.qml",  defaults: { url: "" } },
         { type: "weather",  title: "Weather",     category: "Info", source: "qrc:/qml/WeatherWidget.qml",  defaults: { lat: 52.52, lon: 13.405, place: "Berlin" } },
@@ -64,6 +70,8 @@ QtObject {
         "habit": "Build a daily streak. Press Check in each day you do the habit.",
         "hydration": "Count glasses of water toward a daily goal; use − / + to adjust.",
         "break": "A repeating reminder to take a break. Set the interval with − / +.",
+        "httpjson": "Poll any URL and show a value from its JSON — as a number, a gauge, or a list. Colour-codes against thresholds.",
+        "kpi": "One headline number from a URL or a local file, with a label, unit and colour-coded thresholds.",
         "calendar": "Upcoming events from a calendar you subscribe to. Paste an ICS URL to connect it.",
         "weather": "Current conditions and a multi-day forecast. Type a city and look up its coordinates.",
         "countdown": "Counts the days to a date you choose. Set a label and date below.",

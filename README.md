@@ -1,45 +1,87 @@
-# Xeneon Edge Linux Hub
+# EdgeHub
 
-**A native Linux widget platform for the Corsair Xeneon Edge and similar secondary touchscreen displays.**
+**Turn your Corsair Xeneon Edge — or any secondary/portrait touchscreen — into a beautiful, native Linux dashboard.**
 
-[![CI](https://github.com/your-org/xeneon-edge-linux-hub/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/xeneon-edge-linux-hub/actions/workflows/ci.yml)
-[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](LICENSE)
+EdgeHub by [SKYPhoenix IT](https://skyphoenix-it.com) is a widget dashboard built for portrait touchscreens. No browser, no Electron, no web server, no account, no telemetry — a Rust core, a Qt 6/QML front-end, and a companion desktop app that lets you design your screen from your PC.
 
----
+[![CI](https://github.com/skyphoenix-it/XeneonEdge_Linux/actions/workflows/ci.yml/badge.svg)](https://github.com/skyphoenix-it/XeneonEdge_Linux/actions/workflows/ci.yml)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
 
-> **⚠️ Status: Phase 1 — Application Shell**  
-> Rust core library is complete and tested. C++/Qt6 application shell in progress.  
-> First public release is several months away. See [ROADMAP.md](ROADMAP.md) for development progress.
+![EdgeHub dashboard with animated orbs background](docs/marketing-site/assets/edge-dashboard-orbs.png)
 
 ---
 
-## What Is This?
+## What it is
 
-Xeneon Edge Linux Hub turns your Corsair Xeneon Edge (or similar secondary touchscreen) into a dedicated dashboard surface. It runs as a **native Linux application** — no browser, no web server, no Electron, no Chromium.
+The Corsair Xeneon Edge is a 2560×720 portrait secondary touchscreen. EdgeHub gives it (and other secondary or portrait displays) a purpose-built home screen: multiple swipeable pages of live widgets — system metrics, a Pomodoro timer, now-playing controls, weather, your calendar — that you arrange by touch, right on the device.
 
-### Features (Planned)
-
-- **Native performance:** <1% CPU and <150MB RAM at idle
-- **Multi-monitor aware:** Always opens on your chosen display, never the wrong one
-- **Touch-optimized:** Purpose-built for touchscreen interaction with large touch targets
-- **Portrait & landscape:** Purpose-designed layouts for both orientations
-- **Widgets for everything:**
-  - 🕐 Clock, date, system metrics (CPU, RAM, temps, network)
-  - ⏱️ Focus timer, goals, priorities, task checklist
-  - 🎵 Media controls (MPRIS: Spotify, browsers, VLC, etc.)
-  - 🚀 Application launcher
-  - 🎮 Gaming telemetry (GPU temps, FPS, latency — post-MVP)
-- **Themable:** Dark, light, OLED black, high contrast
-- **Extensible:** Community widget SDK planned (post-MVP)
-- **Cross-distro:** CachyOS, Ubuntu, Arch, Fedora, and more
-
-### Screenshots
-
-*Coming soon — we're still building!*
+- **Native and light.** A Rust core does the metrics and config work; Qt 6/QML draws the UI. No Chromium, no bundled runtime.
+- **Designed for touch.** Large targets, swipe between pages, in-widget controls, and on-device settings — you never need a keyboard to use it.
+- **It finds the right screen.** EDID-based display detection puts EdgeHub on your Edge (or chosen display), and real HID auto-rotate follows the panel when you flip it.
+- **Design it from your desk.** The companion **EdgeHub Manager** is a live, WYSIWYG clone of your Edge — drag, reorder, resize, and restyle from your main monitor.
 
 ---
 
-## Quick Start (For Developers)
+## Features
+
+### 22 widgets
+
+| Category | Widgets |
+|----------|---------|
+| **System** | CPU load & temp, GPU (AMD Radeon utilization & temp), Memory, Network throughput, Disk usage, combined Sensors |
+| **Time & ambient** | Clock, Analog Clock, Moon Phase |
+| **Focus & life** | Focus Timer (Pomodoro), Tasks, Right Now, Quick Note, Habit Streak, Hydration, Break Reminder |
+| **Media** | Now Playing (MPRIS — Spotify, browsers, any player) |
+| **Info** | Calendar (subscribe via ICS URL), Weather (Open-Meteo), Countdown, End of Day, Daily Quote |
+
+System metrics come straight from the Rust core / the kernel. Focus, task, note, habit and hydration widgets persist your data locally. Calendar and Weather only reach the network for the feeds you configure.
+
+### Make it yours
+
+- **22 themes** (from clean dark/light and high-contrast/OLED to Nord, Dracula, Gruvbox, Catppuccin, Tokyo Night, Synthwave and more), **14 accent colors**, **7 animated backgrounds** (orbs, mesh gradient, aurora, waves, starfield, bokeh, grid) plus static wallpapers.
+- **Glass, glow, and a reduced-motion mode** — a single shared design system keeps every widget consistent.
+- **Edit mode** to add, remove, move, and resize tiles across multiple pages, with schema-driven per-widget configuration and in-widget controls.
+- **First-run wizard**, on-device **Settings**, and a **Diagnostics** screen.
+
+![EdgeHub with the aurora background](docs/marketing-site/assets/edge-dashboard-aurora.png)
+
+### EdgeHub Manager (companion app)
+
+A themeable desktop app (Dark / Light / Default chrome) that mirrors your Edge in real time:
+
+- **Layout** — drag, reorder, and resize tiles on a live clone.
+- **Appearance** — themes, accents, backgrounds, glass/glow.
+- **Images** — wallpapers and per-widget imagery.
+- **Display** — pick and orient the target screen.
+- **About** — version and project info.
+
+---
+
+## Performance & privacy
+
+- **~3.5% CPU** worst-case with every animation running; **~0.5%** with reduced motion.
+- **~378 MB** RSS steady-state.
+- **No telemetry. No account. Local-only configuration** (plain TOML on your machine). EdgeHub only touches the network for widgets you explicitly configure — e.g. Weather (Open-Meteo) or a Calendar (ICS) feed.
+
+---
+
+## Install
+
+> EdgeHub is a complete, shipping-quality application. Packaging is being hardened toward a tagged **v1.0** (see the [roadmap](#roadmap)).
+
+### Arch / CachyOS (AUR)
+
+```bash
+yay -S xeneon-edge-hub
+```
+
+### AppImage / Flatpak / .deb / .rpm
+
+AppImage and Flatpak recipes and CPack `.deb` / `.rpm` / portable-tarball generation are authored in this repo and being finalized for v1.0. Until the hosted artifacts land, build from source below. See [`packaging/README.md`](packaging/README.md) for the current state of each format.
+
+---
+
+## Build from source
 
 ### Prerequisites
 
@@ -48,152 +90,92 @@ Xeneon Edge Linux Hub turns your Corsair Xeneon Edge (or similar secondary touch
 - **CMake** 3.22+
 - **Qt 6.5+** with development headers (QtQuick, QtWayland, QtDBus, QtSvg)
 
-#### CachyOS / Arch Linux
+**Arch / CachyOS**
 
 ```bash
 sudo pacman -S rust cmake gcc qt6-base qt6-declarative qt6-wayland qt6-tools
 ```
 
-#### Ubuntu 24.04 LTS
+**Ubuntu 24.04 LTS**
 
 ```bash
 sudo apt install cargo cmake g++ qt6-base-dev qt6-declarative-dev \
   qt6-wayland-dev qt6-tools-dev libglib2.0-dev
 ```
 
-### Build
+### Build & run
 
 ```bash
-git clone https://github.com/your-org/xeneon-edge-linux-hub.git
-cd xeneon-edge-linux-hub
+git clone https://github.com/skyphoenix-it/XeneonEdge_Linux.git
+cd XeneonEdge_Linux
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
-```
 
-### Run
-
-```bash
-./build/app/xeneon-edge-hub
+./build/app/xeneon-edge-hub          # the on-device hub
+./build/manager/xeneon-edge-manager  # the companion Manager
 ```
 
 ### Test
 
 ```bash
-cargo test
+cargo test                     # Rust core
 cmake --build build --target test
+./scripts/run_all_tests.sh     # Rust + QML behavior matrix + ctest
 ```
 
 ---
 
-## Installation (End Users)
+## Architecture
 
-### CachyOS / Arch Linux
-
-```bash
-# From AUR (once available)
-yay -S xeneon-edge-hub
-
-# Or from release package
-sudo pacman -U xeneon-edge-hub-0.1.0-1-x86_64.pkg.tar.zst
+```
+Rust core (config · EDID · metrics · FFI)  ──C ABI──▶  Qt 6 / QML (hub + Manager)
+                                                         │
+                    local TOML config ◀── control-socket IPC · single-instance
 ```
 
-### Ubuntu 24.04 LTS
+- **Rust core** owns configuration, EDID display identity, system metrics, and exposes a stable C ABI.
+- **Qt 6/QML** renders the hub and the Manager on top of that core.
+- The hub and Manager talk over a **control socket**; the app is **single-instance**.
 
-```bash
-# From release .deb
-sudo apt install ./xeneon-edge-hub_0.1.0_amd64.deb
-```
+## Quality
 
-### Flatpak (planned)
-
-```bash
-flatpak install flathub com.corsair.xeneonedgehub
-```
+- **Rust:** ~110 unit tests, ~96% line coverage (`cargo llvm-cov`).
+- **C++:** QtTest suite, ~97% filtered line coverage.
+- **QML:** a behavior-matrix harness (~99% of tracked behaviors).
+- **End-to-end:** a runtime E2E suite plus a real-hardware suite (`tests/hardware/edge_e2e.py`).
+- **CI is live and green,** gated at ≥95% coverage.
 
 ---
 
-## Documentation
+## Roadmap
 
-| Document | Description |
-|----------|-------------|
-| **[Creating a Widget](docs/widgets/authoring.md)** | **Build your own widget in ~20 min (`./scripts/new-widget.sh` scaffolds it)** |
-| **[Distribution & Monetizing](docs/DISTRIBUTION.md)** | **Packaging, install, licensing, and making money** |
-| [Product Vision](docs/product/product-vision.md) | What we're building and why |
-| [User Personas](docs/product/personas.md) | Who we're building for |
-| [Use Cases](docs/product/use-cases.md) | How users will use the product |
-| [MVP Scope](docs/product/mvp-scope.md) | What's in the first release |
-| [Roadmap](ROADMAP.md) | Development phases and timeline |
-| [Architecture Overview](docs/architecture/overview.md) | System design and data flow |
-| [ADR: Application Stack](docs/adr/0001-application-stack.md) | Why Rust + Qt 6/QML |
-| [ADR: Widget Runtime](docs/adr/0002-widget-runtime.md) | Widget execution and isolation |
-| [Threat Model](docs/security/threat-model.md) | Security analysis |
-| [Test Strategy](docs/testing/test-strategy.md) | How we ensure quality |
-| [Wireframes](docs/product/wireframes.md) | UI layout descriptions |
+EdgeHub's foundations — the 22 widgets, the Manager, the theme system, the test suite, live CI, and AUR packaging — are **done and shipping-quality**. Work now targets a tagged **v1.0**: a curated preset library, generic primitive widgets (HTTP/JSON, KPI, command, webhook), and a calm/accessibility foundation (accessible fonts, an Okabe–Ito-safe palette, honoring OS reduce-motion). See **[ROADMAP.md](ROADMAP.md)** for the full plan and the alpha → beta → RC → GA train.
 
----
-
-## Supported Platforms
-
-| Distribution | Desktop | Session | Status |
-|-------------|---------|---------|--------|
-| CachyOS | KDE Plasma 6 | Wayland | 🎯 Primary target |
-| CachyOS | KDE Plasma 6 | X11 | ✅ Supported |
-| Ubuntu 24.04 LTS | GNOME 46 | Wayland | 🎯 Primary target |
-| Ubuntu 24.04 LTS | GNOME 46 | X11 | ✅ Supported |
-| Arch Linux | KDE Plasma 6 | Wayland | ✅ Supported |
-| Fedora 40 | GNOME 46 | Wayland | ✅ Supported |
-| Hyprland (Arch) | Hyprland | Wayland | ⚠️ Best-effort |
-| Sway (Arch) | Sway | Wayland | ⚠️ Best-effort |
-
----
-
-## Contributing
-
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-### Development Phases
-
-- **Phase 0:** ✅ Discovery — product docs, architecture decisions
-- **Phase 1 (Current):** 🔄 Application shell — display enumeration, window placement, touch input
-- **Phase 2:** 📋 Layout engine — grid layout, widget management, themes
-- **Phase 3:** 📋 Core widgets — clock, system metrics, focus timer, media controls
-- **Phase 4:** 📋 Integrations — MPRIS, PipeWire, sensors, autostart
-- **Phase 5:** 📋 Hardening — performance, stability, packaging
-- **Phase 6:** 📋 Public MVP release
-- **Phase 7:** 📋 Community widget SDK
-
-See [ROADMAP.md](ROADMAP.md) for details.
+There is also a marketing overview at [`docs/marketing-site/index.html`](docs/marketing-site/index.html).
 
 ---
 
 ## License
 
-This project is licensed under either of:
+Dual-licensed under either of:
 
-- MIT License ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
-- Apache License 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+- **MIT License** ([LICENSE-MIT](LICENSE-MIT) · <http://opensource.org/licenses/MIT>)
+- **Apache License 2.0** ([LICENSE-APACHE](LICENSE-APACHE) · <http://www.apache.org/licenses/LICENSE-2.0>)
 
 at your option.
 
-### Dependency Licensing Note
+**Qt note:** EdgeHub links against Qt 6 (LGPLv3). Dynamic linking against system Qt satisfies LGPL; static linking carries the usual re-linking obligations.
 
-This project links against Qt 6, which is available under LGPLv3. Dynamic linking against the system Qt satisfies LGPL obligations. If you statically link Qt, you must comply with LGPL requirements (provide object files for re-linking).
-
----
+App-id: `com.skyphoenix_it.XeneonEdgeHub` · Companion: `com.skyphoenix_it.XeneonEdgeManager`
 
 ## Security
 
-See [SECURITY.md](SECURITY.md) for our security policy and vulnerability reporting process.
+See [SECURITY.md](SECURITY.md) for the security policy and how to report a vulnerability.
 
 ---
 
-## Acknowledgments
+## Not affiliated with Corsair
 
-- Corsair for the Xeneon Edge hardware (this project is not affiliated with or endorsed by Corsair)
-- The KDE and Qt communities for excellent Linux desktop frameworks
-- The Rust community for a safe systems programming language
-- All contributors and early adopters
+EdgeHub is an independent product of SKYPhoenix IT. It is **not affiliated with, sponsored by, or endorsed by Corsair.** "Corsair" and "Xeneon Edge" are used only to describe hardware compatibility.
 
----
-
-*Xeneon Edge Linux Hub — Your secondary screen, supercharged.*
+*EdgeHub — your secondary screen, at its best.*

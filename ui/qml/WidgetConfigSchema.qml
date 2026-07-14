@@ -236,6 +236,58 @@ QtObject {
             titleSection("Quick Note"),
             about("A quick scratchpad — saves automatically.") ] }
 
+        case "httpjson": return { sections: [
+            { title: "Data source", cols: 1, fields: [
+                { key: "url", label: "URL", type: "text", placeholder: "https://api.example.com/status",
+                  help: "An endpoint that returns JSON. Polled on the interval below." },
+                { key: "jsonPath", label: "JSON path", type: "text", placeholder: "data.value  ·  items[0].name",
+                  help: "Dot/bracket path to the value inside the response. Blank = the whole body." },
+                { key: "authToken", label: "Bearer token", type: "text", placeholder: "(optional)", dflt: "",
+                  help: "Sent as “Authorization: Bearer …”. Leave blank if the endpoint is public." } ] },
+            { title: "Display", cols: 1, fields: [
+                { key: "mode", label: "Show as", type: "segmented", dflt: "value", options: [
+                    { value: "value", label: "Value" },
+                    { value: "gauge", label: "Gauge" },
+                    { value: "list",  label: "List" } ] },
+                { key: "unit", label: "Unit", type: "text", placeholder: "ms · % · req/s", dflt: "" },
+                { key: "gaugeMax", label: "Gauge maximum", type: "number", min: 1, max: 1000000, step: 1, dflt: 100,
+                  help: "Full-scale value for the gauge ring." },
+                { key: "listMax", label: "List rows", type: "number", min: 1, max: 12, step: 1, dflt: 5 } ] },
+            { title: "Thresholds (colour)", cols: 2,
+              desc: "Colour the value amber at “Warn” and red at “Critical”. Leave blank to disable.", fields: [
+                { key: "warnAt", label: "Warn ≥", type: "text", placeholder: "80", dflt: "" },
+                { key: "critAt", label: "Critical ≥", type: "text", placeholder: "95", dflt: "" } ] },
+            { title: "Polling", cols: 1, fields: [
+                { key: "pollSec", label: "Refresh every", type: "slider", min: 5, max: 3600, step: 5, suffix: " s", dflt: 60 } ] },
+            titleSection("HTTP / JSON"),
+            about("Connect any JSON endpoint. Pull one value out by path and show it as a number, gauge or list. All requests go through the app's egress gate — nothing else phones home.") ] }
+
+        case "kpi": return { sections: [
+            { title: "Source", cols: 1, fields: [
+                { key: "source", label: "Read from", type: "segmented", dflt: "http", options: [
+                    { value: "http", label: "URL" },
+                    { value: "file", label: "Local file" } ] },
+                { key: "url", label: "URL", type: "text", placeholder: "https://api.example.com/metric",
+                  help: "Used when the source is “URL”. Returns JSON or a bare number." },
+                { key: "filePath", label: "File path", type: "text", placeholder: "/run/metrics/queue_depth",
+                  help: "Used when the source is “Local file”. JSON or a bare number; works fully offline." },
+                { key: "jsonPath", label: "JSON path", type: "text", placeholder: "stats.count", dflt: "",
+                  help: "Path to the number inside a JSON response. Blank if the body is already just a number." },
+                { key: "authToken", label: "Bearer token", type: "text", placeholder: "(optional)", dflt: "" } ] },
+            { title: "Presentation", cols: 1, fields: [
+                { key: "label", label: "Label", type: "text", placeholder: "Queue depth", dflt: "" },
+                { key: "unit", label: "Unit", type: "text", placeholder: "ms · $ · %", dflt: "" } ] },
+            { title: "Thresholds (colour)", cols: 1,
+              desc: "Colour the number amber/red at these values.", fields: [
+                { key: "invert", label: "Lower is worse", type: "toggle", dflt: false,
+                  help: "For uptime, budget or headroom — turns the colour on when the value drops BELOW the thresholds." },
+                { key: "warnAt", label: "Warn", type: "text", placeholder: "80", dflt: "" },
+                { key: "critAt", label: "Critical", type: "text", placeholder: "95", dflt: "" } ] },
+            { title: "Polling", cols: 1, fields: [
+                { key: "pollSec", label: "Refresh every", type: "slider", min: 5, max: 3600, step: 5, suffix: " s", dflt: 60 } ] },
+            titleSection("KPI"),
+            about("One number that matters — from a URL or a local file — with a label, unit and colour-coded thresholds. A local file reads without any network access.") ] }
+
         case "calendar": return { sections: [
             { title: "Subscription", cols: 1, fields: [
                 { key: "url", label: "ICS calendar URL", type: "text", placeholder: "https://…/basic.ics" },

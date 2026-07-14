@@ -2,6 +2,8 @@ import QtQuick
 import QtTest
 import "../../ui/qml" as App
 
+// COVERS: fn:DashboardStore._blankDoc
+//
 // Coverage for the core editable paths the dashboard is built on: tile add /
 // remove / move / resize, per-instance settings lifecycle, the shared-state
 // contract (one settings object backs both the tile and its expanded overlay),
@@ -176,7 +178,7 @@ Item {
                 "blank":        { pages: ["Home"], firstTileCount: 0 },
                 "minimal":      { pages: ["Home"] },
                 "gaming":       { pages: ["System", "Play"] },
-                "productivity": { pages: ["Focus", "System", "Life"] }
+                "productivity": { pages: ["Focus", "System"] }
             }
             for (var which in cases) {
                 var doc = store.seed(which)
@@ -193,8 +195,22 @@ Item {
         }
 
         function test_unknown_seed_falls_back_to_productivity() {
-            var doc = store.seed("nonsense")
-            compare(doc.pages.map(function (p) { return p.name }), ["Focus", "System", "Life"])
+            // An unknown seed id resolves to the "productivity" preset (whatever
+            // that preset's designed layout currently is).
+            var unknown = store.seed("nonsense").pages.map(function (p) { return p.name })
+            var prod = store.seed("productivity").pages.map(function (p) { return p.name })
+            compare(unknown, prod, "unknown seed falls back to the productivity preset")
+            verify(prod.length >= 1 && prod.indexOf("Focus") !== -1, "productivity preset has a Focus page")
+        }
+
+        // The blank document is the canonical empty layout: one "Home" page, no
+        // tiles, empty appearance/settings (the base seed() returns for "blank").
+        function test_blank_doc_shape() {
+            var d = store._blankDoc()
+            compare(d.version, 1, "_blankDoc is a v1 document")
+            compare(d.pages.length, 1, "_blankDoc has exactly one page")
+            compare(d.pages[0].name, "Home", "_blankDoc page is Home")
+            compare(d.pages[0].tiles.length, 0, "_blankDoc has no tiles")
         }
 
         function test_reset_to_replaces_layout() {

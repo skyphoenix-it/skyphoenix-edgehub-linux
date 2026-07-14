@@ -2,7 +2,7 @@
 <component type="desktop-application">
   <id>com.skyphoenix_it.XeneonEdgeManager</id>
   <metadata_license>CC0-1.0</metadata_license>
-  <project_license>MIT</project_license>
+  <project_license>MIT OR Apache-2.0</project_license>
 
   <name>Xeneon Edge Manager</name>
   <summary>Configure and control your Xeneon Edge dashboard</summary>

@@ -2,7 +2,7 @@
 <component type="desktop-application">
   <id>com.skyphoenix_it.XeneonEdgeHub</id>
   <metadata_license>CC0-1.0</metadata_license>
-  <project_license>MIT</project_license>
+  <project_license>MIT OR Apache-2.0</project_license>
 
   <name>Xeneon Edge Linux Hub</name>
   <summary>Native widget dashboard for secondary touchscreen displays</summary>

@@ -144,6 +144,14 @@ Item {
 
     DashboardStore { id: store }
     WidgetCatalog { id: catalog }
+    // The single app-global egress gate. Every net widget routes through this one
+    // instance (injected below), so the offline switch + host allowlist + request
+    // counters are global. `offline` is driven by an appearance flag (set by a
+    // future global toggle / managed config); default off.
+    NetHub {
+        id: netHub
+        offline: { var _ = store.revision; return store.appearance().netOffline === true }
+    }
     WidgetConfigSchema { id: cfgSchema }
 
     // Colour + sizing tokens for the shared ConfigField / WidgetConfigPanel,
@@ -274,6 +282,7 @@ Item {
         store.ensureSettings(id, catalog.defaults(type))
         item.instanceId = id
         item.store = store
+        if (item.hasOwnProperty("netHub")) item.netHub = netHub
         item.expanded = isExpanded
         item.metrics = Qt.binding(function () { return dashboard.metrics })
         if (item.hasOwnProperty("titleOverride"))

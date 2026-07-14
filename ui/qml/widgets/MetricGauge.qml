@@ -43,8 +43,16 @@ Item {
                     // ring.width is 0 until the layout settles; fall back to the
                     // gauge's own size so the number is never rendered at 0px
                     // (invisible) on the first frame.
-                    font.pixelSize: Math.min((ring.width > 0 ? ring.width : Math.min(g.width, g.height)) * 0.34,
-                                             g.expanded ? 108 : 60)
+                    readonly property real _ringW: ring.width > 0 ? ring.width : Math.min(g.width, g.height)
+                    // Cap the value to the ring's INNER diameter and shrink to fit.
+                    // The system tiles only ever pass short readings ("42%", "N/A"),
+                    // which never reach the cap; an HTTP/JSON gauge shows arbitrary
+                    // values ("128ms"), which used to spill out over the ring.
+                    Layout.maximumWidth: Math.max(24, _ringW - 2 * ring.thickness - 8)
+                    font.pixelSize: Math.min(_ringW * 0.34, g.expanded ? 108 : 60)
+                    fontSizeMode: Text.HorizontalFit
+                    minimumPixelSize: 10
+                    elide: Text.ElideRight
                     font.bold: true; font.family: theme.fontMono
                     color: g.ok ? g.color : theme.textTertiary
                 }

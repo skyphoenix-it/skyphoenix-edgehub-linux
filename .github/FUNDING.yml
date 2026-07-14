@@ -1,9 +1,10 @@
-# Enables the "Sponsor" button on the GitHub repo. Fill in your handles and
-# uncomment the lines you want. Delete the rest.
+# Enables the "Sponsor" button on the GitHub repo.
+# Replace the placeholder handles below with the real SKYPhoenix IT accounts,
+# then delete any lines you don't use.
 # Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
 
-# github: your-github-username        # GitHub Sponsors (zero fees)
-# ko_fi: your-kofi-name               # one-off tips
-# liberapay: your-liberapay-name      # recurring, FOSS-friendly
-# open_collective: your-collective    # transparent, recurring
-# custom: ["https://your-site/donate"]  # any URL (PayPal, etc.)
+github: [skyphoenix-it]              # GitHub Sponsors (0% fees) — TODO: confirm handle
+patreon: skyphoenixit               # recurring support — TODO: confirm/create
+buy_me_a_coffee: skyphoenixit        # one-off tips — TODO: confirm/create
+custom:
+  - "https://www.skyphoenix-it.com"  # EdgeHub / Pro purchase — TODO: real store URL

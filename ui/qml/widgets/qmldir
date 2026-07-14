@@ -22,6 +22,9 @@ MediaWidget 1.0 MediaWidget.qml
 MeshGradientBackground 1.0 MeshGradientBackground.qml
 MetricGauge 1.0 MetricGauge.qml
 MoonWidget 1.0 MoonWidget.qml
+HttpJsonWidget 1.0 HttpJsonWidget.qml
+KpiWidget 1.0 KpiWidget.qml
+NetHub 1.0 NetHub.qml
 NetWidget 1.0 NetWidget.qml
 NotesWidget 1.0 NotesWidget.qml
 PillButton 1.0 PillButton.qml

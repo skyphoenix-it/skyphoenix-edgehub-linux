@@ -192,7 +192,7 @@ Item {
 
         function test_categories_distinct_in_declaration_order() {
             var cats = catalog.categories()
-            compare(cats, ["System", "Time", "Focus", "Media", "Info"], "declaration-ordered category names")
+            compare(cats, ["System", "Time", "Focus", "Media", "Data", "Info"], "declaration-ordered category names")
             // distinct
             var seen = {}
             for (var i = 0; i < cats.length; i++) {

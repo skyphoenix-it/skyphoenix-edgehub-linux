@@ -42,6 +42,11 @@ check_ipo_supported(RESULT IPO_SUPPORTED OUTPUT IPO_ERROR)
 # --coverage for gcov/gcovr line coverage).
 option(XENEON_BUILD_TESTS "Build the C++ (QtTest) test suite" OFF)
 option(XENEON_COVERAGE "Instrument tested C++ for gcov/gcovr coverage" OFF)
+# QA automation hooks (XENEON_GRAB screenshot capture, XENEON_EXPAND/XENEON_CFG/
+# XENEON_TAB auto-open, single-instance bypass). OFF by default so production
+# packages ship without the screenshot/automation surface; turn ON for CI, the
+# test/E2E suites, and marketing-capture builds (scripts/build.sh enables it).
+option(XENEON_QA_HOOKS "Compile in the XENEON_GRAB/EXPAND QA automation hooks" OFF)
 
 # Find Qt6
 find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Quick Qml DBus VirtualKeyboard Network Svg QuickControls2)
@@ -203,6 +208,12 @@ endif()
 target_compile_definitions(xeneon-edge-hub PRIVATE XENEON_VERSION="${XENEON_GIT_VERSION}")
 target_compile_definitions(xeneon-edge-manager PRIVATE XENEON_VERSION="${XENEON_GIT_VERSION}")
 
+if(XENEON_QA_HOOKS)
+    target_compile_definitions(xeneon-edge-hub PRIVATE XENEON_QA_HOOKS)
+    target_compile_definitions(xeneon-edge-manager PRIVATE XENEON_QA_HOOKS)
+    message(STATUS "EdgeHub: QA automation hooks ENABLED (not for production packages)")
+endif()
+
 install(TARGETS xeneon-edge-hub xeneon-edge-manager DESTINATION bin)
 
 # Desktop entries + AppStream metadata (both apps).
@@ -228,7 +239,7 @@ foreach(_sz 16 32 48 64 128 256 512)
 endforeach()
 
 # License.
-install(FILES LICENSE DESTINATION share/licenses/xeneon-edge-hub)
+install(FILES LICENSE LICENSE-MIT LICENSE-APACHE DESTINATION share/licenses/xeneon-edge-hub)
 
 # udev rule for Edge orientation-sensor access. DESTINATION is RELATIVE to the
 # install prefix (→ <prefix>/lib/udev/rules.d) so it stages correctly under CPack
@@ -264,7 +275,7 @@ if(PROJECT_IS_TOP_LEVEL)
     set(CPACK_DEBIAN_FILE_NAME "DEB-DEFAULT")
 
     # Fedora/openSUSE
-    set(CPACK_RPM_PACKAGE_LICENSE "MIT")
+    set(CPACK_RPM_PACKAGE_LICENSE "MIT OR Apache-2.0")
     set(CPACK_RPM_PACKAGE_GROUP "Applications/System")
     set(CPACK_RPM_PACKAGE_REQUIRES
         "qt6-qtbase >= 6.5, qt6-qtdeclarative, qt6-qtsvg, qt6-qtvirtualkeyboard, qt6-qtwayland")
