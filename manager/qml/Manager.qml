@@ -21,11 +21,33 @@ ApplicationWindow {
     title: "EdgeHub Manager"
     color: m.bg
 
+    // Drive the Qt palette from the chrome tokens so the native Fusion controls
+    // that aren't hand-styled (scrollbars, combo popups, text selection, tooltips)
+    // follow the Manager theme instead of the app's compiled-in dark palette.
+    palette.window: m.bg
+    palette.windowText: m.textPrimary
+    palette.base: m.panel
+    palette.alternateBase: m.panelAlt
+    palette.button: m.panelAlt
+    palette.buttonText: m.textPrimary
+    palette.text: m.textPrimary
+    palette.brightText: m.textPrimary
+    palette.highlight: m.accent
+    palette.highlightedText: m.textOnAccent
+    palette.mid: m.border
+    palette.midlight: m.panelAlt
+    palette.light: m.panelAlt
+    palette.dark: m.border
+    palette.shadow: m.border
+    palette.placeholderText: m.textSecondary
+    palette.toolTipBase: m.panel
+    palette.toolTipText: m.textPrimary
+
     // Manager chrome theme — this app's OWN look, separate from the Edge dashboard
     // theme it edits. Persisted locally (QSettings). Dark / Light / Default, where
     // Default is the warm SKYPhoenix palette (corporate orange/red) that suits the
-    // colour logo. The dashboard preview keeps using `theme`, not `m`.
-    Settings { id: appSettings; category: "ManagerChrome"; property string chromeTheme: "dark" }
+    // colour logo and ships as the out-of-box look. The preview keeps using `theme`.
+    Settings { id: appSettings; category: "ManagerChrome"; property string chromeTheme: "default" }
 
     // --- Local design tokens (the Manager's own chrome; three switchable themes) ---
     QtObject {
