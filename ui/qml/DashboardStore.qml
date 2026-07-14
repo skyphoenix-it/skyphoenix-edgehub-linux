@@ -410,7 +410,10 @@ Item {
         _commitStructure()   // force-flushes; no extra save needed
     }
 
-    // ── Starter layouts (seed the grid from the wizard's choice) ──────────────
+    // ── Starter layouts (seed the grid from the wizard's / preset choice) ─────
+    // The curated preset library is the source of truth for starter layouts; the
+    // legacy _mk/_page helpers are kept for any code-built layouts.
+    property QtObject _presetCatalog: PresetCatalog {}
     function _mk(type) {
         var id = type + "-" + (_idSeq++)
         // Guard the fresh-launch counter reset: if a persisted settings bucket
@@ -424,32 +427,15 @@ Item {
         for (var i = 0; i < types.length; i++) tiles.push(_mk(types[i]))
         return { "name": name, "tiles": tiles }
     }
+    function _blankDoc() {
+        return { "version": 1, "appearance": {}, "settings": {}, "pages": [ { "name": "Home", "tiles": [] } ] }
+    }
     function seed(which) {
-        var doc = { "version": 1, "appearance": {}, "settings": {}, "pages": [] }
-        switch (which) {
-        case "gaming":
-            doc.pages = [
-                _page("System", ["cpu", "gpu", "ram", "net", "disk", "sensors"]),
-                _page("Play",   ["clock", "weather", "focus", "media"]),
-            ]
-            break
-        case "minimal":
-            doc.pages = [
-                _page("Home", ["clock", "weather", "focus", "media"]),
-            ]
-            break
-        case "blank":
-            doc.pages = [ { "name": "Home", "tiles": [] } ]
-            break
-        case "productivity":
-        default:
-            doc.pages = [
-                _page("Focus",  ["focus", "tasks", "rightnow", "habit", "hydration", "break"]),
-                _page("System", ["cpu", "gpu", "ram", "net", "disk", "clock"]),
-                _page("Life",   ["calendar", "weather", "media", "countdown", "eod", "moon"]),
-            ]
-            break
-        }
-        return doc
+        if (which === "blank") return _blankDoc()
+        // Route through the curated preset library. Legacy ids "productivity",
+        // "gaming", "minimal" are preset ids too, so old configs keep working.
+        var id = (which && _presetCatalog.has(which)) ? which : "productivity"
+        var doc = _presetCatalog.buildDoc(id)
+        return doc ? doc : _blankDoc()
     }
 }

@@ -11,6 +11,7 @@
         <!-- Reuse the hub's store + registry. -->
         <file alias="DashboardStore.qml">../ui/qml/DashboardStore.qml</file>
         <file alias="WidgetCatalog.qml">../ui/qml/WidgetCatalog.qml</file>
+        <file alias="PresetCatalog.qml">../ui/qml/PresetCatalog.qml</file>
         <file alias="WallpaperCatalog.qml">../ui/qml/WallpaperCatalog.qml</file>
         <file alias="BackgroundCatalog.qml">../ui/qml/BackgroundCatalog.qml</file>
         <!-- Shared widget framework (so the clone renders the REAL widgets). -->

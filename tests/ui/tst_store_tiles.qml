@@ -176,7 +176,7 @@ Item {
                 "blank":        { pages: ["Home"], firstTileCount: 0 },
                 "minimal":      { pages: ["Home"] },
                 "gaming":       { pages: ["System", "Play"] },
-                "productivity": { pages: ["Focus", "System", "Life"] }
+                "productivity": { pages: ["Focus", "System"] }
             }
             for (var which in cases) {
                 var doc = store.seed(which)
@@ -193,8 +193,12 @@ Item {
         }
 
         function test_unknown_seed_falls_back_to_productivity() {
-            var doc = store.seed("nonsense")
-            compare(doc.pages.map(function (p) { return p.name }), ["Focus", "System", "Life"])
+            // An unknown seed id resolves to the "productivity" preset (whatever
+            // that preset's designed layout currently is).
+            var unknown = store.seed("nonsense").pages.map(function (p) { return p.name })
+            var prod = store.seed("productivity").pages.map(function (p) { return p.name })
+            compare(unknown, prod, "unknown seed falls back to the productivity preset")
+            verify(prod.length >= 1 && prod.indexOf("Focus") !== -1, "productivity preset has a Focus page")
         }
 
         function test_reset_to_replaces_layout() {

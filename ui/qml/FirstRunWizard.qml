@@ -9,6 +9,9 @@ Item {
     property int currentStep: 0
     property var selectedScreen: null
     property string selectedLayout: "productivity"
+
+    // The curated preset library drives the "choose a screen" step.
+    PresetCatalog { id: presetCatalog }
     property string finishError: ""
 
     // Parse the detected screens once at the root (the old per-step
@@ -231,20 +234,18 @@ Item {
                         color: theme.textSecondary
                     }
 
-                    RowLayout {
+                    GridLayout {
                         Layout.fillWidth: true
-                        spacing: 16
+                        columns: 2
+                        columnSpacing: 12
+                        rowSpacing: 12
 
                         Repeater {
-                            model: [
-                                { id: "productivity", name: "Productivity", desc: "Clock, CPU, RAM, focus timer, goals, media", icon: "📋" },
-                                { id: "gaming", name: "Gaming", desc: "CPU/GPU temps, FPS, RAM, media, system metrics", icon: "🎮" },
-                                { id: "minimal", name: "Minimal", desc: "Clock and media controls only", icon: "✨" },
-                            ]
+                            model: presetCatalog.list()
 
                             Rectangle {
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: 140
+                                Layout.preferredHeight: 120
                                 radius: 12
                                 color: selectedLayout === modelData.id ? Qt.lighter(theme.cardBackground, 1.15) : theme.cardBackground
                                 border.width: selectedLayout === modelData.id ? 2 : 1
@@ -252,28 +253,32 @@ Item {
 
                                 ColumnLayout {
                                     anchors.fill: parent
-                                    anchors.margins: 16
-                                    spacing: 8
+                                    anchors.margins: 14
+                                    spacing: 6
 
                                     Text {
                                         Layout.fillWidth: true
-                                        text: modelData.icon + "  " + modelData.name
-                                        font.pixelSize: 18
+                                        text: modelData.icon + "  " + modelData.title
+                                        font.pixelSize: 17
                                         font.bold: true
                                         color: theme.textPrimary
                                         elide: Text.ElideRight
                                     }
                                     Text {
-                                        text: modelData.desc
+                                        text: modelData.blurb
                                         font.pixelSize: 13
                                         color: theme.textSecondary
                                         wrapMode: Text.WordWrap
+                                        maximumLineCount: 3
+                                        elide: Text.ElideRight
                                         Layout.fillWidth: true
+                                        Layout.fillHeight: true
                                     }
                                 }
 
                                 MouseArea {
                                     anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
                                     onClicked: selectedLayout = modelData.id
                                 }
                             }
