@@ -3,6 +3,38 @@
 _Last updated: 2026-07-14 (Manager UI/UX + robustness + overnight autonomous session). On
 `master`; PR #1 (`552729c`) plus follow-up direct-to-master commits, CI green._
 
+## v1.0 ALPHA — in progress (branch `v1.0-alpha`)
+
+Plan: `~/.claude/plans/glittery-sauteeing-sonnet.md` (approved). Building the alpha
+epics in sequence; Sequence-0 (licensing/docs/QA-hook guard) already landed.
+
+- **E2 — curated preset library — DONE** (`917ca25`). `ui/qml/PresetCatalog.qml`: 15
+  purpose-built, non-overloaded preset screens (calm-focus, home-ambient, remote-work,
+  developer, homelab, gaming, trading-desk, health, creator, system-monitor, minimal,
+  analyst, study, productivity, enterprise). `buildDoc(id)` materialises a full
+  `ui_state` with freshly-minted `type-N` tile ids + per-tile settings; appearance sets
+  only bg/motion/glow (never theme/accent, to preserve user colours). `DashboardStore.seed()`
+  routes through it (unknown→productivity, blank→blank). `FirstRunWizard.qml` picker is now
+  a scrollable grid of all presets. Registered in both qrc files.
+  - Tests: new `tests/ui/tst_preset_catalog.qml` (well-formed / real widget types / 1–6
+    tiles per page / applies through the real store). Updated `tst_store_tiles.qml` +
+    `tst_gen_shared_DashboardStore.qml` for the new preset-backed seed mechanism. Full
+    suite green (`run_all_tests.sh` → SUCCESS).
+  - **Verified on the real Edge**: 6 presets grabbed populated + calm + not overloaded, plus
+    the first-run wizard (fixed a `pixelSize: 12.5`→`13` int-assignment bug in the wizard
+    that had broken the QML suite). Grab recipe: `XDG_CONFIG_HOME` pointed at a temp config
+    built from the real `~/.config/.../config.toml` (strict deser needs `schema_version` +
+    `first_run_complete` + all sections) with `ui_state` swapped in; launch with
+    `--windowed` (avoids fullscreen-hijacking the live Edge) + `XENEON_GRAB` (grab mode
+    bypasses the single-instance lock). Force qml console output with
+    `QT_ASSUME_STDERR_HAS_CONSOLE=1`.
+  - Presets marked "⟶ enrich" (developer, homelab, trading-desk, analyst, enterprise)
+    currently use system/time primitives; they gain HTTP/JSON + KPI tiles once **E1** lands.
+  - Follow-up noted: first-run wizard welcome still reads "Xeneon Edge Linux Hub" (nominative
+    line kept per rebrand decision — revisit if a cleaner descriptor is wanted).
+- **NEXT**: E1 — generic primitive widgets (HTTP/JSON, KPI number) via a `NetHub.qml`
+  egress gate; then E5 wellness widgets, E4 a11y foundation, etc. (see plan §5).
+
 ## Current state: GREEN — 95%+ coverage across all layers
 
 Full plan + results: `docs/DEV_AND_TEST_PLAN.md`, `docs/MANAGER_UIUX_PLAN.md`. Run
