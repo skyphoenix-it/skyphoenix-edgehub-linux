@@ -990,17 +990,17 @@ mod tests {
         }
     }
 
+    // No `unsafe` block: xeneon_secret_is_plaintext is a safe extern "C" fn (it
+    // guards the null itself), so wrapping the calls would be unused-unsafe.
     #[test]
     fn secret_is_plaintext_over_ffi() {
-        unsafe {
-            let lit = CString::new("ghp_abc").unwrap();
-            let r = CString::new("${env:TOK}").unwrap();
-            let empty = CString::new("").unwrap();
-            assert_eq!(xeneon_secret_is_plaintext(lit.as_ptr()), 1);
-            assert_eq!(xeneon_secret_is_plaintext(r.as_ptr()), 0);
-            assert_eq!(xeneon_secret_is_plaintext(empty.as_ptr()), 0);
-            assert_eq!(xeneon_secret_is_plaintext(std::ptr::null()), 0);
-        }
+        let lit = CString::new("ghp_abc").unwrap();
+        let r = CString::new("${env:TOK}").unwrap();
+        let empty = CString::new("").unwrap();
+        assert_eq!(xeneon_secret_is_plaintext(lit.as_ptr()), 1);
+        assert_eq!(xeneon_secret_is_plaintext(r.as_ptr()), 0);
+        assert_eq!(xeneon_secret_is_plaintext(empty.as_ptr()), 0);
+        assert_eq!(xeneon_secret_is_plaintext(std::ptr::null()), 0);
     }
 
     #[test]
