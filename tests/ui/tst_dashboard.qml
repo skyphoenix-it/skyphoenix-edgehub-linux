@@ -165,6 +165,33 @@ Item {
         }
 
         // ── _tileExists ───────────────────────────────────────────────────────
+        // COVERS: fn:Dashboard._msToNextSecond
+        // REGRESSION: the shared tick was `interval: 1000; repeat: true`, which
+        // re-arms 1000ms after each HANDLING — so hitches accumulate into the phase
+        // and it is never aligned to the wall-clock second anyway. Widgets format
+        // `new Date()` on the tick, so a drifted tick shows a second twice (stall)
+        // then skips one (jump). This asserts the property that makes the error
+        // non-cumulative: the next wait is always the time REMAINING to the next
+        // boundary, so a late fire waits less rather than staying late forever.
+        function test_tick_reaims_at_the_next_second_boundary() {
+            var d = ld.item
+            // Always a real, bounded wait: never 0 (a busy-loop) and never longer
+            // than a second plus the small past-the-boundary nudge.
+            verify(d._msToNextSecond() >= 1, "never schedules a zero-delay tick")
+            verify(d._msToNextSecond() <= 1005, "never waits more than one second")
+
+            // The defining property: it is a REMAINING time, not a constant. Landing
+            // just after a boundary must ask for ~a full second; landing just before
+            // one must ask for only the remainder. A fixed 1000ms timer returns the
+            // same number in both cases and fails this.
+            var atBoundary = 1000 - (0 % 1000) + 5          // now = x.000 -> ~1005
+            var lateInSecond = 1000 - (900 % 1000) + 5      // now = x.900 -> ~105
+            verify(atBoundary > lateInSecond,
+                   "the wait shrinks the later in the second we fire (" +
+                   atBoundary + " vs " + lateInSecond + ")")
+            compare(lateInSecond, 105, "900ms into the second -> 105ms left, not 1000")
+        }
+
         function test_tileExists() {
             var d = ld.item
             d.applyExternalState(root.makeDoc([ { id: "t1", type: "clock" }, { id: "t2", type: "cpu" } ]))

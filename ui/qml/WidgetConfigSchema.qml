@@ -58,10 +58,36 @@ QtObject {
             { title: "Time zone (world clock)", cols: 1,
               desc: "Show another city's time instead of your local time.", fields: [
                 { key: "customZone", label: "Use a specific time zone", type: "toggle", dflt: false },
+                // dflt "" MUST stay the fixed-offset mode: it is what a config saved
+                // before this field has, and defaulting to a city would silently
+                // re-point every existing world clock to the wrong place.
+                { key: "zoneId", label: "City", type: "segmented", dflt: "",
+                  help: "Follows that zone's real daylight-saving rules.", options: [
+                    { value: "",                     label: "Fixed offset" },
+                    { value: "Pacific/Honolulu",     label: "Honolulu" },
+                    { value: "America/Los_Angeles",  label: "Los Angeles" },
+                    { value: "America/Denver",       label: "Denver" },
+                    { value: "America/Chicago",      label: "Chicago" },
+                    { value: "America/New_York",     label: "New York" },
+                    { value: "America/Sao_Paulo",    label: "São Paulo" },
+                    { value: "UTC",                  label: "UTC" },
+                    { value: "Europe/London",        label: "London" },
+                    { value: "Europe/Paris",         label: "Paris" },
+                    { value: "Europe/Berlin",        label: "Berlin" },
+                    { value: "Europe/Athens",        label: "Athens" },
+                    { value: "Africa/Johannesburg",  label: "Johannesburg" },
+                    { value: "Europe/Moscow",        label: "Moscow" },
+                    { value: "Asia/Dubai",           label: "Dubai" },
+                    { value: "Asia/Kolkata",         label: "Mumbai" },
+                    { value: "Asia/Singapore",       label: "Singapore" },
+                    { value: "Asia/Hong_Kong",       label: "Hong Kong" },
+                    { value: "Asia/Tokyo",           label: "Tokyo" },
+                    { value: "Australia/Sydney",     label: "Sydney" },
+                    { value: "Pacific/Auckland",     label: "Auckland" } ] },
                 { key: "zoneLabel", label: "Zone name", type: "text", placeholder: "New York", dflt: "",
-                  help: "A label shown above the time (e.g. the city)." },
+                  help: "A label shown above the time. Leave blank to use the city." },
                 { key: "utcOffset", label: "UTC offset", type: "slider", min: -12, max: 14, step: 0.5, suffix: " h", dflt: 0,
-                  help: "Hours from UTC (½-hour steps for zones like India +5:30). A fixed offset, so it doesn't follow daylight-saving changes." } ] },
+                  help: "Only used when City is \"Fixed offset\". Hours from UTC (½-hour steps for zones like India +5:30); it does not follow daylight-saving changes." } ] },
             titleSection("Clock"),
             about("A digital clock. Choose 12/24-hour, seconds, and how the date is shown.") ] }
 

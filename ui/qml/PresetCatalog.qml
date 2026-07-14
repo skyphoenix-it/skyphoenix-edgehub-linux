@@ -81,9 +81,7 @@ QtObject {
           appearance: _calm, surfaced: ["Time", "Data", "Info"],
           pages: [ { name: "Desk", tiles: [
               { type: "clock" },
-              // A fixed UTC offset (the widget's world-clock model) — EST; it does not
-              // follow US daylight-saving, so the user re-points it or edits the offset.
-              { type: "clock", settings: { title: "New York", customZone: true, zoneLabel: "New York", utcOffset: -5 } },
+              { type: "clock", settings: { title: "New York", customZone: true, zoneId: "America/New_York" } },
               { type: "kpi", settings: { title: "P&L", label: "P&L", unit: "%", pollSec: 60 } },
               { type: "kpi", settings: { title: "Exposure", label: "Exposure", pollSec: 60 } },
               { type: "calendar" } ] } ] },

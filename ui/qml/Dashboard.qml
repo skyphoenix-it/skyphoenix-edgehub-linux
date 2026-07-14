@@ -140,7 +140,23 @@ Item {
     // gating on Qt.application.active previously froze updates (and, since the scene
     // then never changed, the compositor stopped presenting frames — which made
     // taps appear to do nothing for seconds).
-    Timer { interval: 1000; running: true; repeat: true; onTriggered: dashboard._tick++ }
+    // SELF-CORRECTING, and it has to be: a plain `interval: 1000; repeat: true`
+    // re-arms 1000ms after each HANDLING, so every frame hitch, GC pause or load
+    // spike is added to the phase and never given back. It is also never aligned to
+    // the wall-clock second to begin with. Widgets format `new Date()` when this
+    // fires, so a drifting tick renders the same second twice (the clock appears to
+    // stall) and then skips one (it appears to jump two). Re-aiming at the next real
+    // boundary every tick makes the error non-cumulative: a late fire simply shortens
+    // the next wait. The +5ms lands us just PAST the boundary — Qt may fire a hair
+    // early, and formatting at 999.7ms would show the second we just left.
+    function _msToNextSecond() { return Math.max(1, 1000 - (Date.now() % 1000) + 5) }
+    Timer {
+        id: secondTick
+        repeat: false
+        running: false
+        onTriggered: { dashboard._tick++; interval = dashboard._msToNextSecond(); start() }
+        Component.onCompleted: { interval = dashboard._msToNextSecond(); start() }
+    }
 
     DashboardStore { id: store }
     WidgetCatalog { id: catalog }
