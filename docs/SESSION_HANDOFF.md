@@ -154,5 +154,8 @@ aqt (older than the dev box's 6.11) on purpose — it catches exactly this class
   `XENEON_GRAB` env. Test against a temp `XDG_CONFIG_HOME` to avoid touching the live config.
 - **Synthetic touch / hardware E2E**: `tests/hardware/edge_hw_test.py` (+ `uinput_touch.py`).
 - Auto-memory (persists across sessions): `dashboard-architecture`, `product-decisions`,
-  `companion-and-testing`, `packaging` — read the index at
-  `~/.claude/projects/-home-simon-IdeaProjects-XeneonEdge-Linux/memory/MEMORY.md`.
+  `companion-and-testing`, `packaging`, `ci-setup`, `runtime-e2e-testing` — read the
+  index at `~/.claude/projects/-home-simon-IdeaProjects-XeneonEdge-Linux/memory/MEMORY.md`.
+  A version-controlled MIRROR lives at `docs/agent-memory/` (source of truth is the
+  `~/.claude/…/memory/` dir). Re-sync after any memory change, then commit:
+  `cp ~/.claude/projects/-home-simon-IdeaProjects-XeneonEdge-Linux/memory/*.md docs/agent-memory/`
