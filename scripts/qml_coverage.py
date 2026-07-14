@@ -41,6 +41,10 @@ FUNCTION_SOURCES = [
     "ui/qml/main.qml",
     "ui/qml/DashboardStore.qml",
     "ui/qml/PresetCatalog.qml",
+    # The size vocabulary: the single definition of what "1x1" means and how it
+    # maps onto a rotated screen. Every widget's layout will key off it, so each
+    # function must earn an explicit COVERS claim.
+    "ui/qml/WidgetSizes.qml",
     # The egress gate: the one place a QML XMLHttpRequest may be built, and now
     # the one place credential refs are resolved. It is the choke point the
     # "no telemetry / local-only" claim rests on, so every function in it should
