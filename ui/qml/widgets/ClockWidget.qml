@@ -12,7 +12,6 @@ WidgetChrome {
     property int tick: 0
 
     title: "Clock"; iconName: "clock"; accentColor: theme.catSystem
-    big: expanded
     // Header weekday only when it ISN'T already shown elsewhere: hidden when the
     // date row is off (showDate=false hides ALL date info) and when the full date
     // row already spells out the weekday (avoid duplicating it). Short style

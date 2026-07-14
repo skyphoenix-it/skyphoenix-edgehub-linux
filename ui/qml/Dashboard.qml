@@ -298,11 +298,33 @@ Item {
 
     // Inject the shared bindings into a freshly-loaded widget instance. Used by
     // both the tile loaders and the expanded overlay so they share state.
-    function injectWidget(item, id, type, isExpanded) {
+    // The semantic size of a tile with span (w, h). Named rather than numeric so
+    // widgets ask "have I got room?" instead of re-deriving it from spans they
+    // shouldn't know about — and so the vocabulary survives the move to real
+    // fractional sizes, where the spans change meaning but the classes don't.
+    function sizeClassFor(w, h) {
+        var tall = (h || 1) >= 2, wide = (w || 1) >= 2
+        if (tall && wide) return "large"
+        if (tall) return "tall"
+        if (wide) return "wide"
+        return "compact"
+    }
+
+    // sizeClassFn is a getter, BOUND rather than read once: a resize rewrites the
+    // tile's span, and a value captured at load would silently go stale.
+    function injectWidget(item, id, type, isExpanded, sizeClassFn) {
         if (!item) return
         store.ensureSettings(id, catalog.defaults(type))
         item.instanceId = id
         item.store = store
+        // How much room it has. The overlay is the whole screen; a tile gets its
+        // span's class. This is DELIBERATELY not `expanded`: see WidgetChrome —
+        // expanded is a mode, sizeClass is room, and every widget used to conflate
+        // them by declaring `big: expanded`.
+        if (item.hasOwnProperty("sizeClass")) {
+            if (isExpanded) item.sizeClass = "full"
+            else if (sizeClassFn) item.sizeClass = Qt.binding(sizeClassFn)
+        }
         if (item.hasOwnProperty("netHub")) item.netHub = netHub
         // Real IANA zones (app/src/timezone_bridge.h). Absent in the QML test
         // harness and in any standalone host, where the clock falls back to its
@@ -429,7 +451,8 @@ Item {
                                     active: wId !== "" && wType !== "" && catalog.source(wType) !== ""
                                     source: active ? catalog.source(wType) : ""
                                     onLoaded: {
-                                        dashboard.injectWidget(item, wId, wType, false)
+                                        dashboard.injectWidget(item, wId, wType, false,
+                                            function () { return dashboard.sizeClassFor(cell.modelData.w, cell.modelData.h) })
                                         if (item) item.active = Qt.binding(function () { return !dashboard.hasExpanded && !dashboard.editMode })
                                     }
                                 }

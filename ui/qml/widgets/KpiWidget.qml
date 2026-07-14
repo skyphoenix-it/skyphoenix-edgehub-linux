@@ -22,7 +22,6 @@ WidgetChrome {
     property var xhrFactory: null
 
     title: "KPI"; iconName: "sensors"; accentColor: theme.catInfo
-    big: expanded
 
     readonly property var cfg: {
         var _ = store ? store.revision : 0

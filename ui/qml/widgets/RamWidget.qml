@@ -11,7 +11,6 @@ WidgetChrome {
     property string instanceId: ""
 
     title: "Memory"; iconName: "ram"; accentColor: theme.catProductivity
-    big: expanded
 
     // Live per-instance config (see WidgetConfigSchema "ram").
     readonly property var cfg: {

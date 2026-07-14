@@ -17,7 +17,7 @@ WidgetChrome {
     property string instanceId: ""
 
     title: "Focus Timer"; iconName: "focus"; accentColor: theme.catProductivity
-    big: expanded; showHeader: expanded
+    showHeader: expanded
 
     readonly property var presets: ({
         "classic": { work: 25, short: 5, long: 15, every: 4, label: "Classic" },

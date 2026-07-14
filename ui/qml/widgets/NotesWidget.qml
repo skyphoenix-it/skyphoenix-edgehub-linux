@@ -14,7 +14,6 @@ WidgetChrome {
     property string instanceId: ""
 
     title: "Quick Note"; iconName: "notes"; accentColor: theme.catInfo
-    big: expanded
 
     readonly property var cfg: {
         var _ = store ? store.revision : 0

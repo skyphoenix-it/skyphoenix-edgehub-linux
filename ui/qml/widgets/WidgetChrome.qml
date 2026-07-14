@@ -11,9 +11,19 @@ import QtQuick.Layouts
 //
 //   WidgetChrome {
 //       title: "Focus"; iconName: "focus"; accentColor: theme.catProductivity
-//       big: height > 240
 //       // ...your content here...
 //   }
+//
+// SIZE vs EXPANDED — they are not the same thing, and conflating them is why no
+// widget currently adapts to its tile:
+//   • `sizeClass` = how much ROOM this instance has. Injected by Dashboard from the
+//     tile's span (or "full" for the overlay). This is what layout should key off.
+//   • `expanded`  = the widget is hosted in the full-screen overlay. A MODE, not a
+//     size.
+// Every widget used to declare `big: expanded`, which made "big" mean "is the
+// overlay" — so a 2-row tile rendered the compact layout STRETCHED, and the
+// geometric intent below was dead code. `big` is now derived from sizeClass and is
+// READONLY: a widget cannot re-tie it to expanded, which is the whole point.
 // ─────────────────────────────────────────────────────────────────────────
 Item {
     id: chrome
@@ -39,7 +49,19 @@ Item {
                                        : (accentColor.a > 0 ? accentColor : theme.accent)
     property string status: ""          // small trailing status text (top-right)
     property color statusColor: theme.textSecondary
-    property bool big: height > 240      // "expanded" mode (richer content)
+    // How much room this instance has. Dashboard.injectWidget sets it from the
+    // tile's span, or "full" for the overlay:
+    //   "compact" 1 col × 1 row · "wide" 2×1 · "tall" 1×2 · "large" 2×2 · "full" overlay
+    // The default derives from actual geometry so a standalone host (tests, the
+    // Manager preview) still gets a sane value instead of always-compact — it
+    // restores the intent of the original `big: height > 240`.
+    property string sizeClass: height > 240 ? "tall" : "compact"
+
+    // Does this instance have vertical room for the richer chrome? DERIVED from
+    // sizeClass, and readonly ON PURPOSE — the old `big: expanded` override is what
+    // this change exists to make impossible.
+    readonly property bool big: sizeClass === "tall" || sizeClass === "large"
+                                || sizeClass === "full"
     property bool showHeader: true
     property bool interactive: false     // retained for API compat; hover ring is a no-op on the touchscreen
     // When hosted inside the expanded overlay (which supplies its own card),

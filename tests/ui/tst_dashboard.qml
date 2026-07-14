@@ -165,6 +165,22 @@ Item {
         }
 
         // ── _tileExists ───────────────────────────────────────────────────────
+        // COVERS: fn:Dashboard.sizeClassFor
+        // The tile's span -> how much room the widget has. Named, so widgets ask
+        // "have I got room?" rather than re-deriving it from spans; and so the
+        // vocabulary survives the move to real fractional sizes, where the spans
+        // change meaning but the classes don't.
+        function test_sizeClassFor_maps_spans_to_room() {
+            var d = ld.item
+            compare(d.sizeClassFor(1, 1), "compact")
+            compare(d.sizeClassFor(2, 1), "wide", "two columns but one row: no vertical room")
+            compare(d.sizeClassFor(1, 2), "tall", "the case that used to render stretched")
+            compare(d.sizeClassFor(2, 2), "large")
+            // A tile carries no w/h until it is resized — that must not read as 0x0.
+            compare(d.sizeClassFor(undefined, undefined), "compact", "an unsized tile is 1x1")
+            compare(d.sizeClassFor(0, 0), "compact")
+        }
+
         // COVERS: fn:Dashboard._msToNextSecond
         // REGRESSION: the shared tick was `interval: 1000; repeat: true`, which
         // re-arms 1000ms after each HANDLING — so hitches accumulate into the phase

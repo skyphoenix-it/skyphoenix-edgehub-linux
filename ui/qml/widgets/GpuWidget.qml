@@ -12,7 +12,6 @@ WidgetChrome {
     property string instanceId: ""
 
     title: "GPU"; iconName: "gpu"; accentColor: theme.catGaming
-    big: expanded
 
     // Live per-instance config (see WidgetConfigSchema "gpu").
     readonly property var cfg: {

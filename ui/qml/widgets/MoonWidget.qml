@@ -12,7 +12,7 @@ WidgetChrome {
     property int tick: 0
 
     title: "Moon Phase"; iconName: "moon"; accentColor: theme.catInfo
-    big: expanded; showHeader: expanded
+    showHeader: expanded
 
     // Live per-instance config (see WidgetConfigSchema "moon").
     readonly property var cfg: {

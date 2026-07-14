@@ -16,7 +16,6 @@ WidgetChrome {
     property int tick: 0
 
     title: "Break Reminder"; iconName: "break"; accentColor: theme.success
-    big: expanded
 
     // All state lives in the store (absolute end-epoch, running, paused-remaining,
     // due), so the tile and the expanded view are the SAME timer and it survives

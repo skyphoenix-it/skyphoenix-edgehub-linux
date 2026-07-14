@@ -17,7 +17,6 @@ WidgetChrome {
     // glyph/art rendered black. Content still uses w.effAccent (resolves the
     // per-widget accent preset, else this base).
     title: "Now Playing"; iconName: "media"; accentColor: theme.catEntertainment
-    big: expanded
 
     property bool avail: (typeof media !== "undefined") && media && media.available
     status: avail ? media.playerName : ""

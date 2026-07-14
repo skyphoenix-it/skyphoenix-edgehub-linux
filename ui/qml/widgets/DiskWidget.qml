@@ -11,7 +11,6 @@ WidgetChrome {
     property string instanceId: ""
 
     title: "Disk"; iconName: "disk"; accentColor: theme.catInfo
-    big: expanded
 
     // Live per-instance config (see WidgetConfigSchema "disk").
     readonly property var cfg: {

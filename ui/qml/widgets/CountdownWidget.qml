@@ -13,7 +13,7 @@ WidgetChrome {
     property int tick: 0
 
     title: "Countdown"; iconName: "countdown"; accentColor: theme.catInfo
-    big: expanded; showHeader: expanded
+    showHeader: expanded
 
     readonly property var cfg: {
         var _ = store ? store.revision : 0

@@ -14,7 +14,7 @@ WidgetChrome {
     property int tick: 0
 
     title: "Right Now"; iconName: "rightnow"; accentColor: theme.catProductivity
-    big: expanded; showHeader: expanded
+    showHeader: expanded
 
     readonly property var cfg: {
         var _ = store ? store.revision : 0

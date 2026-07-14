@@ -60,7 +60,6 @@ WidgetChrome {
     property string instanceId: ""
 
     title: "${TITLE}"; iconName: "${TYPE}"; accentColor: ${ACCENT}
-    big: expanded
 
     // Live per-instance config (see docs/widgets/authoring.md).
     readonly property var cfg: {

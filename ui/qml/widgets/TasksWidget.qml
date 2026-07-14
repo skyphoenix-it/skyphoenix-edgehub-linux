@@ -13,7 +13,6 @@ WidgetChrome {
     property string instanceId: ""
 
     title: "Tasks"; iconName: "tasks"; accentColor: theme.catProductivity
-    big: expanded
 
     // Reactive read: clone from the store keyed on revision so nested edits fire.
     readonly property var cfg: {

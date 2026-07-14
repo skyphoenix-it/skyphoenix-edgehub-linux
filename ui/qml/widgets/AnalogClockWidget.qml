@@ -11,7 +11,7 @@ WidgetChrome {
     property int tick: 0
 
     title: "Analog"; iconName: "analog"; accentColor: theme.catSystem
-    big: expanded; showHeader: expanded
+    showHeader: expanded
 
     // Live per-instance config (see WidgetConfigSchema "analogClock").
     readonly property var cfg: {

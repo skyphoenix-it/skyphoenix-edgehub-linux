@@ -34,7 +34,6 @@ WidgetChrome {
     property var xhrFactory: null
 
     title: "Calendar"; iconName: "calendar"; accentColor: theme.catServices
-    big: expanded
 
     readonly property var cfg: {
         var _ = store ? store.revision : 0

@@ -13,7 +13,6 @@ WidgetChrome {
     property int tick: 0
 
     title: "End of Day"; iconName: "eod"; accentColor: theme.catInfo
-    big: expanded
 
     readonly property var cfg: {
         var _ = store ? store.revision : 0

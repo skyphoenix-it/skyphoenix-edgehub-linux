@@ -13,7 +13,6 @@ WidgetChrome {
     property int tick: 0
 
     title: w.name.length ? w.name : "Habit"; iconName: "habit"; accentColor: theme.catProductivity
-    big: expanded
 
     readonly property var cfg: {
         var _ = store ? store.revision : 0

@@ -12,7 +12,6 @@ WidgetChrome {
     property string instanceId: ""
 
     title: "Network"; iconName: "net"; accentColor: theme.catServices
-    big: expanded
 
     // Live per-instance config (see WidgetConfigSchema "net").
     readonly property var cfg: {

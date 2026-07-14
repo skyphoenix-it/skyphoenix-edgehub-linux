@@ -12,7 +12,6 @@ WidgetChrome {
     property string instanceId: ""
 
     title: "Sensors"; iconName: "sensors"; accentColor: theme.catSystem
-    big: expanded
 
     // Live per-instance config (see WidgetConfigSchema "sensors").
     readonly property var cfg: {

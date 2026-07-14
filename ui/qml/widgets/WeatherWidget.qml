@@ -26,7 +26,6 @@ WidgetChrome {
     property var xhrFactory: null
 
     title: "Weather"; iconName: "weather"; accentColor: theme.catInfo
-    big: expanded
 
     readonly property var cfg: {
         var _ = store ? store.revision : 0

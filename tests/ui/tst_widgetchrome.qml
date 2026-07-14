@@ -67,6 +67,11 @@ Item {
             chrome.status = ""; chrome.chromeless = false; chrome.showHeader = true
             chrome.accentName = ""; chrome.accentColor = _theme.accent
             root.cfgClicks = 0
+            // Restore the DEFAULT binding, not a value: cases below assign sizeClass
+            // directly, which would otherwise leak into the next case (QtTest runs
+            // them alphabetically, so the geometry case ran after an override and saw
+            // a stale "compact").
+            chrome.sizeClass = Qt.binding(function () { return chrome.height > 240 ? "tall" : "compact" })
         }
 
         // ── Title / titleOverride ────────────────────────────────────────────
@@ -113,9 +118,49 @@ Item {
 
         // ── Big (expanded) layout ────────────────────────────────────────────
         function test_big_derives_from_height_and_scales_header() {
-            // host is 400px tall → big (>240).
+            // host is 400px tall → the default sizeClass is "tall" → big (>240).
             compare(chrome.big, true, "height > 240 makes the chrome 'big'")
             compare(chrome.headerHeight, 42, "big header height")
+        }
+
+        // ── size vs expanded ─────────────────────────────────────────────────
+        // REGRESSION: every widget used to declare `big: expanded`, so "big" meant
+        // "is the full-screen overlay" and a 2-row TILE rendered the compact layout
+        // stretched. `big` is now derived from how much ROOM the instance has.
+        function test_big_is_driven_by_sizeClass_not_by_the_overlay_mode() {
+            chrome.sizeClass = "compact"
+            compare(chrome.big, false, "a 1x1 tile is not big")
+            compare(chrome.headerHeight, 36, "and gets the compact header")
+
+            chrome.sizeClass = "wide"
+            compare(chrome.big, false, "2x1 is wide but SHORT — no vertical room, not big")
+
+            chrome.sizeClass = "tall"
+            compare(chrome.big, true, "a 1x2 tile HAS vertical room — this is the fix: " +
+                                      "it used to render the compact layout stretched")
+            compare(chrome.headerHeight, 42, "and now earns the big header")
+
+            chrome.sizeClass = "large"
+            compare(chrome.big, true, "2x2 is big")
+
+            chrome.sizeClass = "full"
+            compare(chrome.big, true, "the overlay is still big — unchanged from before")
+
+            chrome.sizeClass = "compact"   // restore for the other cases
+        }
+
+        // `big` must not be re-tiable to `expanded` — that override is exactly what
+        // this change removes, so the property is readonly by design.
+        function test_big_cannot_be_overridden_by_a_widget() {
+            chrome.sizeClass = "compact"
+            compare(chrome.big, false)
+            // Readonly: the assignment is rejected (silently from JS — QML raises no
+            // warning here), so `big` must still track sizeClass afterwards. This is
+            // the guard against `big: expanded` creeping back in.
+            try { chrome.big = true } catch (e) { /* expected for a readonly prop */ }
+            compare(chrome.big, false, "big stayed derived — a widget cannot pin it")
+            chrome.sizeClass = "tall"
+            compare(chrome.big, true, "and it still follows sizeClass after the attempt")
         }
 
         // ── Header visibility gating ─────────────────────────────────────────

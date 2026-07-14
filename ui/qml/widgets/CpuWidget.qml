@@ -11,7 +11,6 @@ WidgetChrome {
     property string instanceId: ""
 
     title: "CPU"; iconName: "cpu"; accentColor: theme.catSystem
-    big: expanded
 
     // Live per-instance config (see WidgetConfigSchema "cpu").
     readonly property var cfg: {

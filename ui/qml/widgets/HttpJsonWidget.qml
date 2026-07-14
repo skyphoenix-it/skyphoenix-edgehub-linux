@@ -27,7 +27,6 @@ WidgetChrome {
     property var xhrFactory: null
 
     title: "HTTP / JSON"; iconName: "net"; accentColor: theme.catInfo
-    big: expanded
 
     readonly property var cfg: {
         var _ = store ? store.revision : 0

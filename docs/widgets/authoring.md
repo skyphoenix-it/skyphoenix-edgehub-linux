@@ -90,7 +90,6 @@ WidgetChrome {
     property string instanceId: ""
 
     title: "Hello"; iconName: "hello"; accentColor: theme.catInfo
-    big: expanded                       // WidgetChrome renders bigger content when true
 
     // Live config
     readonly property var cfg: {
@@ -251,9 +250,35 @@ For a widget of type `hello` (file `HelloWidget.qml`):
 
 ---
 
+## Size vs expanded — they are NOT the same thing
+
+Two different questions, and conflating them is why no widget currently adapts to
+its tile:
+
+| property | question it answers | set by |
+|---|---|---|
+| `sizeClass` | **how much room have I got?** `"compact"` (1×1) · `"wide"` (2×1) · `"tall"` (1×2) · `"large"` (2×2) · `"full"` (the overlay) | injected by `Dashboard.injectWidget` |
+| `expanded` | **am I in the full-screen overlay?** — a *mode* | injected |
+| `big` | derived: has vertical room (`tall`/`large`/`full`) | **readonly — never declare it** |
+
+Every widget used to write `big: expanded`, which made "big" mean "is the overlay".
+The consequence: a 2-row **tile** rendered the compact layout *stretched*, and
+`WidgetChrome`'s geometric intent was dead code. `big` is now readonly, so that
+override is a hard error rather than a habit.
+
+**Key off `sizeClass` for layout, and `expanded` only for genuinely modal things.**
+A widget that should look different in a tall tile keys off `sizeClass`; one that
+adds an editor only in the overlay keys off `expanded`.
+
+> Today `sizeClass` still comes from the `[1,2]` spans, so `"tall"`/`"large"` are the
+> only large classes. When real fractional sizes land the spans change meaning but
+> the class vocabulary does not — which is why layout should ask for a *class*, not
+> re-derive one from `w`/`h`.
+
 ## Style rules (so widgets feel like one product)
 
-- Root is always `WidgetChrome`; content in the default slot; `big: expanded`.
+- Root is always `WidgetChrome`; content in the default slot. **Never declare
+  `big`** — it is readonly and derived (see "Size vs expanded" below).
 - Large, tappable controls; no tiny hit areas. Use `PillButton` / `SegmentedControl`.
 - Gate timers on `active`. Keep idle CPU near zero (paint-once Canvas + GPU
   transforms, not per-frame repaints).

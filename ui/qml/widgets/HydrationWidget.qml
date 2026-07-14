@@ -15,7 +15,6 @@ WidgetChrome {
     // recolours to `success` when the goal is reached, so the resting accent must
     // differ or that reward is invisible (catInfo happens to equal success).
     title: "Hydration"; iconName: "hydration"; accentColor: theme.catServices
-    big: expanded
 
     readonly property var cfg: {
         var _ = store ? store.revision : 0
