@@ -8,12 +8,17 @@
 _Product: **EdgeHub** — a native Linux widget dashboard for the Corsair Xeneon Edge
 (and other secondary touchscreens). Working repo name: `xeneon-edge-hub`._
 
+> **Ownership & branding.** EdgeHub is a product of **SKYPhoenix IT** — market it as
+> "**EdgeHub by SKYPhoenix IT**" with the SKYPhoenix logo/wordmark. Public surfaces
+> (site, trailer) lead with the generic promise ("your second screen, finally native
+> on Linux") and keep exactly **one nominative compatibility line** ("compatible with
+> the Corsair Xeneon Edge™ · an independent product, not affiliated with Corsair").
+>
 > **Trademark note.** "Corsair" and "Xeneon Edge" are trademarks of their owner.
-> EdgeHub is an **independent, unofficial** project — not affiliated with, endorsed
-> by, or supported by Corsair. All marketing must use the hardware name only
-> *nominatively* ("works with the Corsair Xeneon Edge") and must never use Corsair
-> logos, branding, or imply endorsement. The brand name **EdgeHub** deliberately
-> avoids the "Xeneon" mark.
+> EdgeHub is **independent and unofficial** — never use Corsair logos, branding, or
+> imply endorsement; name the hardware only *nominatively* for compatibility. The
+> brand **EdgeHub** deliberately avoids the "Xeneon" mark. (This internal doc still
+> names the target hardware for planning; the *public* copy does not lead with it.)
 
 ---
 
@@ -88,6 +93,12 @@ for a local utility; a spare-screen dashboard isn't a SaaS. Open-core keeps good
 | **Supporter** | **€39** | Everything in Personal + **all future major versions**, priority support, a premium theme & wallpaper pack, early-access builds, name in credits. |
 
 _Commercial / multi-seat deployment: contact for a site license (~€99+)._
+
+**Plus donations (optional, no-pressure).** Alongside the paid tiers, offer a "just say
+thanks" row — **Buy Me a Coffee** (one-off tips), **Patreon** (recurring, for people who
+want to follow the roadmap), and **GitHub Sponsors** (right next to the open-source repo).
+Goal isn't to get rich; it's to let happy users chip in for the time invested. These are
+on the site under the pricing section.
 
 **Why these numbers.** Anchor to the hardware (~€100+) and to premium one-time
 desktop utilities (€10–30). €18 is an easy impulse buy for someone who just spent

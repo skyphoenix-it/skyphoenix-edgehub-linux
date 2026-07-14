@@ -14,7 +14,11 @@ professional before you charge money._
    undercut.
 3. **Sell through a Merchant of Record** (Paddle / Lemon Squeezy) so EU VAT is
    handled for you — important as a German solo seller.
-4. **Trademark "EdgeHub"**, keep the "not affiliated with Corsair" notice.
+4. **Add low-pressure donations** — Buy Me a Coffee (one-off), Patreon (recurring),
+   GitHub Sponsors — for people who'd rather just chip in. Confirm tax treatment of
+   tips with your Steuerberater.
+5. **Trademark "EdgeHub"**, market as **"EdgeHub by SKYPhoenix IT"**, keep the one
+   nominative "compatible with … / not affiliated with Corsair" notice.
 
 ---
 

@@ -4,6 +4,14 @@ Two audiences, opposite registers. Product Hunt wants the story and the payoff;
 Hacker News wants the engineering and the honest caveats — no hype, no emoji.
 Don't cross-post the same text. Fill the `<...>` links before posting.
 
+> **Branding for all posts:** it's **EdgeHub by SKYPhoenix IT**. Unlike the website
+> and trailer (which lead generically with "your second screen"), launch posts *do*
+> need to name the hardware nominatively — a Show HN or r/unixporn post makes no sense
+> without saying which panel it's for — so keep "Corsair Xeneon Edge" as a
+> *compatibility* mention plus the "independent, not affiliated with Corsair" line.
+> Never use Corsair logos/branding or imply endorsement. Add "by SKYPhoenix IT" to the
+> maker comment / details comment.
+
 ---
 
 ## PRODUCT HUNT
