@@ -92,7 +92,25 @@ QtObject {
         "oi_yellow":         { a: "#F0E442", b: "#F5ED84" },
         "oi_blue":           { a: "#0072B2", b: "#59A3CD" },
         "oi_vermillion":     { a: "#D55E00", b: "#E49659" },
-        "oi_reddish_purple": { a: "#CC79A7", b: "#DEA8C6" }
+        "oi_reddish_purple": { a: "#CC79A7", b: "#DEA8C6" },
+
+        // Accents that complete the distro-evoking theme modes (see applyTheme).
+        // Colour is not protectable subject matter, so a palette may evoke a
+        // familiar look — a logo never may, and none is shipped. The last two are
+        // named for their colours ONLY; see the note in applyTheme before renaming
+        // them. Separate from the theme modes on purpose: applyTheme re-applies the
+        // user's accent rather than forcing one, so pairing these is the user's
+        // choice. All clear 3:1 on their theme's card fill (WCAG non-text).
+        "arch":      { a: "#1FA8DF", b: "#6BC5EA" },
+        "cachyos":   { a: "#3DD68C", b: "#7FE5B5" },
+        "debian":    { a: "#D70A53", b: "#E55D8A" },
+        "fedora":    { a: "#3C6EB4", b: "#7FA3D3" },
+        // The only pair where `b` is a different hue rather than a lighter tint of
+        // `a`: the teal/amber *pairing* is the whole identity being evoked, and
+        // accent→accent2 renders as a gradient, so the two-hue ramp is the point.
+        "popos":     { a: "#48B9C7", b: "#FFAF33" },
+        "aubergine": { a: "#E8642A", b: "#F09A6B" },
+        "crimson":   { a: "#DC3B33", b: "#E87C76" }
     })
 
     property int spacingXs: 4
@@ -264,6 +282,71 @@ QtObject {
             backgroundColor = "#1A1B26"; backgroundColor2 = "#24283B"; backgroundColor3 = "#16161E"
             cardBackground = "#24283B"; cardBackgroundAlt = "#2F344D"; cardBorder = "#3B4261"
             textPrimary = "#C0CAF5"; textSecondary = "#A9B1D6"; textTertiary = "#565F89"
+            radiusSm = 10; radiusMd = 16; radiusLg = 22; radiusXl = 28; decorative = true; cardBorderWidth = 1; break
+
+        // ── Palettes evoking familiar Linux distributions ────────────────────
+        // COLOUR ONLY. This product is sold, and distro logos/wordmarks are
+        // trademarks that our own MIT/Apache licensing does nothing about — but a
+        // colour palette is not protectable subject matter. So these cases ship a
+        // *palette inspired by* a look and nothing else: no logo, no glyph, no
+        // traced or approximated mark, anywhere in the theme or its assets.
+        //
+        // Two naming registers, and the difference is deliberate:
+        //  • Descriptive names below (arch/cachyos/debian/fedora/popos) name
+        //    community projects with published, permissive guidelines, where
+        //    naming a palette after the look it evokes is nominative use.
+        //  • `aubergine` and `crimson` evoke looks whose owners actively enforce
+        //    their marks against commercial use. They are named for their colours
+        //    and MUST stay that way: do not reintroduce the project name into the
+        //    case label, the UI string, or a comment. The colour is the whole
+        //    point; the name would be the whole liability.
+        //
+        // Each carries its hue in the SURFACES (backgrounds, card fills, borders)
+        // rather than in `accent` — applyTheme deliberately ends by re-applying
+        // the user's own accent, so a theme must never clobber it. The matching
+        // accents live in `accentPresets` for users who want the full look.
+
+        // Cyan-tinted graphite.
+        case "arch":
+            backgroundColor = "#14181D"; backgroundColor2 = "#1B2229"; backgroundColor3 = "#0E1216"
+            cardBackground = "#1B2129"; cardBackgroundAlt = "#232B35"; cardBorder = "#2C4453"
+            textPrimary = "#E4EEF5"; textSecondary = "#9FB6C4"; textTertiary = "#6E8291"
+            radiusSm = 10; radiusMd = 16; radiusLg = 22; radiusXl = 28; decorative = true; cardBorderWidth = 1; break
+        // Spring green on a near-neutral dark.
+        case "cachyos":
+            backgroundColor = "#131611"; backgroundColor2 = "#1D2419"; backgroundColor3 = "#0C0E0A"
+            cardBackground = "#1C221A"; cardBackgroundAlt = "#26301F"; cardBorder = "#35492E"
+            textPrimary = "#EAF7E4"; textSecondary = "#AEC9A6"; textTertiary = "#7C9276"
+            radiusSm = 10; radiusMd = 16; radiusLg = 22; radiusXl = 28; decorative = true; cardBorderWidth = 1; break
+        // Magenta-red on a dark neutral.
+        case "debian":
+            backgroundColor = "#16121A"; backgroundColor2 = "#241823"; backgroundColor3 = "#0F0C12"
+            cardBackground = "#1F1922"; cardBackgroundAlt = "#2A212D"; cardBorder = "#4A2C3C"
+            textPrimary = "#F5EAF0"; textSecondary = "#C4A8B8"; textTertiary = "#8E7684"
+            radiusSm = 10; radiusMd = 16; radiusLg = 22; radiusXl = 28; decorative = true; cardBorderWidth = 1; break
+        // Deep navy-blue surfaces.
+        case "fedora":
+            backgroundColor = "#0E1626"; backgroundColor2 = "#17284A"; backgroundColor3 = "#080E1A"
+            cardBackground = "#152034"; cardBackgroundAlt = "#1D2C48"; cardBorder = "#2C4270"
+            textPrimary = "#E8F0FB"; textSecondary = "#A6BCDA"; textTertiary = "#728CAB"
+            radiusSm = 10; radiusMd = 16; radiusLg = 22; radiusXl = 28; decorative = true; cardBorderWidth = 1; break
+        // Warm graphite; the teal/amber pairing it evokes lives in the accent.
+        case "popos":
+            backgroundColor = "#1E1C1B"; backgroundColor2 = "#2B2827"; backgroundColor3 = "#141312"
+            cardBackground = "#262322"; cardBackgroundAlt = "#33302E"; cardBorder = "#48423F"
+            textPrimary = "#F2EFEC"; textSecondary = "#BDB5AE"; textTertiary = "#8A827B"
+            radiusSm = 10; radiusMd = 16; radiusLg = 22; radiusXl = 28; decorative = true; cardBorderWidth = 1; break
+        // Deep purple; pairs with a warm orange accent.
+        case "aubergine":
+            backgroundColor = "#2C0A20"; backgroundColor2 = "#46102F"; backgroundColor3 = "#1D0616"
+            cardBackground = "#3A0F2A"; cardBackgroundAlt = "#4C1738"; cardBorder = "#6B2650"
+            textPrimary = "#FBECF5"; textSecondary = "#D5AAC4"; textTertiary = "#A47C93"
+            radiusSm = 10; radiusMd = 16; radiusLg = 22; radiusXl = 28; decorative = true; cardBorderWidth = 1; break
+        // Deep red on near-black.
+        case "crimson":
+            backgroundColor = "#0B0507"; backgroundColor2 = "#1E070B"; backgroundColor3 = "#050203"
+            cardBackground = "#16080B"; cardBackgroundAlt = "#230E12"; cardBorder = "#3E1A20"
+            textPrimary = "#FBE9EA"; textSecondary = "#D0A2A6"; textTertiary = "#996E73"
             radiusSm = 10; radiusMd = 16; radiusLg = 22; radiusXl = 28; decorative = true; cardBorderWidth = 1; break
         default:
             backgroundColor = "#0D1117"; backgroundColor2 = "#0A0E14"; backgroundColor3 = "#0A0E14"

@@ -547,6 +547,13 @@ ApplicationWindow {
                                 { k: "gruvbox",       n: "Gruvbox",   c1: "#32302F", c2: "#1D2021" },
                                 { k: "catppuccin",    n: "Catppuccin",c1: "#181825", c2: "#11111B" },
                                 { k: "tokyonight",    n: "Tokyo Night",c1: "#24283B", c2: "#16161E" },
+                                { k: "arch", n: "Arch", c1: "#1B2129", c2: "#14181D" },
+                                { k: "cachyos", n: "CachyOS", c1: "#1C221A", c2: "#131611" },
+                                { k: "debian", n: "Debian", c1: "#1F1922", c2: "#16121A" },
+                                { k: "fedora", n: "Fedora", c1: "#152034", c2: "#0E1626" },
+                                { k: "popos", n: "Pop!_OS", c1: "#262322", c2: "#1E1C1B" },
+                                { k: "aubergine", n: "Aubergine", c1: "#3A0F2A", c2: "#2C0A20" },
+                                { k: "crimson", n: "Crimson", c1: "#16080B", c2: "#0B0507" },
                                 { k: "oled",          n: "OLED",      c1: "#0A0A0A", c2: "#000000" },
                                 { k: "light",         n: "Light",     c1: "#F6F8FA", c2: "#E4E9F0" },
                                 { k: "high_contrast", n: "Contrast",  c1: "#1A1A1A", c2: "#000000" }

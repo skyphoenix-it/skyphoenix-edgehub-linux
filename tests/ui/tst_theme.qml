@@ -27,7 +27,8 @@ Item {
         function test_accent_presets_complete() {
             var names = ["blue","purple","green","orange","pink","teal","red","gold",
                          "cyan","indigo","mint","coral","amber","magenta"]
-            compare(Object.keys(theme.accentPresets).length, 22, "fourteen house + eight Okabe–Ito accents")
+            compare(Object.keys(theme.accentPresets).length, 29,
+                    "fourteen house + eight Okabe–Ito + seven distro-evoking accents")
             for (var i = 0; i < names.length; i++) {
                 var p = theme.accentPresets[names[i]]
                 verify(p && p.a !== undefined && p.b !== undefined, names[i] + " has a+b tones")
@@ -359,6 +360,236 @@ Item {
             theme.textScale = 1.4
             theme.applyTheme("light")
             compare(theme.fontData, 56, "text scale is independent of the theme mode (40 × 1.4)")
+        }
+
+        // ── Distro-evoking palettes ──────────────────────────────────────────
+        // Colour-only palettes; there is no mark to assert on. What CAN regress is
+        // the thing they were added for: a new `case` silently falling through to
+        // the dark default, or a hand-tuned hex quietly making text unreadable.
+
+        readonly property var distroModes: ["arch", "cachyos", "debian", "fedora",
+                                            "popos", "aubergine", "crimson"]
+
+        // WCAG 2.1 relative luminance. Qt colour components are sRGB in 0..1, so
+        // they go straight into the transfer function without a /255 step.
+        function _relLum(c) {
+            function lin(v) { return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4) }
+            return 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b)
+        }
+
+        function _contrast(fg, bg) {
+            var a = _relLum(fg), b = _relLum(bg)
+            return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)
+        }
+
+        // Flatten a translucent fill onto an opaque backdrop — cardFill() is
+        // alpha-blended over the page background, so the surface actually under
+        // the text is the composite, not cardBackground itself.
+        function _over(fg, bg) {
+            return Qt.rgba(fg.a * fg.r + (1 - fg.a) * bg.r,
+                           fg.a * fg.g + (1 - fg.a) * bg.g,
+                           fg.a * fg.b + (1 - fg.a) * bg.b, 1)
+        }
+
+        // A hex string is only coerced to a `color` on assignment to a colour
+        // property, not when passed to a JS function — the maths helpers above
+        // would see a bare string with no .r/.g/.b. Parse it instead of bouncing
+        // it through a scratch colour property: a `color` read out of a property
+        // is a live handle onto that property, so a scratch one would make every
+        // literal in an expression collapse onto the last value written.
+        function _c(hex) {
+            var h = hex.replace("#", "")
+            return Qt.rgba(parseInt(h.substr(0, 2), 16) / 255, parseInt(h.substr(2, 2), 16) / 255,
+                           parseInt(h.substr(4, 2), 16) / 255, 1)
+        }
+
+        // Detach a colour from the property it was read from — see above. Storing
+        // `theme.backgroundColor` in an array keeps a handle onto the property, so
+        // the next applyTheme() would silently rewrite everything already stored.
+        function _snap(c) { return Qt.rgba(c.r, c.g, c.b, c.a) }
+
+        // Sanity-check the contrast maths itself against known-exact endpoints,
+        // so a broken formula cannot silently pass every legibility test below.
+        function test_contrast_helper_is_correct() {
+            fuzzyCompare(_contrast(_c("#FFFFFF"), _c("#000000")), 21.0, 0.01, "white on black is 21:1")
+            fuzzyCompare(_contrast(_c("#FFFFFF"), _c("#FFFFFF")), 1.0, 0.01, "a colour on itself is 1:1")
+            // #767676 on white is the WCAG reference boundary case (≈4.54:1).
+            fuzzyCompare(_contrast(_c("#767676"), _c("#FFFFFF")), 4.54, 0.02, "grey 0x76 on white ≈ 4.54:1")
+            // Contrast is symmetric: the ratio does not depend on which is on top.
+            fuzzyCompare(_contrast(_c("#000000"), _c("#FFFFFF")), 21.0, 0.01, "…and is order-independent")
+            fuzzyCompare(_over(Qt.rgba(1, 0, 0, 0.5), _c("#000000")).r, 0.5, 0.001,
+                         "50% red over black flattens to half-intensity red")
+            fuzzyCompare(_over(Qt.rgba(1, 0, 0, 0.5), _c("#000000")).a, 1.0, 0.001,
+                         "…and the composite is opaque")
+        }
+
+        // Each mode must paint its OWN background — the dark default (#0D1117) is
+        // what a missing `case` produces, so this is the fall-through guard.
+        function test_distro_modes_resolve_data() {
+            return [
+                { tag: "arch",      mode: "arch",      bg: "#14181D", card: "#1B2129" },
+                { tag: "cachyos",   mode: "cachyos",   bg: "#131611", card: "#1C221A" },
+                { tag: "debian",    mode: "debian",    bg: "#16121A", card: "#1F1922" },
+                { tag: "fedora",    mode: "fedora",    bg: "#0E1626", card: "#152034" },
+                { tag: "popos",     mode: "popos",     bg: "#1E1C1B", card: "#262322" },
+                { tag: "aubergine", mode: "aubergine", bg: "#2C0A20", card: "#3A0F2A" },
+                { tag: "crimson",   mode: "crimson",   bg: "#0B0507", card: "#16080B" }
+            ]
+        }
+
+        function test_distro_modes_resolve(d) {
+            _assertThemeCoherent(d.mode, d.bg, true)
+            verify(Qt.colorEqual(theme.cardBackground, d.card), d.mode + " sets its card surface")
+            verify(!Qt.colorEqual(theme.backgroundColor, "#0D1117"),
+                   d.mode + " is a real case, not a fall-through to the dark default")
+        }
+
+        // Every colour token must be fully opaque: these tokens are painted as
+        // solid surfaces, and cardFill() derives its alpha from glassOpacity — a
+        // token that arrived translucent would double-dip and wash the card out.
+        function test_distro_tokens_are_opaque() {
+            for (var i = 0; i < distroModes.length; i++) {
+                var mode = distroModes[i]
+                theme.applyTheme(mode)
+                var tokens = { backgroundColor: _snap(theme.backgroundColor),
+                               backgroundColor2: _snap(theme.backgroundColor2),
+                               backgroundColor3: _snap(theme.backgroundColor3),
+                               cardBackground: _snap(theme.cardBackground),
+                               cardBackgroundAlt: _snap(theme.cardBackgroundAlt),
+                               cardBorder: _snap(theme.cardBorder),
+                               textPrimary: _snap(theme.textPrimary),
+                               textSecondary: _snap(theme.textSecondary),
+                               textTertiary: _snap(theme.textTertiary) }
+                for (var name in tokens)
+                    compare(tokens[name].a, 1.0, mode + "." + name + " is fully opaque")
+            }
+        }
+
+        // Seven palettes that render the same would be six wasted menu entries.
+        function test_distro_palettes_are_mutually_distinct() {
+            var seen = []
+            for (var i = 0; i < distroModes.length; i++) {
+                theme.applyTheme(distroModes[i])
+                seen.push({ mode: distroModes[i], bg: _snap(theme.backgroundColor),
+                            card: _snap(theme.cardBackground), border: _snap(theme.cardBorder) })
+            }
+            for (var a = 0; a < seen.length; a++) {
+                // Within one palette the surfaces must form tiers, not one flat colour.
+                verify(!Qt.colorEqual(seen[a].bg, seen[a].card),
+                       seen[a].mode + " separates its card from its page background")
+                verify(!Qt.colorEqual(seen[a].card, seen[a].border),
+                       seen[a].mode + " separates its border from its card")
+                for (var b = a + 1; b < seen.length; b++)
+                    verify(!Qt.colorEqual(seen[a].bg, seen[b].bg) || !Qt.colorEqual(seen[a].card, seen[b].card),
+                           seen[a].mode + " is a different palette from " + seen[b].mode)
+            }
+        }
+
+        // THE legibility gate, computed rather than eyeballed. Text sits on
+        // cardFill(), whose alpha sweeps with glassOpacity, so check BOTH ends of
+        // the range: at max glass the card thins toward the page background, which
+        // is where a palette with too little page/card separation would fail.
+        function test_distro_text_on_cardfill_meets_wcag_aa() {
+            for (var i = 0; i < distroModes.length; i++) {
+                var mode = distroModes[i]
+                theme.applyTheme(mode)
+                var glassValues = [0.0, 1.0]
+                for (var g = 0; g < glassValues.length; g++) {
+                    theme.glassOpacity = glassValues[g]
+                    var surface = _over(theme.cardFill(), theme.backgroundColor)
+                    var primary = _contrast(theme.textPrimary, surface)
+                    verify(primary >= 4.5, mode + " textPrimary on cardFill @ glass=" + glassValues[g]
+                           + " is " + primary.toFixed(2) + ":1 (needs ≥ 4.5)")
+                    // Secondary carries real content (labels, units), so it takes
+                    // the same bar. Tertiary is decorative de-emphasis and does not.
+                    var secondary = _contrast(theme.textSecondary, surface)
+                    verify(secondary >= 4.5, mode + " textSecondary on cardFill @ glass=" + glassValues[g]
+                           + " is " + secondary.toFixed(2) + ":1 (needs ≥ 4.5)")
+                }
+                theme.glassOpacity = 0.6
+            }
+        }
+
+        // The matching accents are drawn as fills/gradients on the card, so they
+        // take the WCAG non-text bar (3:1) rather than the text one.
+        function test_distro_accents_separate_from_their_card() {
+            for (var i = 0; i < distroModes.length; i++) {
+                var mode = distroModes[i]
+                theme.applyTheme(mode)
+                theme.applyAccent(mode)      // accent shares the theme's name
+                var surface = _over(theme.cardFill(), theme.backgroundColor)
+                var ra = _contrast(theme.accent, surface)
+                var rb = _contrast(theme.accent2, surface)
+                verify(ra >= 3.0, mode + " accent on cardFill is " + ra.toFixed(2) + ":1 (needs ≥ 3.0)")
+                verify(rb >= 3.0, mode + " accent2 on cardFill is " + rb.toFixed(2) + ":1 (needs ≥ 3.0)")
+            }
+        }
+
+        // A distro theme must not hijack the accent the user picked: applyTheme
+        // ends with applyAccent(accentName), and these modes deliberately do not
+        // touch it. The paired accent is opt-in, by name.
+        function test_distro_theme_does_not_clobber_user_accent() {
+            theme.applyAccent("oi_bluish_green")
+            theme.applyTheme("debian")
+            verify(Qt.colorEqual(theme.accent, "#009E73"),
+                   "a distro theme leaves the user's chosen accent alone")
+            compare(theme.accentName, "oi_bluish_green", "…and its name")
+        }
+
+        // ── BACKWARD COMPATIBILITY ───────────────────────────────────────────
+        // Theme modes are stored BY NAME in config (Dashboard.applyAppearance →
+        // applyTheme(a.theme)), so an existing user's saved mode must keep
+        // painting the exact surfaces it painted before the distro palettes
+        // landed. Literals on purpose: reading these from theme.applyTheme's own
+        // output would just compare the table to itself and pass unconditionally.
+        function test_legacy_theme_palettes_unchanged_data() {
+            return [
+                { tag: "dark",          mode: "dark",          bg: "#0D1117", card: "#161B22", text: "#E6EDF3", border: "#30363D" },
+                { tag: "light",         mode: "light",         bg: "#FFFFFF", card: "#F6F8FA", text: "#1F2328", border: "#D0D7DE" },
+                { tag: "oled",          mode: "oled",          bg: "#000000", card: "#0A0A0A", text: "#E0E0E0", border: "#1A1A1A" },
+                { tag: "high_contrast", mode: "high_contrast", bg: "#000000", card: "#1A1A1A", text: "#FFFFFF", border: "#FFFFFF" },
+                { tag: "midnight",      mode: "midnight",      bg: "#0B1026", card: "#16192E", text: "#EDEFFF", border: "#33385F" },
+                { tag: "aurora",        mode: "aurora",        bg: "#04140F", card: "#0E1E24", text: "#EAFBF4", border: "#25505A" },
+                { tag: "sunset",        mode: "sunset",        bg: "#1B0A20", card: "#26132A", text: "#FFEFF6", border: "#5A3355" },
+                { tag: "nebula",        mode: "nebula",        bg: "#0E0722", card: "#1A1132", text: "#F1EBFF", border: "#413063" },
+                { tag: "synthwave",     mode: "synthwave",     bg: "#1A0B2E", card: "#241141", text: "#FCEEFF", border: "#5B2A8C" },
+                { tag: "cyberpunk",     mode: "cyberpunk",     bg: "#04110F", card: "#0A1A18", text: "#EAFFF9", border: "#1C4A42" },
+                { tag: "deep_forest",   mode: "deep_forest",   bg: "#0A1A0E", card: "#12251A", text: "#EAF7EC", border: "#2E5238" },
+                { tag: "deep_ocean",    mode: "deep_ocean",    bg: "#04121F", card: "#0A1E2E", text: "#E6F6FF", border: "#1E4A63" },
+                { tag: "ember",         mode: "ember",         bg: "#1A0E0A", card: "#241310", text: "#FFEFE6", border: "#5C3324" },
+                { tag: "vaporwave",     mode: "vaporwave",     bg: "#1E0F2E", card: "#281640", text: "#FBEEFF", border: "#563A78" },
+                { tag: "rose_gold",     mode: "rose_gold",     bg: "#21121A", card: "#2A1721", text: "#FDEEF3", border: "#5E3A4A" },
+                { tag: "matrix",        mode: "matrix",        bg: "#000000", card: "#050D05", text: "#B6FFB6", border: "#164016" },
+                { tag: "nord",          mode: "nord",          bg: "#2E3440", card: "#3B4252", text: "#ECEFF4", border: "#4C566A" },
+                { tag: "dracula",       mode: "dracula",       bg: "#282A36", card: "#343746", text: "#F8F8F2", border: "#44475A" },
+                { tag: "solarized",     mode: "solarized",     bg: "#002B36", card: "#073642", text: "#EEE8D5", border: "#17616B" },
+                { tag: "gruvbox",       mode: "gruvbox",       bg: "#282828", card: "#3C3836", text: "#EBDBB2", border: "#665C54" },
+                { tag: "catppuccin",    mode: "catppuccin",    bg: "#1E1E2E", card: "#313244", text: "#CDD6F4", border: "#585B70" },
+                { tag: "tokyonight",    mode: "tokyonight",    bg: "#1A1B26", card: "#24283B", text: "#C0CAF5", border: "#3B4261" }
+            ]
+        }
+
+        function test_legacy_theme_palettes_unchanged(d) {
+            theme.applyTheme(d.mode)
+            verify(Qt.colorEqual(theme.backgroundColor, d.bg), d.mode + " background is still " + d.bg)
+            verify(Qt.colorEqual(theme.cardBackground, d.card), d.mode + " card is still " + d.card)
+            verify(Qt.colorEqual(theme.textPrimary, d.text), d.mode + " textPrimary is still " + d.text)
+            verify(Qt.colorEqual(theme.cardBorder, d.border), d.mode + " cardBorder is still " + d.border)
+        }
+
+        // Adding names to accentPresets must not retune the ones already stored in
+        // users' configs. (test_existing_accents_resolve_unchanged pins the 14
+        // house tones; this pins the Okabe–Ito set's `b` tints, which nothing else
+        // pins as literals.)
+        function test_legacy_accent_secondary_tones_unchanged() {
+            var legacyB = { "blue": "#79C0FF", "green": "#7EE787", "red": "#FF7B72",
+                            "oi_orange": "#EFC159", "oi_blue": "#59A3CD",
+                            "oi_vermillion": "#E49659" }
+            for (var name in legacyB) {
+                theme.applyAccent(name)
+                verify(Qt.colorEqual(theme.accent2, legacyB[name]),
+                       "stored accent '" + name + "' keeps its secondary tone " + legacyB[name])
+            }
         }
     }
 }
