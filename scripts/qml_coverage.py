@@ -45,6 +45,10 @@ FUNCTION_SOURCES = [
     # maps onto a rotated screen. Every widget's layout will key off it, so each
     # function must earn an explicit COVERS claim.
     "ui/qml/WidgetSizes.qml",
+    # The placement authority that replaced GridLayout: where every tile on every
+    # page ends up, and the reason a rotation re-projects instead of reshuffling.
+    # Nothing else may decide geometry, so every function must earn a claim.
+    "ui/qml/WidgetPacker.qml",
     # The egress gate: the one place a QML XMLHttpRequest may be built, and now
     # the one place credential refs are resolved. It is the choke point the
     # "no telemetry / local-only" claim rests on, so every function in it should

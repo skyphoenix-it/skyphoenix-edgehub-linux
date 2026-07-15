@@ -16,6 +16,11 @@ Item {
     App.WidgetCatalog { id: catalog }
     App.WidgetConfigSchema { id: sc }
     App.DashboardStore { id: store }
+    App.WidgetSizes { id: sizes }
+    // The REAL packer the Dashboard uses — the budget is measured by placing the
+    // tiles, never by summing them: half-width tiles pair across the short axis, so
+    // a sum would reject pages that genuinely fit.
+    App.WidgetPacker { id: packer }
     // The store resolves `configBridge` by unqualified name via the scope chain;
     // null = no persistence bridge (pure in-memory), so nothing touches disk.
     property var configBridge: null
@@ -48,14 +53,88 @@ Item {
                 var p = list[i]
                 for (var pg = 0; pg < p.pages.length; pg++) {
                     var tiles = p.pages[pg].tiles
-                    verify(tiles.length >= 1 && tiles.length <= 6,
-                           p.id + " page '" + p.pages[pg].name + "' has 1-6 tiles (not overloaded), got " + tiles.length)
+                    verify(tiles.length >= 1 && tiles.length <= 3,
+                           p.id + " page '" + p.pages[pg].name + "' has 1-3 tiles (not overloaded), got " + tiles.length)
                     for (var t = 0; t < tiles.length; t++) {
                         verify(catalog.def(tiles[t].type) !== null,
                                p.id + ": tile type '" + tiles[t].type + "' exists in WidgetCatalog")
                     }
                 }
             }
+        }
+
+        // A preset may only name a size the tile's TYPE declares. Legality alone is
+        // not enough: `1x2` is a real size, but `focus` does not render it, and a
+        // preset that asked for one would be silently coerced by the store — the
+        // preset would ship a layout its author never saw.
+        function test_every_preset_tile_size_is_declared_by_its_type() {
+            var list = presets.list()
+            for (var i = 0; i < list.length; i++) {
+                var p = list[i]
+                for (var pg = 0; pg < p.pages.length; pg++) {
+                    var tiles = p.pages[pg].tiles
+                    for (var t = 0; t < tiles.length; t++) {
+                        var ty = tiles[t].type, sz = tiles[t].size
+                        if (sz === undefined) continue   // the type's own default
+                        verify(sizes.isLegal(sz), p.id + ": '" + sz + "' is a real size")
+                        verify(catalog.supports(ty, sz),
+                               p.id + " page '" + p.pages[pg].name + "': type '" + ty +
+                               "' declares size '" + sz + "' (declares: " +
+                               catalog.sizesFor(ty).join(", ") + ")")
+                    }
+                }
+            }
+        }
+
+        // THE POINT OF THIS FILE: no preset page may run past one screen.
+        //
+        // The scroll axis follows the LONG axis, which in the default 2560x720
+        // landscape is the same axis as the SwipeView's page swipe — on an
+        // OVERFLOWING landscape page the inner Flickable wins the drag and the
+        // PageIndicator becomes the only way to change pages. A page that fits never
+        // scrolls, so the conflict cannot arise. This test is what makes that
+        // property hold: 14 of the 17 original pages overflowed (worst 2.0x), and
+        // without an assertion the next preset silently reintroduces it.
+        //
+        // Measured through the real store, so a preset is judged on the sizes it
+        // ACTUALLY ships with after normalisation (including per-type defaults),
+        // not on what it wrote down.
+        function test_no_preset_page_exceeds_the_long_axis_budget() {
+            var list = presets.list()
+            for (var i = 0; i < list.length; i++) {
+                var doc = presets.buildDoc(list[i].id)
+                verify(store.applyExternal(JSON.stringify(doc)), list[i].id + " applies")
+                var pages = store.pages()
+                for (var pg = 0; pg < pages.length; pg++) {
+                    var extent = packer.longExtent(packer.pack(pages[pg].tiles))
+                    verify(extent <= sizes.longHalves,
+                           list[i].id + " page '" + pages[pg].name + "' fits one screen: " +
+                           extent + " of " + sizes.longHalves + " long half-cells" +
+                           (extent > sizes.longHalves
+                              ? " (overflows by " + (extent / sizes.longHalves).toFixed(2) + "x)" : ""))
+                }
+            }
+        }
+
+        // calm-focus's hero timer is the regression this epic's migration fix exists
+        // for: `focus` tops out at 1x1.5, so a preset asking for more used to be
+        // coerced to the 1x1 default and the "big timer" its blurb promises quietly
+        // became an ordinary tile. Assert the shipped preset keeps a hero — a size
+        // strictly larger than the baseline.
+        function test_calm_focus_keeps_a_hero_timer() {
+            var doc = presets.buildDoc("calm-focus")
+            verify(store.applyExternal(JSON.stringify(doc)), "calm-focus applies")
+            var found = null
+            var pages = store.pages()
+            for (var pg = 0; pg < pages.length; pg++) {
+                var tiles = pages[pg].tiles
+                for (var t = 0; t < tiles.length; t++)
+                    if (tiles[t].type === "focus") found = tiles[t]
+            }
+            verify(found !== null, "calm-focus ships a focus timer")
+            compare(found.size, "1x1.5", "the timer is the largest size `focus` declares")
+            verify(sizes.area(found.size) > sizes.area(sizes.baseline),
+                   "the timer is a HERO — bigger than the 1x1 baseline, not coerced down to it")
         }
 
         // A preset ships per-tile `settings`, but nothing at runtime validates them:

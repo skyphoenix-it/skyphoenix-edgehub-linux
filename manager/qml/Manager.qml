@@ -455,26 +455,9 @@ ApplicationWindow {
                         bgCatalog: bgCatalog; wpCatalog: bundledWallpapers; uploadedImages: win.uploadedWallpapers
                     }
 
-                    // Per-page columns (overrides the global default).
-                    RowLayout {
-                        Layout.fillWidth: true; spacing: 8
-                        Text { text: "Columns:"; color: m.textSecondary; font.pixelSize: 14; Layout.alignment: Qt.AlignVCenter }
-                        Repeater {
-                            model: [ { v: 0, l: "Global" }, { v: 1, l: "1 column" }, { v: 2, l: "2 columns" } ]
-                            delegate: Rectangle {
-                                required property var modelData
-                                width: colLbl.implicitWidth + 24; height: m.touch; radius: m.radius
-                                property bool sel: (store.revision, store.pageColumns(win.currentPageIndex)) === modelData.v
-                                color: sel ? m.accent : (pgColMA.containsMouse ? m.panelAlt : m.panel)
-                                border.width: 1; border.color: m.border
-                                Text { id: colLbl; anchors.centerIn: parent; text: modelData.l
-                                    color: sel ? m.textOnAccent : m.textPrimary; font.pixelSize: 13 }
-                                MouseArea { id: pgColMA; anchors.fill: parent; hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: store.setPageColumns(win.currentPageIndex, modelData.v) }
-                            }
-                        }
-                    }
+                    // A per-page "Columns" picker stood here. Tile size is now chosen
+                    // per tile — drag a tile's corner in the clone below, which snaps
+                    // to the sizes that tile's TYPE declares.
 
                     // Tiles on the current page
                     RowLayout {
@@ -615,25 +598,10 @@ ApplicationWindow {
                         bgCatalog: bgCatalog; wpCatalog: bundledWallpapers; uploadedImages: win.uploadedWallpapers
                     }
 
-                    Text { text: "Layout columns (default)"; color: m.textSecondary; font.pixelSize: 14 }
-                    Flow {
-                        Layout.fillWidth: true; spacing: 8
-                        Repeater {
-                            model: [ { v: 1, l: "1 column" }, { v: 2, l: "2 columns" } ]
-                            delegate: Rectangle {
-                                required property var modelData
-                                width: 150; height: m.touch; radius: m.radius
-                                property bool sel: (store.revision, store.appearance().gridCols || 1) === modelData.v
-                                color: sel ? m.accent : (dfColMA.containsMouse ? m.panelAlt : m.panel)
-                                border.width: 1; border.color: m.border
-                                Text { anchors.centerIn: parent; text: modelData.l
-                                    color: sel ? m.textOnAccent : m.textPrimary; font.pixelSize: 14 }
-                                MouseArea { id: dfColMA; anchors.fill: parent; hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: store.setAppearance("gridCols", modelData.v) }
-                            }
-                        }
-                    }
+                    // A default "Layout columns" picker stood here, alongside the
+                    // per-page override. Both are gone for the same reason: the grid
+                    // is fixed at WidgetSizes.shortHalves across the short axis, so
+                    // `1x1` means one third of the screen on every page.
 
                     RowLayout {
                         Layout.fillWidth: true; spacing: 12

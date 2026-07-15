@@ -112,15 +112,24 @@ Metric tiles (CPU/GPU/RAM/Disk) use `MetricGauge.qml` (ring + centred value +
 `Sparkline.qml` history). Touch tokens bumped (primary 76/secondary 60/tertiary 52)
 + `iconLg/Md/Sm` glyph tokens; header icons and bottom-bar buttons enlarged.
 
-Column count is now an OPTION: `appearance.gridCols` (global, default 1) with
-per-page override `page.cols` (0 = use global); store setters `setPageColumns` /
-`pageColumns`. Dashboard `pageItem.cols` = clamp(perPage||global, floor(width/300),
-6). At 720px this allows 1 or 2 columns, so tile width (`w`, columnSpan) finally
-matters. Pickers: on-device SettingsPanel ("Layout Columns"), Manager Appearance
-(global default) + Layout tab (per-page). EdgeClone is a GridLayout (`columns:
-clone.cols`); resize is a bottom-right ⤡ corner handle that previews via per-tile
-`pvW`/`pvH` (no mid-drag reload) and commits `setTileSize(w,h)` on release; move is
-hit-test `targetAt()` over the grid children, commit `moveTile` on drop.
+Column count is GONE (superseded by the size model, below). `appearance.gridCols`,
+the per-page `page.cols`, `setPageColumns`/`pageColumns` and both pickers
+(on-device SettingsPanel "Layout Columns", Manager Appearance + Layout tab) have
+all been removed. The grid is fixed at `WidgetSizes.shortHalves` (2 half-cells)
+across the short axis, because a size is a fraction of the SCREEN — a user-chosen
+column count would make `1x1` mean something different per page, which is the exact
+property the size model exists to remove. `_normaliseDoc` reads `cols`/`gridCols`
+one last time (they are the only record of what an old `w` span was measured
+against) and then strips them.
+
+A tile's share of the screen is now the per-tile named `size` (`WidgetSizes`, 7
+names; which ones a TYPE may take is `WidgetCatalog.sizes`/`dflt`). Placement is
+`WidgetPacker.pack()` — first fit in SEMANTIC (short, long) half-cells, shared by
+the hub's Dashboard and the Manager's EdgeClone. EdgeClone is absolutely positioned
+from those placements (no GridLayout); resize is a bottom-right ⤡ corner handle
+that previews per-tile and commits `setTileSize(id, size)` on release, snapping to
+the nearest size the type DECLARES; move is hit-test `targetAt()`, commit `moveTile`
+on drop.
 
 Design-system unification + icons (P0 of the approved UI/UX plan): (1) ONE shared
 `ui/qml/Theme.qml` (was duplicated in main.qml `_theme` + manager `AppTheme` +
@@ -144,8 +153,9 @@ Orientation-aware layout (P0-3): C++ `main.cpp` connects `QScreen::orientationCh
 `orientation`, "auto" follows sensor else fixed) → `effectiveOrientation` →
 `contentRotation` (0/90/180/270). A `contentRoot` Item wraps StackView+InputPanel,
 `rotation: contentRotation`, and SWAPS width/height when 90/270 so the dashboard
-inside lays out for the effective aspect. Dashboard `cols`: landscape (width>height)
-→ `min(floor(w/300),4)` to fill; portrait → user's gridCols. Controls in on-device
+inside lays out for the effective aspect. The dashboard's cell grid is derived from
+the screen alone (2 x 6 half-cells, transposed in landscape) — orientation enters
+only as a projection of the one semantic packing, never as a re-pack. Controls in on-device
 SettingsPanel + Manager Display tab (write appearance.orientation). On this dev
 desktop the sensor reports PrimaryOrientation (no rotation), so "auto"=portrait;
 verified the pipeline by forcing landscape (content rotates 90° + reflows). Persist

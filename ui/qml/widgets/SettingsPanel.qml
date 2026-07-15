@@ -220,27 +220,12 @@ Rectangle {
                         }
                     }
 
-                    // --- Layout columns ---
-                    ColumnLayout {
-                        Layout.fillWidth: true; spacing: theme.spacingSm
-                        Text { text: "Layout Columns"; font.pixelSize: theme.fontLabel; font.bold: true; color: theme.textSecondary }
-                        Flow {
-                            Layout.fillWidth: true; spacing: theme.spacingSm
-                            Repeater {
-                                model: [ { v: 1, l: "1 Column" }, { v: 2, l: "2 Columns" } ]
-                                delegate: Rectangle {
-                                    required property var modelData
-                                    width: 150; height: theme.touchSecondary; radius: theme.radiusMd
-                                    property bool active: (store.revision, store.appearance().gridCols || 1) === modelData.v
-                                    color: active ? Qt.rgba(theme.accent.r, theme.accent.g, theme.accent.b, 0.18) : theme.cardBackground
-                                    border.width: active ? 2 : 1; border.color: active ? theme.accent : theme.cardBorder
-                                    Text { anchors.centerIn: parent; text: modelData.l; color: theme.textPrimary; font.pixelSize: theme.fontLabel }
-                                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                        onClicked: store.setAppearance("gridCols", modelData.v) }
-                                }
-                            }
-                        }
-                    }
+                    // A "Layout Columns" picker stood here. The grid is now fixed at
+                    // WidgetSizes.shortHalves across the short axis, because a size is
+                    // a fraction of the SCREEN — a user-chosen column count would make
+                    // `1x1` mean something different per page, which is the exact
+                    // property the size model exists to remove. A tile's share of the
+                    // screen is now chosen per TILE (its size), not per page.
 
                     // --- Accent color ---
                     ColumnLayout {

@@ -62,7 +62,7 @@ Item {
 
     function tileDelegates() {
         return findAll(ld.item, function (x) {
-            return x && x.effH !== undefined && x.pvW !== undefined && x.modelData !== undefined
+            return x && x.effSize !== undefined && x.pvSize !== undefined && x.modelData !== undefined
         })
     }
     function tileAtIndex(i) {
@@ -71,7 +71,7 @@ Item {
         return null
     }
     // The drag/select overlay MouseArea (`ma`) carries `dragging`; the resize-handle
-    // MouseArea carries `sw`/`sh` instead — so `dragging !== undefined` disambiguates.
+    // MouseArea does not — so `dragging !== undefined` disambiguates them.
     function dragMA(i) {
         var t = tileAtIndex(i)
         if (!t) return null

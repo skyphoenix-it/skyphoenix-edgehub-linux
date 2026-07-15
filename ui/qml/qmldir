@@ -6,6 +6,8 @@ FirstRunWizard 1.0 FirstRunWizard.qml
 Theme 1.0 Theme.qml
 WallpaperCatalog 1.0 WallpaperCatalog.qml
 WidgetCatalog 1.0 WidgetCatalog.qml
+WidgetPacker 1.0 WidgetPacker.qml
+WidgetSizes 1.0 WidgetSizes.qml
 WidgetConfigSchema 1.0 WidgetConfigSchema.qml
 main 1.0 main.qml
 AnalogClockWidget 1.0 widgets/AnalogClockWidget.qml

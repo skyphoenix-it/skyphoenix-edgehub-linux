@@ -10,6 +10,8 @@ FirstRunWizard 1.0 ../../ui/qml/FirstRunWizard.qml
 Theme 1.0 ../../ui/qml/Theme.qml
 WallpaperCatalog 1.0 ../../ui/qml/WallpaperCatalog.qml
 WidgetCatalog 1.0 ../../ui/qml/WidgetCatalog.qml
+WidgetPacker 1.0 ../../ui/qml/WidgetPacker.qml
+WidgetSizes 1.0 ../../ui/qml/WidgetSizes.qml
 WidgetConfigSchema 1.0 ../../ui/qml/WidgetConfigSchema.qml
 main 1.0 ../../ui/qml/main.qml
 AnalogClockWidget 1.0 ../../ui/qml/widgets/AnalogClockWidget.qml

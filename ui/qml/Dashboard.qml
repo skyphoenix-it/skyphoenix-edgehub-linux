@@ -160,6 +160,8 @@ Item {
 
     DashboardStore { id: store }
     WidgetCatalog { id: catalog }
+    WidgetSizes { id: sizes }
+    WidgetPacker { id: packer }
     // The single app-global egress gate. Every net widget routes through this one
     // instance (injected below), so the offline switch + host allowlist + request
     // counters are global. `offline` is driven by an appearance flag (set by a
@@ -296,22 +298,51 @@ Item {
         }
     }
 
-    // Inject the shared bindings into a freshly-loaded widget instance. Used by
-    // both the tile loaders and the expanded overlay so they share state.
-    // The semantic size of a tile with span (w, h). Named rather than numeric so
-    // widgets ask "have I got room?" instead of re-deriving it from spans they
-    // shouldn't know about — and so the vocabulary survives the move to real
-    // fractional sizes, where the spans change meaning but the classes don't.
-    function sizeClassFor(w, h) {
-        var tall = (h || 1) >= 2, wide = (w || 1) >= 2
-        if (tall && wide) return "large"
-        if (tall) return "tall"
-        if (wide) return "wide"
+    // How much ROOM a named size gives, in the vocabulary widgets already speak
+    // (WidgetChrome: compact/wide/tall/large/full). Named rather than numeric so a
+    // widget asks "have I got room?" instead of re-deriving it from geometry it
+    // shouldn't know about.
+    //
+    // It is judged on the PROJECTED half-cells, so it answers about the shape the
+    // widget will actually be handed: a half-cell is roughly square (~348x409
+    // portrait, ~423x306 landscape), so counting them is a fair proxy for shape, and
+    // the same size honestly reports "tall" in portrait and "wide" in landscape —
+    // which is the point of a rotating panel.
+    //
+    // "large" had to be redefined. It was coined for the old span grid, where it
+    // meant "doubled on BOTH axes"; the size model has no such shape (the short axis
+    // stops at 1), so under the old rule it would have become unreachable. It now
+    // means what it always implied — the sizes with room to spare: two thirds of the
+    // screen or more (>= 8 of the 12 half-cells), i.e. `1x2` and `1x3`.
+    function sizeClassFor(size, landscape) {
+        var u = sizes.halfUnits(size, landscape)
+        if (!u) return "compact"                      // unknown size → assume the least room
+        if (u.w * u.h >= 8) return "large"
+        if (u.w > u.h) return "wide"
+        if (u.h > u.w) return "tall"
         return "compact"
     }
 
+    // The next size in this type's own legal list, wrapping around — the edit-mode
+    // resize button. The old fixed 1x1→2x1→1x2→2x2 cycle has NO equivalent: those
+    // spans are not sizes, and every widget type now declares which sizes it can
+    // honestly render, so the cycle has to be the type's own list or it would offer
+    // shapes the widget was never built for. A type with one size stays put. (The
+    // picker sheet that shows the whole list at once is a later phase; this keeps
+    // the button honest in the meantime.)
+    function nextSize(type, current) {
+        var legal = catalog.sizesFor(type)
+        if (!legal.length) return ""
+        var i = legal.indexOf(current)
+        return legal[(i + 1) % legal.length]          // indexOf -1 → wraps to legal[0]
+    }
+
+    // Inject the shared bindings into a freshly-loaded widget instance. Used by
+    // both the tile loaders and the expanded overlay so they share state.
+    //
     // sizeClassFn is a getter, BOUND rather than read once: a resize rewrites the
-    // tile's span, and a value captured at load would silently go stale.
+    // tile's size (and a rotation reshapes it), and a value captured at load would
+    // silently go stale.
     function injectWidget(item, id, type, isExpanded, sizeClassFn) {
         if (!item) return
         store.ensureSettings(id, catalog.defaults(type))
@@ -372,59 +403,96 @@ Item {
                     required property var modelData
                     property var tiles: modelData.tiles || []
 
-                    // Column count: per-page override → global setting → 1.
-                    // Clamped so columns never get impractically narrow for the width.
-                    property int cols: {
-                        store.revision
-                        var fit = Math.max(1, Math.floor(width / 300))
-                        // Honour the per-page override → global gridCols → 1 in BOTH
-                        // orientations. Landscape (after orientation reflow) is wide so
-                        // it allows more, shorter columns (cap 4) than portrait (cap 6),
-                        // but still respects the user's chosen column count rather than
-                        // ignoring it.
-                        var want = (modelData.cols && modelData.cols > 0)
-                                   ? modelData.cols : (store.appearance().gridCols || 1)
-                        var cap = (width > height) ? 4 : 6
-                        return Math.max(1, Math.min(want, fit, cap))
-                    }
+                    // Which physical axis the long axis lands on. This is the ONLY
+                    // place orientation enters a page's layout: the packing below is
+                    // orientation-free, so a rotation re-projects it rather than
+                    // re-packing — the dashboard turns WITH the panel instead of
+                    // reshuffling under the user. (See WidgetPacker.)
+                    property bool landscape: width > height
 
-                    // Scrollable page body: when the tiles' combined minimum height
-                    // exceeds the page, the Flickable scrolls (so bottom widgets stay
-                    // reachable) — otherwise the grid just fills the page and the
-                    // Flickable stays inert so it never competes with the horizontal
-                    // page-swipe.
+                    // The page's ONE packing, in semantic (short, long) space. Keyed on
+                    // structureRevision like the old tile Repeater: only add/remove/
+                    // move/resize re-packs, not a settings keystroke.
+                    property var placements: {
+                        store.structureRevision
+                        return packer.pack(pageItem.tiles)
+                    }
+                    // How far the page reaches along the long axis, in half-cells.
+                    // 6 (WidgetSizes.longHalves) is exactly one screen.
+                    property int longExtent: packer.longExtent(pageItem.placements)
+
+                    // Where the next widget would land: the same packing with one more
+                    // baseline tile on the end. Drives the edit-mode "Add widget" slot.
+                    property var addPlacement: {
+                        store.structureRevision
+                        var virt = (pageItem.tiles || []).slice()
+                        virt.push({ id: "", type: "", size: sizes.baseline })
+                        var ps = packer.pack(virt)
+                        return ps[ps.length - 1]
+                    }
+                    // The extent that must be REACHABLE. In edit mode the add slot can
+                    // sit past the last tile (and past the screen), and an affordance you
+                    // cannot scroll to is not one.
+                    property int reachExtent: dashboard.editMode
+                        ? Math.max(pageItem.longExtent, pageItem.addPlacement.l + pageItem.addPlacement.el)
+                        : pageItem.longExtent
+
+                    // Scrollable page body. CAPACITY POLICY: a page is NEVER capped and
+                    // a tile is NEVER refused or dropped — a page longer than the screen
+                    // simply scrolls, exactly as it does today.
+                    //
+                    // The fixed 2x6 grid sizes the CELL, not the page: `1x1` must be a
+                    // third of the DISPLAY no matter what else is on the page (that is
+                    // the whole size model, and precisely what GridLayout could not do),
+                    // so the cell is screen/(2x6) and a 7th half-unit lands past the
+                    // screen edge rather than shrinking its neighbours. Capping instead
+                    // would refuse 15 of the 17 shipped preset pages outright, and
+                    // dropping tiles to fit is silent data loss — neither is a trade
+                    // worth making for a page that can just scroll.
+                    //
+                    // The scroll axis follows the LONG axis, so it is vertical in
+                    // portrait (720x2560) and HORIZONTAL in the default landscape strip
+                    // (2560x720) — see the report: a horizontal page scroll shares an
+                    // axis with the SwipeView's page swipe. `interactive` is therefore
+                    // false unless the page genuinely overflows, so it never competes on
+                    // a page that fits.
                     Flickable {
                         id: pageFlick
                         anchors.fill: parent
                         clip: true
-                        contentWidth: width
-                        contentHeight: pageGrid.height
-                        flickableDirection: Flickable.VerticalFlick
+                        // The cell, derived from the SCREEN and nothing else.
+                        readonly property real cellShort: (pageItem.landscape ? height : width) / sizes.shortHalves
+                        readonly property real cellLong: (pageItem.landscape ? width : height) / sizes.longHalves
+                        readonly property real contentLong:
+                            Math.max(pageItem.landscape ? width : height, pageItem.reachExtent * cellLong)
+                        contentWidth: pageItem.landscape ? contentLong : width
+                        contentHeight: pageItem.landscape ? height : contentLong
+                        flickableDirection: pageItem.landscape ? Flickable.HorizontalFlick
+                                                               : Flickable.VerticalFlick
                         boundsBehavior: Flickable.StopAtBounds
-                        interactive: pageGrid.implicitHeight > height + 1
+                        interactive: pageItem.reachExtent > sizes.longHalves
 
-                    GridLayout {
+                    Item {
                         id: pageGrid
-                        width: pageFlick.width
-                        // Fill the page when content fits; grow to natural height (and
-                        // let the Flickable scroll) when it overflows.
-                        height: Math.max(pageFlick.height, implicitHeight)
-                        columns: pageItem.cols
-                        rowSpacing: theme.spacingMd
-                        columnSpacing: theme.spacingMd
+                        width: pageFlick.contentWidth
+                        height: pageFlick.contentHeight
 
                         Repeater {
-                            model: pageItem.tiles
+                            model: pageItem.placements
                             delegate: Item {
                                 id: cell
-                                required property int index
-                                required property var modelData
-                                property int rowSpan: Math.max(1, modelData.h || 1)
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                Layout.columnSpan: Math.max(1, Math.min(modelData.w || 1, pageItem.cols))
-                                Layout.rowSpan: rowSpan
-                                Layout.minimumHeight: 120 * rowSpan + theme.spacingMd * (rowSpan - 1)
+                                // NOT the Repeater's `index`: that counts placements, and
+                                // every store call here addresses the TILE array. The
+                                // placement carries `idx` for exactly that.
+                                required property var modelData   // a WidgetPacker placement
+
+                                // Absolute placement: the packed semantic slot projected
+                                // onto physical axes at the screen-derived cell size.
+                                readonly property var _r: packer.rect(cell.modelData, pageItem.landscape,
+                                                                      pageFlick.cellShort, pageFlick.cellLong,
+                                                                      theme.spacingMd)
+                                x: _r.x; y: _r.y
+                                width: _r.width; height: _r.height
 
                                 scale: tapMA.pressed && !dashboard.editMode ? 0.98 : 1.0
                                 Behavior on scale { NumberAnimation { duration: theme.motionFast; easing.type: Easing.OutCubic } }
@@ -452,7 +520,7 @@ Item {
                                     source: active ? catalog.source(wType) : ""
                                     onLoaded: {
                                         dashboard.injectWidget(item, wId, wType, false,
-                                            function () { return dashboard.sizeClassFor(cell.modelData.w, cell.modelData.h) })
+                                            function () { return dashboard.sizeClassFor(cell.modelData.size, pageItem.landscape) })
                                         if (item) item.active = Qt.binding(function () { return !dashboard.hasExpanded && !dashboard.editMode })
                                     }
                                 }
@@ -528,9 +596,14 @@ Item {
                                         Rectangle {
                                             Layout.preferredWidth: theme.touchSecondary; Layout.preferredHeight: theme.touchSecondary
                                             radius: width / 2; color: theme.cardBackgroundAlt; border.width: 1; border.color: theme.cardBorder
-                                            visible: cell.index > 0
+                                            // `idx` is the tile's index in the store's tile
+                                            // ARRAY, which is what moveTile addresses —
+                                            // the delegate's own index counts placements,
+                                            // and the two only coincide by luck.
+                                            visible: cell.modelData.idx > 0
                                             AppIcon { anchors.centerIn: parent; name: "ui-caret-left"; size: theme.iconMd; color: theme.textPrimary }
-                                            MouseArea { anchors.fill: parent; onClicked: store.moveTile(pageItem.index, cell.index, cell.index - 1) }
+                                            MouseArea { anchors.fill: parent
+                                                onClicked: store.moveTile(pageItem.index, cell.modelData.idx, cell.modelData.idx - 1) }
                                         }
                                         // remove
                                         Rectangle {
@@ -544,27 +617,25 @@ Item {
                                         Rectangle {
                                             Layout.preferredWidth: theme.touchSecondary; Layout.preferredHeight: theme.touchSecondary
                                             radius: width / 2; color: theme.cardBackgroundAlt; border.width: 1; border.color: theme.cardBorder
-                                            visible: cell.index < pageItem.tiles.length - 1
+                                            visible: cell.modelData.idx < pageItem.tiles.length - 1
                                             AppIcon { anchors.centerIn: parent; name: "ui-caret-right"; size: theme.iconMd; color: theme.textPrimary }
-                                            MouseArea { anchors.fill: parent; onClicked: store.moveTile(pageItem.index, cell.index, cell.index + 1) }
+                                            MouseArea { anchors.fill: parent
+                                                onClicked: store.moveTile(pageItem.index, cell.modelData.idx, cell.modelData.idx + 1) }
                                         }
-                                        // resize cycle: 1x1 -> 2x1 -> 1x2 -> 2x2 -> 1x1
+                                        // Resize: step through THIS widget type's own legal
+                                        // sizes. Hidden for a type with only one — a button
+                                        // that provably cannot do anything should not be
+                                        // offered.
                                         Rectangle {
                                             Layout.preferredWidth: theme.touchSecondary; Layout.preferredHeight: theme.touchSecondary
                                             radius: width / 2; color: theme.cardBackgroundAlt; border.width: 1; border.color: theme.cardBorder
+                                            visible: catalog.sizesFor(cell.modelData.type).length > 1
                                             AppIcon { anchors.centerIn: parent; name: "ui-resize"; size: theme.iconMd; color: theme.textPrimary }
                                             MouseArea {
                                                 anchors.fill: parent
-                                                onClicked: {
-                                                    var w = cell.modelData.w || 1
-                                                    var h = cell.modelData.h || 1
-                                                    var nw = 1, nh = 1
-                                                    if (w === 1 && h === 1) { nw = 2; nh = 1 }
-                                                    else if (w === 2 && h === 1) { nw = 1; nh = 2 }
-                                                    else if (w === 1 && h === 2) { nw = 2; nh = 2 }
-                                                    else { nw = 1; nh = 1 }
-                                                    store.setTileSize(pageItem.index, cell.modelData.id, nw, nh)
-                                                }
+                                                onClicked: store.setTileSize(pageItem.index, cell.modelData.id,
+                                                                             dashboard.nextSize(cell.modelData.type,
+                                                                                                cell.modelData.size))
                                             }
                                         }
                                     }
@@ -572,14 +643,19 @@ Item {
                             }
                         }
 
-                        // "Add widget" placeholder tile (edit mode only).
-                        // visible:false makes GridLayout skip it so tiles fill the
-                        // page height when not editing.
+                        // "Add widget" placeholder tile (edit mode only). It sits in the
+                        // slot the next widget would ACTUALLY land in — it is packed by
+                        // the same packer, as a real baseline tile — so the affordance
+                        // shows where the thing it adds will go rather than guessing.
                         Loader {
+                            id: addTile
                             active: dashboard.editMode
                             visible: dashboard.editMode
-                            Layout.fillWidth: true; Layout.fillHeight: true
-                            Layout.minimumHeight: 120
+                            readonly property var _r: packer.rect(pageItem.addPlacement, pageItem.landscape,
+                                                                  pageFlick.cellShort, pageFlick.cellLong,
+                                                                  theme.spacingMd)
+                            x: _r.x; y: _r.y
+                            width: _r.width; height: _r.height
                             sourceComponent: Rectangle {
                                 radius: theme.radiusLg
                                 color: "transparent"

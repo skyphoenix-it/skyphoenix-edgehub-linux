@@ -5,9 +5,9 @@ import "../../ui/qml" as App
 // COVERS: fn:DashboardStore._bucket, fn:DashboardStore._clone, fn:DashboardStore._commitStructure, fn:DashboardStore._flush, fn:DashboardStore._hasBridge, fn:DashboardStore._isEphemeralKey
 // COVERS: fn:DashboardStore._mk, fn:DashboardStore._newId, fn:DashboardStore._normaliseDoc, fn:DashboardStore._page, fn:DashboardStore._persistableData, fn:DashboardStore._touchSettings
 // COVERS: fn:DashboardStore._uniquePageName, fn:DashboardStore.addPage, fn:DashboardStore.addTile, fn:DashboardStore.appearance, fn:DashboardStore.applyExternal, fn:DashboardStore.ensureSettings
-// COVERS: fn:DashboardStore.flushNow, fn:DashboardStore.load, fn:DashboardStore.moveTile, fn:DashboardStore.pageBackground, fn:DashboardStore.pageColumns, fn:DashboardStore.pageCount
+// COVERS: fn:DashboardStore.flushNow, fn:DashboardStore.load, fn:DashboardStore.moveTile, fn:DashboardStore.pageBackground, fn:DashboardStore.pageCount
 // COVERS: fn:DashboardStore.pages, fn:DashboardStore.patchSettings, fn:DashboardStore.removePage, fn:DashboardStore.removeTile, fn:DashboardStore.renamePage, fn:DashboardStore.resetSettings
-// COVERS: fn:DashboardStore.resetTo, fn:DashboardStore.seed, fn:DashboardStore.setAppearance, fn:DashboardStore.setPageBackground, fn:DashboardStore.setPageColumns, fn:DashboardStore.setSetting
+// COVERS: fn:DashboardStore.resetTo, fn:DashboardStore.seed, fn:DashboardStore.setAppearance, fn:DashboardStore.setPageBackground, fn:DashboardStore.setSetting
 // COVERS: fn:DashboardStore.setTileSize, fn:DashboardStore.settingsFor
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -94,13 +94,6 @@ Item {
             store.addTile(0, "cpu")
             compare(_bridge.saveCount, 1,
                 "addTile should force an immediate save")
-        }
-
-        // (BUG) Same debounce hole for setPageColumns (BackgroundPicker path).
-        function test_setPageColumns_force_flushes() {
-            store.setPageColumns(0, 3)
-            compare(_bridge.saveCount, 1,
-                "setPageColumns should force an immediate save")
         }
 
         // (BUG) …and for setPageBackground.
@@ -385,20 +378,18 @@ Item {
             verify(store.structureRevision > sr, "a tile add must bump structureRevision")
         }
 
-        // (OK) Per-page cols/background overrides are structural.
+        // (OK) The per-page background override is structural.
         function test_page_overrides_bump_structureRevision() {
             var sr = store.structureRevision
-            store.setPageColumns(0, 2)
-            verify(store.structureRevision > sr, "setPageColumns is structural"); sr = store.structureRevision
             store.setPageBackground(0, "style", "orbs")
             verify(store.structureRevision > sr, "setPageBackground is structural")
         }
 
-        // (OK) Global appearance gridCols is readable + reactive via revision.
-        function test_global_gridcols_appearance() {
+        // (OK) Appearance is readable + reactive via revision.
+        function test_global_appearance_is_revision_keyed() {
             var r = store.revision
-            store.setAppearance("gridCols", 2)
-            compare(store.appearance().gridCols, 2)
+            store.setAppearance("orientation", "landscape")
+            compare(store.appearance().orientation, "landscape")
             verify(store.revision > r, "appearance change is revision-keyed")
         }
     }
@@ -408,17 +399,6 @@ Item {
         name: "StorePageUtils"
         when: windowShown
         function init() { _bridge.reset(); store.load("blank") }
-
-        // (OK) setPageColumns(0) and negatives clear the override; fallback is 0.
-        function test_setPageColumns_clear() {
-            store.setPageColumns(0, 4)
-            compare(store.pageColumns(0), 4)
-            store.setPageColumns(0, 0)
-            compare(store.pageColumns(0), 0, "0 clears the override")
-            store.setPageColumns(0, 5)
-            store.setPageColumns(0, -1)
-            compare(store.pageColumns(0), 0, "a negative value clears the override")
-        }
 
         // (OK) setPageBackground clears on empty value.
         function test_setPageBackground_clear() {
@@ -466,12 +446,10 @@ Item {
         function test_page_ops_bounds_guarded() {
             var threw = false
             try {
-                store.setPageColumns(99, 2)
                 store.setPageBackground(-1, "style", "x")
                 store.renamePage(99, "z")
             } catch (e) { threw = true }
             verify(!threw, "out-of-range page ops are guarded")
-            compare(store.pageColumns(99), 0, "oob pageColumns falls back to 0")
         }
     }
 
@@ -586,9 +564,11 @@ Item {
 
         // Direct tile/page mutators name themselves on the assertion of their effect.
         function test_setTileSize_addPage_rename_remove() {
-            var tid = store.addTile(0, "cpu")
-            store.setTileSize(0, tid, 2, 2)
-            compare(store.pages()[0].tiles[0].w, 2, "setTileSize applied the new width span")
+            // `tasks` because it declares 1x2 — setTileSize is gated on the TYPE, so a
+            // subject that cannot render the size would prove the rejection, not the apply.
+            var tid = store.addTile(0, "tasks")
+            store.setTileSize(0, tid, "1x2")
+            compare(store.pages()[0].tiles[0].size, "1x2", "setTileSize applied the new named size")
             var pc = store.pageCount(); store.addPage("Added")
             compare(store.pageCount(), pc + 1, "addPage appended a page")
             store.renamePage(store.pageCount() - 1, "Renamed")

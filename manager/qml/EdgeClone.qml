@@ -1,12 +1,12 @@
 import QtQuick
-import QtQuick.Controls
-import QtQuick.Layouts
 
 // EdgeClone — a live WYSIWYG "clone" of the Xeneon Edge. Renders the REAL widgets
-// of the current page in a device frame, in a GridLayout that mirrors the Edge's
-// column count (1 or 2). Interactions:
+// of the current page in a device frame, placed by the SAME WidgetPacker the hub
+// uses, so the clone is one layout viewed twice rather than a second opinion.
+// Interactions:
 //   • drag a tile onto another  → reorder (commit on drop)
-//   • drag the corner handle    → resize width (1↔2 cols) and/or height (1↔2)
+//   • drag the corner handle    → resize, snapping to the nearest size the widget
+//                                 type actually supports
 //   • ⚙ configure   ✕ remove
 // All edits go through the shared store → persist + push live to a running hub.
 // Resolves store/catalog/theme/media/backend from the Manager scope.
@@ -15,6 +15,9 @@ Item {
     property int pageIndex: 0
     signal configRequested(string tileId, string tileType)
 
+    WidgetSizes { id: sizes }
+    WidgetPacker { id: packer }
+
     // Structural list → key on structureRevision, NOT revision, so a settings
     // keystroke (title/accent/…) doesn't rebuild every tile Loader (flicker/reload).
     property var tiles: {
@@ -22,13 +25,22 @@ Item {
         var p = store.pages()[pageIndex]
         return p ? (p.tiles || []) : []
     }
-    // Column count: per-page override → global default → 1 (capped at 2 here).
-    property int cols: {
-        store.revision
-        var p = store.pages()[pageIndex] || ({})
-        var want = (p.cols && p.cols > 0) ? p.cols : (store.appearance().gridCols || 1)
-        return Math.max(1, Math.min(2, want))
+    // The page's placement, in semantic space — the hub's own packing, byte for byte
+    // (same packer, same input, no orientation), which is what makes this a clone.
+    property var placements: {
+        store.structureRevision
+        return packer.pack(clone.tiles)
     }
+    // The clone draws the Edge UPRIGHT (long axis vertical). The hub picks its
+    // orientation from the panel sensor; the Manager runs on a desktop and has no
+    // panel, so it shows the one orientation a still picture can honestly claim, and
+    // the semantic packing is identical in the other one anyway.
+    readonly property bool landscape: false
+    // How long the device drawn here must be, in half-cells: a full screen (6), or
+    // the page if it is longer. An over-long page is shown WHOLE — a taller device
+    // scaled down — rather than clipped: the Manager is where you see that a page
+    // runs past the screen, so hiding it here would defeat the tool.
+    property int longExtent: Math.max(sizes.longHalves, packer.longExtent(clone.placements))
 
     // ── Page background (mirrors Dashboard.qml so the clone is truly WYSIWYG:
     //    animated style OR wallpaper, per-page override → global default) ──
@@ -74,9 +86,6 @@ Item {
         var s = catalog.source(type)
         return s ? s.replace("qrc:/qml/", "qrc:/manager/") : ""
     }
-    // Total pixel height a tile spanning `h` rows occupies, including the row gap
-    // between the spanned rows (so a 2-tall tile lines up with two stacked 1-talls).
-    function spanH(h) { var n = Math.max(1, h); return 180 * n + 10 * (n - 1) }
     function injectInto(item, id, type) {
         if (!item) return
         store.ensureSettings(id, catalog.defaults(type))
@@ -107,8 +116,12 @@ Item {
     property real dragX: 0
     property real dragY: 0
 
+    // Which delegate is under (gx, gy), in the tile container's coordinates.
+    // Iterates `placements` — the Repeater's ACTUAL model. `tiles` is one per stored
+    // tile, and an unplaceable one has no delegate, so counting tiles here would walk
+    // past the end of the Repeater.
     function targetAt(gx, gy) {
-        for (var i = 0; i < tiles.length; i++) {
+        for (var i = 0; i < placements.length; i++) {
             var it = rep.itemAt(i)
             if (!it) continue
             if (gx >= it.x && gx <= it.x + it.width && gy >= it.y && gy <= it.y + it.height)
@@ -122,7 +135,7 @@ Item {
         id: frame
         anchors.centerIn: parent
         transformOrigin: Item.Center
-        width: clone.cols === 2 ? 520 : 420
+        width: 420
         height: screen.height + 16
         // Scale the entire device so the full page is visible at once. Capped so a
         // short page doesn't upscale to blurriness.
@@ -134,7 +147,18 @@ Item {
             id: screen
             anchors.centerIn: parent
             width: parent.width - 16
-            height: grid.implicitHeight + 24
+            // The Edge's real 2560x720 aspect, extended when the page runs longer
+            // than one screen. `_deviceAspect` is what makes a cell here the same
+            // SHAPE as a cell on the panel — a size's aspect is the one thing a clone
+            // at a different pixel scale can still get wrong, and it is exactly what
+            // the widget authors judge their `sizes` declarations against.
+            readonly property real _deviceAspect: 2560 / 720
+            // Cells derive from ONE SCREEN, never from the content — the same rule as
+            // the hub, and the reason a 0.5x0.5 is a twelfth here too. The frame then
+            // grows to whatever the page needs.
+            readonly property real cellShort: width / sizes.shortHalves
+            readonly property real cellLong: (width * _deviceAspect) / sizes.longHalves
+            height: cellLong * clone.longExtent
             radius: 20; clip: true
             gradient: Gradient {
                 GradientStop { position: 0.0; color: theme.backgroundColor }
@@ -165,30 +189,33 @@ Item {
                 color: Qt.rgba(theme.backgroundColor.r, theme.backgroundColor.g, theme.backgroundColor.b, 0.28)
             }
 
-            GridLayout {
+            Item {
                 id: grid
-                x: 12; y: 12; width: parent.width - 24
-                columns: clone.cols
-                columnSpacing: 10; rowSpacing: 10
+                anchors.fill: parent
 
                     Repeater {
                         id: rep
-                        model: clone.tiles
+                        model: clone.placements
                         delegate: Item {
                             id: tile
                             required property int index
-                            required property var modelData
-                            property int pvW: 0   // preview span/height during a resize drag
-                            property int pvH: 0
-                            property int effH: Math.max(1, (pvH > 0 ? pvH : (modelData.h || 1)))
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            Layout.columnSpan: Math.min((pvW > 0 ? pvW : (modelData.w || 1)), clone.cols)
-                            // Tall (h=2) tiles span two GRID ROWS — mirrors Dashboard.qml so a
-                            // short neighbour keeps its own row instead of floating in dead space.
-                            Layout.rowSpan: tile.effH
-                            Layout.minimumHeight: clone.spanH(tile.effH)
-                            Layout.preferredHeight: clone.spanH(tile.effH)
+                            required property var modelData   // a WidgetPacker placement
+                            // Live preview during a resize drag: the size the drag has
+                            // snapped to, "" when not dragging. Only the dragged tile's
+                            // own box previews — the page re-packs on commit, because a
+                            // repack per mouse-move would shuffle the neighbours under
+                            // the cursor the drag is aimed at.
+                            property string pvSize: ""
+                            readonly property string effSize: tile.pvSize !== "" ? tile.pvSize : tile.modelData.size
+                            // The packed slot, re-extended to whatever the drag is
+                            // previewing. The ORIGIN stays put (only a commit re-packs),
+                            // so this is the placement with a swapped extent.
+                            readonly property var _u: sizes.semiUnits(tile.effSize)
+                            readonly property var _r: packer.rect(
+                                { s: modelData.s, l: modelData.l, es: _u.s, el: _u.l },
+                                clone.landscape, screen.cellShort, screen.cellLong, 10)
+                            x: _r.x; y: _r.y
+                            width: _r.width; height: _r.height
                             opacity: clone.dragIndex === tile.index ? 0.3 : 1.0
 
                             Rectangle {   // placeholder / loading
@@ -250,8 +277,12 @@ Item {
                                         // never execute, leaving the name-tag stuck in air.
                                         ma.dragging = false
                                         clone.dragIndex = -1; clone.targetIndex = -1
+                                        // Delegate indices count PLACEMENTS; moveTile
+                                        // addresses the store's tile array. `idx` is the
+                                        // bridge — they coincide only by luck.
                                         if (to >= 0 && to !== from)
-                                            store.moveTile(clone.pageIndex, from, to)
+                                            store.moveTile(clone.pageIndex, clone.placements[from].idx,
+                                                           clone.placements[to].idx)
                                     } else {
                                         clone.configRequested(tile.modelData.id, tile.modelData.type)
                                     }
@@ -277,40 +308,52 @@ Item {
                                 }
                             }
 
-                            // Corner resize handle (→ width, ↓ height). Previews live;
-                            // commits once on release (no mid-drag reload).
+                            // Corner resize handle. The drag is free-form but the sizes
+                            // are not: the dragged box is SNAPPED to the nearest size the
+                            // widget type actually declares, so an illegal shape is never
+                            // offered rather than being offered and then corrected. There
+                            // is deliberately no fixed pixel "flip threshold" any more —
+                            // the old one hard-coded a 180px row height, which is not a
+                            // thing the size model has. Previews live; commits on release.
                             Rectangle {
                                 anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.margins: 5
                                 width: 24; height: 24; radius: 7; z: 6
+                                visible: catalog.sizesFor(tile.modelData.type).length > 1
                                 color: Qt.rgba(theme.accent.r, theme.accent.g, theme.accent.b, 0.75)
                                 AppIcon { anchors.centerIn: parent; name: "ui-resize"; color: "#0D1117"; size: 15 }
                                 MouseArea {
                                     anchors.fill: parent; anchors.margins: -8
                                     cursorShape: Qt.SizeFDiagCursor
                                     preventStealing: true
-                                    property real sx: 0; property real sy: 0; property int sw: 1; property int sh: 1
+                                    property real sx: 0; property real sy: 0
                                     // Work in the UNSCALED content ("screen") space so the drag
-                                    // distance needed to flip a span matches the visible tile edge
-                                    // regardless of the device frame's fit-to-view scale.
+                                    // distance needed to reach a size matches the visible tile
+                                    // edge regardless of the device frame's fit-to-view scale.
                                     onPressed: (mp) => {
                                         var c = mapToItem(screen, mp.x, mp.y)
                                         sx = c.x; sy = c.y
-                                        sw = tile.modelData.w || 1; sh = tile.modelData.h || 1
-                                        tile.pvW = sw; tile.pvH = sh
+                                        tile.pvSize = tile.modelData.size
                                     }
                                     onPositionChanged: (mp) => {
                                         var c = mapToItem(screen, mp.x, mp.y)
-                                        var dx = c.x - sx, dy = c.y - sy
-                                        var tW = tile.width * 0.55        // ~half a tile → flip
-                                        var tH = clone.spanH(1) * 0.55
-                                        tile.pvW = clone.cols >= 2 ? (dx > tW ? 2 : (dx < -tW ? 1 : sw)) : 1
-                                        tile.pvH = dy > tH ? 2 : (dy < -tH ? 1 : sh)
+                                        // The box the cursor is describing, resolved onto the
+                                        // SEMANTIC axes — so this reads identically whichever
+                                        // way the device is turned.
+                                        var pxW = tile.width + (c.x - sx), pxH = tile.height + (c.y - sy)
+                                        var pxShort = clone.landscape ? pxH : pxW
+                                        var pxLong = clone.landscape ? pxW : pxH
+                                        var snapped = packer.snap(catalog.sizesFor(tile.modelData.type),
+                                                                  pxShort, pxLong,
+                                                                  screen.cellShort, screen.cellLong)
+                                        if (snapped !== "") tile.pvSize = snapped
                                     }
                                     onReleased: {
-                                        var nw = tile.pvW > 0 ? tile.pvW : (tile.modelData.w || 1)
-                                        var nh = tile.pvH > 0 ? tile.pvH : (tile.modelData.h || 1)
-                                        tile.pvW = 0; tile.pvH = 0
-                                        store.setTileSize(clone.pageIndex, tile.modelData.id, nw, nh)
+                                        var next = tile.pvSize
+                                        tile.pvSize = ""
+                                        // setTileSize is the gate, not this handler: `snap`
+                                        // only ever proposes a supported size, and the store
+                                        // still refuses anything else.
+                                        if (next !== "") store.setTileSize(clone.pageIndex, tile.modelData.id, next)
                                     }
                                 }
                             }

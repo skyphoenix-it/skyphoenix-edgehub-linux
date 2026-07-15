@@ -53,7 +53,7 @@ Item {
             return n.contentHeight !== undefined && n.contentY !== undefined && n.boundsBehavior !== undefined
         })
     }
-    // Theme/orientation/gridCols delegates carry an `active` bool + `modelData`.
+    // Theme/orientation delegates carry an `active` bool + `modelData`.
     function delegateWhere(pred) {
         return findPred(panel, function (n) { return n.active !== undefined && n.modelData !== undefined && pred(n) })
     }
@@ -108,19 +108,16 @@ Item {
             compare(root.accentName, "green", "the active-swatch source (accentName) tracks the applied accent")
         }
 
-        // ── Layout columns (writes through the store) ────────────────────────
-        function test_grid_columns_reflect_store() {
-            store.setAppearance("gridCols", 2)
-            var d = delegateWhere(function (n) { return n.modelData.v === 2 && n.modelData.l === "2 Columns" })
-            verify(d !== null, "2-column delegate exists")
-            verify(d.active, "the delegate matching the stored gridCols is active")
-        }
-
-        function test_grid_columns_click_writes_store() {
-            store.setAppearance("gridCols", 1)
-            var d = delegateWhere(function (n) { return n.modelData.v === 2 && n.modelData.l === "2 Columns" })
-            clickTarget(d)
-            compare(store.appearance().gridCols, 2, "tapping writes gridCols to the store")
+        // The Layout Columns picker is GONE — a size is a fraction of the screen,
+        // so a per-page column count may not exist. Asserted, not merely deleted:
+        // the picker was inert for a while before it was removed (nothing read it,
+        // and _normaliseDoc stripped the key on reload), and a control that silently
+        // does nothing is worse than no control.
+        function test_no_layout_columns_picker() {
+            var d = delegateWhere(function (n) {
+                return typeof n.modelData.l === "string" && n.modelData.l.indexOf("Column") >= 0
+            })
+            compare(d, null, "no column-count delegate survives in the settings panel")
         }
 
         // ── Orientation (segmented) ──────────────────────────────────────────

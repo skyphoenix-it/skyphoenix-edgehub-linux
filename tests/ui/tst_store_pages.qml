@@ -45,17 +45,7 @@ Item {
             compare(store.pageBackground(0).style, undefined)
         }
 
-        function test_per_page_columns() {
-            compare(store.pageColumns(0), 0)         // 0 = use global
-            store.setPageColumns(0, 2)
-            compare(store.pageColumns(0), 2)
-            store.setPageColumns(0, 0)               // clear
-            compare(store.pageColumns(0), 0)
-        }
-
-        function test_global_gridcols_appearance() {
-            store.setAppearance("gridCols", 2)
-            compare(store.appearance().gridCols, 2)
+        function test_appearance_roundtrips() {
             store.setAppearance("orientation", "landscape")
             compare(store.appearance().orientation, "landscape")
         }
@@ -63,7 +53,6 @@ Item {
         function test_bounds_guarded() {
             // Out-of-range page indices must not throw.
             store.setPageBackground(99, "style", "orbs")
-            store.setPageColumns(-1, 2)
             compare(store.pageBackground(99).style, undefined)
             verify(true)
         }
