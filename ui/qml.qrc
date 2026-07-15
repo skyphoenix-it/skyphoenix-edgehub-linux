@@ -59,6 +59,10 @@
         <file alias="qml/NetHub.qml">qml/widgets/NetHub.qml</file>
         <file alias="qml/QuoteWidget.qml">qml/widgets/QuoteWidget.qml</file>
         <file alias="qml/HabitWidget.qml">qml/widgets/HabitWidget.qml</file>
+        <file alias="qml/MedsWidget.qml">qml/widgets/MedsWidget.qml</file>
+        <file alias="qml/BraindumpWidget.qml">qml/widgets/BraindumpWidget.qml</file>
+        <file alias="qml/RoutineWidget.qml">qml/widgets/RoutineWidget.qml</file>
+        <file alias="qml/NowNextWidget.qml">qml/widgets/NowNextWidget.qml</file>
         <file alias="qml/HydrationWidget.qml">qml/widgets/HydrationWidget.qml</file>
         <file alias="qml/BreakWidget.qml">qml/widgets/BreakWidget.qml</file>
         <file alias="qml/CountdownWidget.qml">qml/widgets/CountdownWidget.qml</file>

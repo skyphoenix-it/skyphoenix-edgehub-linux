@@ -33,6 +33,10 @@ FocusWidget 1.0 ../../ui/qml/widgets/FocusWidget.qml
 GpuWidget 1.0 ../../ui/qml/widgets/GpuWidget.qml
 GridBackground 1.0 ../../ui/qml/widgets/GridBackground.qml
 HabitWidget 1.0 ../../ui/qml/widgets/HabitWidget.qml
+MedsWidget 1.0 ../../ui/qml/widgets/MedsWidget.qml
+BraindumpWidget 1.0 ../../ui/qml/widgets/BraindumpWidget.qml
+RoutineWidget 1.0 ../../ui/qml/widgets/RoutineWidget.qml
+NowNextWidget 1.0 ../../ui/qml/widgets/NowNextWidget.qml
 HydrationWidget 1.0 ../../ui/qml/widgets/HydrationWidget.qml
 MediaWidget 1.0 ../../ui/qml/widgets/MediaWidget.qml
 MeshGradientBackground 1.0 ../../ui/qml/widgets/MeshGradientBackground.qml

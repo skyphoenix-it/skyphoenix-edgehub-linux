@@ -273,6 +273,60 @@ QtObject {
             titleSection("Habit"),
             about("Build a daily streak. Press Check-in on the Edge each day you do the habit.") ] }
 
+        // The three E5 wellness widgets deliberately expose a SMALL surface. The
+        // best-supported finding in the neurodivergent-UI literature is "make it
+        // adjustable, default to the OS, keep the adjustment surface small" — not
+        // "add a calm mode". So each gets the one field that changes behaviour and
+        // nothing decorative; there is no "hide the red" toggle because there is no
+        // red to hide.
+        case "meds": return { sections: [
+            { title: "Doses", cols: 1, fields: [
+                { key: "schedule", label: "", type: "textarea",
+                  placeholder: "08:00 Vitamin D\n13:00 Ritalin 10mg\n20:30 Magnesium",
+                  help: "One dose per line, as “HH:MM Name”. A line without a time still "
+                        + "appears, just with no set time." } ] },
+            { title: "Timing", cols: 1, fields: [
+                { key: "dueWindowMin", label: "Stays “due” for", type: "slider",
+                  min: 15, max: 240, step: 15, suffix: " min", dflt: 60,
+                  help: "After this long, a dose you haven't marked simply goes quiet. "
+                        + "It is never shown as missed or overdue." } ] },
+            titleSection("Meds"),
+            about("A reminder of what you take and when, and a one-tap record of what you've "
+                  + "marked as taken today. It resets each morning.\n\n"
+                  + "It only knows what you tap — it cannot know what you actually took, so it "
+                  + "never nags, never turns red and never counts a dose as missed. Tap again "
+                  + "to undo a mistaken mark. This is not medical software: don't rely on it "
+                  + "as your only record, and never use it to decide whether to re-dose.") ] }
+
+        case "braindump": return { sections: [
+            { title: "Display", cols: 1, fields: [
+                { key: "showTimes", label: "Show the time each thought arrived", type: "toggle", dflt: true,
+                  help: "Turn off for a plain list." } ] },
+            titleSection("Braindump"),
+            about("A place to offload a thought in one line so you can stop holding it. Type "
+                  + "and press Enter — newest first. Different from Quick Note: that is one "
+                  + "page you keep, this is a queue you empty. The newest 100 are kept.") ] }
+
+        case "routine": return { sections: [
+            { title: "Steps", cols: 1, fields: [
+                { key: "steps", label: "", type: "textarea",
+                  placeholder: "Meds\nBrush teeth\nPack bag\nWater the plants",
+                  help: "One step per line, in the order you do them." } ] },
+            titleSection("Routine"),
+            about("Today's checklist. Everything unticks itself at midnight.\n\n"
+                  + "Nothing is remembered from one day to the next — no streak, no history, "
+                  + "no score. A skipped day costs you nothing, because there is nothing to "
+                  + "lose. If you do want a streak, use the Habit widget instead.") ] }
+
+        case "nownext": return { sections: [
+            { title: "Subscription", cols: 1, fields: [
+                { key: "url", label: "ICS calendar URL", type: "text", placeholder: "https://…/basic.ics" },
+                { type: "info", text: "Paste the secret iCal/ICS URL from Google, Outlook or Nextcloud." } ] },
+            titleSection("Now / Next"),
+            about("Just two things: what's on now, and what's next. Reads the same ICS feed as "
+                  + "the Calendar widget and refreshes every 15 minutes through the app's "
+                  + "egress gate.") ] }
+
         case "rightnow": return { sections: [
             { title: "Your one thing", cols: 1, fields: [
                 { key: "text", label: "", type: "text", placeholder: "Finish the report" } ] },

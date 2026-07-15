@@ -97,6 +97,27 @@ QtObject {
         { type: "break",    title: "Break Reminder", category: "Focus", source: "qrc:/qml/BreakWidget.qml",  defaults: { intervalMin: 30 },
           sizes: ["0.5x0.5", "0.5x1", "1x0.5", "1x1"], dflt: "1x1" },
 
+        // Everyday / wellness (E5). All three are user-data widgets whose content
+        // is a LIST that genuinely grows with height, and all three are control
+        // surfaces you tap — so they share a size story: no 1/12 tile (the chrome
+        // header plus a real ≥52px touch row does not fit one), and no full screen
+        // (they are meant to be short; a 12-line routine at 1x3 is a wall, which is
+        // the thing these widgets exist to avoid).
+        // Doses + a "mark taken" target. Half sizes carry the one focused dose, the
+        // taller ones carry the day's schedule.
+        { type: "meds",     title: "Meds",        category: "Focus", source: "qrc:/qml/MedsWidget.qml",
+          defaults: { schedule: "", dueWindowMin: 60, taken: [], takenDay: "" },
+          sizes: ["0.5x1", "1x0.5", "1x1", "1x1.5", "1x2"], dflt: "1x1" },
+        // Capture queue. The add field + ＋ button is a fixed ~40px row in both
+        // orientations of every declared size, which is what rules out 0.5x0.5.
+        { type: "braindump",title: "Braindump",   category: "Focus", source: "qrc:/qml/BraindumpWidget.qml",
+          defaults: { entries: [], showTimes: true },
+          sizes: ["0.5x1", "1x0.5", "1x1", "1x1.5", "1x2"], dflt: "1x1" },
+        // Daily checklist. Same shape as meds: a list of tappable rows.
+        { type: "routine",  title: "Routine",     category: "Focus", source: "qrc:/qml/RoutineWidget.qml",
+          defaults: { steps: "", done: [], day: "" },
+          sizes: ["0.5x1", "1x0.5", "1x1", "1x1.5", "1x2"], dflt: "1x1" },
+
         // Media
         // Art + title/artist + transport; the compact row keeps a 52px play target.
         { type: "media",    title: "Now Playing", category: "Media", source: "qrc:/qml/MediaWidget.qml", defaults: {},
@@ -119,6 +140,12 @@ QtObject {
         // thirds, not the whole screen. Not 1/12: "Up next" + the event rows.
         { type: "calendar", title: "Calendar",    category: "Info", source: "qrc:/qml/CalendarWidget.qml",  defaults: { url: "" },
           sizes: ["0.5x1", "1x0.5", "1x1", "1x1.5", "1x2"], dflt: "1x1" },
+        // Exactly TWO events, ever — so unlike `calendar` it has nothing to grow
+        // into past half the screen: 1x2 would be two lines of text and a lot of
+        // air. Not 1/12 either: NOW and NEXT are two labelled blocks, and dropping
+        // one to fit would make it a worse `calendar` rather than a Now/Next.
+        { type: "nownext",  title: "Now / Next",  category: "Info", source: "qrc:/qml/NowNextWidget.qml",  defaults: { url: "" },
+          sizes: ["0.5x1", "1x0.5", "1x1", "1x1.5"], dflt: "1x1" },
         // The forecast request asks for `current` + `daily` only (never `hourly`) and
         // forecastDays caps at 7, so the content is a reading plus a few day columns.
         { type: "weather",  title: "Weather",     category: "Info", source: "qrc:/qml/WeatherWidget.qml",  defaults: { lat: 52.52, lon: 13.405, place: "Berlin" },
@@ -152,6 +179,10 @@ QtObject {
         "habit": "Build a daily streak. Press Check in each day you do the habit.",
         "hydration": "Count glasses of water toward a daily goal; use − / + to adjust.",
         "break": "A repeating reminder to take a break. Set the interval with − / +.",
+        "meds": "Your doses for the day, and which ones you've marked as taken. It tracks taps, not pills — an unmarked dose is shown quietly, never as an alarm, because only you know whether you took it.",
+        "braindump": "Somewhere to put a thought the moment you have it. Type it, press Enter, forget it. Each line is stamped with the time; clear them once they're handled.",
+        "routine": "A checklist that starts fresh every day. Nothing is counted across days and nothing is lost by skipping one — there is no streak to break.",
+        "nownext": "What's on right now and what's coming up next, from an ICS calendar you subscribe to.",
         "httpjson": "Poll any URL and show a value from its JSON — as a number, a gauge, or a list. Colour-codes against thresholds.",
         "kpi": "One headline number from a URL or a local file, with a label, unit and colour-coded thresholds.",
         "calendar": "Upcoming events from a calendar you subscribe to. Paste an ICS URL to connect it.",

@@ -17,6 +17,10 @@ FocusWidget 1.0 FocusWidget.qml
 GpuWidget 1.0 GpuWidget.qml
 GridBackground 1.0 GridBackground.qml
 HabitWidget 1.0 HabitWidget.qml
+MedsWidget 1.0 MedsWidget.qml
+BraindumpWidget 1.0 BraindumpWidget.qml
+RoutineWidget 1.0 RoutineWidget.qml
+NowNextWidget 1.0 NowNextWidget.qml
 HydrationWidget 1.0 HydrationWidget.qml
 MediaWidget 1.0 MediaWidget.qml
 MeshGradientBackground 1.0 MeshGradientBackground.qml

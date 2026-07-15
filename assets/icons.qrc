@@ -14,6 +14,10 @@
         <file alias="httpjson.svg">icons/httpjson.svg</file>
         <file alias="hydration.svg">icons/hydration.svg</file>
         <file alias="kpi.svg">icons/kpi.svg</file>
+        <file alias="meds.svg">icons/meds.svg</file>
+        <file alias="braindump.svg">icons/braindump.svg</file>
+        <file alias="routine.svg">icons/routine.svg</file>
+        <file alias="nownext.svg">icons/nownext.svg</file>
         <file alias="media.svg">icons/media.svg</file>
         <file alias="moon.svg">icons/moon.svg</file>
         <file alias="net.svg">icons/net.svg</file>
