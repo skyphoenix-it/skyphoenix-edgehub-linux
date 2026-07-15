@@ -8,6 +8,7 @@
         <file>qml/WidgetCatalog.qml</file>
         <file>qml/PresetCatalog.qml</file>
         <file>qml/WidgetSizes.qml</file>
+        <file>qml/WidgetPacker.qml</file>
         <file>qml/WallpaperCatalog.qml</file>
         <file>qml/BackgroundCatalog.qml</file>
         <file>qml/WidgetConfigSchema.qml</file>

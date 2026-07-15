@@ -586,9 +586,11 @@ Item {
 
         // Direct tile/page mutators name themselves on the assertion of their effect.
         function test_setTileSize_addPage_rename_remove() {
-            var tid = store.addTile(0, "cpu")
-            store.setTileSize(0, tid, 2, 2)
-            compare(store.pages()[0].tiles[0].w, 2, "setTileSize applied the new width span")
+            // `tasks` because it declares 1x2 — setTileSize is gated on the TYPE, so a
+            // subject that cannot render the size would prove the rejection, not the apply.
+            var tid = store.addTile(0, "tasks")
+            store.setTileSize(0, tid, "1x2")
+            compare(store.pages()[0].tiles[0].size, "1x2", "setTileSize applied the new named size")
             var pc = store.pageCount(); store.addPage("Added")
             compare(store.pageCount(), pc + 1, "addPage appended a page")
             store.renamePage(store.pageCount() - 1, "Renamed")

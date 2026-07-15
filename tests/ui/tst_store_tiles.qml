@@ -12,6 +12,8 @@ import "../../ui/qml" as App
 Item {
     width: 100; height: 100
     App.DashboardStore { id: store }
+    App.WidgetSizes { id: sizes }
+    App.WidgetCatalog { id: catalog }
 
     TestCase {
         name: "StoreTiles"
@@ -51,21 +53,62 @@ Item {
             compare(tiles().length, 1)
         }
 
-        // ── resize cycle (1x1 → 2x1 → 1x2 → 2x2 → 1x1) ─────────────────────
-        function test_resize_cycle() {
-            var id = store.addTile(0, "cpu")
-            var seq = [[2, 1], [1, 2], [2, 2], [1, 1]]
-            for (var i = 0; i < seq.length; i++) {
-                store.setTileSize(0, id, seq[i][0], seq[i][1])
-                compare(tiles()[0].w, seq[i][0])
-                compare(tiles()[0].h, seq[i][1])
+        // ── named sizes ────────────────────────────────────────────────────
+        // A tile is born with a size, so `size === undefined` can only ever mean
+        // "this document predates the size key" — never "this tile is new".
+        function test_add_tile_is_born_with_a_size() {
+            store.addTile(0, "cpu")
+            verify(sizes.isLegal(tiles()[0].size),
+                   "a fresh tile has a legal size, got " + JSON.stringify(tiles()[0].size))
+            verify(tiles()[0].w === undefined, "the dead w span vocabulary is never written")
+            verify(tiles()[0].h === undefined, "the dead h span vocabulary is never written")
+        }
+
+        // setTileSize takes a NAMED size and applies every legal one. `kpi` is the one
+        // type that declares all seven (it is the "one number read across a room"
+        // widget, so it genuinely earns the full screen), which makes it the only
+        // honest subject for a whole-vocabulary sweep — legality is not the gate here,
+        // the TYPE is.
+        function test_set_tile_size_applies_each_legal_size() {
+            var id = store.addTile(0, "kpi")
+            var all = sizes.all()
+            compare(catalog.sizesFor("kpi").length, all.length,
+                    "precondition: kpi really does declare every legal size")
+            for (var i = 0; i < all.length; i++) {
+                verify(store.setTileSize(0, id, all[i]), "setTileSize accepted " + all[i])
+                compare(tiles()[0].size, all[i], "the named size was stored verbatim")
             }
         }
 
-        function test_resize_out_of_range_is_noop() {
+        // The old span vocabulary is not a size: passing it must be REJECTED, not
+        // coerced into something plausible-looking.
+        function test_set_tile_size_rejects_illegal_sizes() {
+            var id = store.addTile(0, "kpi")
+            store.setTileSize(0, id, "1x2")
+            var bad = ["2x2", "1x2.5", "", "constructor", 2, null, undefined]
+            for (var i = 0; i < bad.length; i++) {
+                verify(!store.setTileSize(0, id, bad[i]),
+                       "setTileSize rejected " + JSON.stringify(bad[i]))
+                compare(tiles()[0].size, "1x2", "the tile kept its prior size")
+            }
+        }
+
+        // A size can be perfectly LEGAL and still be refused: the widget type decides.
+        // This is the gate the resize UI (and a Manager push) rests on — without it a
+        // tile can be put into a shape its widget was never built to render.
+        function test_set_tile_size_rejects_a_size_the_type_does_not_declare() {
             var id = store.addTile(0, "cpu")
-            store.setTileSize(9, id, 2, 2)   // bad page index
-            compare(tiles()[0].w, undefined)
+            verify(sizes.isLegal("1x3"), "precondition: 1x3 is a legal size")
+            verify(catalog.sizesFor("cpu").indexOf("1x3") < 0, "precondition: cpu does not declare it")
+            verify(!store.setTileSize(0, id, "1x3"), "setTileSize refused a size cpu cannot render")
+            compare(tiles()[0].size, catalog.defaultSize("cpu"), "the tile kept its own size")
+            verify(store.setTileSize(0, id, "1x1.5"), "and still accepts one cpu DOES declare")
+        }
+
+        function test_resize_out_of_range_is_noop() {
+            var id = store.addTile(0, "kpi")
+            verify(!store.setTileSize(9, id, "1x2"), "bad page index is rejected")
+            verify(!store.setTileSize(0, "does-not-exist", "1x2"), "unknown tile id is rejected")
         }
 
         // ── move / reorder with clamping ───────────────────────────────────

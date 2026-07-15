@@ -31,6 +31,8 @@ Item {
     // Shell (main.qml root) surface Dashboard binds to.
     property alias theme: _theme
     App.Theme { id: _theme }
+    App.WidgetSizes { id: _sizes }
+    App.WidgetCatalog { id: _catalog }
     property string accentName: "blue"
     property real glassOpacity: 0.5
     property bool showWidgetGlow: true
@@ -90,6 +92,54 @@ Item {
     function makeDoc(tileList) {
         return JSON.stringify({ version: 1, appearance: {}, settings: {},
             pages: [ { name: "P1", tiles: tileList } ] })
+    }
+
+    // ── Layout probes ────────────────────────────────────────────────────────
+    // The page delegates (each carries its page's packing) and the tile delegates
+    // (each carries the placement it was positioned from), duck-typed out of the
+    // object graph. Note EVERY page is instantiated by the SwipeView, so tileCells()
+    // spans the whole document, not just the current page.
+    function pageItems() {
+        var out = []
+        eachItem(ld.item, function (x) {
+            if (x && x.placements !== undefined && x.longExtent !== undefined
+                  && x.addPlacement !== undefined) out.push(x)
+        })
+        return out
+    }
+    function pageItem() { var ps = pageItems(); return ps.length ? ps[0] : null }
+    function pageFlick() {
+        return findPred(ld.item, function (x) { return x && x.cellShort !== undefined && x.cellLong !== undefined })
+    }
+    function tileCells() {
+        var out = []
+        eachItem(ld.item, function (x) {
+            if (x && x._r !== undefined && x.modelData !== undefined && x.modelData
+                  && x.modelData.size !== undefined && x.modelData.s !== undefined) out.push(x)
+        })
+        return out
+    }
+    function cellFor(id) {
+        var cs = tileCells()
+        for (var i = 0; i < cs.length; i++) if (cs[i].modelData.id === id) return cs[i]
+        return null
+    }
+    // True once the page has laid out N tiles with real geometry, in `portrait`.
+    function laidOut(n, portrait) {
+        var f = pageFlick()
+        if (!f || !(f.cellLong > 0)) return false
+        if ((f.height > f.width) !== portrait) return false
+        var cs = tileCells()
+        if (cs.length !== n) return false
+        for (var i = 0; i < n; i++) if (!(cs[i].width > 0 && cs[i].height > 0)) return false
+        return true
+    }
+    // Make the dashboard PORTRAIT (tall: the 720x2560 reflow) or LANDSCAPE (the
+    // 2560x720 strip). Dashboard reads its own width/height — exactly as main.qml's
+    // contentRoot hands it over on a rotation.
+    function orient(portrait) {
+        root.width = portrait ? 720 : 2560
+        root.height = portrait ? 2560 : 720
     }
 
     TestCase {
@@ -166,19 +216,59 @@ Item {
 
         // ── _tileExists ───────────────────────────────────────────────────────
         // COVERS: fn:Dashboard.sizeClassFor
-        // The tile's span -> how much room the widget has. Named, so widgets ask
-        // "have I got room?" rather than re-deriving it from spans; and so the
-        // vocabulary survives the move to real fractional sizes, where the spans
-        // change meaning but the classes don't.
-        function test_sizeClassFor_maps_spans_to_room() {
+        // A named size -> how much ROOM the widget has. Named, so widgets ask "have I
+        // got room?" rather than re-deriving it from geometry they shouldn't know.
+        // Judged on the PROJECTED half-cells, so the same size honestly reports "tall"
+        // in portrait and "wide" in landscape — which is the whole point of a panel
+        // that rotates.
+        function test_sizeClassFor_maps_sizes_to_room() {
             var d = ld.item
-            compare(d.sizeClassFor(1, 1), "compact")
-            compare(d.sizeClassFor(2, 1), "wide", "two columns but one row: no vertical room")
-            compare(d.sizeClassFor(1, 2), "tall", "the case that used to render stretched")
-            compare(d.sizeClassFor(2, 2), "large")
-            // A tile carries no w/h until it is resized — that must not read as 0x0.
-            compare(d.sizeClassFor(undefined, undefined), "compact", "an unsized tile is 1x1")
-            compare(d.sizeClassFor(0, 0), "compact")
+            compare(d.sizeClassFor("1x1", false), "compact", "the baseline third is the reference shape")
+            compare(d.sizeClassFor("1x1", true), "compact", "and it is that shape in BOTH orientations")
+            compare(d.sizeClassFor("0.5x0.5", false), "compact", "a twelfth is square-ish too, just small")
+
+            // The rotating pair: ONE size, two honest answers.
+            compare(d.sizeClassFor("1x0.5", false), "wide", "portrait: full width, half a third tall")
+            compare(d.sizeClassFor("1x0.5", true), "tall", "landscape: the SAME size is now tall")
+            compare(d.sizeClassFor("0.5x1", false), "tall", "portrait: half width, a third tall")
+            compare(d.sizeClassFor("0.5x1", true), "wide", "landscape: and now it is wide")
+
+            // "large" had to be REDEFINED. It meant "doubled on both axes" on the old
+            // span grid; the size model has no such shape (the short axis stops at 1),
+            // so that rule would have made it unreachable. It now means what it always
+            // implied: two thirds of the screen or more.
+            compare(d.sizeClassFor("1x2", false), "large", "two thirds of the screen is real room")
+            compare(d.sizeClassFor("1x3", true), "large", "and the whole screen certainly is")
+            compare(d.sizeClassFor("1x1.5", false), "tall", "half the screen is not yet 'large'")
+
+            // A bad size must claim the LEAST room, never silently the baseline's.
+            compare(d.sizeClassFor("2x2", false), "compact", "the dead span vocabulary is not a size")
+            compare(d.sizeClassFor(undefined, false), "compact", "and neither is nothing at all")
+        }
+
+        // COVERS: fn:Dashboard.nextSize
+        // The edit-mode resize button. The old fixed 1x1->2x1->1x2->2x2 cycle has NO
+        // equivalent — those spans aren't sizes — so the cycle is the widget TYPE's own
+        // declared list, or it would offer shapes the widget was never built for.
+        function test_nextSize_cycles_the_types_own_legal_sizes() {
+            var d = ld.item
+            var cpu = _catalog.sizesFor("cpu")
+            compare(cpu.indexOf("1x3"), -1, "precondition: cpu does not declare the full screen")
+            // Walk a full cycle and prove it visits cpu's list exactly, and nothing else.
+            var seen = [], cur = _catalog.defaultSize("cpu")
+            for (var i = 0; i < cpu.length; i++) { cur = d.nextSize("cpu", cur); seen.push(cur) }
+            seen.sort()
+            var expect = cpu.slice(); expect.sort()
+            compare(seen.join(","), expect.join(","),
+                    "one full cycle visits every size cpu declares, and nothing else")
+            compare(d.nextSize("cpu", "1x1"), d.nextSize("cpu", "1x1"), "and it is deterministic")
+
+            // It wraps rather than running off the end.
+            compare(d.nextSize("cpu", cpu[cpu.length - 1]), cpu[0], "the last size wraps to the first")
+            // A tile whose stored size is not in the list (a type whose declarations
+            // changed under it) must still land somewhere sane, not on undefined.
+            compare(d.nextSize("cpu", "1x3"), cpu[0], "an off-list size restarts the cycle")
+            compare(d.nextSize("no-such-type", "1x1"), "", "an unknown type offers no next size")
         }
 
         // COVERS: fn:Dashboard._msToNextSecond
@@ -340,4 +430,215 @@ Item {
             verify(true, "injectWidget(null) is a no-op")
         }
     }
+
+    // ── The layout itself, measured in pixels on the REAL Dashboard ──────────
+    // Everything above drives properties. This drives the renderer: GridLayout was
+    // replaced because of what it DREW, so the replacement has to be proved the same
+    // way.
+    TestCase {
+        name: "DashboardLayout"
+        when: windowShown
+
+        function initTestCase() {
+            tryVerify(function () { return ld.status === Loader.Ready && ld.item !== null }, 5000)
+        }
+        function init() { root.store().load("blank"); ld.item.editMode = false }
+        function cleanupTestCase() { root.width = 900; root.height = 600 }
+
+        // THE BUG THIS EPIC EXISTS FOR.
+        // Measured on the old GridLayout: three 1x1 tiles on a 1200px page rendered at
+        // exactly 400px each (correct — which is why nothing LOOKED broken), but a
+        // 0.5x0.5 beside a 1x1 rendered at 600px: HALF the page, when it must be a
+        // twelfth of the screen. GridLayout sizes a row by what is IN it and collapses
+        // span-only rows, so a tile's size depended on what else was on the page. A size
+        // is a fraction of the SCREEN, so it may not. This is that exact page.
+        function test_a_half_by_half_beside_a_baseline_is_a_twelfth_not_a_half() {
+            root.orient(true)                       // 720x2560 — the portrait reflow
+            ld.item.applyExternalState(root.makeDoc([ { id: "small", type: "cpu", size: "0.5x0.5" },
+                                                      { id: "big", type: "cpu", size: "1x1" } ]))
+            tryVerify(function () { return root.laidOut(2, true) }, 4000, "the two tiles laid out in portrait")
+            var f = root.pageFlick()
+            var gap = _theme.spacingMd
+            var pageShort = f.width, pageLong = f.height
+            verify(pageLong > pageShort, "precondition: the page really is portrait")
+
+            var small = root.cellFor("small"), big = root.cellFor("big")
+            // Add the gap back: it is inset OUT of the tile, so tile + gap is the cell.
+            fuzzyCompare(small.width + gap, pageShort / 2, 0.51,
+                         "0.5 of the short axis: " + small.width + " on a " + pageShort + "px page")
+            fuzzyCompare(small.height + gap, pageLong / 6, 0.51,
+                         "and half a third of the long axis: " + small.height +
+                         " on a " + pageLong + "px page")
+
+            // THE REGRESSION, stated as the number GridLayout produced. On the old grid
+            // this tile measured HALF the long axis, because its row held nothing bigger.
+            verify(small.height + gap < pageLong / 2 * 0.9,
+                   "BUG GUARD: the 0.5x0.5 is NOT half the page (GridLayout drew it at " +
+                   (pageLong / 2) + "px; it is " + small.height + "px)")
+            fuzzyCompare((small.height + gap) / (pageLong / 2), 1 / 3, 0.005,
+                         "it is a THIRD of what GridLayout gave it along the long axis")
+            // 0.5 of the short axis x 1/6 of the long axis = a twelfth of the SCREEN.
+            fuzzyCompare(((small.width + gap) * (small.height + gap)) / (pageShort * pageLong),
+                         1 / 12, 0.005, "a twelfth of the screen — the size's whole definition")
+
+            // And its neighbour is untouched: a third, whatever else is on the page.
+            fuzzyCompare(big.width + gap, pageShort, 0.51, "the 1x1 keeps the full short axis")
+            fuzzyCompare(big.height + gap, pageLong / 3, 0.51, "and exactly a third of the long axis")
+            fuzzyCompare(((big.width + gap) * (big.height + gap)) / (pageShort * pageLong),
+                         1 / 3, 0.005, "a third of the screen — unaffected by what sits beside it")
+        }
+
+        // The case that ALWAYS worked, kept honest: three baselines still fill the
+        // screen exactly, and each is a third — the default dashboard.
+        function test_three_baselines_still_measure_a_third_each() {
+            root.orient(true)
+            ld.item.applyExternalState(root.makeDoc([ { id: "a", type: "cpu", size: "1x1" },
+                                                      { id: "b", type: "cpu", size: "1x1" },
+                                                      { id: "c", type: "cpu", size: "1x1" } ]))
+            tryVerify(function () { return root.laidOut(3, true) }, 4000, "three tiles laid out in portrait")
+            var f = root.pageFlick()
+            var gap = _theme.spacingMd
+            var third = f.height / 3
+            var ids = ["a", "b", "c"]
+            for (var i = 0; i < 3; i++) {
+                var c = root.cellFor(ids[i])
+                fuzzyCompare(c.height + gap, third, 0.51, ids[i] + " is a third of the page tall")
+                fuzzyCompare(c.y - gap / 2, i * third, 0.51, ids[i] + " starts exactly where the last ended")
+            }
+            compare(root.pageItem().longExtent, _sizes.longHalves, "the three of them fill the screen")
+            verify(!f.interactive, "a page that fits does not scroll (so it cannot fight the page swipe)")
+        }
+
+        // ROTATION STABILITY.
+        // The same page, packed for portrait and for landscape, puts every tile in the
+        // same SEMANTIC slot. Packing in physical coordinates scrambled 99.2% of 5-tile
+        // pages here; packing semantically makes rotation a pure projection.
+        function test_rotation_keeps_every_tile_in_the_same_semantic_slot() {
+            var doc = root.makeDoc([ { id: "a", type: "cpu", size: "0.5x1" },
+                                     { id: "b", type: "cpu", size: "0.5x0.5" },
+                                     { id: "c", type: "cpu", size: "1x1" },
+                                     { id: "d", type: "cpu", size: "0.5x0.5" },
+                                     { id: "e", type: "cpu", size: "1x0.5" } ])
+            var ids = ["a", "b", "c", "d", "e"]
+
+            root.orient(true)
+            ld.item.applyExternalState(doc)
+            tryVerify(function () { return root.laidOut(5, true) }, 4000, "five tiles laid out in portrait")
+            var portraitSlots = {}, portraitPx = {}
+            for (var i = 0; i < 5; i++) {
+                var c = root.cellFor(ids[i])
+                var m = c.modelData
+                portraitSlots[ids[i]] = m.s + "," + m.l + "," + m.es + "," + m.el
+                portraitPx[ids[i]] = { x: c.x, y: c.y }
+            }
+
+            // Turn the panel. Nothing else changes — same document, same store.
+            root.orient(false)
+            tryVerify(function () { return root.laidOut(5, false) }, 4000,
+                      "the dashboard reflowed to the landscape strip")
+            var f2 = root.pageFlick()
+            var cellS = f2.cellShort, cellL = f2.cellLong
+            for (var j = 0; j < 5; j++) {
+                var c2 = root.cellFor(ids[j])
+                var m2 = c2.modelData
+                compare(m2.s + "," + m2.l + "," + m2.es + "," + m2.el, portraitSlots[ids[j]],
+                        ids[j] + ": the rotation did not move it out of its semantic slot")
+                // …and the pixels are that slot PROJECTED: the long axis moved from y to
+                // x. A re-pack would have put it somewhere unrelated.
+                fuzzyCompare(c2.x - _theme.spacingMd / 2, m2.l * cellL, 0.51,
+                             ids[j] + ": its long coordinate is now the X axis")
+                fuzzyCompare(c2.y - _theme.spacingMd / 2, m2.s * cellS, 0.51,
+                             ids[j] + ": and its short coordinate is the Y axis")
+            }
+            // Rotating BACK restores the original pixels exactly — no drift, no reshuffle.
+            root.orient(true)
+            tryVerify(function () { return root.laidOut(5, true) }, 4000, "and turned back")
+            for (var k = 0; k < 5; k++) {
+                var c3 = root.cellFor(ids[k])
+                fuzzyCompare(c3.x, portraitPx[ids[k]].x, 0.51, ids[k] + " came back to the same x")
+                fuzzyCompare(c3.y, portraitPx[ids[k]].y, 0.51, ids[k] + " came back to the same y")
+            }
+        }
+
+        // CAPACITY.
+        // The 2x6 grid sizes the CELL, not the page. A page longer than the screen is
+        // placed IN FULL and scrolls — no tile is refused, capped or dropped. This is
+        // the policy that keeps the over-long shipped presets renderable.
+        function test_an_overlong_page_keeps_every_tile_and_scrolls() {
+            root.orient(true)
+            var tiles = []
+            for (var i = 0; i < 6; i++) tiles.push({ id: "t" + i, type: "cpu", size: "1x1" })
+            ld.item.applyExternalState(root.makeDoc(tiles))   // 6 x 1x1 = 12 half-cells = 2 screens
+            tryVerify(function () { return root.laidOut(6, true) }, 4000, "six tiles laid out in portrait")
+
+            var p = root.pageItem(), f = root.pageFlick()
+            compare(root.tileCells().length, 6, "every tile is placed — none refused, none dropped")
+            compare(p.longExtent, 12, "the page is exactly two screens long")
+            verify(f.interactive, "so it SCROLLS — the 7th half-unit overflows, it is not refused")
+            fuzzyCompare(f.contentHeight, 12 * f.cellLong, 0.51, "and the scrollable content is that long")
+
+            // The decisive part: overflowing does NOT shrink anyone. Each tile is still a
+            // third of the SCREEN — which is the entire reason GridLayout had to go.
+            for (var j = 0; j < 6; j++)
+                fuzzyCompare(root.cellFor("t" + j).height + _theme.spacingMd, f.height / 3, 0.51,
+                             "t" + j + " is still a third of the SCREEN on a 2-screen page")
+        }
+
+        // A page that fits must never become scrollable — an inert Flickable is what
+        // keeps the page swipe usable (they share an axis in landscape).
+        function test_a_page_that_fits_is_not_scrollable() {
+            root.orient(false)
+            ld.item.applyExternalState(root.makeDoc([ { id: "a", type: "cpu", size: "1x1" } ]))
+            tryVerify(function () { return root.laidOut(1, false) }, 4000, "one tile laid out in landscape")
+            var f = root.pageFlick()
+            verify(!f.interactive, "one tile does not scroll")
+            compare(root.pageItem().longExtent, 2, "it reaches 2 of the screen's 6 half-cells")
+            fuzzyCompare(f.contentWidth, f.width, 0.51,
+                         "landscape: the content is exactly one screen along the long (X) axis")
+        }
+
+        // THE SHIPPED PRESETS.
+        // They are NOT re-authored here — this pins what actually happens to them under
+        // the new capacity policy: everything renders, nothing is lost, over-long pages
+        // scroll.
+        function test_every_shipped_preset_renders_without_losing_a_tile() {
+            root.orient(true)
+            var cat = presetCat
+            verify(cat.items.length > 0, "the preset library is present")
+            var checkedPages = 0, overCapacity = 0, worst = 0
+            for (var i = 0; i < cat.items.length; i++) {
+                var id = cat.items[i].id
+                root.store().load(id)
+                var pages = root.store().pages()
+                // Every page is instantiated by the SwipeView, so every tile of every
+                // page must be placed — the count is the document's, not page 1's.
+                var want = 0
+                for (var p = 0; p < pages.length; p++) want += pages[p].tiles.length
+                tryVerify(function () { return root.laidOut(want, true) }, 4000,
+                          id + ": all " + want + " tiles across " + pages.length + " page(s) are placed")
+
+                var pis = root.pageItems()
+                compare(pis.length, pages.length, id + ": one delegate per page")
+                for (var q = 0; q < pis.length; q++) {
+                    var ratio = pis[q].longExtent / _sizes.longHalves
+                    compare(pis[q].placements.length, pages[q].tiles.length,
+                            id + "/" + pages[q].name + ": no tile went missing in the packing")
+                    if (ratio > 1) { overCapacity++; worst = Math.max(worst, ratio) }
+                    checkedPages++
+                }
+                var cs = root.tileCells()
+                for (var j = 0; j < cs.length; j++)
+                    verify(cs[j].width > 0 && cs[j].height > 0,
+                           id + ": tile " + j + " has real geometry, not a collapsed box")
+            }
+            // The measured state of the shipped library, pinned so it is a decision
+            // rather than a surprise. Re-authoring the presets to fit is a later phase;
+            // until then they render whole and scroll.
+            compare(checkedPages, 17, "the library is 17 pages")
+            compare(overCapacity, 14, "14 of them are longer than one screen")
+            compare(worst, 2, "the worst (homelab / system-monitor, 6 tiles each) is exactly 2 screens")
+        }
+    }
+
+    App.PresetCatalog { id: presetCat }
 }

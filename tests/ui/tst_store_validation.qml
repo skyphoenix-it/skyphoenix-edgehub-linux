@@ -2,7 +2,9 @@ import QtQuick
 import QtTest
 import "../../ui/qml" as App
 
-// COVERS: fn:DashboardStore._isPlainObject
+// COVERS: fn:DashboardStore._isPlainObject, fn:DashboardStore._catalogFn, fn:DashboardStore._defaultSizeFor
+// COVERS: fn:DashboardStore._sizeSupported, fn:DashboardStore._nearestSize, fn:DashboardStore._migratedSize
+// COVERS: fn:DashboardStore._coerceTileSize
 //
 // Robustness (Phase 3a): `_normaliseDoc` is a real VALIDATOR. A corrupt or hostile
 // UI-state document — pushed over the control socket (applyExternal) or read from a
@@ -14,6 +16,7 @@ import "../../ui/qml" as App
 Item {
     width: 100; height: 100
     App.DashboardStore { id: store }
+    App.WidgetSizes { id: sizes }
 
     TestCase {
         name: "StoreValidation"
@@ -46,16 +49,43 @@ Item {
             compare(store.pages()[0].tiles.length, 0, "non-array tiles reset to []")
         }
 
-        // A crafted/corrupt tile span (w/h) is clamped to [1,2] so it can't drive a
-        // runaway rowSpan and blow up the grid.
-        function test_tile_span_clamped() {
+        // A crafted/corrupt tile span (w:9999/h:-5) can no longer drive a runaway
+        // rowSpan: w/h are migrated into a NAMED size and then dropped, so the only
+        // geometry that survives is one of the seven legal names.
+        function test_tile_span_migrated_not_clamped() {
             var ok = store.applyExternal('{"pages":[{"tiles":[{"id":"a","type":"cpu","w":9999,"h":-5},{"id":"b","type":"ram","h":2}]}]}')
             verify(ok, "did not throw")
             var tiles = store.pages()[0].tiles
             compare(tiles.length, 2, "both valid tiles kept")
-            verify(tiles[0].w <= 2 && tiles[0].w >= 1, "w:9999 clamped into [1,2] (got " + tiles[0].w + ")")
-            verify(tiles[0].h <= 2 && tiles[0].h >= 1, "h:-5 clamped into [1,2] (got " + tiles[0].h + ")")
-            compare(tiles[1].h, 2, "a valid h:2 is preserved")
+            verify(sizes.isLegal(tiles[0].size), "a hostile w/h still yields a legal size (got " + tiles[0].size + ")")
+            verify(tiles[0].w === undefined && tiles[0].h === undefined, "the dead w/h keys are dropped")
+            verify(tiles[1].w === undefined && tiles[1].h === undefined, "dropped for every tile")
+            // h:9999-style values must not become the FULL SCREEN: no pre-migration
+            // document could mean more than 2 rows, so the old [1,2] clamp's intent
+            // is carried into the mapping.
+            verify(!sizes.isFullScreen(tiles[0].size), "a crafted span cannot migrate to a full-screen tile")
+        }
+
+        // A size pushed over the control socket by another process is COERCED to the
+        // type's default unless the TYPE declares it — being one of the seven legal
+        // names is not enough. Tile "e" is the sharp case: `1x3` is perfectly legal
+        // and `cpu` still cannot render it, so a push must not be able to force it.
+        function test_hostile_size_coerced_via_applyExternal() {
+            var ok = store.applyExternal('{"pages":[{"tiles":[' +
+                '{"id":"a","type":"cpu","size":"9999x9999"},' +
+                '{"id":"b","type":"ram","size":"constructor"},' +
+                '{"id":"c","type":"gpu","size":{"short":1}},' +
+                '{"id":"e","type":"cpu","size":"1x3"},' +
+                '{"id":"d","type":"tasks","size":"1x2"}]}]}')
+            verify(ok, "did not throw")
+            var tiles = store.pages()[0].tiles
+            compare(tiles.length, 5, "no tile is dropped over a bad size")
+            for (var i = 0; i < 4; i++)
+                compare(tiles[i].size, store._defaultSizeFor(tiles[i].type),
+                        tiles[i].type + ": a size it cannot render falls back to its default")
+            verify(sizes.isLegal("1x3"), "and 'e' was refused despite 1x3 being a LEGAL size")
+            compare(tiles[4].size, "1x2",
+                    "a legal size the type DOES declare (tasks/1x2) is still honoured")
         }
 
         // Page names that collide with JS prototype members (toString/valueOf/
@@ -165,6 +195,171 @@ Item {
             ] })
             compare(doc.pages[0].name, "Work")
             verify(doc.pages[1].name !== "Work", "second duplicate renamed, got " + doc.pages[1].name)
+        }
+    }
+
+    // ── Migration: the w/h span vocabulary → the named `size` key ────────────
+    // Old `w` was a column span against the page's declared column count (so it
+    // recovers exactly as w/cols). Old `h` was a row span against SIBLING tiles —
+    // its real height depended on how many rows the page packed, which nothing on
+    // disk records — while the new long axis is a fixed count of thirds. That half
+    // of the mapping is therefore best-effort and genuinely lossy; these tests pin
+    // down what it does, not that it is perfect.
+    TestCase {
+        name: "StoreSizeMigration"
+        when: windowShown
+        function init() { store.load("blank") }
+
+        function mig(tiles, cols) {
+            var page = { name: "P", tiles: tiles }
+            if (cols) page.cols = cols
+            return store._normaliseDoc({ pages: [page] }).pages[0].tiles
+        }
+
+        // THE COMMON CASE BY FAR: `addTile` never wrote w/h, so almost every stored
+        // tile is a bare {id,type}. With the default 1-column grid it really did
+        // render full-width, so the baseline `1x1` is the faithful mapping.
+        function test_bare_tile_migrates_to_the_baseline() {
+            var t = mig([ { id: "a", type: "cpu" } ])
+            compare(t[0].size, "1x1", "a tile with no geometry lands on the baseline")
+            compare(t[0].size, sizes.baseline, "which is exactly WidgetSizes.baseline")
+        }
+
+        // The mapping table, asserted case by case. `_migratedSize` is the unit
+        // under test; the on-disk `cols` is what `w` was ever measured against.
+        function test_migration_mapping_table() {
+            // A 1-column page (the default): every tile is full-width whatever w says.
+            compare(store._migratedSize({}, 1), "1x1", "1 col, no geometry → baseline")
+            compare(store._migratedSize({ h: 2 }, 1), "1x2", "1 col, h:2 → two thirds tall")
+            // A 2-column page: w is genuinely a half.
+            compare(store._migratedSize({ w: 1, h: 1 }, 2), "0.5x1", "2 cols, w:1 → half the short axis")
+            compare(store._migratedSize({ w: 2, h: 1 }, 2), "1x1", "2 cols, w:2 → the full short axis")
+            compare(store._migratedSize({ w: 2, h: 2 }, 2), "1x2", "2 cols, w:2 h:2 → two thirds")
+            // The case with NO exact target: half-wide + two-thirds-tall is not one
+            // of the seven (the short axis has no 2-thirds partner). Area is kept.
+            compare(store._migratedSize({ w: 1, h: 2 }, 2), "1x1",
+                    "2 cols, w:1 h:2 (0.5x2 — illegal) keeps its THIRD of the screen as 1x1")
+        }
+
+        // The area-preserving fallback that the illegal-combination case rests on.
+        function test_nearest_size_keeps_the_share_of_the_screen() {
+            compare(store._nearestSize(1, 1), "1x1", "an exact match wins outright")
+            compare(store._nearestSize(0.5, 0.5), "0.5x0.5", "exact, smallest")
+            compare(store._nearestSize(0.5, 2), "1x1", "0.5x2 is illegal → the same 1/3 area as 1x1")
+            compare(store._nearestSize(0.5, 3), "1x1.5", "0.5x3 is illegal → the same 1/2 area as 1x1.5")
+        }
+
+        // A page's declared column count changes what the SAME w meant.
+        function test_same_w_means_different_things_per_page() {
+            var one = mig([ { id: "a", type: "cpu", w: 1 } ], 1)
+            var two = mig([ { id: "a", type: "cpu", w: 1 } ], 2)
+            compare(one[0].size, "1x1", "w:1 of 1 column was the whole width")
+            compare(two[0].size, "0.5x1", "the same w:1 of 2 columns was only half")
+        }
+
+        // The global gridCols setting is the fallback the page override sits on.
+        function test_global_gridCols_is_the_fallback_column_count() {
+            var doc = store._normaliseDoc({
+                appearance: { gridCols: 2 },
+                pages: [ { name: "P", tiles: [ { id: "a", type: "cpu", w: 1 } ] } ]
+            })
+            compare(doc.pages[0].tiles[0].size, "0.5x1",
+                    "w:1 is measured against the global gridCols when the page has no override")
+        }
+
+        // IDEMPOTENCE: migration is detected by `size === undefined`, so a second
+        // pass must be a strict no-op — including for a size that migration itself
+        // produced.
+        function test_migration_is_idempotent() {
+            var once = store._normaliseDoc({ pages: [ { name: "P", cols: 2, tiles: [
+                { id: "a", type: "cpu" }, { id: "b", type: "ram", w: 1, h: 2 },
+                { id: "c", type: "gpu", w: 2, h: 2 }
+            ] } ] })
+            var snapshot = JSON.stringify(once)
+            var twice = store._normaliseDoc(JSON.parse(snapshot))
+            compare(JSON.stringify(twice), snapshot, "a second normalise pass changes NOTHING")
+            var thrice = store._normaliseDoc(JSON.parse(JSON.stringify(twice)))
+            compare(JSON.stringify(thrice), snapshot, "and so does a third")
+        }
+
+        // A migrated `size` must never be re-migrated from stale w/h left beside it.
+        function test_existing_size_wins_over_stale_wh() {
+            var t = mig([ { id: "a", type: "cpu", size: "0.5x0.5", w: 2, h: 2 } ], 2)
+            compare(t[0].size, "0.5x0.5", "the explicit size is authoritative, not the stale w/h")
+            verify(t[0].w === undefined, "and the stale w is dropped so it cannot come back")
+        }
+
+        // THE HARD GUARANTEE: migration may reshape a tile, but it must never lose
+        // one. A user's layout is reinterpreted, never destroyed or re-seeded.
+        function test_migration_never_loses_a_tile() {
+            var src = []
+            for (var i = 0; i < 12; i++)
+                src.push({ id: "t" + i, type: "cpu", w: (i % 2) + 1, h: (i % 2) + 1 })
+            var t = mig(src, 2)
+            compare(t.length, 12, "every tile survived migration")
+            for (var j = 0; j < 12; j++) {
+                compare(t[j].id, "t" + j, "tile " + j + " kept its id AND its order")
+                verify(sizes.isLegal(t[j].size), "tile " + j + " has a legal size")
+            }
+        }
+
+        // Six baseline tiles now need 12 half-rows against a 6-half-row grid. This
+        // is a KNOWN, accepted consequence: capacity/packing is a separate problem,
+        // and forcing tiles to fit here would destroy the layout migration exists to
+        // preserve. Pinned so the overflow is a decision, not a surprise.
+        function test_migrated_page_may_exceed_the_grid_capacity() {
+            var src = []
+            for (var i = 0; i < 6; i++) src.push({ id: "t" + i, type: "cpu" })
+            var t = mig(src, 1)
+            var halves = 0
+            for (var j = 0; j < t.length; j++) halves += sizes.halfUnits(t[j].size, false).h
+            compare(t.length, 6, "all six tiles are kept")
+            compare(halves, 12, "6 x 1x1 = 12 half-rows — twice the grid's 6 (overflow is deferred, not solved)")
+            verify(halves > sizes.gridRows(false), "the page genuinely overflows the grid")
+        }
+
+        // The catalog is consulted defensively: the store is instantiated standalone
+        // here, and the per-type size API landed separately, so an absent/older
+        // catalog degrades to "legality alone" instead of throwing.
+        function test_catalog_absence_degrades_to_legality() {
+            verify(store._sizeSupported("cpu", "1x1"), "a legal size is supported")
+            verify(!store._sizeSupported("cpu", "2x2"), "the old span vocabulary is never supported")
+            verify(!store._sizeSupported("cpu", ""), "empty is never supported")
+            verify(sizes.isLegal(store._defaultSizeFor("cpu")), "the default size is always legal")
+            verify(sizes.isLegal(store._defaultSizeFor("no-such-widget-type")),
+                   "even for an unknown type, the fallback is legal")
+            // The lookup helper returns null (not a throw) when the API is absent.
+            compare(store._catalogFn("definitelyNotAFunction"), null, "an absent catalog fn resolves to null")
+        }
+
+        // The per-tile coercion helper, exercised directly on each of its branches.
+        // `tasks` is the subject for the migration branch because it actually declares
+        // `1x2` — with a type that does not, the two branches would fire in sequence
+        // and the test could not tell which one produced the result.
+        function test_coerce_tile_size_branches() {
+            var fresh = { id: "a", type: "tasks", w: 2, h: 2 }
+            var note = store._coerceTileSize(fresh, 2)
+            compare(fresh.size, "1x2", "_coerceTileSize migrated the w/h pair")
+            verify(note.length > 0, "and reported the change for the migration log")
+            var hostile = { id: "b", type: "cpu", size: "2x2" }
+            verify(store._coerceTileSize(hostile, 1).length > 0, "an unsupported size is reported too")
+            compare(hostile.size, store._defaultSizeFor("cpu"), "and coerced to the type's default")
+            var settled = { id: "c", type: "cpu", size: "1x1" }
+            compare(store._coerceTileSize(settled, 1), "", "a settled tile reports nothing")
+        }
+
+        // BOTH branches on ONE tile, which is the common real case: `cpu` with h:2 on a
+        // 1-column page migrates to `1x2` (geometry alone — `_migratedSize` does not
+        // know about types) and is THEN coerced to cpu's default, because cpu tops out
+        // at half the screen. The two rules compose; migration does not get to smuggle
+        // in a size the widget cannot render. This is exactly what the shipped presets
+        // hit — `{ type: "focus", h: 2 }` and friends.
+        function test_migration_output_is_still_type_checked() {
+            compare(store._migratedSize({ h: 2 }, 1), "1x2", "geometry alone says 1x2")
+            verify(!store._sizeSupported("cpu", "1x2"), "but cpu does not declare 1x2")
+            var t = mig([ { id: "a", type: "cpu", h: 2 } ], 1)
+            compare(t[0].size, store._defaultSizeFor("cpu"),
+                    "so the migrated tile lands on cpu's default, not on 1x2")
         }
     }
 }
