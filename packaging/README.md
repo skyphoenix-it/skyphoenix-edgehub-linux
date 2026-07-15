@@ -14,7 +14,7 @@ the hicolor icons (scalable SVG + PNG 16–512), the `LICENSE`, and the udev rul
 | **CPack .rpm** | `CMakeLists.txt` (CPack block) | ✅ Fedora 43: built, installed on a clean image, launches (CI: `distro.yml`) |
 | **CPack .deb** | `CMakeLists.txt` (CPack block) | ✅ Ubuntu 26.04 LTS: built, installed on a clean image, launches (CI: `distro.yml`) |
 | **CPack .tgz** | `CMakeLists.txt` (CPack block) | ✅ TGZ tested |
-| **AppImage** | `packaging/appimage/build-appimage.sh` | ✅ built (Ubuntu 24.04 + Qt 6.7.3) + smoke-tested in a bare container with no Qt. CI job added but **not yet run on GitHub** |
+| **AppImage** | `packaging/appimage/build-appimage.sh` | ✅ built (Ubuntu 24.04 + Qt 6.7.3) + smoke-tested in a bare container with no Qt. **CI-verified** (`distro.yml`: build + bare-container smoke, both green) |
 | **Flatpak** | `packaging/flatpak/` | ⚠️ starter manifest, open items (see `flatpak/README.md`) |
 
 "Installs on a clean image" means the package was installed into a container with
