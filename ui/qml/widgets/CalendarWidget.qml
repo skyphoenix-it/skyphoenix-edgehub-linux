@@ -42,9 +42,58 @@ WidgetChrome {
     readonly property string url: cfg.url || ""
     readonly property int maxEvents: cfg.maxEvents !== undefined ? cfg.maxEvents : 5
     property var events: []        // expanded, sorted upcoming
-    readonly property var shownEvents: events.slice(0, maxEvents)
     property string errorText: ""
     property bool loading: false
+
+    // ── Per-size layout (sizeClass injected by Dashboard) ────────────────────
+    readonly property bool horiz: sizeClass === "wide"
+    readonly property bool tallish: sizeClass === "tall" || sizeClass === "large"
+
+    readonly property real rowH: Math.max(40, Math.min(height * 0.075, 64))
+    // Rows one column can hold without overflowing.
+    readonly property int rowsPerCol: {
+        var avail = w.height - w.headerHeight - 24 - 2 * theme.spacingSm
+        return Math.max(1, Math.floor(avail / (w.rowH + 4)))
+    }
+    // What we would show if the box were unlimited.
+    readonly property int wantCount: Math.max(0, Math.min(w.maxEvents, w.events.length))
+    // An agenda reads top-to-bottom, so ONE column is the right answer whenever
+    // one column can carry what the user asked for. Extra columns are earned only
+    // when a single column would drop events AND the width can seat a readable
+    // one (~340px — the width of the narrowest tile that already reads fine, the
+    // 0.5x1 portrait half-cell).
+    //
+    // This has to be geometric rather than keyed off sizeClass alone: `large` is
+    // the SAME class for 1x2 portrait (696x1637) and 1x2 landscape (1692x612),
+    // so the class cannot say whether events want one column or four. It is a
+    // count derived from the box, not a size class re-derived from w/h.
+    readonly property int maxColsByWidth: Math.max(1, Math.min(4, Math.floor(width / 340)))
+    readonly property int eventCols: {
+        if (w.expanded) return 1
+        var needed = Math.ceil(w.wantCount / Math.max(1, w.rowsPerCol))
+        return Math.max(1, Math.min(needed, w.maxColsByWidth))
+    }
+    // How many rows the box can hold without overflowing.
+    readonly property int rowsFit: {
+        // The overlay's list scrolls, so nothing is dropped there.
+        if (w.expanded) return w.maxEvents
+        return w.rowsPerCol * w.eventCols
+    }
+
+    // ── THE maxEvents DECISION ───────────────────────────────────────────────
+    // A size-derived row cap and a user setting could fight; they don't, because
+    // they answer different questions:
+    //
+    //   `maxEvents` is a MAXIMUM — "never show me more than this many".
+    //   The SIZE decides how many of those actually fit.
+    //
+    // So the count is the min of three things: what the user asked for, what we
+    // actually have, and what the box holds. NEVER more than the user asked for
+    // (a big tile does not overrule "only show me 3"), and NEVER an overflowing
+    // box (a small tile drops the tail rather than clipping it mid-row). This is
+    // the same rule weather applies to `forecastDays`, and it is pinned by tests.
+    readonly property int shownCount: Math.max(0, Math.min(w.wantCount, w.rowsFit))
+    readonly property var shownEvents: events.slice(0, shownCount)
 
     function pad(n) { return (n < 10 ? "0" : "") + n }
     function dayStart(d) { var x = new Date(d); x.setHours(0, 0, 0, 0); return x }
@@ -333,37 +382,76 @@ WidgetChrome {
         return ev.allDay ? day : day + " " + Qt.formatTime(d, "HH:mm")
     }
 
-    // ── Compact: next event / prompt ──
+    // ── Tile: the agenda, as many events as the box and the user allow ───────
+    // Every size used to render the same 12px rows with a fixed 26px bar, so a
+    // 696x1637 box showed five 12px lines and a metre of nothing.
     ColumnLayout {
         anchors.fill: parent; anchors.margins: theme.spacingSm
-        visible: !w.expanded; spacing: 4
+        visible: !w.expanded; spacing: theme.spacingXs
+
+        // The UNCONFIGURED state — this is what ships in the presets, so it has
+        // to stay legible at every declared size, not just at 1x1.
         Text {
             visible: !w.url.length
-            Layout.fillWidth: true; wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter
-            Layout.alignment: Qt.AlignVCenter
+            Layout.fillWidth: true; Layout.fillHeight: true
+            wrapMode: Text.WordWrap
+            horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
             text: "Add a calendar\n(ICS URL) in settings"
-            color: theme.textTertiary; font.pixelSize: 12
+            color: theme.textTertiary
+            font.pixelSize: Math.max(11, Math.min(w.width * 0.038, w.height * 0.045, 18))
         }
+
         ColumnLayout {
-            visible: w.url.length > 0; Layout.fillWidth: true; Layout.fillHeight: true; spacing: 3
-            Text { text: (w.tick, "Up next"); font.pixelSize: 12; color: theme.textTertiary }
-            Repeater {
-                model: w.shownEvents.length
-                delegate: RowLayout {
-                    required property int index
-                    Layout.fillWidth: true; spacing: 6
-                    Rectangle { Layout.preferredWidth: 3; Layout.preferredHeight: 26; radius: 2; color: w.effAccent }
-                    ColumnLayout {
-                        Layout.fillWidth: true; spacing: 0
-                        Text { text: w.shownEvents[index].title || "(busy)"; color: theme.textPrimary
-                            font.pixelSize: 12; elide: Text.ElideRight; Layout.fillWidth: true }
-                        Text { text: w.fmtWhen(w.shownEvents[index]); color: theme.textSecondary
-                            font.pixelSize: 12; elide: Text.ElideRight; Layout.fillWidth: true }
+            visible: w.url.length > 0
+            Layout.fillWidth: true; Layout.fillHeight: true
+            Layout.maximumWidth: Number.POSITIVE_INFINITY
+            spacing: theme.spacingXs
+
+            Text { text: (w.tick, "Up next"); color: theme.textTertiary
+                font.pixelSize: Math.max(11, Math.min(w.rowH * 0.30, 16)) }
+
+            GridLayout {
+                Layout.fillWidth: true; Layout.fillHeight: true
+                // A wide box flows the SAME rows into columns instead of stretching
+                // a 12px title across 1692px.
+                columns: w.eventCols
+                rowSpacing: 4; columnSpacing: theme.spacingLg
+
+                Repeater {
+                    // The model is the COUNT: a refetch moves the bound values in
+                    // long-lived delegates instead of rebuilding the list.
+                    model: w.shownCount
+                    delegate: RowLayout {
+                        id: evRow
+                        required property int index
+                        readonly property var ev: w.shownEvents[evRow.index]
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Math.round(w.rowH)
+                        Layout.alignment: Qt.AlignTop
+                        spacing: theme.spacingSm
+                        Rectangle {
+                            Layout.preferredWidth: 3
+                            Layout.preferredHeight: Math.round(w.rowH * 0.62)
+                            radius: 2; color: w.effAccent
+                        }
+                        ColumnLayout {
+                            Layout.fillWidth: true; spacing: 0
+                            Text { text: evRow.ev ? (evRow.ev.title || "(busy)") : ""
+                                color: theme.textPrimary
+                                font.pixelSize: Math.max(11, Math.min(w.rowH * 0.34, 20))
+                                elide: Text.ElideRight; Layout.fillWidth: true }
+                            Text { text: evRow.ev ? w.fmtWhen(evRow.ev) : ""
+                                color: theme.textSecondary
+                                font.pixelSize: Math.max(10, Math.min(w.rowH * 0.28, 16))
+                                elide: Text.ElideRight; Layout.fillWidth: true }
+                        }
                     }
                 }
             }
-            Text { visible: w.events.length === 0; text: w.errorText || (w.loading ? "Loading…" : "No upcoming events")
-                color: theme.textTertiary; font.pixelSize: 12 }
+            Text { visible: w.events.length === 0
+                text: w.errorText || (w.loading ? "Loading…" : "No upcoming events")
+                color: theme.textTertiary
+                font.pixelSize: Math.max(11, Math.min(w.width * 0.03, 16)) }
             Item { Layout.fillHeight: true }
         }
     }

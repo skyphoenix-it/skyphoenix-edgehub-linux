@@ -37,6 +37,46 @@ Item {
         widgetFile: "FocusWidget.qml"; expanded: true; active: false
     }
 
+    // Fixed-size hosts for the per-sizeClass structure tests (W1 wave 3) — the
+    // REAL projected footprints of the two sizes focus declares (half-cell ≈
+    // 348x409 portrait / 423x306 landscape, per WidgetSizes):
+    //   1x1    → 696x819 portrait · 846x612 landscape   (compact in BOTH: the
+    //            class comes from half-cells, not from the pixel aspect)
+    //   1x1.5  → 696x1228 portrait (tall) · 1269x612 landscape (wide)
+    // They live in this file's ONE TestCase on purpose (see the header note on
+    // the scenegraph crash at TestCase boundaries).
+    Item { id: sizeWrap; width: 696; height: 819
+        WidgetHarness { id: hSize; anchors.fill: parent
+            widgetFile: "FocusWidget.qml"; expanded: false; active: false } }
+
+    function findAll(node, pred, acc) {
+        if (!node) return acc
+        if (pred(node)) acc.push(node)
+        var kids = node.children
+        for (var i = 0; kids && i < kids.length; i++) root.findAll(kids[i], pred, acc)
+        return acc
+    }
+    // PillButtons that are actually on screen (the tile's control row).
+    function visiblePills(item) {
+        return root.findAll(item, function (n) {
+            return n.hasOwnProperty("label") && n.hasOwnProperty("glyph")
+                   && n.hasOwnProperty("primary") && n.visible && n.width > 0
+        }, [])
+    }
+    function pillLabels(item) {
+        var ps = root.visiblePills(item), out = []
+        for (var i = 0; i < ps.length; i++) out.push(ps[i].label)
+        return out
+    }
+    // The tile's ring (RingProgress carries progressColor + thickness).
+    function tileRing(item) {
+        var rs = root.findAll(item, function (n) {
+            return n.hasOwnProperty("progressColor") && n.hasOwnProperty("thickness")
+                   && n.visible && n.width > 0
+        }, [])
+        return rs.length ? rs[0] : null
+    }
+
     function pad(n) { return (n < 10 ? "0" : "") + n }
     function dayString(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) }
     function todayStr() { return dayString(new Date()) }
@@ -55,6 +95,148 @@ Item {
             hFocus.storeCtl._touchSettings()
             hFocus.item.accentName = ""
             hFocus.item.celebrateMsg = ""
+        }
+
+        // ── Per-sizeClass structure (W1 wave 3) ────────────────────────────
+        // Dashboard injects sizeClass; the widget must key layout off it and
+        // must not collapse the two declared sizes into one stretched layout.
+        function shape(w, h, cls) {
+            tryVerify(function () { return hSize.ready }, 3000)
+            sizeWrap.width = w; sizeWrap.height = h
+            hSize.item.sizeClass = cls
+            wait(32)
+            return hSize.item
+        }
+
+        // 1x1 — the ring + a real control row, and NOTHING else: no room is
+        // left over to earn the stats block.
+        function test_1x1_is_ring_plus_controls_only() {
+            var w = shape(696, 819, "compact")
+            compare(w.micro, false, "a 696x819 compact box is the baseline third, not the half-cell")
+            compare(w.showHeader, false, "the tile stays headerless — the ring is the content")
+            compare(w.horiz, false, "stacked")
+            compare(w.showMomentum, false, "1x1 does not pretend to have room for the stats block")
+            compare(root.pillLabels(w).sort(), ["Skip", "Start"],
+                    "1x1 offers exactly Start + Skip — no third button squeezed in")
+        }
+
+        // The clock is sized from the RING, not a 34px cap floating in the box.
+        function test_1x1_clock_is_sized_from_the_ring_not_a_fixed_cap() {
+            var w = shape(696, 819, "compact")
+            var ring = root.tileRing(w)
+            verify(ring !== null, "the tile draws a ring")
+            verify(ring.width > 400, "the ring fills the baseline box (" + ring.width + "px)")
+            var clock = root.findAll(w, function (n) {
+                return n.hasOwnProperty("font") && String(n.text) === w.fmt(w.remaining) && n.visible
+            }, [])
+            verify(clock.length >= 1, "the clock is rendered")
+            verify(clock[0].font.pixelSize > 34,
+                   "the clock scales with the ring (" + clock[0].font.pixelSize
+                   + "px), it does not cap at the old 34px")
+        }
+
+        // The audit's collision: the ring must stop ABOVE the control row rather
+        // than run under buttons anchored over its bottom arc.
+        function test_1x1_ring_does_not_run_under_the_control_row() {
+            var sizes = [[696, 819], [846, 612]]   // portrait · landscape
+            for (var i = 0; i < sizes.length; i++) {
+                var w = shape(sizes[i][0], sizes[i][1], "compact")
+                var ring = root.tileRing(w)
+                var pills = root.visiblePills(w)
+                verify(pills.length >= 2, "controls are on the tile")
+                var ringBottom = w.mapFromItem(ring, 0, ring.height).y
+                var pillTop = w.mapFromItem(pills[0], 0, 0).y
+                verify(ringBottom <= pillTop + 1,
+                       sizes[i][0] + "x" + sizes[i][1] + ": ring ends at " + ringBottom
+                       + ", controls start at " + pillTop + " — no overlap")
+            }
+        }
+
+        // The stacked control row sits under the MIDDLE of the ring, not hugged
+        // against the left edge (a Layout.alignment on the stats column would
+        // cancel its fillWidth and collapse it — caught on the real panel).
+        function test_stacked_controls_are_centred_under_the_ring() {
+            var cases = [[696, 819, "compact"], [696, 1228, "tall"]]
+            for (var i = 0; i < cases.length; i++) {
+                var w = shape(cases[i][0], cases[i][1], cases[i][2])
+                var pills = root.visiblePills(w)
+                var left = w.mapFromItem(pills[0], 0, 0).x
+                var last = pills[pills.length - 1]
+                var right = w.mapFromItem(last, last.width, 0).x
+                var mid = (left + right) / 2
+                verify(Math.abs(mid - w.width / 2) < 24,
+                       cases[i][2] + ": control row centres at " + mid
+                       + ", tile centre is " + (w.width / 2))
+            }
+        }
+
+        // Every tile control stays a real touch target (the old compact row
+        // forced implicitHeight: 36, under the token).
+        function test_tile_controls_meet_the_touch_minimum() {
+            var cases = [[696, 819, "compact"], [696, 1228, "tall"], [1269, 612, "wide"]]
+            for (var i = 0; i < cases.length; i++) {
+                var w = shape(cases[i][0], cases[i][1], cases[i][2])
+                var pills = root.visiblePills(w)
+                verify(pills.length >= 2, cases[i][2] + " has controls")
+                for (var j = 0; j < pills.length; j++)
+                    verify(pills[j].height >= hSize.theme.touchTertiary,
+                           cases[i][2] + " control '" + pills[j].label + "' is "
+                           + pills[j].height + "px >= " + hSize.theme.touchTertiary)
+            }
+        }
+
+        // 1x1.5 portrait — the extra half-third buys the overlay's momentum
+        // readout for the tile, plus the +5 control.
+        function test_1x1_5_tall_earns_the_momentum_readout() {
+            // hSize is its own harness with its own store — patch THAT one.
+            hSize.storeCtl.patchSettings("test-instance",
+                { doneToday: 2, day: root.todayStr(), points: 30, dailyGoal: 4 })
+            var w = shape(696, 1228, "tall")
+            compare(w.tallish, true)
+            compare(w.horiz, false, "portrait 1x1.5 stacks")
+            compare(w.showMomentum, true, "tall earns the stats block")
+            compare(root.pillLabels(w).sort(), ["+5", "Skip", "Start"],
+                    "tall has the width for the +5 a running timer reaches for")
+            var stats = root.findAll(w, function (n) {
+                return n.hasOwnProperty("text") && String(n.text) === "2 / 4 today" && n.visible
+            }, [])
+            compare(stats.length, 1, "the sessions/goal line is on the TILE, not only the overlay")
+        }
+
+        // The stats must stay ATTACHED to the ring they describe: the tall box
+        // has ~450px the width-bound ring cannot spend, and that slack belongs
+        // above/below the group, not between the ring and its own caption.
+        function test_1x1_5_tall_keeps_the_stats_attached_to_the_ring() {
+            var w = shape(696, 1228, "tall")
+            var ring = root.tileRing(w)
+            var pills = root.visiblePills(w)
+            var ringBottom = w.mapFromItem(ring, 0, ring.height).y
+            var last = pills[pills.length - 1]
+            var controlsBottom = w.mapFromItem(last, 0, last.height).y
+            // The gap the ring leaves under itself is real air, not a void: the
+            // whole group is centred, so there is slack left BELOW the controls.
+            verify(w.height - controlsBottom > 40,
+                   "the group is centred, not dropped on the bottom edge (slack below: "
+                   + (w.height - controlsBottom) + "px)")
+            verify(controlsBottom - ringBottom < 260,
+                   "stats+controls stay under the ring (gap " + (controlsBottom - ringBottom) + "px)")
+        }
+
+        // 1x1.5 landscape — the SAME content, laid beside the ring instead of a
+        // centred ring with ~350px of air either side.
+        function test_1x1_5_wide_puts_the_stats_beside_the_ring() {
+            var w = shape(1269, 612, "wide")
+            compare(w.horiz, true, "landscape 1x1.5 goes side-by-side")
+            compare(w.showMomentum, true, "the same content the tall projection earns")
+            var ring = root.tileRing(w)
+            var pills = root.visiblePills(w)
+            // Beside, not below: the controls start to the RIGHT of the ring.
+            var ringRight = w.mapFromItem(ring, ring.width, 0).x
+            var pillLeft = w.mapFromItem(pills[0], 0, 0).x
+            verify(pillLeft >= ringRight - 1,
+                   "controls sit right of the ring (ring ends " + ringRight
+                   + ", controls start " + pillLeft + ")")
+            verify(ring.width <= 612, "the ring keeps a square cell bounded by the box height")
         }
 
         function patch(o) { hFocus.storeCtl.patchSettings("test-instance", o) }

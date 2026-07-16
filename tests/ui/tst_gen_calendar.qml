@@ -23,18 +23,33 @@ import "../../ui/qml" as App
 // ─────────────────────────────────────────────────────────────────────────
 Item {
     id: root
-    width: 640; height: 960
+    width: 1700; height: 2600
 
     // Main harness: expanded — parsing / config / reactivity / accent.
     WidgetHarness {
         id: h; x: 0; y: 0; width: 460; height: 700
         widgetFile: "CalendarWidget.qml"; expanded: true
     }
-    // Compact tile — the collapsed face (maxEvents cap behaviour).
+    // Compact tile — the collapsed face (maxEvents cap behaviour). 696x819 is
+    // the REAL 1x1 portrait footprint; it was 320x220, a box the size model
+    // cannot produce (calendar's smallest declared size is 0.5x1 / 1x0.5, and
+    // the half-cell is 348x409). That matters here specifically: at 220px tall
+    // only ~3 rows FIT, so the old host could not tell "honours maxEvents=6"
+    // from "correctly drops what doesn't fit".
     WidgetHarness {
-        id: hTile; x: 0; y: 700; width: 320; height: 220
+        id: hTile; x: 700; y: 0; width: 696; height: 819
         widgetFile: "CalendarWidget.qml"; expanded: false
     }
+    // Resizable host for the per-sizeClass structure tests (W1 wave 3) — the
+    // REAL projected footprints of calendar's five declared sizes:
+    //   0.5x1  → 348x819 portrait (tall) · 846x306 landscape (wide)
+    //   1x0.5  → 696x409 portrait (wide) · 423x612 landscape (tall)
+    //   1x1    → 696x819 portrait · 846x612 landscape  (compact)
+    //   1x1.5  → 696x1228 portrait (tall) · 1269x612 landscape (wide)
+    //   1x2    → 696x1637 portrait · 1692x612 landscape (BOTH "large")
+    Item { id: sizeWrap; x: 0; y: 900; width: 696; height: 819
+        WidgetHarness { id: hS; anchors.fill: parent
+            widgetFile: "CalendarWidget.qml"; expanded: false; active: false } }
 
     // Shared config-schema area, instantiated directly.
     App.WidgetConfigSchema { id: sc }
@@ -441,7 +456,10 @@ Item {
     TestCase {
         name: "CalendarCompactCap"
         when: windowShown
-        function init() { tryVerify(function () { return hTile.ready }, 3000); clear(hTile) }
+        function init() {
+            tryVerify(function () { return hTile.ready }, 3000); clear(hTile)
+            hTile.item.sizeClass = "compact"
+        }
 
         // AUDIT: the compact face hard-caps at 3 and ignores maxEvents.
         function test_compact_face_honours_max_events() {
@@ -558,6 +576,141 @@ Item {
             compare(f.min, 1, "min 1")
             compare(f.max, 12, "max 12")
             compare(f.dflt, 5, "default 5 matches the widget's fallback")
+        }
+        // The decision below is user-facing, so it is documented where the user
+        // sets the number, not only in the code.
+        function test_max_events_help_states_it_is_a_maximum() {
+            var f = fieldOf(sc.schemaFor("calendar"), "maxEvents")
+            verify(f.help && f.help.length > 0, "maxEvents carries a help string")
+            verify(/at most/i.test(f.help),
+                   "the help says it is a MAXIMUM, not an exact count: " + f.help)
+        }
+    }
+
+    // ── Per-sizeClass structure + THE maxEvents DECISION (W1 wave 3) ─────────
+    TestCase {
+        name: "CalendarSizes"
+        when: windowShown
+
+        function initTestCase() { tryVerify(function () { return hS.ready }, 3000) }
+
+        function shape(width, height, cls, maxEvents, nEvents) {
+            sizeWrap.width = width; sizeWrap.height = height
+            hS.item.sizeClass = cls
+            hS.storeCtl.patchSettings("test-instance",
+                { url: "http://127.0.0.1:1/x.ics", maxEvents: maxEvents })
+            hS.item.events = fakeEvents(nEvents === undefined ? 12 : nEvents)
+            wait(32)
+            return hS.item
+        }
+
+        // ── THE DECISION, both directions ───────────────────────────────────
+        // maxEvents is a MAXIMUM the user asks for; the size decides how many of
+        // those actually fit.
+
+        // 1. NEVER more than the user asked for — however much room there is.
+        function test_a_huge_tile_never_shows_more_than_the_user_asked_for() {
+            var w = shape(696, 1637, "large", 3, 12)
+            compare(w.rowsFit >= 12, true, "a 1x2 portrait box has room for far more")
+            compare(w.shownCount, 3, "but the user said 3, so it shows 3")
+            compare(w.shownEvents.length, 3)
+        }
+
+        // 2. NEVER overflow the box — a small tile drops the tail instead.
+        function test_a_small_tile_drops_the_tail_rather_than_overflowing() {
+            var w = shape(846, 306, "wide", 12, 12)
+            verify(w.shownCount < 12,
+                   "a 306px-tall box cannot hold 12 rows, so it shows fewer ("
+                   + w.shownCount + ")")
+            verify(w.shownCount > 0, "but it still shows the ones that fit")
+            // Nothing is clipped: the last row ends inside the card.
+            wait(32)
+            compare(visibleEventRowCount(hS), w.shownCount,
+                    "every counted row is actually rendered")
+        }
+
+        // 3. Never more than we actually HAVE.
+        function test_never_invents_events_it_does_not_have() {
+            var w = shape(696, 1637, "large", 12, 2)
+            compare(w.shownCount, 2, "two events exist, so two are shown")
+        }
+
+        // ── Per-size structure ──────────────────────────────────────────────
+        // An agenda reads top-to-bottom, so a second column is EARNED (when one
+        // column would drop events), never taken just because the box is wide.
+        function test_one_column_while_one_column_is_enough() {
+            var tall = shape(696, 1228, "tall", 12, 12)
+            verify(tall.rowsPerCol >= 12, "one column already holds all twelve")
+            compare(tall.eventCols, 1, "so it stays a single, top-to-bottom agenda")
+            compare(tall.shownCount, 12)
+        }
+        function test_columns_are_earned_when_one_column_would_drop_events() {
+            var wide = shape(696, 409, "wide", 12, 12)
+            verify(wide.rowsPerCol < 12, "a 409px box cannot stack twelve rows")
+            compare(wide.eventCols, 2, "so it earns a second column")
+            compare(wide.shownCount, 12, "and all twelve fit after all")
+        }
+        // `large` is the SAME class for both 1x2 projections — the count has to
+        // come from the box, not the class.
+        function test_large_resolves_by_shape_not_by_class_alone() {
+            var largePt = shape(696, 1637, "large", 12, 12)
+            compare(largePt.eventCols, 1, "1x2 PORTRAIT is tall → one column")
+            var largeLs = shape(1692, 612, "large", 12, 12)
+            verify(largeLs.eventCols > 1,
+                   "1x2 LANDSCAPE is the same class but wide-and-short → columns ("
+                   + largeLs.eventCols + ")")
+            compare(largeLs.shownCount, 12, "both projections still show all twelve")
+        }
+        // A column is only added if it can be read: never narrower than the
+        // narrowest tile that already reads fine (the 348px half-cell).
+        function test_a_narrow_box_never_splits_into_unreadable_columns() {
+            var w = shape(348, 819, "tall", 12, 12)
+            compare(w.maxColsByWidth, 1, "348px seats exactly one readable column")
+            compare(w.eventCols, 1, "so it stays one column and drops the tail instead")
+            verify(w.shownCount < 12, "showing " + w.shownCount + " of 12")
+        }
+
+        // The row scale follows the box instead of a fixed 12px/26px everywhere.
+        function test_rows_scale_with_the_box() {
+            var small = shape(846, 306, "wide", 12, 12)
+            var smallH = small.rowH
+            var big = shape(696, 1637, "large", 12, 12)
+            verify(big.rowH > smallH,
+                   "a taller box earns taller rows (" + smallH + " → " + big.rowH + ")")
+        }
+
+        // 1x2 is calendar's largest declared size, and 12 events is why: the cap
+        // stops short of filling the whole screen.
+        function test_the_largest_size_can_show_the_whole_twelve_event_cap() {
+            var w = shape(696, 1637, "large", 12, 12)
+            compare(w.shownCount, 12, "1x2 portrait holds the entire maxEvents cap")
+        }
+
+        // The unconfigured state ships in the presets — it must stay legible.
+        function test_unconfigured_prompt_is_legible_at_every_declared_size() {
+            var cases = [
+                [348, 819, "tall"],  [846, 306, "wide"],      // 0.5x1
+                [696, 409, "wide"],  [423, 612, "tall"],      // 1x0.5
+                [696, 819, "compact"], [846, 612, "compact"], // 1x1
+                [696, 1228, "tall"], [1269, 612, "wide"],     // 1x1.5
+                [696, 1637, "large"], [1692, 612, "large"]    // 1x2
+            ]
+            for (var i = 0; i < cases.length; i++) {
+                sizeWrap.width = cases[i][0]; sizeWrap.height = cases[i][1]
+                hS.item.sizeClass = cases[i][2]
+                hS.storeCtl.patchSettings("test-instance", { url: "" })
+                hS.item.events = []
+                wait(32)
+                var tag = cases[i][0] + "x" + cases[i][1]
+                var t = allTexts(hS), found = null
+                for (var j = 0; j < t.length; j++)
+                    if (t[j].text.indexOf("Add a calendar") >= 0 && t[j].visible) found = t[j]
+                verify(found !== null, tag + ": the prompt is shown when no URL is set")
+                verify(found.font.pixelSize >= 11,
+                       tag + ": the prompt stays legible (" + found.font.pixelSize + "px)")
+                verify(found.width <= cases[i][0],
+                       tag + ": the prompt fits inside the tile")
+            }
         }
     }
 }

@@ -24,9 +24,12 @@ import "../../ui/qml" as App
 // model them): GetAll-timeout debounce, Identity→friendly-name mapping, the
 // Seeked-while-paused signal, and tile-level tap-to-expand propagation.
 // ─────────────────────────────────────────────────────────────────────────
+// Every harness below is laid out so it stays INSIDE the test window: the
+// clicking TestCases map item coordinates to window coordinates, and an item
+// parked past the window edge silently misses.
 Item {
     id: root
-    width: 460; height: 900
+    width: 1300; height: 2400
 
     // Main expanded harness — accent, subtitle, progress, transport, placeholder.
     WidgetHarness {
@@ -34,10 +37,26 @@ Item {
         widgetFile: "MediaWidget.qml"; expanded: true
     }
     // Compact tile harness — compact play/pause click + compact touch target.
+    // 423x306 is the REAL 0.5x0.5 landscape half-cell (see WidgetSizes). It was
+    // 360x120, a box the size model cannot produce: the smallest footprint any
+    // tile ever gets is the half-cell (348x409 portrait / 423x306 landscape).
+    // A 120px-tall host cannot hold art + a title + a 52px play target, so it
+    // was asserting the click behaviour of a shape that never ships.
     WidgetHarness {
-        id: hC; x: 0; y: 760; width: 360; height: 120
+        id: hC; x: 700; y: 0; width: 423; height: 306
         widgetFile: "MediaWidget.qml"; expanded: false
     }
+
+    // Resizable host for the per-sizeClass structure tests (W1 wave 3) — the
+    // REAL projected footprints of media's five declared sizes:
+    //   0.5x0.5 → 348x409 portrait · 423x306 landscape   (compact, micro)
+    //   0.5x1   → 348x819 portrait (tall) · 846x306 landscape (wide)
+    //   1x0.5   → 696x409 portrait (wide) · 423x612 landscape (tall)
+    //   1x1     → 696x819 portrait · 846x612 landscape   (compact)
+    //   1x1.5   → 696x1228 portrait (tall) · 1269x612 landscape (wide)
+    Item { id: sizeWrap; x: 0; y: 800; width: 696; height: 819
+        WidgetHarness { id: hS; anchors.fill: parent
+            widgetFile: "MediaWidget.qml"; expanded: false } }
 
     // Shared config-schema area, instantiated directly.
     App.WidgetConfigSchema { id: sc }
@@ -377,6 +396,13 @@ Item {
         when: windowShown
         function init() {
             tryVerify(function () { return hC.ready }, 3000)
+            // Inject sizeClass the way Dashboard does for a 0.5x0.5 tile. Without
+            // it WidgetChrome falls back to its geometric default (height > 240 →
+            // "tall"), which for a half-cell is simply the wrong class: the widget
+            // then renders the header + full transport of a tall tile into a
+            // 306px box, and the overflow is clipped by the chrome body — so the
+            // click landed on nothing.
+            hC.item.sizeClass = "compact"
             hC.mediaCtl.clearTrack()
         }
         function test_compact_playpause_fires_once() {
@@ -479,6 +505,128 @@ Item {
                     if (s.sections[i].fields[j].key === "accent") f = s.sections[i].fields[j]
             verify(f !== null, "accent field present")
             compare(f.dflt, "", "default accent is empty (this triggers the effAccent loop)")
+        }
+    }
+
+    // ── Per-sizeClass structure (W1 wave 3) ──────────────────────────────────
+    // Dashboard injects sizeClass; the widget must key layout off it. The old
+    // tile was one 46px-thumbnail row at EVERY size.
+    TestCase {
+        name: "MediaSizes"
+        when: windowShown
+
+        function initTestCase() { tryVerify(function () { return hS.ready }, 3000) }
+
+        function shape(width, height, cls) {
+            sizeWrap.width = width; sizeWrap.height = height
+            hS.item.sizeClass = cls
+            hS.mediaCtl.loadTrack("Everything In Its Right Place", "Radiohead")
+            wait(32)
+            return hS.item
+        }
+        // Every visible circular transport button (a Rectangle holding one MouseArea).
+        function transport(item) {
+            var mas = findAll(item, function (n) { return isMouseArea(n) && effVisible(n) }, [])
+            var out = []
+            for (var i = 0; i < mas.length; i++) {
+                var p = mas[i].parent
+                if (p && p.width > 0 && effVisible(p)) out.push(p)
+            }
+            return out
+        }
+        function art(item) {
+            // The art tile: a clipped Rectangle with a gradient, holding an Image.
+            var rs = findAll(item, function (n) {
+                return isRect(n) && n.clip && effVisible(n) && n.width > 20
+                       && findAll(n, function (c) { return isImage(c) }, []).length > 0
+            }, [])
+            return rs.length ? rs[0] : null
+        }
+
+        // The whole point of going wide: art BESIDE the metadata. The vertical
+        // stack is ~420px of content and 0.5x1 landscape is 306px tall.
+        function test_wide_puts_art_beside_the_metadata_in_both_projections() {
+            var cases = [[696, 409], [846, 306]]   // 1x0.5 portrait · 0.5x1 landscape
+            for (var i = 0; i < cases.length; i++) {
+                var w = shape(cases[i][0], cases[i][1], "wide")
+                compare(w.horiz, true, cases[i][0] + "x" + cases[i][1] + " is the horizontal variant")
+                var a = art(w)
+                var btns = transport(w)
+                verify(a !== null, "art is rendered")
+                verify(btns.length >= 3, "wide keeps the full transport (" + btns.length + ")")
+                // Beside: the transport starts to the RIGHT of the art, not below.
+                var artRight = w.mapFromItem(a, a.width, 0).x
+                var artBottom = w.mapFromItem(a, 0, a.height).y
+                var bx = w.mapFromItem(btns[0], 0, 0).x
+                verify(bx >= artRight - 1,
+                       "transport sits right of the art (art ends " + artRight + ", controls " + bx + ")")
+                // And the whole stack fits the box — the audit's actual failure.
+                verify(artBottom <= w.height,
+                       "art fits inside the " + cases[i][1] + "px box (ends " + artBottom + ")")
+            }
+        }
+
+        // Art is derived from the BOX, not a flat min(width*0.5, 260) cap.
+        function test_art_is_size_derived() {
+            var base = shape(696, 819, "compact")
+            var aBase = art(base).width
+            var tall = shape(696, 1228, "tall")
+            var aTall = art(tall).width
+            var micro = shape(423, 306, "compact")
+            var aMicro = art(micro).width
+            verify(aTall > aBase, "a taller box earns bigger art (" + aBase + " → " + aTall + ")")
+            verify(aMicro < aBase, "the half-cell shrinks it (" + aMicro + ")")
+            // The old cap: 696*0.5 = 348, capped to 260 — identical for both.
+            verify(aTall > 260, "the tall tile is no longer pinned at the old 260px cap")
+        }
+
+        // 0.5x0.5 — art, title, ONE play target. No shrunken hit areas.
+        function test_micro_keeps_one_full_size_play_target_only() {
+            var w = shape(423, 306, "compact")
+            compare(w.micro, true, "a 423x306 compact box is the half-cell")
+            compare(w.showHeader, false, "micro drops the header")
+            compare(w.rich, false, "micro carries the readout, not the full transport")
+            var btns = transport(w)
+            compare(btns.length, 1, "exactly one control survives — play")
+            verify(btns[0].height >= hS.theme.touchTertiary,
+                   "and it is a REAL hit area (" + btns[0].height + "px), not a shrunken one")
+            // Everything stays inside the 306px box.
+            var b = w.mapFromItem(btns[0], 0, btns[0].height).y
+            verify(b <= w.height, "the play target fits the box (ends " + b + ")")
+        }
+
+        // 1x1 — the baseline earns the full transport + progress, and type that
+        // is not 13px dust in a 696x819 box.
+        function test_baseline_earns_transport_progress_and_real_type() {
+            var w = shape(696, 819, "compact")
+            compare(w.micro, false, "696x819 is the baseline third")
+            compare(w.rich, true)
+            compare(w.horiz, false, "stacked")
+            verify(transport(w).length >= 3, "prev/play/next")
+            verify(w.titlePx > 13, "the title scales with the box (" + w.titlePx + "px), it is not the old 13px")
+            var t = findByProp(w.item ? w.item : w, "text", "Everything In Its Right Place")
+            verify(t !== null, "the track title is rendered")
+        }
+
+        // Tile controls stay real touch targets at every declared size.
+        function test_every_declared_size_keeps_touch_sized_controls() {
+            var cases = [
+                [348, 409, "compact"], [423, 306, "compact"],     // 0.5x0.5
+                [348, 819, "tall"],    [846, 306, "wide"],        // 0.5x1
+                [696, 409, "wide"],    [423, 612, "tall"],        // 1x0.5
+                [696, 819, "compact"], [846, 612, "compact"],     // 1x1
+                [696, 1228, "tall"],   [1269, 612, "wide"]        // 1x1.5
+            ]
+            for (var i = 0; i < cases.length; i++) {
+                var w = shape(cases[i][0], cases[i][1], cases[i][2])
+                var tag = cases[i][0] + "x" + cases[i][1] + " (" + cases[i][2] + ")"
+                var btns = transport(w)
+                verify(btns.length >= 1, tag + " has a control")
+                for (var j = 0; j < btns.length; j++)
+                    verify(btns[j].height >= hS.theme.touchTertiary,
+                           tag + ": control " + j + " is " + btns[j].height
+                           + "px >= " + hS.theme.touchTertiary)
+            }
         }
     }
 }

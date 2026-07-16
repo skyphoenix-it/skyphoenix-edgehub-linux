@@ -9,6 +9,27 @@ import QtQuick.Layouts
 // the global offline switch, the host allowlist and the attestation counters
 // cover them. Readings stay in widget properties: they are never written to the
 // store, so a poll cannot churn config.toml.
+//
+// Sizing (W1 wave 3): layout keys off the injected `sizeClass`. Every tile used
+// to render the same glyph + temperature + place, so a 696x1228 box showed a
+// 34px glyph over a 28px number and ~1000px of nothing.
+//
+// WHAT THE TILE CAN HONESTLY SHOW IS BOUNDED BY THE REQUEST, and the request is
+// `&current=` + `&daily=` — never `hourly` (see refresh()). So there is no hourly
+// series to chart, and a tall tile that drew one would be inventing data. Adding
+// `&hourly=` would be new egress + a new feature: NetHub gates it and the
+// no-egress attestation watches the default config. So the taller sizes grow the
+// only way the payload allows — today's detail, then N DAILY rows:
+//   • 0.5x0.5 (micro) — headerless: glyph + temperature + place.
+//   • 1x1 (baseline)  — + "feels like", + the daily rows that fit.
+//   • wide            — glyph/temp block beside the forecast as COLUMNS (the
+//                       wide projections are 306-409px tall; rows would not fit).
+//   • tall            — the daily forecast as a list, filling the height.
+//   • full (overlay)  — unchanged (the city search is genuinely modal).
+//
+// `forecastDays` (the user's setting, capped at 7 by the schema) is how many days
+// are FETCHED. The size decides how many of them are SHOWN: never more than the
+// user asked for, never more than fits. Same rule as calendar's maxEvents.
 WidgetChrome {
     id: w
     property var metrics: ({})
@@ -26,6 +47,44 @@ WidgetChrome {
     property var xhrFactory: null
 
     title: "Weather"; iconName: "weather"; accentColor: theme.catInfo
+    showHeader: !micro
+
+    // ── Per-size layout (sizeClass injected by Dashboard) ────────────────────
+    readonly property bool horiz: sizeClass === "wide"
+    readonly property bool tallish: sizeClass === "tall" || sizeClass === "large"
+    // Anything past "glyph + temperature + place" needs more than a half-cell.
+    readonly property bool rich: !micro
+
+    // The days we actually hold, minus today. `days` is only rebuilt by a fetch
+    // (every 30 min), never by a tick.
+    readonly property int futureDays: Math.max(0, w.days.length - 1)
+
+    // "Now" scales with the box; the forecast takes what is left.
+    readonly property real glyphPx: w.micro ? Math.min(w.width * 0.30, w.height * 0.26, 72)
+        : w.horiz ? Math.min(w.width * 0.10, w.height * 0.26, 80)
+        : Math.min(w.width * 0.18, w.height * 0.13, 88)
+    readonly property real tempPx: Math.max(18, Math.round(w.glyphPx * 0.78))
+    readonly property real subPx: Math.max(11, Math.min(w.tempPx * 0.30, 16))
+    // Width the "now" block claims when the forecast sits beside it.
+    readonly property real nowW: Math.min(w.width * 0.32, 340)
+
+    // How many daily entries FIT. The user's forecastDays is a MAXIMUM (what to
+    // fetch); the box decides how many of those are rendered — never more than we
+    // hold, never an overflowing card.
+    readonly property real dayRowH: Math.max(34, Math.min(w.height * 0.055, 52))
+    readonly property int dayRowsFit: {
+        if (w.expanded || w.micro || w.horiz || !w.loaded) return 0
+        // "Now" keeps a legible minimum and the refresh strip its touch row.
+        var avail = w.height - w.headerHeight - 150 - 3 * theme.spacingSm - theme.touchTertiary
+        return Math.max(0, Math.min(w.futureDays, Math.floor(avail / (w.dayRowH + 4))))
+    }
+    readonly property real dayColW: Math.max(72, Math.min(w.width * 0.11, 120))
+    readonly property int dayColsFit: {
+        if (w.expanded || w.micro || !w.horiz || !w.loaded) return 0
+        var avail = w.width - w.nowW - theme.touchTertiary - 3 * theme.spacingSm
+        return Math.max(0, Math.min(w.futureDays, Math.floor(avail / w.dayColW)))
+    }
+    readonly property int shownDays: w.horiz ? w.dayColsFit : w.dayRowsFit
 
     readonly property var cfg: {
         var _ = store ? store.revision : 0
@@ -191,8 +250,174 @@ WidgetChrome {
     Timer { id: refreshDebounce; interval: 350; onTriggered: w.refresh() }
     Timer { interval: 1800000; repeat: true; running: w.active; onTriggered: w.refresh() }
 
+    // ── Tile (every non-overlay size) ────────────────────────────────────────
+    GridLayout {
+        anchors.fill: parent
+        visible: !w.expanded
+        // Wide puts the forecast BESIDE "now" (3 columns: now · forecast ·
+        // refresh); everything else stacks them (3 rows).
+        columns: w.horiz ? 3 : 1
+        rowSpacing: theme.spacingSm
+        columnSpacing: theme.spacingMd
+
+        // "Now": glyph + temperature, then feels/place. Identical everywhere —
+        // only its scale changes.
+        ColumnLayout {
+            id: nowCell
+            Layout.fillWidth: !w.horiz
+            // Stacked: "now" absorbs the slack the capped forecast rows leave, so
+            // it sits centred in its share rather than pinned to the top edge.
+            Layout.fillHeight: !w.horiz
+            Layout.preferredWidth: w.horiz ? Math.round(w.nowW) : -1
+            // Alignment ONLY in the horizontal projection: setting it on the
+            // stacked path would cancel fillWidth/fillHeight above (Qt Layouts:
+            // alignment beats fill on that axis) and collapse the block.
+            Layout.alignment: w.horiz ? Qt.AlignVCenter : 0
+            Layout.maximumWidth: Number.POSITIVE_INFINITY
+            spacing: 0
+
+            Item { Layout.fillHeight: true; visible: !w.horiz }
+
+            RowLayout {
+                Layout.alignment: Qt.AlignHCenter
+                spacing: theme.spacingSm
+                Text { text: w.loaded ? w.weatherGlyph(w.curCode) : "…"
+                    font.pixelSize: Math.max(14, w.glyphPx) }
+                ColumnLayout {
+                    spacing: 0
+                    Text {
+                        text: (w.loaded && !w.errorText.length)
+                              ? Math.round(w.curTemp) + w.degSym
+                              : (w.errorText.length ? "—" : "…")
+                        font.pixelSize: w.tempPx; font.bold: true; color: theme.textPrimary
+                    }
+                    // "Feels like" is data the CURRENT reading already carries —
+                    // it was locked in the overlay for no reason. The half-cell
+                    // has no room for it.
+                    Text {
+                        visible: w.rich && w.loaded && !w.errorText.length
+                        text: "Feels " + Math.round(w.feels) + w.degSym
+                        font.pixelSize: w.subPx; color: theme.textSecondary
+                    }
+                }
+            }
+            Text {
+                Layout.fillWidth: true; Layout.topMargin: 2
+                horizontalAlignment: Text.AlignHCenter
+                elide: Text.ElideRight
+                text: w.errorText.length ? w.errorText : w.place
+                font.pixelSize: w.subPx
+                color: w.errorText.length ? theme.warning : theme.textSecondary
+            }
+
+            Item { Layout.fillHeight: true; visible: !w.horiz }
+        }
+
+        // The forecast — the same delegates reflowed: a COLUMN per day when the
+        // box is wide-and-short, a ROW per day when it is tall. Nothing is
+        // recreated by a reflow, and the model is an int (the count), so a new
+        // reading moves the bound VALUES rather than rebuilding delegates.
+        GridLayout {
+            id: forecastCell
+            visible: w.shownDays > 0
+            Layout.fillWidth: true
+            Layout.fillHeight: !w.horiz
+            Layout.alignment: w.horiz ? Qt.AlignVCenter : Qt.AlignTop
+            Layout.maximumWidth: Number.POSITIVE_INFINITY
+            columns: w.horiz ? w.shownDays : 1
+            rowSpacing: 4
+            columnSpacing: theme.spacingSm
+
+            Repeater {
+                model: w.shownDays
+                delegate: GridLayout {
+                    id: dayCell
+                    required property int index
+                    // days[0] is today — the forecast starts at 1.
+                    readonly property var d: w.days[dayCell.index + 1]
+                    columns: w.horiz ? 1 : 3
+                    rowSpacing: 0
+                    columnSpacing: theme.spacingSm
+                    Layout.fillWidth: true
+                    Layout.fillHeight: !w.horiz
+                    // Rows share the height, but only up to a point: four days in
+                    // an 819px box gave 125px rows with a 30px glyph adrift in the
+                    // middle of each. Capped here, and every glyph/label below is
+                    // sized from the row's ACTUAL height — so the row fills out
+                    // instead of the row growing around fixed-size content.
+                    Layout.maximumHeight: w.horiz ? 100000 : Math.max(44, w.dayRowH * 1.7)
+                    // The scale each day entry is drawn at. Stacked: the row's own
+                    // height. Wide: the column is bounded by its WIDTH but still
+                    // has the box's height to spend — sizing off the width alone
+                    // left 11px labels under a 19px glyph in a 409px-tall box.
+                    readonly property real px: w.horiz
+                        ? Math.min(w.dayColW * 0.75, w.height * 0.30)
+                        : dayCell.height
+
+                    Text {
+                        text: dayCell.d ? dayCell.d.day : ""
+                        font.pixelSize: Math.max(11, Math.min(dayCell.px * 0.30, 20))
+                        color: theme.textSecondary
+                        horizontalAlignment: w.horiz ? Text.AlignHCenter : Text.AlignLeft
+                        verticalAlignment: Text.AlignVCenter
+                        elide: Text.ElideRight
+                        Layout.preferredWidth: w.horiz ? -1 : Math.round(Math.min(w.width * 0.22, 96))
+                        Layout.fillWidth: w.horiz
+                        Layout.fillHeight: !w.horiz
+                    }
+                    Text {
+                        text: dayCell.d ? w.weatherGlyph(dayCell.d.code) : ""
+                        font.pixelSize: Math.max(14, Math.min(dayCell.px * 0.58, 44))
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        Layout.fillWidth: w.horiz
+                        Layout.fillHeight: !w.horiz
+                    }
+                    Text {
+                        text: dayCell.d ? (dayCell.d.max + w.degSym + " / " + dayCell.d.min + w.degSym) : ""
+                        font.pixelSize: Math.max(11, Math.min(dayCell.px * 0.30, 20))
+                        color: theme.textPrimary
+                        horizontalAlignment: w.horiz ? Text.AlignHCenter : Text.AlignRight
+                        verticalAlignment: Text.AlignVCenter
+                        // A 7-day °F row ("108°F / -12°F") must shrink, not clip.
+                        fontSizeMode: Text.HorizontalFit; minimumPixelSize: 9
+                        elide: Text.ElideRight
+                        Layout.fillWidth: !w.horiz
+                        Layout.preferredWidth: w.horiz ? Math.round(w.dayColW) : -1
+                        Layout.fillHeight: !w.horiz
+                    }
+                }
+            }
+        }
+
+        // Refresh — a real touch target in its own cell, so it can never sit on
+        // top of the forecast (it used to be a 36px circle anchored over the
+        // bottom-right of a body that had no bottom content; now it does).
+        Item {
+            visible: !w.micro
+            Layout.preferredHeight: theme.touchTertiary
+            Layout.preferredWidth: w.horiz ? theme.touchTertiary : -1
+            Layout.fillWidth: !w.horiz
+            Layout.alignment: w.horiz ? Qt.AlignVCenter : Qt.AlignRight
+            Rectangle {
+                id: refreshCompact
+                anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                width: theme.touchTertiary; height: theme.touchTertiary; radius: width / 2
+                color: Qt.rgba(w.effAccent.r, w.effAccent.g, w.effAccent.b,
+                               refMA.pressed ? 0.32 : (refMA.containsMouse ? 0.22 : 0.14))
+                Text { anchors.centerIn: parent; text: "⟳"; font.pixelSize: 22; color: w.effAccent }
+                MouseArea {
+                    id: refMA; anchors.fill: parent; hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor; onClicked: w.refresh()
+                }
+            }
+        }
+    }
+
+    // ── Expanded (the overlay) ───────────────────────────────────────────────
     ColumnLayout {
         anchors.fill: parent
+        visible: w.expanded
         spacing: w.expanded ? 12 : 4
 
         RowLayout {
@@ -250,21 +475,4 @@ WidgetChrome {
         }
     }
 
-    // Compact refresh — re-fetch the forecast without expanding. Bottom-right
-    // keeps clear of the config affordance (top-right) and the centred temp,
-    // and the collapsed body has no bottom content to overlap. Reuses refresh().
-    Rectangle {
-        id: refreshCompact
-        visible: !w.expanded
-        anchors.right: parent.right; anchors.bottom: parent.bottom
-        anchors.rightMargin: theme.spacingXs; anchors.bottomMargin: theme.spacingXs
-        width: 36; height: 36; radius: width / 2
-        color: Qt.rgba(w.effAccent.r, w.effAccent.g, w.effAccent.b,
-                       refMA.pressed ? 0.32 : (refMA.containsMouse ? 0.22 : 0.14))
-        Text { anchors.centerIn: parent; text: "⟳"; font.pixelSize: 20; color: w.effAccent }
-        MouseArea {
-            id: refMA; anchors.fill: parent; hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor; onClicked: w.refresh()
-        }
-    }
 }

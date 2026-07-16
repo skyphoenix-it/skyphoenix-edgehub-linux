@@ -11,7 +11,7 @@ import "../../ui/qml" as App
 // (never written to the persisted document — no config.toml churn per poll).
 Item {
     id: root
-    width: 760; height: 620
+    width: 1700; height: 2600
 
     function makeFake() {
         return {
@@ -31,10 +31,35 @@ Item {
     }
 
     WidgetHarness {
-        id: h; anchors.fill: parent
+        id: h; x: 0; y: 0; width: 760; height: 620
         widgetFile: "HttpJsonWidget.qml"; expanded: true
     }
+
+    // Resizable host for the per-sizeClass x per-MODE structure tests (W1 wave
+    // 3) — the REAL projected footprints of httpjson's six declared sizes:
+    //   0.5x0.5 → 348x409 portrait · 423x306 landscape  (compact, micro)
+    //   0.5x1   → 348x819 portrait (tall) · 846x306 landscape (wide)
+    //   1x0.5   → 696x409 portrait (wide) · 423x612 landscape (tall)
+    //   1x1     → 696x819 portrait · 846x612 landscape  (compact)
+    //   1x1.5   → 696x1228 portrait (tall) · 1269x612 landscape (wide)
+    //   1x2     → 696x1637 portrait · 1692x612 landscape (BOTH "large")
+    Item { id: sizeWrap; x: 0; y: 700; width: 696; height: 819
+        WidgetHarness { id: hS; anchors.fill: parent
+            widgetFile: "HttpJsonWidget.qml"; expanded: false; active: false } }
+
     App.WidgetConfigSchema { id: sc }
+
+    function findAllNodes(node, pred, acc) {
+        if (!node) return acc
+        if (pred(node)) acc.push(node)
+        var kids = node.children
+        for (var i = 0; kids && i < kids.length; i++) findAllNodes(kids[i], pred, acc)
+        return acc
+    }
+    function effVisible(n) {
+        while (n) { if (n.visible === false) return false; n = n.parent }
+        return true
+    }
     function iid() { return h.instanceId }
     function clearSettings() {
         var s = h.storeCtl.settingsFor(iid()); for (var k in s) delete s[k]; h.storeCtl._touchSettings()
@@ -175,6 +200,288 @@ Item {
             verify(k["authToken"] === true, "httpjson schema exposes authToken")
             verify(k["warnAt"] === true, "httpjson schema exposes warnAt")
             verify(k["critAt"] === true, "httpjson schema exposes critAt")
+        }
+    }
+
+    // ── Per-sizeClass x per-MODE structure (W1 wave 3) ───────────────────────
+    // 3 modes x 6 declared sizes, so the layout is asserted per MODE, not once.
+    TestCase {
+        name: "HttpJsonSizes"
+        when: windowShown
+
+        function initTestCase() { tryVerify(function () { return hS.ready }, 3000) }
+
+        // Every declared size, in both projections, with its injected class.
+        readonly property var allSizes: [
+            [348, 409, "compact"], [423, 306, "compact"],     // 0.5x0.5 (micro)
+            [348, 819, "tall"],    [846, 306, "wide"],        // 0.5x1
+            [696, 409, "wide"],    [423, 612, "tall"],        // 1x0.5
+            [696, 819, "compact"], [846, 612, "compact"],     // 1x1
+            [696, 1228, "tall"],   [1269, 612, "wide"],       // 1x1.5
+            [696, 1637, "large"],  [1692, 612, "large"]       // 1x2
+        ]
+
+        // Each shape() gets a FRESH instance id, so every case starts from a
+        // clean settings bucket. Emptying one shared bucket in place
+        // (`for (k in settingsFor(id)) delete …`) does not survive this many
+        // iterations: the widget re-reads `cfg` off store.revision, and a bucket
+        // mutated out from under a live binding leaked values between cases
+        // (a later case read the previous one's `mode` as its `url`). A new id
+        // per case is also just closer to what the dashboard does.
+        property int _iid: 0
+        property string curId: "size-instance-0"
+        function shape(width, height, cls, settings) {
+            sizeWrap.width = width; sizeWrap.height = height
+            curId = "size-instance-" + (++_iid)
+            hS.storeCtl.ensureSettings(curId, {})
+            hS.storeCtl.patchSettings(curId, settings)
+            hS.item.instanceId = curId
+            hS.item.sizeClass = cls
+            wait(32)
+            return hS.item
+        }
+        function seedValue(v) {
+            hS.storeCtl.patchSettings(curId,
+                { httpText: "" + v, httpVal: v, httpErr: "", httpList: [] })
+        }
+        function seedList(n) {
+            var items = []
+            for (var i = 0; i < n; i++) items.push("service-" + i + ": ok")
+            hS.storeCtl.patchSettings(curId,
+                { httpList: items, httpText: n + " items", httpVal: undefined, httpErr: "" })
+        }
+        function gaugeOf(item) {
+            var g = findAllNodes(item, function (n) {
+                return n.hasOwnProperty("showSpark") && n.hasOwnProperty("bigMax")
+            }, [])
+            return g.length ? g[0] : null
+        }
+        function visibleListRows(item) {
+            return findAllNodes(item, function (n) {
+                return n.hasOwnProperty("text") && /^• service-/.test(String(n.text))
+                       && root.effVisible(n)
+            }, []).length
+        }
+
+        // ── mode: gauge — drives MetricGauge's wave-2a knobs per size ────────
+        function test_gauge_micro_is_a_bare_ring_and_one_number() {
+            var w = shape(423, 306, "compact", { url: "http://x/y", mode: "gauge" })
+            seedValue(42); wait(32)
+            compare(w.micro, true)
+            compare(w.showHeader, false, "micro drops the header")
+            var g = gaugeOf(w)
+            verify(g !== null, "gauge mode renders the shared MetricGauge")
+            compare(g.showSpark, false, "micro reserves no sparkline slot")
+            verify(g.bigMax > 60, "the headerless number may fill its box")
+            compare(g.sub, "", "no path caption on a half-cell")
+        }
+        function test_gauge_wide_puts_the_spark_beside_the_ring() {
+            var w = shape(846, 306, "wide", { url: "http://x/y", mode: "gauge" })
+            seedValue(42); wait(32)
+            var g = gaugeOf(w)
+            compare(g.horizontal, true, "wide lays ring and sparkline side by side")
+            compare(g.showSpark, true)
+            compare(g.sparkFills, false)
+        }
+        function test_gauge_tall_squares_the_ring_and_earns_the_path() {
+            var w = shape(696, 1228, "tall", { url: "http://x/y", mode: "gauge", jsonPath: "data.cpu" })
+            seedValue(42); wait(32)
+            var g = gaugeOf(w)
+            compare(g.sparkFills, true, "a tall TILE hands the trend the height below the ring")
+            compare(g.horizontal, false)
+            compare(g.sub, "data.cpu", "and the tall tile earns the path caption")
+        }
+        function test_gauge_baseline_is_the_classic_stacked_strip() {
+            var w = shape(696, 819, "compact", { url: "http://x/y", mode: "gauge", jsonPath: "data.cpu" })
+            seedValue(42); wait(32)
+            var g = gaugeOf(w)
+            compare(g.showSpark, true); compare(g.horizontal, false)
+            compare(g.sparkFills, false, "the baseline keeps the classic strip")
+            compare(g.sub, "", "no room to earn the caption at the baseline")
+        }
+
+        // ── mode: value — the number scales with the box ─────────────────────
+        function test_value_scales_with_the_box_not_a_flat_32px() {
+            var micro = shape(423, 306, "compact", { url: "http://x/y", mode: "value" })
+            seedValue(128); wait(32)
+            var microPx = micro.valuePx
+            var big = shape(696, 1637, "large", { url: "http://x/y", mode: "value" })
+            seedValue(128); wait(32)
+            verify(big.valuePx > 32,
+                   "a 1637px box prints more than the old flat 32px (" + big.valuePx + ")")
+            verify(big.valuePx > microPx,
+                   "and more than the half-cell (" + microPx + " → " + big.valuePx + ")")
+        }
+        // The unit is part of the reading: "128" and "128 ms" are different
+        // facts. The number used to claim the whole slot, which squeezed the unit
+        // to zero width at every STACKED size — only the wide projection, at 0.42
+        // of the width, happened to leave room. Caught on the real panel.
+        function test_the_unit_is_rendered_at_every_size() {
+            for (var i = 0; i < allSizes.length; i++) {
+                var c = allSizes[i]
+                var w = shape(c[0], c[1], c[2],
+                              { url: "http://x/y", mode: "value", unit: "ms" })
+                seedValue(128); wait(32)
+                var tag = c[0] + "x" + c[1] + " (" + c[2] + ")"
+                var units = findAllNodes(w, function (n) {
+                    return n.hasOwnProperty("text") && String(n.text) === "ms"
+                           && root.effVisible(n)
+                }, [])
+                compare(units.length, 1, tag + ": the unit is rendered")
+                var u = units[0]
+                // Not truncated: the glyphs actually fit ("ms", never "m").
+                verify(u.width >= u.implicitWidth - 0.5,
+                       tag + ": the unit is not squeezed (" + u.width + " < "
+                       + u.implicitWidth + ")")
+                // And it belongs to the NUMBER — not parked at the tile's edge.
+                var nums = findAllNodes(w, function (n) {
+                    return n.hasOwnProperty("text") && String(n.text) === "128"
+                           && root.effVisible(n)
+                }, [])
+                compare(nums.length, 1, tag + ": the reading is rendered")
+                var numRight = w.mapFromItem(nums[0], (nums[0].width + nums[0].paintedWidth) / 2, 0).x
+                var unitLeft = w.mapFromItem(u, 0, 0).x
+                verify(unitLeft - numRight < 24,
+                       tag + ": the unit hugs the number (gap " + (unitLeft - numRight) + "px)")
+            }
+        }
+
+        // The trend must actually GET the height a tall tile hands it. Two
+        // fillHeight siblings in one column compete, and the nested Layout wins:
+        // the sparkline collapsed to ~6px — a flat line pretending to be a chart.
+        function test_the_trend_gets_real_height_when_it_is_the_point() {
+            var hist = [0.31, 0.36, 0.29, 0.42, 0.55, 0.48, 0.61, 0.44]
+            function sparkOf(item) {
+                var s = findAllNodes(item, function (n) {
+                    return n.hasOwnProperty("values") && n.hasOwnProperty("color")
+                           && root.effVisible(n)
+                }, [])
+                return s.length ? s[0] : null
+            }
+            var base = shape(696, 819, "compact", { url: "http://x/y", mode: "value" })
+            seedValue(128); base.hist = hist; wait(32)
+            var baseSpark = sparkOf(base)
+            verify(baseSpark !== null, "the baseline renders the trend")
+            // Read the NUMBER now: the next shape() resizes the SAME live item,
+            // so holding the object would re-measure it after the resize.
+            var baseH = baseSpark.height
+            verify(baseH > 20, "the baseline keeps its trend strip (" + baseH + "px)")
+
+            var tall = shape(696, 1228, "tall", { url: "http://x/y", mode: "value" })
+            seedValue(128); tall.hist = hist; wait(32)
+            var tallSpark = sparkOf(tall)
+            verify(tallSpark !== null, "tall renders the trend")
+            var tallH = tallSpark.height
+            verify(tallH > baseH,
+                   "and a tall tile hands it MORE height than the baseline strip ("
+                   + baseH + " → " + tallH + ")")
+            verify(tallH > 100, "not a 6px flat line (" + tallH + "px)")
+        }
+
+        function test_value_micro_shows_the_number_alone() {
+            var w = shape(423, 306, "compact", { url: "http://x/y", mode: "value", jsonPath: "d.v" })
+            seedValue(128); wait(32)
+            compare(w.rich, false, "no trend, no path caption on a half-cell")
+        }
+
+        // ── mode: list — the same rule calendar applies to maxEvents ─────────
+        // `listMax` is a MAXIMUM; the size decides how many of those fit.
+        function test_list_never_shows_more_rows_than_the_user_asked_for() {
+            var w = shape(696, 1637, "large", { url: "http://x/y", mode: "list", listMax: 3 })
+            seedList(12); wait(32)
+            verify(w.listRowsFit > 12, "a 1x2 portrait box has room for far more")
+            compare(w.listShown, 3, "but the user said 3 rows, so it shows 3")
+            compare(visibleListRows(w), 3)
+        }
+        function test_list_drops_the_tail_rather_than_overflowing_a_small_tile() {
+            var w = shape(423, 306, "compact", { url: "http://x/y", mode: "list", listMax: 12 })
+            seedList(12); wait(32)
+            verify(w.listShown < 12,
+                   "a 306px half-cell cannot hold twelve rows, so it shows fewer ("
+                   + w.listShown + ")")
+            verify(w.listShown > 0, "but it still lists the ones that fit")
+            compare(visibleListRows(w), w.listShown, "every counted row is rendered")
+        }
+        function test_list_never_invents_rows_it_does_not_have() {
+            var w = shape(696, 1637, "large", { url: "http://x/y", mode: "list", listMax: 12 })
+            seedList(2); wait(32)
+            compare(w.listShown, 2, "two items exist, so two rows")
+        }
+        function test_list_rows_scale_with_the_box() {
+            var small = shape(423, 306, "compact", { url: "http://x/y", mode: "list", listMax: 12 })
+            seedList(12); wait(32)
+            var smallH = small.listRowH
+            var big = shape(696, 1637, "large", { url: "http://x/y", mode: "list", listMax: 12 })
+            seedList(12); wait(32)
+            verify(big.listRowH > smallH,
+                   "a taller box earns taller rows (" + smallH + " → " + big.listRowH + ")")
+        }
+
+        // ── the unconfigured state — what SHIPS in the presets ───────────────
+        // It must stay legible at EVERY size x mode, because a freshly added
+        // tile has no URL yet.
+        function test_unconfigured_slot_is_legible_at_every_size_and_mode() {
+            var modes = ["value", "gauge", "list"]
+            for (var m = 0; m < modes.length; m++) {
+                for (var i = 0; i < allSizes.length; i++) {
+                    var c = allSizes[i]
+                    var w = shape(c[0], c[1], c[2], { url: "", mode: modes[m] })
+                    var tag = modes[m] + " " + c[0] + "x" + c[1]
+                    var hints = findAllNodes(w, function (n) {
+                        return n.hasOwnProperty("text")
+                               && String(n.text).indexOf("Add a URL in settings") >= 0
+                               && root.effVisible(n)
+                    }, [])
+                    compare(hints.length, 1, tag + ": the prompt is shown when no URL is set")
+                    verify(hints[0].font.pixelSize >= 11,
+                           tag + ": the prompt stays legible (" + hints[0].font.pixelSize + "px)")
+                    verify(hints[0].width <= c[0],
+                           tag + ": the prompt fits inside the tile")
+                }
+            }
+        }
+
+        // The refresh control is a real touch target at every size that hosts it,
+        // and the half-cell hosts the READOUT instead of a shrunken button.
+        function test_refresh_is_touch_sized_or_absent() {
+            for (var i = 0; i < allSizes.length; i++) {
+                var c = allSizes[i]
+                var w = shape(c[0], c[1], c[2], { url: "http://x/y", mode: "value" })
+                seedValue(42); wait(32)
+                var tag = c[0] + "x" + c[1]
+                var mas = findAllNodes(w, function (n) {
+                    return n.hasOwnProperty("pressed") && n.hasOwnProperty("containsMouse")
+                           && root.effVisible(n)
+                }, [])
+                if (w.micro) {
+                    compare(mas.length, 0,
+                            tag + ": the half-cell leaves refreshing to the poll + the overlay")
+                } else {
+                    compare(mas.length, 1, tag + ": the refresh control is on the tile")
+                    verify(mas[0].parent.height >= hS.theme.touchTertiary,
+                           tag + ": refresh is " + mas[0].parent.height + "px >= "
+                           + hS.theme.touchTertiary)
+                }
+            }
+        }
+
+        // The list model must be the COUNT: a poll must not rebuild every row.
+        function test_a_poll_does_not_rebuild_the_list_delegates() {
+            var w = shape(696, 819, "compact", { url: "http://x/y", mode: "list", listMax: 5 })
+            seedList(5); wait(32)
+            var rows = findAllNodes(w, function (n) {
+                return n.hasOwnProperty("text") && /^• service-/.test(String(n.text))
+                       && root.effVisible(n)
+            }, [])
+            compare(rows.length, 5)
+            var first = rows[0]
+            // A new reading with the same shape: values change, delegates live on.
+            hS.storeCtl.patchSettings(curId, {
+                httpList: ["service-0: DEGRADED", "service-1: ok", "service-2: ok",
+                           "service-3: ok", "service-4: ok"] })
+            wait(32)
+            compare(first.text, "• service-0: DEGRADED",
+                    "the SAME delegate re-rendered — it was not destroyed and rebuilt")
         }
     }
 }
