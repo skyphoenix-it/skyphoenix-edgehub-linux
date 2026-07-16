@@ -316,6 +316,8 @@ at your option.
 
 **Qt note:** EdgeHub links against Qt 6 (LGPLv3). Dynamic linking against system Qt satisfies the LGPL; static linking carries the usual re-linking obligations.
 
+**Bundled fonts:** the accessibility font options bundle [Atkinson Hyperlegible](https://github.com/googlefonts/atkinson-hyperlegible) (© Braille Institute of America) and [Lexend](https://github.com/googlefonts/lexend) (© The Lexend Project Authors), both unmodified and licensed under the SIL Open Font License 1.1. The OFL texts ship alongside the fonts in [`assets/fonts/`](assets/fonts/) (`LICENSE-OFL-AtkinsonHyperlegible.txt`, `LICENSE-OFL-Lexend.txt`).
+
 App-id: `com.skyphoenix_it.XeneonEdgeHub` · Companion: `com.skyphoenix_it.XeneonEdgeManager`
 
 ---
