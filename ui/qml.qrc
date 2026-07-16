@@ -23,6 +23,7 @@
         <file alias="qml/SegmentedControl.qml">qml/widgets/SegmentedControl.qml</file>
         <file alias="qml/RingProgress.qml">qml/widgets/RingProgress.qml</file>
         <file alias="qml/SettingsPanel.qml">qml/widgets/SettingsPanel.qml</file>
+        <file alias="qml/PresetPicker.qml">qml/widgets/PresetPicker.qml</file>
         <file alias="qml/Sparkline.qml">qml/widgets/Sparkline.qml</file>
         <file alias="qml/MetricGauge.qml">qml/widgets/MetricGauge.qml</file>
         <file alias="qml/AnimatedBackground.qml">qml/widgets/AnimatedBackground.qml</file>

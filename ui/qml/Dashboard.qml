@@ -226,6 +226,9 @@ Item {
     WidgetCatalog { id: catalog }
     WidgetSizes { id: sizes }
     WidgetPacker { id: packer }
+    // The curated screen library — consumed post-setup by the PresetPicker
+    // below (W5 finding 3: it used to have no consumer outside the wizard).
+    PresetCatalog { id: presetLib }
     // The single app-global egress gate. Every net widget routes through this one
     // instance (injected below), so the offline switch + host allowlist + request
     // counters are global. `offline` is driven by an appearance flag (set by a
@@ -358,6 +361,49 @@ Item {
         }
     }
     property var overlayLoaderItem: null
+
+    // Apply a preset from the post-setup Screens picker (W5 finding 3): the
+    // store's normal seed path (resetTo), with two deliberate twists.
+    //
+    //  • POLICY (E9): an org-forced preset wins over any interactive choice.
+    //    The picker surface is already absent under the lock, but the guard
+    //    lives HERE so no other caller can ever bypass the policy.
+    //  • "Your theme stays" — and it must stay across RESTART, not just live.
+    //    A preset document carries only its character keys (bgStyle/
+    //    animatedBg/reduceMotion/glow/presetSurface), so resetTo() would drop
+    //    every other persisted appearance key: themeMode/accent would fall
+    //    back to the stale legacy [theme] values on the next launch (W5
+    //    finding 15), and — worse — a user's netOffline/updateCheck/
+    //    enableUserWidgets choices would silently revert to defaults. So every
+    //    prior appearance key the preset does not define is carried over.
+    //  • Accessibility beats character: an explicit prior reduce-motion
+    //    choice survives even though presets DO define reduceMotion. Post-
+    //    setup, that flag is the user's a11y setting; a preset that silently
+    //    re-enabled motion would repeat the W3 bug class the calm work fixed.
+    //    (In the wizard the preset's character applies untouched — there is
+    //    no prior choice to protect there.)
+    //
+    // Returns whether the preset was applied.
+    function applyPreset(presetId) {
+        if (store.policyLockedPreset !== "") return false
+        var id = String(presetId || "")
+        if (id === "") return false
+        if (id !== "blank" && !presetLib.has(id)) return false
+        var prev = store.appearance()
+        var keep = {}
+        for (var k in prev) keep[k] = prev[k]
+        store.resetTo(id)
+        for (var kk in keep)
+            if (store.appearance()[kk] === undefined)
+                store.setAppearance(kk, keep[kk])
+        if (keep.reduceMotion !== undefined)
+            store.setAppearance("reduceMotion", keep.reduceMotion)
+        applyAppearance()
+        // Land the user on the new layout's first page, not an out-of-range
+        // index left over from a longer document.
+        swipeView.currentIndex = 0
+        return true
+    }
 
     // Close the expanded overlay + clear its transient state (shared by the
     // header back button and the reachable bottom "Done" bar).
@@ -1307,6 +1353,19 @@ Item {
     SettingsPanel {
         id: settings
         updateChecker: updateChecker
+        // Under an org-forced preset the Screens entry is absent (E9).
+        presetsLocked: store.policyLockedPreset !== ""
+        onCloseRequested: shown = false
+        onPresetsRequested: { settings.shown = false; presetPicker.shown = true }
+    }
+
+    // Post-setup preset library ("Screens", W5 finding 3) — opened from the
+    // settings sheet; applying routes through applyPreset() above.
+    PresetPicker {
+        id: presetPicker
+        catalog: presetLib
+        locked: store.policyLockedPreset !== ""
+        onApplyRequested: (pid) => { if (dashboard.applyPreset(pid)) presetPicker.shown = false }
         onCloseRequested: shown = false
     }
 }

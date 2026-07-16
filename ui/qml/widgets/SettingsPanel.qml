@@ -14,6 +14,13 @@ Rectangle {
     z: 200
     property bool shown: false
     signal closeRequested()
+    // W5 finding 3: the "Screens" entry reopens the preset library post-setup.
+    // The panel only emits — the Dashboard owns the picker and the apply.
+    signal presetsRequested()
+    // True when an org policy forces a preset (E9 lockToPreset): the Screens
+    // entry is then ABSENT, not greyed — a managed device must not advertise
+    // a choice its user cannot make. Injected by the Dashboard.
+    property bool presetsLocked: false
 
     // E10: the app-global UpdateChecker service (injected by Dashboard; null in
     // a standalone harness). The panel only renders its result line and writes
@@ -107,6 +114,43 @@ Rectangle {
                     id: form
                     width: parent.width
                     spacing: theme.spacingXl
+
+                    // --- Screens (reopen the preset library — W5 finding 3) ---
+                    // The 15-screen library used to be wizard-only; this is the
+                    // one post-setup way back in. Hidden entirely under an
+                    // org-forced preset.
+                    ColumnLayout {
+                        visible: !panel.presetsLocked
+                        Layout.fillWidth: true; spacing: theme.spacingSm
+                        Text { text: "Screens"; font.pixelSize: theme.fontLabel; font.bold: true; color: theme.textSecondary }
+                        Rectangle {
+                            objectName: "screensEntry"
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: theme.touchSecondary
+                            radius: theme.radiusMd
+                            color: presetsMA.pressed ? theme.cardBackgroundAlt : theme.cardBackground
+                            border.width: 1; border.color: theme.cardBorder
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: theme.spacingMd; anchors.rightMargin: theme.spacingMd
+                                spacing: theme.spacingSm
+                                AppIcon { name: "ui-layout"; size: theme.iconSm; color: theme.accent }
+                                Text {
+                                    text: "Browse screen layouts…"
+                                    font.pixelSize: theme.fontLabel; color: theme.textPrimary
+                                    Layout.fillWidth: true; elide: Text.ElideRight
+                                }
+                                AppIcon { name: "ui-caret-right"; size: theme.iconSm; color: theme.textTertiary }
+                            }
+                            MouseArea { id: presetsMA; anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                onClicked: panel.presetsRequested() }
+                        }
+                        Text {
+                            Layout.fillWidth: true; wrapMode: Text.WordWrap
+                            text: "The ready-made screens from setup. Applying one replaces your pages — your theme stays."
+                            font.pixelSize: theme.fontCaption; color: theme.textTertiary
+                        }
+                    }
 
                     // --- Theme mode (live gradient previews) ---
                     ColumnLayout {

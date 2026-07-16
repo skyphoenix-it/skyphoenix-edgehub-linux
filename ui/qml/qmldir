@@ -49,6 +49,7 @@ RingProgress 1.0 widgets/RingProgress.qml
 SegmentedControl 1.0 widgets/SegmentedControl.qml
 SensorsWidget 1.0 widgets/SensorsWidget.qml
 SettingsPanel 1.0 widgets/SettingsPanel.qml
+PresetPicker 1.0 widgets/PresetPicker.qml
 Sparkline 1.0 widgets/Sparkline.qml
 StarfieldBackground 1.0 widgets/StarfieldBackground.qml
 TasksWidget 1.0 widgets/TasksWidget.qml

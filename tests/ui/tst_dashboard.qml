@@ -4,7 +4,7 @@ import "../../ui/qml" as App
 
 // COVERS: fn:Dashboard._tileExists, fn:Dashboard.applyAppearance, fn:Dashboard.applyExternalState, fn:Dashboard.cfgAction, fn:Dashboard.closeExpanded, fn:Dashboard.injectWidget
 // COVERS: fn:Dashboard.onAccentNameChanged, fn:Dashboard.onAnimatedBackgroundChanged, fn:Dashboard.onGlassOpacityChanged, fn:Dashboard.onOrientationModeChanged, fn:Dashboard.onReduceMotionChanged, fn:Dashboard.onShowWidgetGlowChanged
-// COVERS: fn:Dashboard.onThemeModeChanged
+// COVERS: fn:Dashboard.onThemeModeChanged, fn:Dashboard.applyPreset
 //
 // ui/qml/Dashboard.qml —
 //   • cfgAction: geocode-with-place, empty-place, non-geocode action, no overlay
@@ -359,6 +359,63 @@ Item {
                    "the wait shrinks the later in the second we fire (" +
                    atBoundary + " vs " + lateInSecond + ")")
             compare(lateInSecond, 105, "900ms into the second -> 105ms left, not 1000")
+        }
+
+        // ── applyPreset (the post-setup Screens picker, W5 finding 3) ─────────
+        function test_applyPreset_seeds_layout_and_keeps_user_appearance() {
+            var d = ld.item
+            var s = root.store()
+            s.load("blank")
+            // The user's own choices, made post-setup — none of these are
+            // preset "character" keys and every one must survive the apply.
+            s.setAppearance("themeMode", "nord")
+            s.setAppearance("accent", "green")
+            s.setAppearance("glass", 0.31)
+            s.setAppearance("netOffline", true)
+            // reduceMotion IS a preset character key — but a11y beats character.
+            s.setAppearance("reduceMotion", true)
+
+            verify(d.applyPreset("developer"), "applyPreset accepts a known preset id")
+            var pages = s.pages()
+            compare(pages.length, 2, "the developer preset's two pages were seeded")
+            compare(pages[0].tiles[0].type, "httpjson", "…with its designed tiles (CI status slot)")
+            compare(s.settingsFor(pages[0].tiles[0].id).title, "CI status", "and the authored per-tile settings")
+
+            var a = s.appearance()
+            compare(a.themeMode, "nord", "the user's theme survives the apply — the confirm copy's promise")
+            compare(a.accent, "green", "accent survives")
+            compare(a.glass, 0.31, "glass survives")
+            compare(a.netOffline, true, "the egress kill switch is NEVER silently re-enabled by a preset")
+            compare(a.reduceMotion, true, "an explicit reduce-motion choice beats the preset's character")
+            compare(a.bgStyle, "grid", "the preset's character still lands where the user made no choice (bgStyle)")
+            compare(a.animatedBg, true, "…and animatedBg comes from the preset's character")
+
+            compare(root.themeMode, "nord", "applyPreset re-applied appearance to the live shell")
+        }
+
+        function test_applyPreset_blank_and_bad_ids() {
+            var d = ld.item
+            var s = root.store()
+            s.load("developer")
+            verify(d.applyPreset("blank"), "applyPreset accepts the blank slate")
+            compare(s.pages().length, 1, "blank → one empty page")
+            compare(s.pages()[0].tiles.length, 0, "…with no tiles")
+            var before = JSON.stringify(s.pages())
+            verify(!d.applyPreset("no-such-preset"), "an unknown id is refused")
+            verify(!d.applyPreset(""), "an empty id is refused")
+            verify(!d.applyPreset(null), "null is refused")
+            compare(JSON.stringify(s.pages()), before, "refused ids change nothing")
+        }
+
+        function test_applyPreset_respects_the_org_policy_lock() {
+            var d = ld.item
+            var s = root.store()
+            s.lockToPreset("health")
+            var before = JSON.stringify(s.pages())
+            verify(!d.applyPreset("developer"), "applyPreset refuses under an org-forced preset (E9)")
+            compare(JSON.stringify(s.pages()), before, "the forced layout is untouched")
+            s.policyLockedPreset = ""          // release the lock for later tests
+            s.load("blank")
         }
 
         function test_tileExists() {
