@@ -142,22 +142,23 @@ A companion desktop app (`xeneon-edge-manager`) that mirrors your Edge in real t
 
 ## Install
 
-The current release is **[v1.0.0-alpha.1](https://github.com/skyphoenix-it/XeneonEdge_Linux/releases/tag/v1.0.0-alpha.1)**.
+The current release is **[v1.0.0-alpha.2](https://github.com/skyphoenix-it/XeneonEdge_Linux/releases/tag/v1.0.0-alpha.2)** — the first **signed** release.
 
-### Arch / CachyOS
+### Portable tarball (any distro)
 
-Download `xeneon-edge-hub-1.0.0.alpha.1-1-x86_64.pkg.tar.zst` and `SHA256SUMS` from the [release page](https://github.com/skyphoenix-it/XeneonEdge_Linux/releases/tag/v1.0.0-alpha.1), then:
+Download `xeneon-edge-hub_1.0.0-alpha.2_x86_64.tar.gz`, `SHA256SUMS` and `SHA256SUMS.asc` from the [release page](https://github.com/skyphoenix-it/XeneonEdge_Linux/releases/tag/v1.0.0-alpha.2), then:
 
 ```sh
+gpg --verify SHA256SUMS.asc SHA256SUMS   # key import: see "Verifying your download"
 sha256sum -c SHA256SUMS
-sudo pacman -U xeneon-edge-hub-1.0.0.alpha.1-1-x86_64.pkg.tar.zst
+tar -xf xeneon-edge-hub_1.0.0-alpha.2_x86_64.tar.gz
 ```
 
-> **This alpha build is not signed.** It was published before a release key existed, and that isn't retroactively fixable — verify the checksum above. Releases from the **beta onward are signed**; see below.
+An AUR package is in preparation. (`v1.0.0-alpha.1` remains available but unsigned — it predates the release key, which is not retroactively fixable.)
 
 ### Verifying your download
 
-Releases from the beta onward ship `SHA256SUMS` alongside a detached signature `SHA256SUMS.asc`, made with the EdgeHub release key. (`v1.0.0-alpha.1` predates the key and is checksum-only — it has no `.asc`.)
+Releases from `v1.0.0-alpha.2` onward ship `SHA256SUMS` alongside a detached signature `SHA256SUMS.asc`, made with the EdgeHub release key. (`v1.0.0-alpha.1` predates the key and is checksum-only — it has no `.asc`.)
 
 **1. Import the key.** It is not on a keyserver yet, so `gpg --recv-keys` will not find it. Use either route:
 
