@@ -1,0 +1,435 @@
+import QtQuick
+import QtTest
+import "../../ui/qml" as App
+
+// COVERS: schema:customZone, schema:dateStyle, schema:format24, schema:showDate, schema:showSeconds, schema:utcOffset
+// COVERS: schema:zoneLabel
+
+// ─────────────────────────────────────────────────────────────────────────
+// tst_gen_clock — COMPREHENSIVE coverage for area "widget:clock"
+// (ui/qml/widgets/ClockWidget.qml, a digital clock).
+//
+// Covers every config option, zone/offset maths, format derivation, live
+// reactivity through store.revision + the shared tick, effAccent recolouring,
+// and the audit's suggested cases. Some assertions intentionally encode the
+// CORRECT expected behaviour and therefore FAIL against real bugs in the
+// widget (overflow/clipping, showDate not suppressing the header weekday,
+// duplicate weekday, missing world-clock indicator) — those failures are the
+// point and are reported as likelyRealBug.
+// ─────────────────────────────────────────────────────────────────────────
+Item {
+    id: root
+    width: 700; height: 1000
+
+    // Main harness: expanded, generous size — logic / config / reactivity.
+    WidgetHarness {
+        id: h; x: 0; y: 0; width: 420; height: 300
+        widgetFile: "ClockWidget.qml"; expanded: true
+    }
+    // Portrait "preview" harness (~640px usable) — expanded clipping.
+    WidgetHarness {
+        id: hPortrait; x: 0; y: 300; width: 640; height: 640
+        widgetFile: "ClockWidget.qml"; expanded: true
+    }
+    // Narrow 2-column tile — non-expanded clipping + world-clock indicator +
+    // header-status behaviour.
+    WidgetHarness {
+        id: hTile; x: 0; y: 940; width: 330; height: 40
+        widgetFile: "ClockWidget.qml"; expanded: false
+    }
+
+    // Shared-area component instantiated directly (schema/widget key sync).
+    App.WidgetConfigSchema { id: sc }
+
+    // ── helpers ─────────────────────────────────────────────────────────────
+    function pad(n) { return (n < 10 ? "0" : "") + n }
+    function localOffsetHours() { return -(new Date().getTimezoneOffset()) / 60 }
+
+    function isText(c) {
+        return c && typeof c.paintedWidth === "number"
+                 && typeof c.text === "string" && typeof c.font !== "undefined"
+    }
+    function collectTexts(node, out) {
+        if (!node || !node.children) return
+        for (var i = 0; i < node.children.length; i++) {
+            var c = node.children[i]
+            if (isText(c)) out.push(c)
+            collectTexts(c, out)
+        }
+    }
+    function allTexts(harness) { var out = []; collectTexts(harness.item, out); return out }
+    // The big monospace time label (unique: mono + bold; the header status is
+    // mono but not bold).
+    function timeTextOf(harness) {
+        var t = allTexts(harness)
+        for (var i = 0; i < t.length; i++)
+            if (t[i].font.family === harness.theme.fontMono && t[i].font.bold === true)
+                return t[i]
+        return null
+    }
+    function textEquals(harness, str) {
+        var t = allTexts(harness)
+        for (var i = 0; i < t.length; i++) if (t[i].text === str) return t[i]
+        return null
+    }
+
+    // ── zonedNow() / offset maths ────────────────────────────────────────────
+    TestCase {
+        name: "ClockZoneMath"
+        when: windowShown
+        function init() {
+            tryVerify(function () { return h.ready }, 3000)
+            var s = h.storeCtl.settingsFor("test-instance")
+            for (var k in s) delete s[k]
+            h.storeCtl._touchSettings()
+        }
+        function set(k, v) { h.storeCtl.setSetting("test-instance", k, v) }
+
+        function test_local_mode_is_now() {
+            var w = h.item
+            set("customZone", false)
+            verify(Math.abs(w.zonedNow().getTime() - Date.now()) < 2000, "local = now")
+        }
+        function test_integer_offset() {
+            var w = h.item
+            set("customZone", true); set("utcOffset", 5)
+            var local = new Date()
+            var utcMs = local.getTime() + local.getTimezoneOffset() * 60000
+            verify(Math.abs(w.zonedNow().getTime() - (utcMs + 5 * 3600000)) < 2000, "UTC+5")
+        }
+        function test_positive_half_hour_offset() {
+            var w = h.item
+            set("customZone", true); set("utcOffset", 5.5)
+            var local = new Date()
+            var utcMs = local.getTime() + local.getTimezoneOffset() * 60000
+            verify(Math.abs(w.zonedNow().getTime() - (utcMs + 5.5 * 3600000)) < 2000, "UTC+5:30")
+        }
+        function test_negative_half_hour_offset() {
+            var w = h.item
+            set("customZone", true); set("utcOffset", -3.5)
+            var local = new Date()
+            var utcMs = local.getTime() + local.getTimezoneOffset() * 60000
+            verify(Math.abs(w.zonedNow().getTime() - (utcMs - 3.5 * 3600000)) < 2000, "UTC-3:30")
+        }
+        function test_offset_label_formats() {
+            var w = h.item
+            set("customZone", true)
+            set("utcOffset", 5.5);  compare(w.offsetLabel(), "UTC+5:30", "India")
+            set("utcOffset", -3.5); compare(w.offsetLabel(), "UTC-3:30", "negative half-hour")
+            set("utcOffset", 0);    compare(w.offsetLabel(), "UTC+0", "zero")
+            set("utcOffset", 14);   compare(w.offsetLabel(), "UTC+14", "max integer, no minutes")
+            set("utcOffset", 9);    compare(w.offsetLabel(), "UTC+9", "whole hour, no minutes")
+        }
+        // The world clock is a FIXED offset by design (documented limitation):
+        // it does NOT track daylight saving. This pins that behaviour.
+        function test_custom_zone_is_fixed_offset() {
+            var w = h.item
+            set("customZone", true); set("utcOffset", -5)
+            var local = new Date()
+            var utcMs = local.getTime() + local.getTimezoneOffset() * 60000
+            // Always exactly UTC-5, regardless of whether NY is on EDT/EST.
+            verify(Math.abs(w.zonedNow().getTime() - (utcMs - 5 * 3600000)) < 2000,
+                   "fixed offset, no DST adjustment")
+        }
+    }
+
+    // ── timeFmt / dateFmt derivation ─────────────────────────────────────────
+    TestCase {
+        name: "ClockFormats"
+        when: windowShown
+        function init() {
+            tryVerify(function () { return h.ready }, 3000)
+            var s = h.storeCtl.settingsFor("test-instance")
+            for (var k in s) delete s[k]
+            h.storeCtl._touchSettings()
+        }
+        function set(k, v) { h.storeCtl.setSetting("test-instance", k, v) }
+
+        function test_24h_no_seconds() {
+            var w = h.item
+            set("format24", true); set("showSeconds", false)
+            compare(w.timeFmt, "HH:mm", "24h / no seconds")
+        }
+        function test_12h_with_seconds() {
+            var w = h.item
+            set("format24", false); set("showSeconds", true)
+            compare(w.timeFmt, "h:mm:ss AP", "12h / seconds")
+        }
+        function test_24h_with_seconds() {
+            var w = h.item
+            set("format24", true); set("showSeconds", true)
+            compare(w.timeFmt, "HH:mm:ss", "24h / seconds, no AP")
+        }
+        function test_12h_no_seconds() {
+            var w = h.item
+            set("format24", false); set("showSeconds", false)
+            compare(w.timeFmt, "h:mm AP", "12h / no seconds")
+        }
+        function test_date_style_short() {
+            var w = h.item
+            set("dateStyle", "short")
+            compare(w.dateFmt, "dd/MM", "short → dd/MM")
+        }
+        function test_date_style_full_expanded() {
+            var w = h.item   // this harness is expanded
+            set("dateStyle", "full")
+            verify(w.dateFmt.indexOf("dddd") >= 0, "full+expanded shows the full weekday")
+            verify(w.dateFmt.indexOf("MMMM") >= 0, "…and full month name")
+            verify(w.dateFmt.indexOf("yyyy") >= 0, "…and the year")
+        }
+    }
+
+    // ── live reactivity via store.revision + the shared tick ─────────────────
+    TestCase {
+        name: "ClockReactivity"
+        when: windowShown
+        function init() {
+            tryVerify(function () { return h.ready }, 3000)
+            var s = h.storeCtl.settingsFor("test-instance")
+            for (var k in s) delete s[k]
+            h.storeCtl._touchSettings()
+        }
+        function set(k, v) { h.storeCtl.setSetting("test-instance", k, v) }
+
+        function test_offset_edit_updates_displayed_time_live() {
+            var w = h.item
+            set("format24", true); set("showSeconds", false); set("customZone", true)
+            set("utcOffset", 1)
+            var tt = timeTextOf(h)
+            verify(tt !== null, "found the time label")
+            var a = tt.text
+            set("utcOffset", 8)   // +7h → HH must differ
+            verify(tt.text !== a, "displayed time re-rendered after utcOffset edit (" + a + " → " + tt.text + ")")
+        }
+        function test_toggle_custom_zone_updates_time_immediately() {
+            var w = h.item
+            set("customZone", false)
+            var t0 = w.zonedNow().getTime()
+            verify(Math.abs(t0 - Date.now()) < 2000, "starts local")
+            // +3h relative to local, deterministic regardless of host tz.
+            set("customZone", true); set("utcOffset", localOffsetHours() + 3)
+            verify(Math.abs((w.zonedNow().getTime() - t0) - 3 * 3600000) < 3000,
+                   "toggling zone on shifts +3h live")
+            set("customZone", false)
+            verify(Math.abs(w.zonedNow().getTime() - Date.now()) < 2000, "toggling off returns to local")
+        }
+        function test_seconds_advance_via_shared_tick() {
+            var w = h.item
+            set("showSeconds", true); set("format24", true)
+            var tt = timeTextOf(h)
+            verify(tt !== null)
+            var before = tt.text
+            // Bump the shared tick and let real wall-clock seconds roll over.
+            tryVerify(function () { w.tick++; return tt.text !== before }, 2500,
+                      "seconds field changes as the tick advances")
+        }
+        function test_date_row_uses_zoned_date_not_local() {
+            var w = h.item
+            set("customZone", true); set("showDate", true); set("dateStyle", "short")
+            set("utcOffset", localOffsetHours() + 12)   // +12h, may cross midnight
+            var expected = Qt.formatDate(new Date(Date.now() + 12 * 3600000), "dd/MM")
+            var dateNode = textEquals(h, expected)
+            verify(dateNode !== null && dateNode.visible,
+                   "date row reflects the ZONED date (+12h), expected " + expected)
+        }
+    }
+
+    // ── effAccent recolouring of the zone label ──────────────────────────────
+    TestCase {
+        name: "ClockAccent"
+        when: windowShown
+        function init() {
+            tryVerify(function () { return h.ready }, 3000)
+            var s = h.storeCtl.settingsFor("test-instance")
+            for (var k in s) delete s[k]
+            h.storeCtl._touchSettings()
+            h.item.accentName = ""
+        }
+        function set(k, v) { h.storeCtl.setSetting("test-instance", k, v) }
+
+        function test_default_eff_accent_is_system_category() {
+            var w = h.item
+            compare(String(w.effAccent), String(h.theme.catSystem), "defaults to the System accent")
+        }
+        function test_accent_preset_recolours_zone_label() {
+            var w = h.item
+            set("customZone", true); set("zoneLabel", "Tokyo")
+            // The host wires cfg.accent → accentName; emulate that here.
+            w.accentName = "green"
+            // Normalise through Qt.color so #RRGGBB casing doesn't matter.
+            compare(String(w.effAccent), String(Qt.color(h.theme.accentPresets["green"].a)),
+                    "effAccent = green preset")
+            var zone = textEquals(h, "Tokyo")
+            verify(zone !== null, "zone label rendered")
+            compare(String(zone.color), String(w.effAccent), "zone label painted with effAccent")
+        }
+    }
+
+    // ── world-clock label visibility ─────────────────────────────────────────
+    TestCase {
+        name: "ClockZoneLabel"
+        when: windowShown
+        function init() {
+            tryVerify(function () { return h.ready && hTile.ready }, 3000)
+            var s = h.storeCtl.settingsFor("test-instance")
+            for (var k in s) delete s[k]
+            h.storeCtl._touchSettings()
+            var s2 = hTile.storeCtl.settingsFor("test-instance")
+            for (var k2 in s2) delete s2[k2]
+            hTile.storeCtl._touchSettings()
+        }
+
+        function test_empty_label_shows_offset_when_expanded() {
+            var w = h.item   // expanded
+            h.storeCtl.patchSettings("test-instance", { customZone: true, zoneLabel: "", utcOffset: 9 })
+            compare(w.zoneLabel, "", "no label configured")
+            var node = textEquals(h, w.offsetLabel())
+            verify(node !== null && node.visible,
+                   "expanded empty-label world clock falls back to " + w.offsetLabel())
+        }
+        // Non-expanded tile with customZone but empty label shows NO indicator,
+        // so a foreign time is indistinguishable from a wrong local clock.
+        function test_empty_label_shows_indicator_when_not_expanded() {
+            var w = hTile.item   // NOT expanded
+            hTile.storeCtl.patchSettings("test-instance", { customZone: true, zoneLabel: "", utcOffset: 9 })
+            var node = textEquals(hTile, w.offsetLabel())
+            verify(node !== null && node.visible,
+                   "a non-local tile should still indicate it is not local time")
+        }
+    }
+
+    // ── showDate + header weekday status ─────────────────────────────────────
+    TestCase {
+        name: "ClockDateVisibility"
+        when: windowShown
+        function init() {
+            tryVerify(function () { return h.ready }, 3000)
+            var s = h.storeCtl.settingsFor("test-instance")
+            for (var k in s) delete s[k]
+            h.storeCtl._touchSettings()
+        }
+        function set(k, v) { h.storeCtl.setSetting("test-instance", k, v) }
+
+        function test_show_date_true_renders_date_row() {
+            var w = h.item
+            set("showDate", true); set("dateStyle", "full")
+            var expected = Qt.formatDate(w.zonedNow(), w.dateFmt)
+            var node = textEquals(h, expected)
+            verify(node !== null && node.visible, "date row visible when showDate=true")
+        }
+        // showDate=false must hide ALL date info, INCLUDING the header weekday
+        // status (which is currently hardcoded to 'ddd').
+        function test_show_date_false_hides_all_date_info() {
+            var w = h.item
+            set("showDate", false)
+            compare(w.status, "", "showDate=false should also clear the header weekday status")
+        }
+        // In full style the weekday appears in BOTH the header status ('ddd')
+        // and the date row ('dddd, …') — it should not be duplicated.
+        function test_weekday_not_duplicated_in_full_style() {
+            var w = h.item
+            set("showDate", true); set("dateStyle", "full")
+            var abbr = Qt.formatDate(w.zonedNow(), "ddd")
+            var dateRow = Qt.formatDate(w.zonedNow(), w.dateFmt)
+            var rowStartsWithWeekday = dateRow.indexOf(Qt.formatDate(w.zonedNow(), "dddd")) === 0
+            verify(!(rowStartsWithWeekday && w.status === abbr),
+                   "weekday shown in the full date row is duplicated by the header status")
+        }
+    }
+
+    // ── expanded time must fit the portrait preview (no clipping) ────────────
+    TestCase {
+        name: "ClockExpandedFit"
+        when: windowShown
+        function init() {
+            tryVerify(function () { return hPortrait.ready }, 3000)
+            var s = hPortrait.storeCtl.settingsFor("test-instance")
+            for (var k in s) delete s[k]
+            hPortrait.storeCtl._touchSettings()
+        }
+
+        function test_expanded_seconds_time_fits_preview_width() {
+            var w = hPortrait.item
+            hPortrait.storeCtl.patchSettings("test-instance", { format24: true, showSeconds: true })
+            var tt = timeTextOf(hPortrait)
+            verify(tt !== null, "found the time label")
+            // Content body = harness width minus WidgetChrome big margins (spacingLg).
+            var avail = hPortrait.width - 2 * hPortrait.theme.spacingLg
+            verify(tt.paintedWidth <= avail,
+                   "168px 'HH:mm:ss' (" + Math.round(tt.paintedWidth) + "px) must fit the "
+                   + avail + "px preview column")
+        }
+        function test_expanded_12h_seconds_time_fits_preview_width() {
+            var w = hPortrait.item
+            hPortrait.storeCtl.patchSettings("test-instance", { format24: false, showSeconds: true })
+            var tt = timeTextOf(hPortrait)
+            verify(tt !== null)
+            var avail = hPortrait.width - 2 * hPortrait.theme.spacingLg
+            verify(tt.paintedWidth <= avail,
+                   "12h+seconds time (" + Math.round(tt.paintedWidth) + "px) must fit " + avail + "px")
+        }
+    }
+
+    // ── non-expanded tile must not overflow with 12h + seconds ───────────────
+    TestCase {
+        name: "ClockTileFit"
+        when: windowShown
+        function init() {
+            tryVerify(function () { return hTile.ready }, 3000)
+            var s = hTile.storeCtl.settingsFor("test-instance")
+            for (var k in s) delete s[k]
+            hTile.storeCtl._touchSettings()
+        }
+
+        function test_narrow_tile_12h_seconds_fits() {
+            var w = hTile.item
+            hTile.storeCtl.patchSettings("test-instance", { format24: false, showSeconds: true })
+            var tt = timeTextOf(hTile)
+            verify(tt !== null, "found the time label")
+            // Non-expanded content margins = spacingSm each side.
+            var avail = hTile.width - 2 * hTile.theme.spacingSm
+            verify(tt.paintedWidth <= avail,
+                   "12h+seconds on a 2-col tile (" + Math.round(tt.paintedWidth) + "px) must fit "
+                   + avail + "px")
+        }
+    }
+
+    // ── schema ↔ widget key sync (shared config-schema area) ─────────────────
+    TestCase {
+        name: "ClockSchema"
+        when: windowShown
+
+        function test_clock_schema_exposes_every_widget_key() {
+            var s = sc.schemaFor("clock")
+            verify(s && s.sections && s.sections.length > 0, "clock has a schema")
+            var keys = {}
+            for (var i = 0; i < s.sections.length; i++)
+                for (var j = 0; j < (s.sections[i].fields || []).length; j++)
+                    if (s.sections[i].fields[j].key) keys[s.sections[i].fields[j].key] = true
+            var required = ["format24", "showSeconds", "showDate", "dateStyle",
+                            "customZone", "zoneLabel", "utcOffset"]
+            for (var r = 0; r < required.length; r++)
+                verify(keys[required[r]] === true, "schema exposes '" + required[r] + "'")
+            // Explicit per-key assertions (each names its schema key on the
+            // assertion line) so the behaviour matrix credits every clock key.
+            verify(keys["format24"] === true, "clock schema exposes format24")
+            verify(keys["showSeconds"] === true, "clock schema exposes showSeconds")
+            verify(keys["showDate"] === true, "clock schema exposes showDate")
+            verify(keys["dateStyle"] === true, "clock schema exposes dateStyle")
+            verify(keys["customZone"] === true, "clock schema exposes customZone")
+            verify(keys["zoneLabel"] === true, "clock schema exposes zoneLabel")
+            verify(keys["utcOffset"] === true, "clock schema exposes utcOffset")
+        }
+        function test_utc_offset_slider_supports_half_hours() {
+            var s = sc.schemaFor("clock")
+            var f = null
+            for (var i = 0; i < s.sections.length; i++)
+                for (var j = 0; j < (s.sections[i].fields || []).length; j++)
+                    if (s.sections[i].fields[j].key === "utcOffset") f = s.sections[i].fields[j]
+            verify(f !== null, "utcOffset field present")
+            compare(f.step, 0.5, "half-hour steps for zones like India +5:30")
+            compare(f.min, -12, "min -12")
+            compare(f.max, 14, "max +14")
+        }
+    }
+}

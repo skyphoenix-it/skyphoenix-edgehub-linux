@@ -1,0 +1,453 @@
+import QtQuick
+import QtTest
+import "../../ui/qml" as App
+import "../../ui/qml/widgets" as Wg
+
+// COVERS: schema:showHistory, schema:showTemp, schema:title, schema:warnTemp
+
+// Comprehensive coverage for the CPU widget (ui/qml/widgets/CpuWidget.qml).
+//
+// Exercises: usage + temperature reading from the Rust metrics JSON, the
+// temperature warning thresholds (header text vs. ring), config honouring +
+// reactivity (showTemp / showHistory / warnTemp), the universal appearance keys
+// (accent / title / backdrop) on the shared WidgetChrome, the history buffer
+// (accumulation, cap, gating), the expanded core-count sub-line, and value
+// clamping. Also directly instantiates the shared MetricGauge and the CPU
+// config schema.
+//
+// Assertions that encode the *intended* behaviour but fail against the current
+// code are deliberate — they pin the real bugs called out in the audit:
+//   • missing cpu_usage_percent renders a confident 0% ring (no ok:false /"N/A").
+//   • empty / malformed metrics frames still push a fake 0% history sample.
+//   • the header temp turns amber (warnTemp-17) before the ring does (warnTemp-12).
+//   • a genuine 0 °C reading is swallowed (temp>0 gate) instead of shown.
+//   • history lives on the widget instance, not the shared store, so a tile and
+//     its expanded overlay do NOT share it.
+//   • `active` is declared but never honoured (hidden instances keep churning).
+//   • cpu_core_count 0/absent renders a misleading "0 cores" instead of hiding.
+//   • the sparkline sample is not clamped for out-of-range usage.
+Item {
+    id: root
+    width: 520; height: 440
+
+    // A file-root `theme` so directly-instantiated shared components (below)
+    // resolve the `theme` global by name, the way the harness provides it to
+    // widgets it loads.
+    property alias theme: rootTheme
+    App.Theme { id: rootTheme }
+
+    WidgetHarness {
+        id: h
+        anchors.fill: parent
+        widgetFile: "CpuWidget.qml"
+        expanded: true
+    }
+
+    // Directly-instantiated shared MetricGauge (resolves `theme` from root).
+    Item {
+        id: gaugeHost
+        width: 200; height: 200
+        Wg.MetricGauge { id: mg; anchors.fill: parent }
+    }
+
+    App.WidgetConfigSchema { id: schema }
+
+    // ── Visual-tree helpers ──────────────────────────────────────────────────
+    function eachItem(node, fn) {
+        if (!node) return
+        fn(node)
+        var kids = node.children
+        if (kids)
+            for (var i = 0; i < kids.length; i++) eachItem(kids[i], fn)
+    }
+    function findPred(rootNode, pred) {
+        var f = null
+        eachItem(rootNode, function (n) { if (!f && pred(n)) f = n })
+        return f
+    }
+    // MetricGauge: duck-typed by its distinctive property set.
+    function findGauge(rootNode) {
+        return findPred(rootNode, function (n) {
+            return n.big !== undefined && n.history !== undefined && n.ok !== undefined
+        })
+    }
+    // RingProgress: value + thickness + progressColor.
+    function findRing(rootNode) {
+        return findPred(rootNode, function (n) {
+            return n.thickness !== undefined && n.progressColor !== undefined && n.trackColor !== undefined
+        })
+    }
+    // BackdropLayer: style + running (Text has `style` but no `running`).
+    function findBackdrop(rootNode) {
+        return findPred(rootNode, function (n) {
+            return n.style !== undefined && n.running !== undefined
+        })
+    }
+    function findText(rootNode, prefix) {
+        return findPred(rootNode, function (n) {
+            return n.text !== undefined && typeof n.text === "string" && n.text.indexOf(prefix) === 0
+        })
+    }
+    function findField(sch, key) {
+        for (var i = 0; i < sch.sections.length; i++) {
+            var fs = sch.sections[i].fields || []
+            for (var j = 0; j < fs.length; j++)
+                if (fs[j].key === key) return fs[j]
+        }
+        return null
+    }
+
+    function feed(obj) { h.metricsJson = JSON.stringify(obj) }
+
+    // ── Main widget behaviour (hosted like Dashboard) ────────────────────────
+    TestCase {
+        name: "Cpu"
+        when: windowShown
+
+        function init() {
+            tryVerify(function () { return h.ready }, 3000)
+            var s = h.storeCtl.settingsFor("test-instance")
+            for (var k in s) delete s[k]
+            h.storeCtl._touchSettings()
+            h.metricsJson = "{}"
+            h.expanded = true
+            h.active = true
+            h.item.hist = []
+        }
+
+        // Wire the universal per-instance appearance bindings exactly as
+        // Dashboard.injectWidget does (the harness does not do this itself).
+        function wireAppearance(w) {
+            w.titleOverride = Qt.binding(function () {
+                h.storeCtl.revision; var s = h.storeCtl.settingsFor("test-instance")
+                return (s && s.title) ? s.title : ""
+            })
+            w.accentName = Qt.binding(function () {
+                h.storeCtl.revision; var s = h.storeCtl.settingsFor("test-instance")
+                return (s && s.accent) ? s.accent : ""
+            })
+            w.cardBackdrop = Qt.binding(function () {
+                h.storeCtl.revision; var s = h.storeCtl.settingsFor("test-instance")
+                return (s && s.cardBackdrop) ? s.cardBackdrop : "none"
+            })
+        }
+
+        // ── Metrics reading ──────────────────────────────────────────────────
+        function test_reads_usage_from_metrics() {
+            var w = h.item
+            feed({ cpu_usage_percent: 42 })
+            compare(w.v, 42, "usage read from cpu_usage_percent")
+            var g = findGauge(w)
+            verify(g !== null, "gauge is present")
+            compare(g.big, "42%", "centre value renders the usage")
+        }
+
+        function test_reads_temp_from_metrics() {
+            var w = h.item
+            feed({ cpu_usage_percent: 30, cpu_temp_celsius: 58 })
+            compare(w.temp, 58, "temp read from cpu_temp_celsius")
+            compare(w.status, "58°C", "header shows the temperature")
+        }
+
+        function test_defaults_when_settings_empty() {
+            var w = h.item
+            compare(w.showTemp, true, "showTemp defaults true")
+            compare(w.showHistory, true, "showHistory defaults true")
+            compare(w.warnTemp, 85, "warnTemp defaults to 85")
+        }
+
+        // ── Availability (BUG: missing usage renders 0%, not N/A) ────────────
+        function test_missing_usage_marks_gauge_unavailable() {
+            var w = h.item
+            feed({ cpu_temp_celsius: 50 })   // temperature present, but NO usage
+            compare(w.v, 0, "missing usage collapses to v=0 (the |0 default)")
+            var g = findGauge(w)
+            verify(g !== null, "gauge present")
+            // Intended: unavailable data dims the gauge (ok:false), as GpuWidget does.
+            compare(g.ok, false,
+                    "missing cpu_usage_percent should mark the gauge unavailable, not show a confident 0%")
+        }
+
+        // ── History accumulation (BUG: empty/malformed frames push a fake 0) ──
+        function test_empty_frame_does_not_push_history_sample() {
+            var w = h.item
+            w.hist = []
+            feed({ cpu_usage_percent: 50 })          // two real frames
+            feed({ cpu_usage_percent: 60 })
+            var before = w.hist.length
+            verify(before >= 1, "real frames accumulate history (" + before + ")")
+            h.metricsJson = "{}"                     // empty metrics tick
+            // Intended: an empty frame carries no reading, so it must not record one.
+            compare(w.hist.length, before,
+                    "an empty {} frame must not push a fake history sample")
+        }
+
+        function test_malformed_frame_leaves_history_unchanged() {
+            var w = h.item
+            w.hist = []
+            feed({ cpu_usage_percent: 40 })          // two real frames
+            feed({ cpu_usage_percent: 45 })
+            var before = w.hist.length
+            h.metricsJson = "{not valid json"        // parse fails → {}
+            compare(w.hist.length, before,
+                    "a malformed metrics frame must not push a fake sample")
+        }
+
+        function test_history_caps_at_48_and_drops_oldest() {
+            var w = h.item
+            w.hist = []
+            for (var i = 1; i <= 60; i++) feed({ cpu_usage_percent: i })
+            compare(w.hist.length, 48, "history buffer caps at 48 samples")
+            // Fed a strictly increasing series → the retained window is the most
+            // recent 48 (oldest dropped): still in chronological order, and the
+            // earliest low-value samples are gone.
+            var increasing = true
+            for (var j = 1; j < w.hist.length; j++)
+                if (w.hist[j] <= w.hist[j - 1]) increasing = false
+            verify(increasing, "retained samples stay in chronological order")
+            verify(w.hist[0] > 0.05, "the oldest low-value samples were dropped (got " + w.hist[0] + ")")
+            verify(w.hist[w.hist.length - 1] <= 1.0, "newest sample is a recent in-range reading")
+        }
+
+        // BUG (audit): history is a plain instance property, not shared through the
+        // store, so the expanded overlay (a separate instance) starts blank.
+        function test_history_persisted_to_shared_store() {
+            var w = h.item
+            w.hist = []
+            feed({ cpu_usage_percent: 20 })
+            feed({ cpu_usage_percent: 30 })
+            var s = h.storeCtl.settingsFor("test-instance")
+            verify(s.hist !== undefined && s.hist.length >= 2,
+                   "history should live in the shared store so tile + expanded overlay share it")
+        }
+
+        // BUG (audit): `active` is declared but never read; hidden instances churn.
+        function test_inactive_instance_pauses_accumulation() {
+            var w = h.item
+            w.hist = []
+            h.active = false
+            feed({ cpu_usage_percent: 55 })
+            feed({ cpu_usage_percent: 65 })
+            compare(w.hist.length, 0,
+                    "an inactive (covered/off-page) tile should not accumulate history")
+        }
+
+        // ── Temperature thresholds ───────────────────────────────────────────
+        function test_ring_amber_above_warn_minus_12_red_above_warn() {
+            var w = h.item
+            // warnTemp default 85 → amber above 73, red above 85. Low load so the
+            // load branch stays comfortable and only temp drives escalation.
+            feed({ cpu_usage_percent: 10, cpu_temp_celsius: 90 })
+            verify(Qt.colorEqual(w.col(w.v), h.theme.error), "90°C (>warnTemp) → red")
+            feed({ cpu_usage_percent: 10, cpu_temp_celsius: 80 })
+            verify(Qt.colorEqual(w.col(w.v), h.theme.warning), "80°C (>warnTemp-12) → amber")
+            feed({ cpu_usage_percent: 10, cpu_temp_celsius: 70 })
+            verify(Qt.colorEqual(w.col(w.v), w.effAccent), "70°C (<warnTemp-12) → comfortable accent")
+        }
+
+        function test_warnTemp_slider_moves_boundaries() {
+            var w = h.item
+            h.storeCtl.setSetting("test-instance", "warnTemp", 60)
+            compare(w.warnTemp, 60, "warnTemp honours the slider")
+            // At 55°C: with warnTemp 60 the amber boundary is 48 → amber now.
+            feed({ cpu_usage_percent: 10, cpu_temp_celsius: 55 })
+            verify(Qt.colorEqual(w.col(w.v), h.theme.warning),
+                   "55°C is amber once warnTemp drops to 60 (boundary 48)")
+        }
+
+        // BUG (audit): header text turns amber at warnTemp-17 but the ring only at
+        // warnTemp-12 — a 5°C band where the two temperature signals disagree.
+        function test_header_and_ring_agree_at_same_threshold() {
+            var w = h.item
+            // warnTemp 85. 70°C is below the ring's amber threshold (73) but above
+            // the header's (68) — the two should still agree.
+            feed({ cpu_usage_percent: 10, cpu_temp_celsius: 70 })
+            verify(Qt.colorEqual(w.statusColor, w.col(w.v)),
+                   "header temperature colour and ring colour should switch to amber at the same threshold")
+        }
+
+        // showTemp=false hides the header temp AND disables temp-based escalation.
+        function test_showTemp_false_hides_and_disables_escalation() {
+            var w = h.item
+            h.storeCtl.setSetting("test-instance", "showTemp", false)
+            compare(w.showTemp, false, "showTemp honoured")
+            feed({ cpu_usage_percent: 10, cpu_temp_celsius: 95 })   // very hot
+            compare(w.status, "", "header temperature is hidden")
+            verify(Qt.colorEqual(w.col(w.v), w.effAccent),
+                   "with showTemp off, a hot CPU no longer escalates the ring")
+        }
+
+        // BUG (audit): a genuine 0°C reading is treated as missing (temp>0 gate).
+        function test_zero_celsius_is_displayed() {
+            var w = h.item
+            feed({ cpu_usage_percent: 20, cpu_temp_celsius: 0 })
+            compare(w.temp, 0, "0°C is read as a real value, not the -1 sentinel")
+            compare(w.status, "0°C",
+                    "a genuine 0°C reading should be displayed, not swallowed as missing")
+        }
+
+        // ── History graph visibility ─────────────────────────────────────────
+        function test_showHistory_false_empties_gauge_history() {
+            var w = h.item
+            w.hist = []
+            feed({ cpu_usage_percent: 30 })
+            feed({ cpu_usage_percent: 40 })
+            h.storeCtl.setSetting("test-instance", "showHistory", false)
+            compare(w.showHistory, false, "showHistory honoured")
+            var g = findGauge(w)
+            compare(g.history.length, 0, "the sparkline receives no samples when history is hidden")
+            h.storeCtl.setSetting("test-instance", "showHistory", true)
+            verify(findGauge(w).history.length >= 2, "and the graph returns when re-enabled")
+        }
+
+        // ── Config reactivity ────────────────────────────────────────────────
+        function test_cfg_rereads_on_revision_bump() {
+            var w = h.item
+            h.storeCtl.patchSettings("test-instance",
+                { showTemp: false, showHistory: false, warnTemp: 70 })
+            compare(w.showTemp, false, "showTemp follows a revision bump")
+            compare(w.showHistory, false, "showHistory follows a revision bump")
+            compare(w.warnTemp, 70, "warnTemp follows a revision bump")
+        }
+
+        // ── Universal appearance keys ────────────────────────────────────────
+        function test_default_accent_is_system_category() {
+            var w = h.item
+            verify(Qt.colorEqual(w.effAccent, h.theme.catSystem),
+                   "with no accent override, effAccent is the System category colour")
+        }
+
+        function test_accent_config_recolors_comfortable_state() {
+            var w = h.item
+            wireAppearance(w)
+            h.storeCtl.setSetting("test-instance", "accent", "green")
+            verify(Qt.colorEqual(w.effAccent, h.theme.accentPresets["green"].a),
+                   "accent preset recolours effAccent")
+            feed({ cpu_usage_percent: 50 })   // comfortable, no temp
+            verify(Qt.colorEqual(w.col(w.v), h.theme.accentPresets["green"].a),
+                   "the comfortable ring/number use the configured accent")
+        }
+
+        function test_custom_title_override_applied() {
+            var w = h.item
+            wireAppearance(w)
+            h.storeCtl.setSetting("test-instance", "title", "Processor")
+            compare(w.titleOverride, "Processor", "custom title flows from config")
+            verify(findText(w, "Processor") !== null, "the header renders the custom title")
+        }
+
+        function test_cardBackdrop_config_renders() {
+            var w = h.item
+            wireAppearance(w)
+            h.storeCtl.setSetting("test-instance", "cardBackdrop", "aurora")
+            compare(w.cardBackdrop, "aurora", "card backdrop flows from config")
+            var bd = findBackdrop(w)
+            verify(bd !== null, "the in-card backdrop layer exists")
+            compare(bd.style, "aurora", "the backdrop renders the selected style")
+            verify(bd.visible, "the backdrop is visible (theme is decorative)")
+        }
+
+        // ── Expanded core-count sub-line ─────────────────────────────────────
+        function test_core_count_shown_in_expanded() {
+            var w = h.item
+            h.expanded = true
+            feed({ cpu_usage_percent: 25, cpu_core_count: 8 })
+            var g = findGauge(w)
+            compare(g.sub, "8 cores", "expanded sub-line shows the core count")
+        }
+
+        function test_core_count_hidden_when_collapsed() {
+            var w = h.item
+            h.expanded = false
+            feed({ cpu_usage_percent: 25, cpu_core_count: 8 })
+            var g = findGauge(w)
+            compare(g.sub, "", "collapsed tile hides the core-count sub-line")
+        }
+
+        // BUG (audit testCase): 0/absent core count should hide, but renders "0 cores".
+        function test_core_count_hidden_when_absent() {
+            var w = h.item
+            h.expanded = true
+            feed({ cpu_usage_percent: 25 })   // no cpu_core_count
+            var g = findGauge(w)
+            compare(g.sub, "",
+                    "an absent core count should hide the sub-line, not render '0 cores'")
+        }
+
+        // ── Value clamping ───────────────────────────────────────────────────
+        function test_ring_clamps_out_of_range_usage() {
+            var w = h.item
+            feed({ cpu_usage_percent: 150 })
+            var ring = findRing(w)
+            verify(ring !== null, "ring present")
+            verify(ring.value <= 1.0, "over-100% usage clamps the ring to full")
+            feed({ cpu_usage_percent: -10 })
+            verify(findRing(w).value >= 0.0, "negative usage clamps the ring to empty")
+        }
+
+        // BUG (audit testCase): the sparkline sample is w.v/100 unclamped.
+        function test_history_sample_is_clamped() {
+            var w = h.item
+            w.hist = []
+            feed({ cpu_usage_percent: 150 })   // out of range
+            feed({ cpu_usage_percent: 10 })    // second frame flushes 150 into history
+            var mx = 0
+            for (var i = 0; i < w.hist.length; i++) mx = Math.max(mx, w.hist[i])
+            verify(mx <= 1.0,
+                   "an out-of-range usage should be clamped before entering the sparkline (max sample " + mx + ")")
+        }
+    }
+
+    // ── Shared MetricGauge (directly instantiated) ───────────────────────────
+    TestCase {
+        name: "GaugeShared"
+        when: windowShown
+
+        function test_ok_false_dims_the_ring() {
+            mg.ok = false
+            mg.value = 0.7
+            var ring = findRing(gaugeHost)
+            verify(ring !== null, "ring present")
+            compare(ring.value, 0, "ok:false forces the ring empty (the N/A path CpuWidget never uses)")
+            mg.ok = true
+        }
+
+        function test_value_is_clamped() {
+            mg.ok = true
+            mg.value = 1.5
+            var ring = findRing(gaugeHost)
+            compare(ring.value, 1, "value >1 clamps to full")
+            mg.value = -0.5
+            compare(findRing(gaugeHost).value, 0, "value <0 clamps to empty")
+            mg.value = 0.5
+            fuzzyCompare(findRing(gaugeHost).value, 0.5, 1e-9, "in-range value passes through")
+        }
+    }
+
+    // ── CPU config schema (directly instantiated) ────────────────────────────
+    TestCase {
+        name: "ConfigSchemaCpu"
+        when: windowShown
+
+        function test_cpu_display_fields_and_defaults() {
+            var s = schema.schemaFor("cpu")
+            verify(s && s.sections && s.sections.length > 0, "cpu has a schema")
+            var showTemp = findField(s, "showTemp")
+            var showHistory = findField(s, "showHistory")
+            var warnTemp = findField(s, "warnTemp")
+            verify(showTemp && showTemp.type === "toggle", "showTemp is a toggle")
+            compare(showTemp.dflt, true, "showTemp defaults true (matches the widget)")
+            verify(showHistory && showHistory.type === "toggle", "showHistory is a toggle")
+            compare(showHistory.dflt, true, "showHistory defaults true")
+            verify(warnTemp && warnTemp.type === "slider", "warnTemp is a slider")
+            compare(warnTemp.dflt, 85, "warnTemp default matches the widget (85)")
+            compare(warnTemp.min, 60, "warnTemp min 60")
+            compare(warnTemp.max, 100, "warnTemp max 100")
+        }
+
+        function test_cpu_has_custom_title_field() {
+            var s = schema.schemaFor("cpu")
+            verify(findField(s, "title") !== null, "cpu exposes a custom title field")
+        }
+    }
+}

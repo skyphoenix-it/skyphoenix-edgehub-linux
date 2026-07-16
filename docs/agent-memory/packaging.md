@@ -45,3 +45,21 @@ flatpak-cargo-generator, /sys metrics access, cross-sandbox Manager↔hub IPC),
 metainfo screenshots. `qt6-wayland` IS a runtime dep (Wayland platform plugin, not
 caught by ldd). Auto-rotate udev rule ships in AUR/deb/rpm under /usr/lib/udev/rules.d;
 AppImage/Flatpak users install it manually.
+
+## Published state (2026-07-16)
+- **AUR is LIVE**: `aur/xeneon-edge-hub`, maintainer `SKYPhoenix_IT`, builds the SIGNED
+  release tarball with `validpgpkeys` — proven by a cold clone + makepkg (sig Passed).
+  pkgver TRAP (measured with vercmp): `1.0.0_alpha.2 > 1.0.0` would block the GA
+  upgrade forever; use `1.0.0alpha.2` (no separator) + explicit `_tag`.
+- **Signed releases**: `scripts/release.sh` (interactive gpg; REFUSES to produce
+  artifacts without the key — exit 1, no dist/). Key fp
+  `2F0CAD36DC1D46F3347B7EF293CDC77EACF98990`, expires 2028-07-14, on both keyservers.
+- **Local dogfood**: `scripts/update-local.sh` + `packaging/local/PKGBUILD` (pkgver()
+  auto-derives rNN from git rev-count; SIGTERM-and-wait restart discipline encoded).
+- **CI-verified formats**: Fedora 43 RPM + Ubuntu 26.04 DEB (clean-container install +
+  launch; the DEB needed all nine qml6-module-* Depends declared — dpkg-shlibdeps
+  cannot see dlopened QML plugins), AppImage (bare-container smoke; linuxdeploy
+  excludes libGL ON PURPOSE — host provides it). Ubuntu 24.04 `.deb` is genuinely
+  unsupported (Qt 6.4.2). packaging/ci/smoke.sh checks every imported QML module,
+  list derived by grep — a launch alone proves nothing (lazily-loaded widgets).
+- OFL font licence texts are installed into share/licenses/ (OFL requires it).

@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Xeneon Edge Linux Hub
+GenericName=Touchscreen Widget Dashboard
+Comment=Native Linux widget platform for secondary touchscreen displays
+Exec=xeneon-edge-hub
+Icon=xeneon-edge-hub
+Terminal=false
+Categories=System;Monitor;
+Keywords=xeneon;edge;corsair;dashboard;widgets;touchscreen;secondary display;
+StartupNotify=false
+StartupWMClass=xeneon-edge-hub
+X-GNOME-Autostart-enabled=true

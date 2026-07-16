@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.skyphoenix_it.XeneonEdgeManager</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT OR Apache-2.0</project_license>
+
+  <name>Xeneon Edge Manager</name>
+  <summary>Configure and control your Xeneon Edge dashboard</summary>
+
+  <developer id="com.skyphoenix_it">
+    <name>Simon Kreitmayer</name>
+  </developer>
+
+  <description>
+    <p>
+      Xeneon Edge Manager is the companion desktop app for the Xeneon Edge Linux
+      Hub. It arranges the widgets, themes, backgrounds and display settings of the
+      touchscreen dashboard from your main screen, with a live WYSIWYG preview of the
+      Edge.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Add, reorder, resize and remove widgets across pages, mirrored live to the Edge</li>
+      <li>Per-widget configuration with an instant preview</li>
+      <li>Themes, accent colours, animated backgrounds and wallpaper management</li>
+      <li>Display targeting, orientation and autostart</li>
+      <li>Start and stop the hub, over a local control socket</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">xeneon-edge-manager.desktop</launchable>
+  <icon type="stock">xeneon-edge-manager</icon>
+
+  <categories>
+    <category>Utility</category>
+    <category>Settings</category>
+  </categories>
+
+  <keywords>
+    <keyword>xeneon</keyword>
+    <keyword>edge</keyword>
+    <keyword>corsair</keyword>
+    <keyword>dashboard</keyword>
+    <keyword>configure</keyword>
+    <keyword>settings</keyword>
+  </keywords>
+
+  <url type="homepage">https://github.com/skyphoenix-it/XeneonEdge_Linux</url>
+  <url type="bugtracker">https://github.com/skyphoenix-it/XeneonEdge_Linux/issues</url>
+
+  <content_rating type="oars-1.1"/>
+
+  <releases>
+    <release version="0.1.0" date="2026-07-13">
+      <description>
+        <p>Initial release of the companion manager.</p>
+      </description>
+    </release>
+  </releases>
+</component>

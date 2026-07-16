@@ -1,0 +1,401 @@
+import QtQuick
+import QtTest
+
+// COVERS: schema:schedule, schema:dueWindowMin
+
+// ─────────────────────────────────────────────────────────────────────────
+// tst_meds — ui/qml/widgets/MedsWidget.qml.
+//
+// The two things that must be true, in order:
+//   1. A dose goes due → taken and the mark SURVIVES a store round-trip. This is
+//      a medication record; losing it on restart is the whole failure.
+//   2. The widget never escalates. A dose whose time has passed un-marked must not
+//      render as an error/warning colour and must not be called "missed". That is a
+//      product requirement (an un-tapped dose is not evidence of a missed dose, and
+//      the plausible user correction is double-dosing), so it is asserted, not
+//      left to a code review.
+//
+// Time: the state matrix runs at a FIXED clock, passed to stateOf()/focusDoseAt().
+// Building fixtures as "now ± n minutes" made the suite a different scenario
+// depending on the hour it ran — "now + 2 h" does not exist at 23:00 — and it
+// flaked exactly that way. One test still uses the wall clock, to prove the
+// default path reads it; it schedules a dose for the current minute, which is
+// due at any hour.
+// ─────────────────────────────────────────────────────────────────────────
+Item {
+    id: root
+    width: 1000; height: 720
+
+    // Side by side rather than stacked: `hc` is clicked for real, and an
+    // overlapping sibling would swallow the press.
+    WidgetHarness {
+        id: h; x: 0; y: 0; width: 620; height: parent.height
+        widgetFile: "MedsWidget.qml"; expanded: true
+    }
+    WidgetHarness {
+        id: hc; x: 640; y: 0; width: 340; height: 380
+        widgetFile: "MedsWidget.qml"; expanded: false
+    }
+
+    function clearSettings(harness) {
+        var s = harness.storeCtl.settingsFor("test-instance")
+        for (var k in s) delete s[k]
+        harness.storeCtl._touchSettings()
+    }
+    // "HH:MM" for a time `deltaMin` from now, so a fixture can put a dose reliably
+    // in the past or the future. Wraps within the day; the callers stay well away
+    // from midnight-crossing deltas.
+    function hhmm(deltaMin) {
+        var d = new Date(Date.now() + deltaMin * 60000)
+        return Qt.formatTime(d, "HH:mm")
+    }
+    function todayKey() { return Qt.formatDate(new Date(), "yyyy-MM-dd") }
+    // A round-trip must go through a doc that OWNS the settings bucket: the store
+    // prunes settings whose id no tile claims (an orphan bucket is a leak), so a
+    // harness instance with no tile is dropped on reload — correctly. Give the
+    // document the tile a real config.toml would have, then reload it.
+    function reloadWith(harness, doc, type) {
+        doc.pages = [ { name: "Test", tiles: [ { id: "test-instance", type: type, size: "1x1" } ] } ]
+        return harness.storeCtl.applyExternal(JSON.stringify(doc))
+    }
+
+    // ── Parsing ──────────────────────────────────────────────────────────
+    TestCase {
+        name: "MedsSchedule"
+        when: windowShown
+        function init() { tryVerify(function () { return h.ready }, 3000); clearSettings(h) }
+
+        function test_schedule_parses_time_and_name() {
+            h.storeCtl.patchSettings("test-instance", { schedule: "08:00 Vitamin D\n20:30 Magnesium" })
+            compare(h.item.schedule, "08:00 Vitamin D\n20:30 Magnesium",
+                    "the schedule setting is read back off the store")
+            var d = h.item.doses
+            compare(d.length, 2, "two doses parsed")
+            compare(d[0].name, "Vitamin D")
+            compare(d[0].hour, 8); compare(d[0].minute, 0); compare(d[0].mins, 480)
+            compare(d[1].name, "Magnesium"); compare(d[1].mins, 20 * 60 + 30)
+        }
+
+        function test_schedule_is_sorted_by_clock_time() {
+            h.storeCtl.patchSettings("test-instance", { schedule: "20:30 Night\n08:00 Morning\n13:00 Noon" })
+            var d = h.item.doses
+            compare(d.length, 3)
+            compare(d[0].name, "Morning"); compare(d[1].name, "Noon"); compare(d[2].name, "Night")
+        }
+
+        function test_schedule_tolerates_sloppy_input() {
+            h.storeCtl.patchSettings("test-instance",
+                { schedule: "  8:00   Ritalin 10mg  \n\n\n09:05\n" })
+            var d = h.item.doses
+            compare(d.length, 2, "blank lines dropped, real lines kept")
+            compare(d[0].name, "Ritalin 10mg", "single-digit hour + padding parses")
+            compare(d[0].mins, 480)
+            compare(d[1].name, "Dose", "a bare time gets a placeholder name")
+        }
+
+        // Dropping an unreadable medication line is the worst failure mode here, so
+        // it degrades to an untimed dose instead.
+        function test_unparseable_line_is_kept_as_untimed() {
+            h.storeCtl.patchSettings("test-instance", { schedule: "Inhaler as needed\n08:00 Vitamin D" })
+            var d = h.item.doses
+            compare(d.length, 2, "the un-timed line is NOT discarded")
+            compare(d[0].name, "Vitamin D", "timed doses come first")
+            compare(d[1].name, "Inhaler as needed")
+            compare(d[1].mins, -1, "no time")
+            compare(h.item.timeOf(d[1]), "—", "and it renders as having no time")
+        }
+
+        // 25:00 / 08:99 are not times. They must not become hour 25.
+        function test_impossible_times_are_not_treated_as_times() {
+            h.storeCtl.patchSettings("test-instance", { schedule: "25:00 Nope\n08:99 Also nope" })
+            var d = h.item.doses
+            compare(d.length, 2)
+            compare(d[0].mins, -1, "hour 25 is not a time")
+            compare(d[1].mins, -1, "minute 99 is not a time")
+        }
+
+        function test_empty_schedule_yields_no_doses() {
+            h.storeCtl.patchSettings("test-instance", { schedule: "" })
+            compare(h.item.doses.length, 0)
+            compare(h.item.focusDose, null, "and no dose to focus on")
+        }
+    }
+
+    // ── States ───────────────────────────────────────────────────────────
+    TestCase {
+        name: "MedsStates"
+        when: windowShown
+        function init() { tryVerify(function () { return h.ready }, 3000); clearSettings(h) }
+
+        // The full state matrix, evaluated at a FIXED clock (13:00). Building the
+        // fixture as "now ± n minutes" instead would make this a different scenario
+        // depending on when the suite ran — "now + 2 h" simply does not exist at
+        // 23:00, and the test flaked exactly that way before stateOf took a clock.
+        readonly property int oneOClock: 13 * 60
+
+        function test_due_taken_later_and_open() {
+            h.storeCtl.patchSettings("test-instance", {
+                schedule: "12:50 JustDue\n09:40 LongPast\n15:00 Upcoming",
+                dueWindowMin: 60
+            })
+            var w = h.item
+            var by = {}
+            for (var i = 0; i < w.doses.length; i++) by[w.doses[i].name] = w.doses[i]
+            compare(w.stateOf(by["JustDue"], oneOClock), "due",
+                    "10 min after its time, inside a 60 min window")
+            compare(w.stateOf(by["LongPast"], oneOClock), "open",
+                    "200 min after its time, outside the window")
+            compare(w.stateOf(by["Upcoming"], oneOClock), "later", "still ahead")
+        }
+
+        // The boundary itself, to the minute.
+        function test_the_due_window_boundary_is_exact() {
+            h.storeCtl.patchSettings("test-instance",
+                { schedule: "13:00 Dose", dueWindowMin: 60 })
+            var d = h.item.doses[0]
+            compare(h.item.stateOf(d, 12 * 60 + 59), "later", "one minute before its time")
+            compare(h.item.stateOf(d, 13 * 60), "due", "on the minute it is due")
+            compare(h.item.stateOf(d, 13 * 60 + 59), "due", "the last minute of the window")
+            compare(h.item.stateOf(d, 14 * 60), "open", "the window closes exactly on time")
+        }
+
+        // The knob has to actually move the boundary, or it is decorative.
+        function test_dueWindowMin_widens_the_due_state() {
+            h.storeCtl.patchSettings("test-instance",
+                { schedule: "11:30 Dose", dueWindowMin: 60 })
+            compare(h.item.dueWindowMin, 60)
+            compare(h.item.stateOf(h.item.doses[0], oneOClock), "open",
+                    "90 min ago is outside a 60 min window")
+            h.storeCtl.patchSettings("test-instance", { dueWindowMin: 120 })
+            compare(h.item.dueWindowMin, 120)
+            compare(h.item.stateOf(h.item.doses[0], oneOClock), "due",
+                    "…and inside a 120 min one")
+        }
+
+        function test_taken_wins_over_every_other_state() {
+            h.storeCtl.patchSettings("test-instance", { schedule: "12:50 Dose" })
+            var w = h.item
+            compare(w.stateOf(w.doses[0], oneOClock), "due")
+            w.toggleTaken(w.doses[0].key)
+            compare(w.stateOf(w.doses[0], oneOClock), "taken", "a taken dose is never also due")
+        }
+
+        function test_untimed_dose_is_open_never_due() {
+            h.storeCtl.patchSettings("test-instance", { schedule: "Inhaler as needed" })
+            compare(h.item.stateOf(h.item.doses[0], oneOClock), "open",
+                    "a dose with no time can never become due")
+            compare(h.item.stateOf(h.item.doses[0], 0), "open", "…at any hour")
+        }
+
+        // The default path must genuinely read the wall clock — otherwise every
+        // fixed-clock test above could pass against a stateOf() that ignores time.
+        // A dose scheduled for this very minute is due whatever time it is, so this
+        // is the one clock assertion that is safe at any hour.
+        // (That the explicit clock really overrides is proved by the boundary test:
+        // four different answers for one dose cannot all come from the wall clock.)
+        function test_the_default_clock_is_the_real_one() {
+            var w = h.item
+            h.storeCtl.patchSettings("test-instance",
+                { schedule: root.hhmm(0) + " RightNow", dueWindowMin: 60 })
+            compare(w.doses[0].mins, w.nowMins(), "the fixture really is scheduled for now")
+            compare(w.stateOf(w.doses[0]), "due",
+                    "with no clock passed, stateOf reads the actual time")
+        }
+
+        // The tile leads with the dose that needs attention.
+        function test_focusDose_prefers_due_then_later() {
+            h.storeCtl.patchSettings("test-instance", {
+                schedule: "12:50 DueOne\n14:30 LaterOne", dueWindowMin: 60
+            })
+            compare(h.item.focusDoseAt(oneOClock).name, "DueOne", "a due dose leads")
+            h.item.toggleTaken("12:50 DueOne")
+            compare(h.item.focusDoseAt(oneOClock).name, "LaterOne",
+                    "once taken, the next upcoming one leads")
+        }
+
+        function test_focusDose_falls_through_to_an_unmarked_dose() {
+            h.storeCtl.patchSettings("test-instance", {
+                schedule: "08:00 Morning\n09:00 Later", dueWindowMin: 60
+            })
+            // At 13:00 both are long past — the tile still offers the first.
+            compare(h.item.focusDoseAt(oneOClock).name, "Morning",
+                    "with nothing due or upcoming, the first un-marked dose leads")
+        }
+    }
+
+    // ── Tone: the no-shaming requirement, asserted ───────────────────────
+    TestCase {
+        name: "MedsTone"
+        when: windowShown
+        function init() { tryVerify(function () { return h.ready }, 3000); clearSettings(h) }
+
+        // The core requirement: a passed, un-marked dose is quiet. If someone ever
+        // "improves" this into an alert, this test is what stops it.
+        function test_a_passed_dose_is_never_red_and_never_missed() {
+            h.storeCtl.patchSettings("test-instance",
+                { schedule: root.hhmm(-300) + " Forgotten", dueWindowMin: 60 })
+            var w = h.item
+            var st = w.stateOf(w.doses[0])
+            compare(st, "open", "a long-passed dose settles into 'open'")
+            compare(String(w.colorOf(st)), String(h.theme.textTertiary),
+                    "it is muted, not an alarm")
+            verify(String(w.colorOf(st)) !== String(h.theme.error),
+                   "never the error colour")
+            verify(String(w.colorOf(st)) !== String(h.theme.warning),
+                   "never the warning colour either — this is not a problem to fix")
+            var label = w.labelOf(st)
+            compare(label, "Not marked")
+            verify(label.toLowerCase().indexOf("miss") < 0, "the word 'missed' is never shown")
+            verify(label.toLowerCase().indexOf("overdue") < 0, "nor 'overdue'")
+            verify(label.toLowerCase().indexOf("late") < 0, "nor 'late'")
+        }
+
+        // No state at all may use error/warning — the widget has no failure states.
+        function test_no_state_uses_an_alarm_colour() {
+            var w = h.item
+            var states = ["taken", "due", "later", "open"]
+            for (var i = 0; i < states.length; i++) {
+                var c = String(w.colorOf(states[i]))
+                verify(c !== String(h.theme.error), states[i] + " is not the error colour")
+                verify(c !== String(h.theme.warning), states[i] + " is not the warning colour")
+            }
+        }
+
+        function test_taken_and_due_are_distinguishable() {
+            var w = h.item
+            verify(String(w.colorOf("taken")) !== String(w.colorOf("due")),
+                   "taken and due do not look the same")
+            verify(String(w.colorOf("due")) !== String(w.colorOf("open")),
+                   "due stands out from a quiet dose")
+        }
+    }
+
+    // ── Persistence — the point of the widget ────────────────────────────
+    TestCase {
+        name: "MedsPersistence"
+        when: windowShown
+        function init() { tryVerify(function () { return h.ready }, 3000); clearSettings(h) }
+
+        function test_marking_taken_persists_the_day_and_the_dose() {
+            h.storeCtl.patchSettings("test-instance", { schedule: "08:00 Vitamin D\n20:30 Magnesium" })
+            var w = h.item
+            w.toggleTaken(w.doses[0].key)
+            var saved = h.storeCtl.settingsFor("test-instance")
+            compare(saved.takenDay, root.todayKey(), "the day is stamped")
+            compare(saved.taken.length, 1)
+            compare(saved.taken[0], "08:00 Vitamin D", "the dose's line is the stored key")
+            compare(w.isTaken(w.doses[0].key), true)
+            compare(w.isTaken(w.doses[1].key), false, "marking one does not mark the other")
+            compare(w.takenCount, 1)
+        }
+
+        // A mis-tap must be undoable: a false "taken" is worse than no record.
+        function test_marking_taken_is_reversible() {
+            h.storeCtl.patchSettings("test-instance", { schedule: "08:00 Vitamin D" })
+            var w = h.item
+            w.toggleTaken(w.doses[0].key)
+            compare(w.isTaken(w.doses[0].key), true)
+            w.toggleTaken(w.doses[0].key)
+            compare(w.isTaken(w.doses[0].key), false, "tapping again un-marks it")
+            compare(h.storeCtl.settingsFor("test-instance").taken.length, 0, "and that persists too")
+        }
+
+        // The mark must come back after a restart — this is the whole feature.
+        function test_taken_survives_a_store_round_trip() {
+            h.storeCtl.patchSettings("test-instance", { schedule: "08:00 Vitamin D" })
+            h.item.toggleTaken(h.item.doses[0].key)
+            // Exactly what reaches disk: the persistable projection of the document.
+            var onDisk = JSON.parse(JSON.stringify(h.storeCtl._persistableData()))
+            verify(onDisk.settings["test-instance"] !== undefined, "the instance reaches disk")
+            compare(onDisk.settings["test-instance"].taken[0], "08:00 Vitamin D",
+                    "the taken mark is persistable, not ephemeral")
+            compare(onDisk.settings["test-instance"].takenDay, root.todayKey())
+            // Reload the store from those very bytes and re-read through the widget.
+            // applyExternal() is the real reload path — the same one the hub and the
+            // Manager push a document through — and it forces the doc back through
+            // JSON, so this exercises the serialization config.toml actually uses.
+            compare(root.reloadWith(h, onDisk, "meds"), true, "the document reloads")
+            compare(h.item.isTaken("08:00 Vitamin D"), true,
+                    "after a reload the dose is still marked taken")
+            compare(h.item.takenCount, 1)
+        }
+
+        // Inserting a line above must not move existing marks onto other doses —
+        // the reason the key is the line text and not the index.
+        function test_marks_survive_a_schedule_reorder() {
+            h.storeCtl.patchSettings("test-instance", { schedule: "20:30 Magnesium" })
+            h.item.toggleTaken("20:30 Magnesium")
+            h.storeCtl.patchSettings("test-instance", { schedule: "08:00 Vitamin D\n20:30 Magnesium" })
+            var w = h.item
+            compare(w.doses[0].name, "Vitamin D")
+            compare(w.isTaken(w.doses[0].key), false, "the new earlier dose is NOT marked")
+            compare(w.isTaken(w.doses[1].key), true, "the originally-marked dose still is")
+        }
+
+        // Yesterday's marks must not read as today's. The rollover is a read-time
+        // decision, so it needs no timer and cannot half-apply.
+        function test_a_previous_days_marks_do_not_count_today() {
+            h.storeCtl.patchSettings("test-instance", {
+                schedule: "08:00 Vitamin D", takenDay: "2020-01-01", taken: ["08:00 Vitamin D"]
+            })
+            var w = h.item
+            compare(w.takenToday.length, 0, "a stale day reads as nothing taken")
+            compare(w.isTaken("08:00 Vitamin D"), false)
+            compare(w.takenCount, 0)
+            // PINNED to 09:00, not the wall clock: an 08:00 dose is only "open" once
+            // 08:00 has PASSED. Read before then it is legitimately "later", so this
+            // asserted the rollover but silently also asserted "the suite runs after
+            // 08:00" — and it failed the first time it ran just after midnight.
+            compare(w.stateOf(w.doses[0], 9 * 60), "open", "…and the dose is open again, not taken")
+        }
+
+        // Marking after a rollover must re-stamp the day rather than append to
+        // yesterday's list.
+        function test_marking_after_rollover_restamps_the_day() {
+            h.storeCtl.patchSettings("test-instance", {
+                schedule: "08:00 Vitamin D", takenDay: "2020-01-01", taken: ["08:00 Vitamin D"]
+            })
+            h.item.toggleTaken("08:00 Vitamin D")
+            var saved = h.storeCtl.settingsFor("test-instance")
+            compare(saved.takenDay, root.todayKey(), "the day is re-stamped to today")
+            compare(saved.taken.length, 1, "yesterday's entry is replaced, not appended to")
+            compare(h.item.isTaken("08:00 Vitamin D"), true)
+        }
+    }
+
+    // ── Real input on the compact tile ───────────────────────────────────
+    TestCase {
+        name: "MedsTileInput"
+        when: windowShown
+        function init() { tryVerify(function () { return hc.ready }, 3000); clearSettings(hc) }
+
+        // Logging a dose must cost one tap on the tile — not an expand-then-tap.
+        function test_tile_button_marks_the_focus_dose_taken() {
+            hc.storeCtl.patchSettings("test-instance",
+                { schedule: root.hhmm(-10) + " Ritalin", dueWindowMin: 60 })
+            var w = hc.item
+            compare(w.stateOf(w.focusDose), "due")
+            // Find the PillButton by its label rather than by tree position.
+            var pills = root.findAll(w, function (n) {
+                return n.hasOwnProperty("label") && n.hasOwnProperty("primary")
+            }, [])
+            var mark = null
+            for (var i = 0; i < pills.length; i++)
+                if (pills[i].label === "Mark taken") mark = pills[i]
+            verify(mark !== null, "the tile offers a 'Mark taken' button")
+            verify(mark.height >= 44, "and it is a real touch target (" + mark.height + ")")
+            mouseClick(mark)
+            compare(w.isTaken(w.focusDose.key), true, "one tap on the tile logs the dose")
+            compare(hc.storeCtl.settingsFor("test-instance").taken.length, 1, "and it persisted")
+        }
+    }
+
+    function findAll(node, pred, acc) {
+        acc = acc || []
+        if (!node) return acc
+        if (pred(node)) acc.push(node)
+        var kids = node.children
+        for (var i = 0; kids && i < kids.length; i++) findAll(kids[i], pred, acc)
+        return acc
+    }
+}

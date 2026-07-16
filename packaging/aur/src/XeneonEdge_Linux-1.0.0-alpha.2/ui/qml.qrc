@@ -1,0 +1,73 @@
+<RCC>
+    <qresource prefix="/">
+        <file>qml/main.qml</file>
+        <file>qml/FirstRunWizard.qml</file>
+        <file>qml/Dashboard.qml</file>
+        <file>qml/Diagnostics.qml</file>
+        <file>qml/DashboardStore.qml</file>
+        <file>qml/WidgetCatalog.qml</file>
+        <file>qml/UserWidgetCatalog.qml</file>
+        <file>qml/PresetCatalog.qml</file>
+        <file>qml/WidgetSizes.qml</file>
+        <file>qml/WidgetPacker.qml</file>
+        <file>qml/WallpaperCatalog.qml</file>
+        <file>qml/BackgroundCatalog.qml</file>
+        <file>qml/WidgetConfigSchema.qml</file>
+        <file alias="qml/ConfigField.qml">qml/widgets/ConfigField.qml</file>
+        <file>qml/Theme.qml</file>
+
+        <!-- Shared framework components -->
+        <file alias="qml/WidgetChrome.qml">qml/widgets/WidgetChrome.qml</file>
+        <file alias="qml/AppIcon.qml">qml/widgets/AppIcon.qml</file>
+        <file alias="qml/PillButton.qml">qml/widgets/PillButton.qml</file>
+        <file alias="qml/SegmentedControl.qml">qml/widgets/SegmentedControl.qml</file>
+        <file alias="qml/RingProgress.qml">qml/widgets/RingProgress.qml</file>
+        <file alias="qml/SettingsPanel.qml">qml/widgets/SettingsPanel.qml</file>
+        <file alias="qml/Sparkline.qml">qml/widgets/Sparkline.qml</file>
+        <file alias="qml/MetricGauge.qml">qml/widgets/MetricGauge.qml</file>
+        <file alias="qml/AnimatedBackground.qml">qml/widgets/AnimatedBackground.qml</file>
+        <file alias="qml/WavesBackground.qml">qml/widgets/WavesBackground.qml</file>
+        <file alias="qml/StarfieldBackground.qml">qml/widgets/StarfieldBackground.qml</file>
+        <file alias="qml/BackdropLayer.qml">qml/widgets/BackdropLayer.qml</file>
+        <file alias="qml/BackgroundPicker.qml">qml/widgets/BackgroundPicker.qml</file>
+        <file alias="qml/MeshGradientBackground.qml">qml/widgets/MeshGradientBackground.qml</file>
+        <file alias="qml/AuroraBackground.qml">qml/widgets/AuroraBackground.qml</file>
+        <file alias="qml/BokehBackground.qml">qml/widgets/BokehBackground.qml</file>
+        <file alias="qml/GridBackground.qml">qml/widgets/GridBackground.qml</file>
+        <file alias="qml/WidgetConfigPanel.qml">qml/widgets/WidgetConfigPanel.qml</file>
+
+        <!-- Widgets (registered in WidgetCatalog.qml) -->
+        <file alias="qml/PackagesWidget.qml">qml/widgets/PackagesWidget.qml</file>
+        <file alias="qml/SinceInstallWidget.qml">qml/widgets/SinceInstallWidget.qml</file>
+        <file alias="qml/ClockWidget.qml">qml/widgets/ClockWidget.qml</file>
+        <file alias="qml/AnalogClockWidget.qml">qml/widgets/AnalogClockWidget.qml</file>
+        <file alias="qml/MoonWidget.qml">qml/widgets/MoonWidget.qml</file>
+        <file alias="qml/CpuWidget.qml">qml/widgets/CpuWidget.qml</file>
+        <file alias="qml/GpuWidget.qml">qml/widgets/GpuWidget.qml</file>
+        <file alias="qml/RamWidget.qml">qml/widgets/RamWidget.qml</file>
+        <file alias="qml/NetWidget.qml">qml/widgets/NetWidget.qml</file>
+        <file alias="qml/DiskWidget.qml">qml/widgets/DiskWidget.qml</file>
+        <file alias="qml/SensorsWidget.qml">qml/widgets/SensorsWidget.qml</file>
+        <file alias="qml/FocusWidget.qml">qml/widgets/FocusWidget.qml</file>
+        <file alias="qml/TasksWidget.qml">qml/widgets/TasksWidget.qml</file>
+        <file alias="qml/RightNowWidget.qml">qml/widgets/RightNowWidget.qml</file>
+        <file alias="qml/NotesWidget.qml">qml/widgets/NotesWidget.qml</file>
+        <file alias="qml/MediaWidget.qml">qml/widgets/MediaWidget.qml</file>
+        <file alias="qml/CalendarWidget.qml">qml/widgets/CalendarWidget.qml</file>
+        <file alias="qml/WeatherWidget.qml">qml/widgets/WeatherWidget.qml</file>
+        <file alias="qml/HttpJsonWidget.qml">qml/widgets/HttpJsonWidget.qml</file>
+        <file alias="qml/KpiWidget.qml">qml/widgets/KpiWidget.qml</file>
+        <file alias="qml/NetHub.qml">qml/widgets/NetHub.qml</file>
+        <file alias="qml/UpdateChecker.qml">qml/widgets/UpdateChecker.qml</file>
+        <file alias="qml/QuoteWidget.qml">qml/widgets/QuoteWidget.qml</file>
+        <file alias="qml/HabitWidget.qml">qml/widgets/HabitWidget.qml</file>
+        <file alias="qml/MedsWidget.qml">qml/widgets/MedsWidget.qml</file>
+        <file alias="qml/BraindumpWidget.qml">qml/widgets/BraindumpWidget.qml</file>
+        <file alias="qml/RoutineWidget.qml">qml/widgets/RoutineWidget.qml</file>
+        <file alias="qml/NowNextWidget.qml">qml/widgets/NowNextWidget.qml</file>
+        <file alias="qml/HydrationWidget.qml">qml/widgets/HydrationWidget.qml</file>
+        <file alias="qml/BreakWidget.qml">qml/widgets/BreakWidget.qml</file>
+        <file alias="qml/CountdownWidget.qml">qml/widgets/CountdownWidget.qml</file>
+        <file alias="qml/EndOfDayWidget.qml">qml/widgets/EndOfDayWidget.qml</file>
+    </qresource>
+</RCC>

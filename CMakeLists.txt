@@ -249,8 +249,13 @@ foreach(_sz 16 32 48 64 128 256 512)
         DESTINATION "share/icons/hicolor/${_sz}x${_sz}/apps")
 endforeach()
 
-# License.
-install(FILES LICENSE LICENSE-MIT LICENSE-APACHE DESTINATION share/licenses/xeneon-edge-hub)
+# License — including the bundled fonts' OFL texts: the OFL permits bundling in
+# a sold product but REQUIRES its licence text to accompany the fonts, so a
+# package that ships the TTFs without these is non-compliant.
+install(FILES LICENSE LICENSE-MIT LICENSE-APACHE
+        assets/fonts/LICENSE-OFL-AtkinsonHyperlegible.txt
+        assets/fonts/LICENSE-OFL-Lexend.txt
+        DESTINATION share/licenses/xeneon-edge-hub)
 
 # udev rule for Edge orientation-sensor access. DESTINATION is RELATIVE to the
 # install prefix (→ <prefix>/lib/udev/rules.d) so it stages correctly under CPack

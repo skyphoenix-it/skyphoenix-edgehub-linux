@@ -18,10 +18,8 @@ Added mid-2026 (same effort that hardened the widgets):
   (`uiState/saveUiState/starterLayout/configJson`), exposed as context prop
   `configBridge`. So every edit flows through the shared, already-tested store.
 - **Live IPC**: hub runs `ControlServer` (`app/src/control_server.{h,cpp}`), a
-  `QLocalServer` on socket `$XDG_RUNTIME_DIR/xeneon-edge-hub-ctl` (resolved by
-  `app/src/control_socket_path.h`, which the Manager's client includes too — it was a bare
-  name landing in `/tmp` until 2026-07, which let any test run unlink a live hub's socket),
-  newline-delimited JSON (`getUiState`/`setUiState`/`ping`). Manager's
+  `QLocalServer` on socket `xeneon-edge-hub-ctl` (filesystem path `/tmp/xeneon-edge-hub-ctl`
+  on this box), newline-delimited JSON (`getUiState`/`setUiState`/`ping`). Manager's
   `saveUiState` persists via the Rust config AND pushes `setUiState` over the socket.
   ⚠️ CRITICAL FOR TESTING: on the hub, `setUiState` **PERSISTS TO DISK** — C++
   `ConfigBridge::applyExternalUiState` (main.cpp) calls `xeneon_config_set_ui_state` +
@@ -81,7 +79,7 @@ REAL-EDGE E2E TESTING (2026-07, works headless as a bg agent, no sudo):
   cfg.preset exactly, confirmed via IPC getUiState). Swipes = press+incremental moves+release.
 - **VERIFY touch via IPC, not just screenshots**: drive the control socket (`getUiState`) to
   confirm a tap's effect on ui_state (e.g. preset/dailyGoal/running changes) — the strongest
-  proof. Socket path: `$XDG_RUNTIME_DIR/xeneon-edge-hub-ctl`. ALWAYS back up + restore config.toml around
+  proof. Socket path: `/tmp/xeneon-edge-hub-ctl`. ALWAYS back up + restore config.toml around
   touch/IPC tests (setUiState persists to disk).
 - **Measured baselines (real Edge, 2026-07)**: IPC getUiState p50 0.02ms / p99 0.08ms over 300
   round-trips, 0 fails; 25 concurrent conns all answered; 500 connect/disconnect cycles clean;
@@ -114,24 +112,15 @@ Metric tiles (CPU/GPU/RAM/Disk) use `MetricGauge.qml` (ring + centred value +
 `Sparkline.qml` history). Touch tokens bumped (primary 76/secondary 60/tertiary 52)
 + `iconLg/Md/Sm` glyph tokens; header icons and bottom-bar buttons enlarged.
 
-Column count is GONE (superseded by the size model, below). `appearance.gridCols`,
-the per-page `page.cols`, `setPageColumns`/`pageColumns` and both pickers
-(on-device SettingsPanel "Layout Columns", Manager Appearance + Layout tab) have
-all been removed. The grid is fixed at `WidgetSizes.shortHalves` (2 half-cells)
-across the short axis, because a size is a fraction of the SCREEN — a user-chosen
-column count would make `1x1` mean something different per page, which is the exact
-property the size model exists to remove. `_normaliseDoc` reads `cols`/`gridCols`
-one last time (they are the only record of what an old `w` span was measured
-against) and then strips them.
-
-A tile's share of the screen is now the per-tile named `size` (`WidgetSizes`, 7
-names; which ones a TYPE may take is `WidgetCatalog.sizes`/`dflt`). Placement is
-`WidgetPacker.pack()` — first fit in SEMANTIC (short, long) half-cells, shared by
-the hub's Dashboard and the Manager's EdgeClone. EdgeClone is absolutely positioned
-from those placements (no GridLayout); resize is a bottom-right ⤡ corner handle
-that previews per-tile and commits `setTileSize(id, size)` on release, snapping to
-the nearest size the type DECLARES; move is hit-test `targetAt()`, commit `moveTile`
-on drop.
+Column count is now an OPTION: `appearance.gridCols` (global, default 1) with
+per-page override `page.cols` (0 = use global); store setters `setPageColumns` /
+`pageColumns`. Dashboard `pageItem.cols` = clamp(perPage||global, floor(width/300),
+6). At 720px this allows 1 or 2 columns, so tile width (`w`, columnSpan) finally
+matters. Pickers: on-device SettingsPanel ("Layout Columns"), Manager Appearance
+(global default) + Layout tab (per-page). EdgeClone is a GridLayout (`columns:
+clone.cols`); resize is a bottom-right ⤡ corner handle that previews via per-tile
+`pvW`/`pvH` (no mid-drag reload) and commits `setTileSize(w,h)` on release; move is
+hit-test `targetAt()` over the grid children, commit `moveTile` on drop.
 
 Design-system unification + icons (P0 of the approved UI/UX plan): (1) ONE shared
 `ui/qml/Theme.qml` (was duplicated in main.qml `_theme` + manager `AppTheme` +
@@ -155,9 +144,8 @@ Orientation-aware layout (P0-3): C++ `main.cpp` connects `QScreen::orientationCh
 `orientation`, "auto" follows sensor else fixed) → `effectiveOrientation` →
 `contentRotation` (0/90/180/270). A `contentRoot` Item wraps StackView+InputPanel,
 `rotation: contentRotation`, and SWAPS width/height when 90/270 so the dashboard
-inside lays out for the effective aspect. The dashboard's cell grid is derived from
-the screen alone (2 x 6 half-cells, transposed in landscape) — orientation enters
-only as a projection of the one semantic packing, never as a re-pack. Controls in on-device
+inside lays out for the effective aspect. Dashboard `cols`: landscape (width>height)
+→ `min(floor(w/300),4)` to fill; portrait → user's gridCols. Controls in on-device
 SettingsPanel + Manager Display tab (write appearance.orientation). On this dev
 desktop the sensor reports PrimaryOrientation (no rotation), so "auto"=portrait;
 verified the pipeline by forcing landscape (content rotates 90° + reflows). Persist

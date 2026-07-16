@@ -1,0 +1,354 @@
+#pragma once
+
+#include <QDebug>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QObject>
+#include <QString>
+#include <QStringList>
+#include <QUrl>
+#include <QVariantMap>
+
+#include "autostart.h"
+#include "xeneon_core.h"
+#include "xeneon_string.h"
+
+// --- Display hotplug (S10) disconnect/reconnect policy ---
+//
+// Pure decision helpers extracted from the hub's live QScreen hotplug handlers so
+// the branching can be unit-tested headlessly (the actual window migration needs a
+// live QScreen and is exercised by the smoke test instead). They translate the
+// three write-only config keys — reconnect / notify_disconnect / fallback_behavior
+// — into what the hub should do when the target Edge appears or disappears.
+
+struct DisconnectDecision {
+    bool hideWindow = false;  // blank/hide the hub window (fallback_behavior == "hide")
+    bool notify = false;      // surface a "display disconnected" notice to QML
+};
+
+// Decide how the hub reacts when a screen is removed.
+//   wasTarget        — the removed screen was the hub's current placement target.
+//   fallbackBehavior — "hide" | "notify" | "ask" (from config.display.fallback_behavior).
+//   notifyDisconnect — the notify-on-disconnect user preference.
+// Only a loss of the TARGET screen triggers any behavior; unrelated screens are ignored.
+inline DisconnectDecision decideOnScreenRemoved(bool wasTarget,
+                                                const QString& fallbackBehavior,
+                                                bool notifyDisconnect) {
+    DisconnectDecision d;
+    if (!wasTarget)
+        return d;
+    if (fallbackBehavior == QLatin1String("hide"))
+        d.hideWindow = true;
+    if (notifyDisconnect)
+        d.notify = true;
+    return d;
+}
+
+// Decide whether to migrate the hub window back onto a newly-added screen.
+//   reconnectEnabled — the reconnect-on-hotplug preference (config.startup).
+//   isTarget         — the added screen matches the hub's target (re-run of the match).
+inline bool shouldReconnectToScreen(bool reconnectEnabled, bool isTarget) {
+    return reconnectEnabled && isTarget;
+}
+
+// --- WizardBridge: QObject exposed to QML for first-run persistence ---
+
+class WizardBridge : public QObject {
+    Q_OBJECT
+public:
+    explicit WizardBridge(ConfigHandle* config, QObject* parent = nullptr)
+        : QObject(parent), m_config(config) {}
+
+    Q_INVOKABLE bool completeWizard(const QString& edidHash, const QString& connector,
+                                     const QString& model, const QString& layout,
+                                     const QString& themeMode, const QString& themeAccent,
+                                     bool autostart, bool reconnect, bool notifyDisconnect) {
+        if (!m_config) return false;
+
+        // Persist display identity
+        if (!edidHash.isEmpty())
+            xeneon_config_set_target_edid_hash(m_config, edidHash.toUtf8().constData());
+        if (!connector.isEmpty())
+            xeneon_config_set_target_connector(m_config, connector.toUtf8().constData());
+        if (!model.isEmpty())
+            xeneon_config_set_target_model(m_config, model.toUtf8().constData());
+
+        // Persist layout choice
+        if (!layout.isEmpty())
+            xeneon_config_set_starter_layout(m_config, layout.toUtf8().constData());
+
+        // Persist theme
+        if (!themeMode.isEmpty())
+            xeneon_config_set_theme_mode(m_config, themeMode.toUtf8().constData());
+        if (!themeAccent.isEmpty())
+            xeneon_config_set_theme_accent(m_config, themeAccent.toUtf8().constData());
+
+        // Persist startup preferences
+        xeneon_config_set_autostart(m_config, autostart ? 1 : 0);
+        xeneon_config_set_reconnect(m_config, reconnect ? 1 : 0);
+        xeneon_config_set_notify_disconnect(m_config, notifyDisconnect ? 1 : 0);
+
+        // Actually install/remove the XDG autostart entry to match the choice.
+        applyAutostart(autostart);
+
+        // Mark first-run complete
+        xeneon_config_set_first_run_complete(m_config);
+
+        // Save to disk
+        int saved = xeneon_config_save(m_config);
+        if (saved == 0) {
+            qInfo() << "Wizard complete. Target:" << model << "Layout:" << layout
+                     << "Theme:" << themeMode << "Autostart:" << autostart;
+        } else {
+            qWarning() << "Wizard complete but config save failed";
+        }
+        return saved == 0;
+    }
+
+    // Detach from the Rust config handle before it is freed at shutdown, so any
+    // late QML call becomes a guarded no-op instead of a use-after-free.
+    void detach() { m_config = nullptr; }
+
+private:
+    ConfigHandle* m_config;
+};
+
+// --- ConfigBridge: runtime config access for QML (layout persistence, etc.) ---
+
+class ConfigBridge : public QObject {
+    Q_OBJECT
+public:
+    explicit ConfigBridge(ConfigHandle* config, QObject* parent = nullptr)
+        : QObject(parent), m_config(config) {}
+
+    // Opaque UI-state JSON (dashboard layout + per-widget settings + appearance).
+    // Build version, injected at compile time via -DXENEON_VERSION (git describe;
+    // or the pkgver for packaged builds). Falls back to "dev" for syntax-only builds.
+    Q_INVOKABLE QString appVersion() const {
+#ifdef XENEON_VERSION
+        return QStringLiteral(XENEON_VERSION);
+#else
+        return QStringLiteral("dev");
+#endif
+    }
+
+    Q_INVOKABLE QString uiState() const {
+        if (!m_config) return QString();
+        XeneonString s(xeneon_config_get_ui_state(m_config));
+        return s.qstring();
+    }
+
+    // Persist the UI-state JSON and flush to disk atomically. Returns success.
+    Q_INVOKABLE bool saveUiState(const QString& json) {
+        if (!m_config) return false;
+        xeneon_config_set_ui_state(m_config, json.toUtf8().constData());
+        bool ok = xeneon_config_save(m_config) == 0;
+        if (!ok) qWarning() << "Failed to persist UI state";
+        return ok;
+    }
+
+    // Apply a UI-state document pushed from the companion Manager app over IPC:
+    // persist it to the in-memory config + disk. The live reload is handled by
+    // main() re-pushing the JSON to QML. Kept separate from saveUiState so intent
+    // is explicit at the call site.
+    bool applyExternalUiState(const QString& json) {
+        if (!m_config || json.isEmpty()) return false;
+        xeneon_config_set_ui_state(m_config, json.toUtf8().constData());
+        return xeneon_config_save(m_config) == 0;
+    }
+
+    // Starter layout id chosen during the wizard ("productivity"/"gaming"/…).
+    Q_INVOKABLE QString starterLayout() const {
+        if (!m_config) return QString();
+        XeneonString s(xeneon_config_get_starter_layout(m_config));
+        return s.qstring();
+    }
+
+    // Resolve a wallpaper/image path to a loadable URL. Scheme URLs (qrc:, http:,
+    // file:) pass through untouched; a local path is percent-encoded via QUrl so
+    // spaces / '#' / other reserved characters don't produce a malformed URL that
+    // silently fails to load. Mirrors the Manager's backend.imageUrl() so the same
+    // stored appearance.wallpaper resolves identically in the hub and the Manager.
+    Q_INVOKABLE QString imageUrl(const QString& path) const {
+        if (path.isEmpty()) return QString();
+        if (path.contains("://")) return path;
+        if (path.startsWith('/')) return QUrl::fromLocalFile(path).toString();
+        return path;
+    }
+
+    // Display hotplug preferences (S10) — read by the hub's QScreen handlers and
+    // available to QML for the Display/Diagnostics surfaces. These mirror the three
+    // formerly write-only keys so QML can render + honor them.
+    Q_INVOKABLE bool reconnectOnHotplug() const {
+        if (!m_config) return false;
+        return xeneon_config_get_reconnect(m_config) == 1;
+    }
+    Q_INVOKABLE bool notifyOnDisconnect() const {
+        if (!m_config) return false;
+        return xeneon_config_get_notify_disconnect(m_config) == 1;
+    }
+    // "hide" | "notify" | "ask" (empty only if detached).
+    Q_INVOKABLE QString fallbackBehavior() const {
+        if (!m_config) return QString();
+        XeneonString s(xeneon_config_get_fallback_behavior(m_config));
+        return s.qstring();
+    }
+
+    // Full pretty-printed config JSON (for the Diagnostics → Config tab).
+    Q_INVOKABLE QString configJson() const {
+        if (!m_config) return QString();
+        XeneonString s(xeneon_config_to_json(m_config));
+        return s.qstring();
+    }
+
+    // --- Tier-0 user widgets (E3) ----------------------------------------------
+    // The stable user-QML load directory. QML cannot enumerate directories or
+    // read arbitrary files, so the hub scans here and hands the RAW material to
+    // QML; all validation (docs/widgets/manifest-spec.md) lives in
+    // ui/qml/UserWidgetCatalog.qml, where it runs in the offscreen test suite.
+    //
+    // SECURITY NOTE: these helpers only LIST and READ. Whether anything is
+    // loaded is decided in QML by the `enableUserWidgets` flag (default OFF) —
+    // callers gate on the flag BEFORE invoking listUserWidgets(), so the
+    // attested default configuration performs no scan at all.
+    static QString userWidgetsRoot() {
+        QString dataHome = qEnvironmentVariable("XDG_DATA_HOME");
+        if (dataHome.isEmpty())
+            dataHome = QDir::homePath() + QStringLiteral("/.local/share");
+        return dataHome + QStringLiteral("/xeneon-edge-hub/widgets");
+    }
+    Q_INVOKABLE QString userWidgetsDir() const { return userWidgetsRoot(); }
+
+    // One compact JSON string per SUBDIRECTORY of the widgets dir (name order):
+    //   { "dir": <abs path>, "dirName": <name>, "files": [top-level file names],
+    //     "manifest": "<raw manifest.json text>" }
+    // or, when the manifest is missing/unreadable/oversized:
+    //   { "dir": ..., "dirName": ..., "files": [...], "error": "<why>" }
+    // Deliberately dumb — no parsing, no validation, no recursion: the
+    // filesystem scan is the only part QML cannot do, so it is the only part
+    // done here. A missing root directory is simply an empty list.
+    Q_INVOKABLE QStringList listUserWidgets() const {
+        QStringList out;
+        QDir root(userWidgetsRoot());
+        if (!root.exists())
+            return out;
+        const QFileInfoList subs =
+            root.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+        for (const QFileInfo& sub : subs) {
+            QJsonObject o;
+            o[QStringLiteral("dir")] = sub.absoluteFilePath();
+            o[QStringLiteral("dirName")] = sub.fileName();
+            QJsonArray files;
+            const QStringList names =
+                QDir(sub.absoluteFilePath()).entryList(QDir::Files, QDir::Name);
+            for (const QString& n : names)
+                files.append(n);
+            o[QStringLiteral("files")] = files;
+            QFile mf(sub.absoluteFilePath() + QStringLiteral("/manifest.json"));
+            if (!mf.exists()) {
+                o[QStringLiteral("error")] = QStringLiteral("missing manifest.json");
+            } else if (mf.size() > 256 * 1024) {
+                o[QStringLiteral("error")] = QStringLiteral("manifest.json larger than 256 KiB");
+            } else if (!mf.open(QIODevice::ReadOnly)) {
+                o[QStringLiteral("error")] = QStringLiteral("manifest.json is not readable");
+            } else {
+                o[QStringLiteral("manifest")] = QString::fromUtf8(mf.readAll());
+            }
+            out << QString::fromUtf8(QJsonDocument(o).toJson(QJsonDocument::Compact));
+        }
+        return out;
+    }
+
+    // --- Secrets (E7 Phase A) -------------------------------------------------
+    // Resolve a stored credential ("${env:VAR}", "file:/path", or a legacy
+    // plaintext literal) to the value to send. QML cannot read the process
+    // environment, so this must come from the core; keeping it here also means the
+    // resolved value exists only for the life of one request and never reaches
+    // DashboardStore → ui_state → config.toml.
+    //
+    // Returns { ok, value, error, plaintext }. `plaintext` is true when the stored
+    // value is a bare secret, so the UI can warn without the caller re-parsing it.
+    // An empty input is a success with an empty value (an unconfigured widget just
+    // sends no Authorization header) — NOT an error.
+    Q_INVOKABLE QVariantMap resolveSecret(const QString& raw) const {
+        QVariantMap r;
+        r["ok"] = false;
+        r["value"] = QString();
+        r["error"] = QString();
+        r["plaintext"] = false;
+        if (raw.isEmpty()) {
+            r["ok"] = true;
+            return r;
+        }
+        const QByteArray rawUtf8 = raw.toUtf8();
+        r["plaintext"] = xeneon_secret_is_plaintext(rawUtf8.constData()) == 1;
+
+        char* errRaw = nullptr;
+        XeneonString value(xeneon_secret_resolve(rawUtf8.constData(), &errRaw));
+        XeneonString err(errRaw);   // owned even on success (then null) — RAII frees both.
+        if (value) {
+            r["ok"] = true;
+            r["value"] = value.qstring();
+        } else {
+            r["error"] = err.qstring();
+        }
+        return r;
+    }
+
+    // --- Managed / org policy (E9) --------------------------------------------
+    // The effective org policy, as one QVariantMap (mirrors resolveSecret: the
+    // FFI answers, the bridge shapes it for QML). Keys — always all present:
+    //   active               bool   false only when NO policy file exists
+    //   source               string "absent" | "policy" | "fail-closed"
+    //   reason               string non-empty only for fail-closed
+    //   forcePreset          string layout locked to this preset ("" = none)
+    //   netOffline           bool   pins NetHub's kill switch on
+    //   allowedHosts         list   pins NetHub.allowHosts (empty = no pin)
+    //   disableUserWidgets   bool   pins the E3 user-widget loader flag off
+    //   disabledWidgetTypes  list   hidden from the picker, never rendered
+    //
+    // Deliberately INDEPENDENT of m_config (no detach guard): policy comes from
+    // /etc (or $XENEON_POLICY_PATH — a test-only seam), not from the user's
+    // config handle. Cached: the file is root-owned and static per launch, and
+    // QML bindings would otherwise re-read it on every evaluation.
+    //
+    // Never log the returned map wholesale — allowedHosts may name internal
+    // infrastructure (same discipline as core/src/secrets.rs).
+    Q_INVOKABLE QVariantMap policy() const {
+        if (m_policyLoaded) return m_policy;
+        XeneonString s(xeneon_policy_json());
+        const QJsonDocument doc = QJsonDocument::fromJson(s.qstring().toUtf8());
+        QVariantMap p = doc.object().toVariantMap();
+        if (!p.contains("active")) {
+            // The core guarantees a JSON object; an empty/broken answer means
+            // the FFI itself misbehaved. Same doctrine as the core: we cannot
+            // prove there is no policy, so fail CLOSED, not open.
+            qWarning() << "Policy FFI returned an unusable answer; failing closed";
+            p.clear();
+            p["active"] = true;
+            p["source"] = QStringLiteral("fail-closed");
+            p["reason"] = QStringLiteral("policy FFI returned an unusable answer");
+            p["forcePreset"] = QString();
+            p["netOffline"] = true;
+            p["allowedHosts"] = QVariantList();
+            p["disableUserWidgets"] = true;
+            p["disabledWidgetTypes"] = QVariantList();
+        }
+        m_policy = p;
+        m_policyLoaded = true;
+        return m_policy;
+    }
+
+    // Detach from the Rust config handle before it is freed at shutdown, so any
+    // late QML call becomes a guarded no-op instead of a use-after-free.
+    void detach() { m_config = nullptr; }
+
+private:
+    ConfigHandle* m_config;
+    mutable bool m_policyLoaded = false;
+    mutable QVariantMap m_policy;
+};

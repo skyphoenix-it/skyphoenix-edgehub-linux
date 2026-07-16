@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/SkyPhoenixIT/XeneonEdge_Linux/docs/widgets/manifest.schema.json",
+  "title": "Xeneon Edge Hub — Tier-0 user-widget manifest (manifestVersion 1)",
+  "description": "Schema for manifest.json in $XDG_DATA_HOME/xeneon-edge-hub/widgets/<dir>/. Normative prose: docs/widgets/manifest-spec.md. Unknown top-level keys are ignored by version-1 hubs (reserved for future versions).",
+  "type": "object",
+  "required": ["manifestVersion", "type", "title", "entry", "sizes"],
+  "properties": {
+    "manifestVersion": {
+      "description": "Manifest contract version. This schema describes exactly version 1.",
+      "const": 1
+    },
+    "type": {
+      "description": "Unique widget id, namespaced under 'user.' so it can never collide with a shipped type. Shipped types always win a collision anyway.",
+      "type": "string",
+      "pattern": "^user\\.[a-z0-9][a-z0-9_-]*$"
+    },
+    "title": {
+      "description": "Display name (picker, tile header, expanded view).",
+      "type": "string",
+      "minLength": 1
+    },
+    "category": {
+      "description": "Picker group. Defaults to 'User'.",
+      "type": "string",
+      "minLength": 1,
+      "default": "User"
+    },
+    "description": {
+      "description": "One-line description (expanded-view header, config About section).",
+      "type": "string"
+    },
+    "entry": {
+      "description": "The widget's QML file: a plain file name inside the widget directory (no path separators, no '..').",
+      "type": "string",
+      "pattern": "^[^/\\\\]+\\.qml$",
+      "not": { "pattern": "\\.\\." }
+    },
+    "icon": {
+      "description": "Optional picker icon: a plain .svg or .png file name inside the widget directory, rendered untinted. Absent or missing on disk → a neutral fallback glyph.",
+      "type": "string",
+      "pattern": "^[^/\\\\]+\\.(svg|png)$",
+      "not": { "pattern": "\\.\\." }
+    },
+    "sizes": {
+      "description": "The sizes this widget can honestly render, from the 7-name vocabulary in ui/qml/WidgetSizes.qml. A size is (short x long) on a ROTATING screen — declaring one claims the widget works in both of its physical shapes. Declaring '1x1' (the baseline) is strongly recommended.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": ["0.5x0.5", "0.5x1", "1x0.5", "1x1", "1x1.5", "1x2", "1x3"]
+      }
+    },
+    "dflt": {
+      "description": "Size a fresh instance gets; must be listed in `sizes`. Defaults to '1x1' if declared, else the smallest declared size.",
+      "enum": ["0.5x0.5", "0.5x1", "1x0.5", "1x1", "1x1.5", "1x2", "1x3"]
+    },
+    "defaults": {
+      "description": "Seed settings for a fresh instance (JSON object).",
+      "type": "object",
+      "default": {}
+    },
+    "config": {
+      "description": "Config-form fields, rendered by the same panel as shipped widgets. Every declared field must be honoured by the widget.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "key": {
+            "description": "Settings key the widget reads. 'title', 'accent' and 'cardBackdrop' are reserved. Required for every type except 'info'.",
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+            "not": { "enum": ["title", "accent", "cardBackdrop"] }
+          },
+          "label": {
+            "description": "Display label. Required for every type except 'info'.",
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "enum": ["text", "textarea", "number", "slider", "toggle", "segmented", "date", "hour", "info"]
+          },
+          "text": {
+            "description": "Informational text ('info' fields only).",
+            "type": "string",
+            "minLength": 1
+          },
+          "dflt": {
+            "description": "Default value; keep it equal to the widget's own fallback for the key."
+          },
+          "help": { "type": "string" },
+          "placeholder": { "type": "string" },
+          "min": { "type": "number" },
+          "max": { "type": "number" },
+          "step": { "type": "number" },
+          "options": {
+            "description": "Choices for 'segmented' fields.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["value", "label"],
+              "properties": {
+                "value": {},
+                "label": { "type": "string" }
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "type": { "const": "info" } } },
+            "then": { "required": ["text"] },
+            "else": { "required": ["key", "label"] }
+          }
+        ]
+      }
+    }
+  }
+}

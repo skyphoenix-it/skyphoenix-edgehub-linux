@@ -1,5 +1,25 @@
 # Session handoff — continue from here
 
+_Last updated: 2026-07-16 (beta runway). `v1.0.0-alpha.2` is SIGNED and published;
+the AUR package is LIVE (`yay -S xeneon-edge-hub`, maintainer SKYPhoenix_IT,
+validpgpkeys-verified). Everything below the next section is historical log._
+
+## State: all v1.0 MUST epics (E1–E11) + blockers (B1–B7) DONE
+- Parked by owner decision: **E7 Phase B** (keyring; branch kept). **Payments** deferred to beta.
+- Signing: key `93CDC77EACF98990` (fp `2F0CAD36DC1D46F3347B7EF293CDC77EACF98990`),
+  on both keyservers, revocation cert in the owner's Bitwarden (shredded locally).
+  `scripts/release.sh` = the interactive signed-release flow (refuses without the key).
+- Local dogfood: `./scripts/update-local.sh` (owner runs r149+; hub owns the
+  $XDG_RUNTIME_DIR control socket — the /tmp socket era is over).
+- Tests: hermetic guard (`tests/cpp/hermetic.h`) makes raw test-binary runs abort;
+  ctest is the only runner. 20/20 C++, 234 Rust, QML matrix 100% (235 ids), 3 CI
+  workflows (10+7+4 jobs) all green.
+- **Beta**: see `docs/BETA_PLAN.md`. Five workstreams in flight (sizing wave 1,
+  Manager UX clarity, widget smoothness incl. the owner-reported SensorsWidget
+  delegate-churn bug, runtime-E2E battery + harness hazard fix, end-user
+  walkthrough). Owner decisions open: Calm default, font default, lawyer pass on
+  distro theme names, payment provider.
+
 _Last updated: 2026-07-16 (B5 two-writer-race fix merged onto master — see the
 "Resolved: B5" entry below). The alpha track is merged into `master`; `v1.0-alpha`
 stays alive for E4–E9._

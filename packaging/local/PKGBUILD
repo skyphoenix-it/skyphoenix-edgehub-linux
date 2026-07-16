@@ -5,7 +5,7 @@
 # pkgver() derives from `git rev-list --count`, so every commit yields a new
 # rNN and pacman sees a real upgrade — no manual version bumping, no sed.
 pkgname=xeneon-edge-hub
-pkgver=0.1.0.r130   # overwritten by pkgver() at build time
+pkgver=0.1.0.r149   # overwritten by pkgver() at build time
 pkgrel=1
 pkgdesc="Native Linux widget dashboard for the Corsair Xeneon Edge (local working-tree build)"
 arch=('x86_64')
