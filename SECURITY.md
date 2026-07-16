@@ -2,18 +2,24 @@
 
 ## Supported Versions
 
-| Version | Supported          |
-|---------|--------------------|
-| 0.1.x   | :white_check_mark: |
-| < 0.1   | :x: (pre-release)  |
+| Version        | Supported          |
+|----------------|--------------------|
+| 1.0.0-alpha.x  | :white_check_mark: |
+| 0.1.x          | :x: (superseded)   |
 
 ## Reporting a Vulnerability
 
 **Do not report security vulnerabilities through public GitHub issues.**
 
-Instead, please report them via email to:
+Instead, use **GitHub private vulnerability reporting**, which opens a private
+advisory visible only to the maintainers:
 
-**security@xeneon-edge-hub.dev** (placeholder — update before release)
+**<https://github.com/skyphoenix-it/XeneonEdge_Linux/security/advisories/new>**
+
+(This replaced a `security@…` address on a domain that was never registered.
+Mail to it bounced, so any report sent there was lost — and the domain was
+free for anyone to claim and receive vulnerability reports for this product.
+A GitHub-native channel cannot be squatted that way and needs no mailbox.)
 
 Please include:
 
@@ -49,7 +55,10 @@ We follow coordinated disclosure:
 2. **Deny by default** — Widget permissions are opt-in, reviewed by the user.
 3. **Sandbox community widgets** — Third-party widgets run in isolated WASM sandboxes (Phase 7+).
 4. **No arbitrary command execution** — Custom commands require explicit user approval.
-5. **Secure secret storage** — API keys and tokens use the system secret service (D-Bus).
+5. **Secrets are referenced, not stored** — config holds `${env:VAR}` / `file:/path`
+   *references*, resolved per-request and never written back to `config.toml`.
+   (OS-keyring `secret://` refs are Phase B and **not implemented** — see Known
+   Limitations. Do not read this line as keyring support.)
 6. **Input validation** — All external data (D-Bus, /proc, /sys, user config) is validated.
 7. **Minimal dependencies** — We audit and pin all dependencies.
 8. **Reproducible builds** — Release artifacts are verifiable.
@@ -66,21 +75,30 @@ We follow coordinated disclosure:
 ## Known Security Limitations (MVP)
 
 - **No widget sandboxing in MVP (Phases 1-6):** All widgets run in-process as trusted code. Community widget sandboxing is planned for Phase 7.
-- **No encrypted secret storage in MVP:** API keys stored in config files with user file permissions. Secret Service integration planned for post-MVP.
+- **No encrypted secret storage:** use `${env:VAR}` / `file:/path` refs so the
+  secret lives outside `config.toml` (resolved per-request, never persisted).
+  A literal secret typed into config is stored in plain text with user file
+  permissions. OS-keyring `secret://` support (E7 Phase B) is **parked**, not
+  shipped, and there is no date for it.
 - **No Content Security Policy for web widgets:** Web content widget not included in MVP; CSP will be enforced when it is added.
 
 ## Dependency Security
 
 - All Rust dependencies are pinned via `Cargo.lock`
-- CI runs `cargo audit` on every commit
-- CI runs `cargo deny` for license compliance and duplicate detection
+- CI runs `cargo deny check` — advisories (RUSTSEC), licenses, bans, and source
+  pinning — in `.github/workflows/supply-chain.yml`, on pushes that touch code
+  plus a **weekly** cron, because new advisories land without anyone pushing.
+  (There is no separate `cargo audit` job: it was redundant with deny's
+  advisories check and was removed when CI cost was cut.)
 - Dependencies are reviewed before addition (popularity, maintenance, security history)
 - SBOM generated for every release
 
 ## Security Contacts
 
-- **Security Lead:** TBD (placeholder)
-- **Maintainer Team:** See [CODEOWNERS](.github/CODEOWNERS) (to be created)
+Reports go through [private vulnerability reporting](https://github.com/skyphoenix-it/XeneonEdge_Linux/security/advisories/new),
+which reaches the maintainers directly. The repository is maintained by
+**@skyphoenix-it**. There is deliberately no role mailbox to keep stale — the
+last one pointed at an unregistered domain for the whole alpha.
 
 ## Hall of Fame
 

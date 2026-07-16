@@ -62,6 +62,7 @@ run_suite "QML behavior matrix (qml_coverage.py)" python3 "$PROJECT_DIR/scripts/
 # 4b. Egress lint — raw XMLHttpRequest may only live in the NetHub gate.
 run_suite "Egress lint (no raw XHR)" bash "$PROJECT_DIR/scripts/check_no_raw_xhr.sh"
 run_suite "Live-test lint (no inert test_*_data)" bash "$PROJECT_DIR/scripts/check_live_tests.sh"
+run_suite "Doc links (files + anchors)" bash "$PROJECT_DIR/scripts/check_doc_links.sh"
 
 # 4c. Icon lint — every widget type needs a bundled, registered picker icon (the
 #     QML suite can't see missing assets: it runs source-tree, with no qrc).

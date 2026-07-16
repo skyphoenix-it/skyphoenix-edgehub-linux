@@ -82,7 +82,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Install cargo-deny
         run: cargo install cargo-deny --locked
-      # Runs alongside the existing `cargo audit` job rather than replacing it.
+      # NOTE: there is no longer a separate `cargo audit` job — it was removed when
+      # CI cost was cut, because deny already covers advisories. Do not re-add one
+      # without a reason deny cannot serve.
       # They overlap only on advisories; deny adds licenses, duplicate/wildcard
       # bans and source pinning, which audit does not check at all.
       - name: cargo deny check

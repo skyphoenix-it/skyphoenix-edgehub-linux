@@ -14,14 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check relative links and image paths resolve
-        run: |
-          set -e
-          fail=0
-          while IFS= read -r f; do
-            dir=$(dirname "$f")
-            for p in $(grep -oE '\]\(([^)#http][^)]*)\)' "$f" | sed -E 's/\]\(([^)]*)\)/\1/'); do
-              [ -e "$dir/$p" ] || [ -e "$p" ] || { echo "BROKEN in $f: $p"; fail=1; }
-            done
-          done < <(find README.md docs -name '*.md' 2>/dev/null)
-          exit $fail
+      # The check moved into scripts/check_doc_links.sh so it can be run locally
+      # (and from run_all_tests.sh) instead of only ever failing after a push —
+      # which is how it sat red on master while nobody could reproduce it.
+      - name: Check relative links and anchors resolve
+        run: bash scripts/check_doc_links.sh

@@ -175,5 +175,8 @@ xeneon-edge-linux-hub/
 
 ## Recognition
 
-All contributors are recognized in our [CONTRIBUTORS.md](CONTRIBUTORS.md) (to be created) and in release notes. We follow the [All Contributors](https://allcontributors.org/) specification.
+All contributors are recognized in the release notes and in the repository's
+[contributors graph](https://github.com/skyphoenix-it/XeneonEdge_Linux/graphs/contributors),
+which GitHub maintains automatically — a hand-kept `CONTRIBUTORS.md` was promised
+here for months and never existed, so the promise is now one the repo can keep.
 
