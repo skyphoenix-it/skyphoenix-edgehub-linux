@@ -6,8 +6,11 @@
 #   2. QML GUI              : scripts/run_ui_tests.sh (offscreen qmltestrunner)
 #   3. C++ (ctest)         : only if a build dir with tests already exists
 #   4. QML behavior matrix : python3 scripts/qml_coverage.py
-#   5. Runtime E2E         : tests/runtime/run_focus_goal_bonus.sh (needs a hub
-#                            binary; SKIPs if none is built/installed)
+#   5. Runtime E2E battery : tests/runtime/run_*.sh — six scenarios driving the
+#                            REAL hub binary (focus goal bonus, w/h→size
+#                            migration, org policy, update-check-off, secret
+#                            refs, corrupt salvage). Each needs a hub binary
+#                            and SKIPs (77) if none is built/installed.
 #
 # Exits non-zero if any suite fails. Prints a clear per-suite summary.
 set -euo pipefail
@@ -63,22 +66,34 @@ run_suite "Egress lint (no raw XHR)" bash "$PROJECT_DIR/scripts/check_no_raw_xhr
 #     QML suite can't see missing assets: it runs source-tree, with no qrc).
 run_suite "Icon lint (widget types)" bash "$PROJECT_DIR/scripts/check_widget_icons.sh"
 
-# 5. Runtime E2E — drives the real hub binary. Exit 77 = SKIP (no binary built
-#    or installed); anything else is PASS/FAIL as usual.
-echo ""
-echo "==================================================================="
-echo "==> Runtime E2E (run_focus_goal_bonus.sh)"
-echo "==================================================================="
-names+=("Runtime E2E (focus goal bonus)")
-# `if` guards against `set -e` aborting on a non-zero (fail/skip) exit.
-if bash "$PROJECT_DIR/tests/runtime/run_focus_goal_bonus.sh"; then rt_rc=0; else rt_rc=$?; fi
-if [ "$rt_rc" -eq 0 ]; then
-    results+=("PASS"); echo "--- Runtime E2E: PASS"
-elif [ "$rt_rc" -eq 77 ]; then
-    results+=("SKIP"); echo "--- Runtime E2E: SKIPPED (no hub binary)"
-else
-    results+=("FAIL"); echo "--- Runtime E2E: FAIL"
-fi
+# 5. Runtime E2E battery — drives the real hub binary through one scenario
+#    script per guarantee (see tests/runtime/README.md). Exit 77 = SKIP (no
+#    binary built or installed); anything else is PASS/FAIL as usual.
+runtime_scenarios=(
+    "focus goal bonus:run_focus_goal_bonus.sh"
+    "01 w/h→size migration:run_01_wh_size_migration.sh"
+    "02 org policy:run_02_org_policy.sh"
+    "03 update check off:run_03_update_check_off.sh"
+    "04 secret refs:run_04_secret_refs.sh"
+    "05 corrupt salvage:run_05_corrupt_salvage.sh"
+)
+for entry in "${runtime_scenarios[@]}"; do
+    rt_name="${entry%%:*}"; rt_script="${entry#*:}"
+    echo ""
+    echo "==================================================================="
+    echo "==> Runtime E2E ($rt_script)"
+    echo "==================================================================="
+    names+=("Runtime E2E ($rt_name)")
+    # `if` guards against `set -e` aborting on a non-zero (fail/skip) exit.
+    if bash "$PROJECT_DIR/tests/runtime/$rt_script"; then rt_rc=0; else rt_rc=$?; fi
+    if [ "$rt_rc" -eq 0 ]; then
+        results+=("PASS"); echo "--- Runtime E2E ($rt_name): PASS"
+    elif [ "$rt_rc" -eq 77 ]; then
+        results+=("SKIP"); echo "--- Runtime E2E ($rt_name): SKIPPED (no hub binary)"
+    else
+        results+=("FAIL"); echo "--- Runtime E2E ($rt_name): FAIL"
+    fi
+done
 
 # --- Summary ---
 echo ""

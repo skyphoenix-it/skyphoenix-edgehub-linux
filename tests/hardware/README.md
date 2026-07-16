@@ -15,7 +15,11 @@ the C++ backend on-device.
 - `python3` with `PIL` (Pillow) only if you want screenshots; the test itself needs
   no third-party packages. `kscreen-doctor` (KDE) is used to auto-detect geometry;
   override with `XENEON_EDGE_GEOM="x,y,w,h"` and `XENEON_CANVAS="w,h"` on other setups.
-- No hub already running (the test launches its own and owns the control socket).
+- For `edge_hw_test.py`: no hub already running (that older script still uses
+  the real config + runtime dir). `edge_e2e.py` isolates both, so a live hub is
+  no longer stranded or required to be stopped — but both hubs will fight over
+  the Edge panel visually, so stopping the live one is still *recommended* for
+  clean grabs.
 
 ## Run
 
@@ -58,8 +62,40 @@ It **backs up and restores** `~/.config/xeneon-edge-hub/config.toml` (a live
 
 The big one. Drives the **real hub on the Edge** and the **Manager**, covering
 "everything", and reports a single pass/fail. Uses an **isolated
-`XDG_CONFIG_HOME`** (keeping the real `XDG_RUNTIME_DIR` for Wayland + the control
-socket), so the live config is never touched — no backup/restore needed.
+`XDG_CONFIG_HOME`** *and* an **isolated `XDG_RUNTIME_DIR`** per spawned hub, so
+the live config, the single-instance lock and the control socket of a running
+hub are never touched — no backup/restore needed, and the suite can no longer
+strand a live hub's Manager connection.
+
+### How the runtime-dir isolation works (and why)
+
+The hub binds `$XDG_RUNTIME_DIR/xeneon-edge-hub-ctl`
+(`app/src/control_socket_path.h`). The harness used to keep the REAL
+`XDG_RUNTIME_DIR` because Wayland's compositor socket lives there — which
+meant the spawned hub bound the REAL control socket, and the harness cleanup
+`os.remove()`d it, silently stranding any live hub (it keeps its listening fd,
+so it *looks* healthy while the Manager can never reach it again).
+
+`e2e_harness.E2E` now gives every spawned hub:
+
+- a private, short (`sockaddr_un` ≈107-byte cap), 0700 `XDG_RUNTIME_DIR`
+  (`self.run_dir`), where its control socket (`self.sock`) and lock land;
+- `WAYLAND_DISPLAY` rewritten to an **absolute path** into the real runtime
+  dir — Wayland resolves an absolute `WAYLAND_DISPLAY` without consulting
+  `XDG_RUNTIME_DIR`, so the hub still reaches the compositor and renders on
+  the Edge. Verified on the real session: absolute path → renders
+  (grab-confirmed) with its socket in the isolated dir; relative name under
+  the same isolation → cannot connect to the compositor;
+- a **removal guard**: cleanup refuses to delete any socket outside its own
+  private runtime dir, so no code path can unlink a live hub's socket;
+- `cleanup()` (stop + remove the private dir) — `edge_e2e.py` calls it.
+
+There is no module-level `SOCK` any more, on purpose: anything still
+importing it operated on the live hub's socket and should break loudly.
+Use `h.sock`. (`edge_hw_test.py`, the older standalone script, still runs
+against the real config/runtime dir with its own backup/restore — don't run
+it against a session with a hub you care about; `edge_e2e.py` is the safe,
+current suite.)
 
 ```sh
 python3 tests/hardware/edge_e2e.py                 # full run (~20–30 min)

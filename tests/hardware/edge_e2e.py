@@ -18,7 +18,7 @@ import os, sys, time, json, socket, subprocess, tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-from e2e_harness import E2E, MANAGER, SOCK, doc, page, tile   # noqa: E402
+from e2e_harness import E2E, MANAGER, doc, page, tile   # noqa: E402
 import e2e_interaction  # noqa: E402
 try:
     import e2e_widgets
@@ -31,12 +31,13 @@ except Exception as e:
 
 
 def _kill_stale():
-    subprocess.run("pkill -9 -f build/xeneon-edge-hub", shell=True,
+    # Only hubs launched from THIS repo's build tree (a stale spawn from a
+    # crashed previous run). Never a bare "xeneon-edge-hub" pattern — that
+    # would match the user's live packaged hub. And never touch the real
+    # XDG_RUNTIME_DIR: since the harness isolates each spawned hub's runtime
+    # dir, the live hub's lock and control socket are not ours to remove.
+    subprocess.run("pkill -9 -f %s/build/xeneon-edge-hub" % REPO, shell=True,
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    rt = os.environ.get("XDG_RUNTIME_DIR", "/run/user/%d" % os.getuid())
-    for p in (rt + "/xeneon-edge-hub.lock", SOCK):
-        try: os.remove(p)
-        except OSError: pass
     time.sleep(0.5)
 
 
@@ -48,7 +49,7 @@ def ipc_robustness_and_perf(h):
     section("IPC robustness + performance")
     # malformed / partial / oversized must not crash the hub
     def raw(b, wait_reply=True):
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM); s.settimeout(4); s.connect(SOCK)
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM); s.settimeout(4); s.connect(h.sock)
         s.sendall(b)
         try:
             if wait_reply: s.recv(4096)
@@ -73,7 +74,7 @@ def ipc_robustness_and_perf(h):
     # 20 concurrent connections all answered
     socks, ok = [], 0
     for _ in range(20):
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM); s.settimeout(5); s.connect(SOCK)
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM); s.settimeout(5); s.connect(h.sock)
         s.sendall(b'{"type":"getUiState"}\n'); socks.append(s)
     for s in socks:
         try:
@@ -172,7 +173,7 @@ def main():
         # low (e.g. 5) for a quick smoke run.
         soak(h, seconds=int(os.environ.get("E2E_SOAK_SECONDS", "1200")))
     finally:
-        h.stop_hub()
+        h.cleanup()   # stop the spawned hub + remove its private runtime dir
 
     manager_chrome(h)
 
