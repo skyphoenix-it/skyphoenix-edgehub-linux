@@ -101,9 +101,11 @@ add_executable(xeneon-edge-hub
     app/src/metrics_worker.h
     app/src/timezone_bridge.h
     app/src/distro_bridge.h
+    app/src/system_settings_probe.h
     ${CMAKE_SOURCE_DIR}/ui/qml.qrc
     ${CMAKE_SOURCE_DIR}/assets/icons.qrc
     ${CMAKE_SOURCE_DIR}/assets/wallpapers.qrc
+    ${CMAKE_SOURCE_DIR}/assets/fonts.qrc
 )
 
 # Link against the Rust static library
@@ -161,9 +163,11 @@ add_executable(xeneon-edge-manager
     manager/src/manager_backend.h
     app/src/timezone_bridge.h
     app/src/distro_bridge.h
+    app/src/system_settings_probe.h
     ${CMAKE_SOURCE_DIR}/manager/manager.qrc
     ${CMAKE_SOURCE_DIR}/assets/icons.qrc
     ${CMAKE_SOURCE_DIR}/assets/wallpapers.qrc
+    ${CMAKE_SOURCE_DIR}/assets/fonts.qrc
 )
 
 target_link_libraries(xeneon-edge-manager PRIVATE
@@ -171,6 +175,9 @@ target_link_libraries(xeneon-edge-manager PRIVATE
     Qt6::Gui
     Qt6::Quick
     Qt6::Qml
+    # DBus: the Manager registers the same SystemSettingsProbe (XDG settings
+    # portal reduce-motion read) as the hub, so its previews match the device.
+    Qt6::DBus
     Qt6::Network
     Qt6::Svg
     Qt6::QuickControls2

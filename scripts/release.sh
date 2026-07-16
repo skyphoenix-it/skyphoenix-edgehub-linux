@@ -20,6 +20,15 @@
 #   scripts/release.sh --version v1.0.0-beta.1 --publish  # ... and run gh
 #   scripts/release.sh --version v1.0.0-beta.1 --extra path/to/foo.pkg.tar.zst
 #
+# AppImage + zsync (E10): pass the AppImage from packaging/appimage/
+# build-appimage.sh as an --extra. A matching .zsync control file is then
+# generated next to it (requires `zsyncmake`, checked in preflight), pointing
+# at this release's download URL, so AppImage users delta-update instead of
+# re-downloading ~46 MB. The .zsync lands in dist/ BEFORE SHA256SUMS is
+# written, so it is checksummed and covered by the signature like everything
+# else. Native packages (AUR/deb/rpm/Flatpak) update through their package
+# manager — no zsync for those; see docs/DISTRIBUTION.md "Updates".
+#
 set -euo pipefail
 
 # The EdgeHub release key (SKYPhoenix IT <simon.kreitmayer@skyphoenix-it.com>).
@@ -129,9 +138,22 @@ step "Preflight: prerequisites"
 for tool in cmake cargo sha256sum git; do
     command -v "$tool" >/dev/null 2>&1 || die "$tool not found (required to build the release artifacts)"
 done
+HAVE_APPIMAGE=0
 for extra in ${EXTRA_ARTIFACTS+"${EXTRA_ARTIFACTS[@]}"}; do
     [ -f "$extra" ] || die "--extra artifact not found: $extra"
+    case "$extra" in *.AppImage) HAVE_APPIMAGE=1 ;; esac
 done
+# zsync is part of the AppImage update contract (docs/DISTRIBUTION.md): an
+# AppImage published without its .zsync silently breaks delta updates for
+# everyone on the previous release. So it fails HERE, before the build —
+# not "skipped" and discovered after publishing.
+if [ "$HAVE_APPIMAGE" -eq 1 ]; then
+    command -v zsyncmake >/dev/null 2>&1 \
+        || die "zsyncmake not found but an .AppImage was passed via --extra.
+Install it (Arch/CachyOS: 'zsync' [AUR]; Debian/Ubuntu: 'zsync'; Fedora: 'zsync')
+or drop the AppImage from this release. Refusing to publish an AppImage without
+its .zsync — that breaks delta updates for existing users."
+fi
 note "all present"
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -184,6 +206,30 @@ cp -v "${BUILD_DIR}/${bin_tarball}" "$DIST_DIR/"
 for extra in ${EXTRA_ARTIFACTS+"${EXTRA_ARTIFACTS[@]}"}; do
     step "Adding extra artifact: $(basename "$extra")"
     cp -v "$extra" "$DIST_DIR/"
+done
+
+# ─────────────────────────────────────────────────────────────────────────────
+# AppImage zsync control files (E10). Generated from the dist/ copy so the
+# checksums in the .zsync describe the exact bytes being published, and BEFORE
+# SHA256SUMS so the .zsync itself is checksummed and signed with everything
+# else. -u pins the VERSIONED download URL (never releases/latest/): a .zsync
+# must name the bytes it indexes, and "latest" changes meaning at every release.
+# ─────────────────────────────────────────────────────────────────────────────
+for extra in ${EXTRA_ARTIFACTS+"${EXTRA_ARTIFACTS[@]}"}; do
+    case "$extra" in
+        *.AppImage)
+            appimage_name="$(basename "$extra")"
+            step "Generating zsync for $appimage_name"
+            ( cd "$DIST_DIR" && zsyncmake \
+                -u "https://github.com/skyphoenix-it/XeneonEdge_Linux/releases/download/${VERSION}/${appimage_name}" \
+                -o "${appimage_name}.zsync" \
+                "$appimage_name" ) \
+                || die "zsyncmake failed for $appimage_name. Refusing to ship an AppImage without its .zsync."
+            [ -s "${DIST_DIR}/${appimage_name}.zsync" ] \
+                || die "zsyncmake exited 0 but ${appimage_name}.zsync is missing/empty. Refusing to continue."
+            note "${appimage_name}.zsync ($(du -h "${DIST_DIR}/${appimage_name}.zsync" | cut -f1))"
+            ;;
+    esac
 done
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -249,6 +295,9 @@ Reminders (the parts a script must not do for you):
   2. After publishing, refresh packaging/aur/ for the new pkgver and push to AUR:
        cd packaging/aur && updpkgsums && makepkg --printsrcinfo > .SRCINFO
      makepkg will verify ${src_tarball}.sig against validpgpkeys.
+  3. If an AppImage is in this release, its .zsync is in dist/ and is uploaded
+     by the command above (it lists every dist/ file). Upload BOTH — the
+     .zsync without its AppImage (or vice versa) breaks delta updates.
 EOF
 
 if [ "$PUBLISH" -eq 1 ]; then

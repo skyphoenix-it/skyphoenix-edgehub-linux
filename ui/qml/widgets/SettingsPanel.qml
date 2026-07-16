@@ -15,6 +15,11 @@ Rectangle {
     property bool shown: false
     signal closeRequested()
 
+    // E10: the app-global UpdateChecker service (injected by Dashboard; null in
+    // a standalone harness). The panel only renders its result line and writes
+    // the persisted opt-in flag — the checker itself decides when to talk.
+    property var updateChecker: null
+
     visible: shown || opacity > 0.01
     opacity: shown ? 1 : 0
     Behavior on opacity { NumberAnimation { duration: theme.motionFast } }
@@ -328,6 +333,60 @@ Rectangle {
                             Layout.fillWidth: true; wrapMode: Text.WordWrap
                             text: "“Animated background” shows the drifting backdrop (off = plain gradient). “Reduce motion” keeps the backdrop but stops all animation."
                             font.pixelSize: theme.fontCaption; color: theme.textTertiary
+                        }
+                    }
+
+                    // --- Software updates (E10, opt-in) ---
+                    // OFF by default — the product's zero-egress default is CI-attested,
+                    // so this toggle is the ONLY thing that ever lets the hub ask GitHub
+                    // for the latest release tag (one GET, through the NetHub gate).
+                    ColumnLayout {
+                        Layout.fillWidth: true; spacing: theme.spacingSm
+                        Text { text: "Software updates"; font.pixelSize: theme.fontLabel; font.bold: true; color: theme.textSecondary }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Text { text: "Check for updates"; font.pixelSize: theme.fontLabel; color: theme.textPrimary; Layout.fillWidth: true }
+                            Switch {
+                                // Bound to the persisted appearance flag (default off).
+                                // Toggling writes `checked` internally, severing the
+                                // binding — push to the store, then re-bind. (S2)
+                                checked: { var _ = store.revision; return store.appearance().updateCheck === true }
+                                onToggled: {
+                                    store.setAppearance("updateCheck", checked)
+                                    checked = Qt.binding(function () {
+                                        var _ = store.revision
+                                        return store.appearance().updateCheck === true
+                                    })
+                                }
+                            }
+                        }
+                        Text {
+                            Layout.fillWidth: true; wrapMode: Text.WordWrap
+                            text: "Off by default — EdgeHub never phones home on its own. When on, it asks "
+                                  + "GitHub for the latest release tag (one request through the audited "
+                                  + "network gate, nothing identifying sent) and only tells you here."
+                            font.pixelSize: theme.fontCaption; color: theme.textTertiary
+                        }
+                        // Result line + manual re-check, shown only while opted in.
+                        RowLayout {
+                            visible: panel.updateChecker !== null && panel.updateChecker.enabled
+                            Layout.fillWidth: true; spacing: theme.spacingSm
+                            Text {
+                                Layout.fillWidth: true; wrapMode: Text.WordWrap
+                                text: panel.updateChecker ? panel.updateChecker.message : ""
+                                font.pixelSize: theme.fontCaption
+                                color: panel.updateChecker && panel.updateChecker.updateAvailable
+                                       ? theme.accent : theme.textSecondary
+                            }
+                            Rectangle {
+                                width: checkLbl.implicitWidth + 26; height: theme.touchSecondary
+                                radius: theme.radiusMd; color: theme.cardBackground
+                                border.width: 1; border.color: theme.cardBorder
+                                Text { id: checkLbl; anchors.centerIn: parent; text: "Check now"
+                                    color: theme.textPrimary; font.pixelSize: theme.fontLabel }
+                                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                    onClicked: if (panel.updateChecker) panel.updateChecker.check() }
+                            }
                         }
                     }
 

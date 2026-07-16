@@ -23,6 +23,7 @@ CalendarWidget 1.0 widgets/CalendarWidget.qml
 HttpJsonWidget 1.0 widgets/HttpJsonWidget.qml
 KpiWidget 1.0 widgets/KpiWidget.qml
 NetHub 1.0 widgets/NetHub.qml
+UpdateChecker 1.0 widgets/UpdateChecker.qml
 ClockWidget 1.0 widgets/ClockWidget.qml
 ConfigField 1.0 widgets/ConfigField.qml
 CountdownWidget 1.0 widgets/CountdownWidget.qml

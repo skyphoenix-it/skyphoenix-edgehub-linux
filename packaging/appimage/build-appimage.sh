@@ -16,6 +16,12 @@
 #
 # Usage:  ./packaging/appimage/build-appimage.sh
 # Output: xeneon-edge-hub-<version>-x86_64.AppImage in the repo root.
+#
+# Updates (E10): the .zsync control file is deliberately NOT generated here.
+# It must embed the release tag's download URL, which only the release flow
+# knows — scripts/release.sh generates it (via zsyncmake) when this AppImage
+# is passed as an --extra artifact. Keeping this script zsync-free also keeps
+# the CI appimage job's dependencies unchanged.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"

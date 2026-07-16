@@ -58,6 +58,7 @@
         <file alias="qml/HttpJsonWidget.qml">qml/widgets/HttpJsonWidget.qml</file>
         <file alias="qml/KpiWidget.qml">qml/widgets/KpiWidget.qml</file>
         <file alias="qml/NetHub.qml">qml/widgets/NetHub.qml</file>
+        <file alias="qml/UpdateChecker.qml">qml/widgets/UpdateChecker.qml</file>
         <file alias="qml/QuoteWidget.qml">qml/widgets/QuoteWidget.qml</file>
         <file alias="qml/HabitWidget.qml">qml/widgets/HabitWidget.qml</file>
         <file alias="qml/MedsWidget.qml">qml/widgets/MedsWidget.qml</file>

@@ -29,6 +29,7 @@ MoonWidget 1.0 MoonWidget.qml
 HttpJsonWidget 1.0 HttpJsonWidget.qml
 KpiWidget 1.0 KpiWidget.qml
 NetHub 1.0 NetHub.qml
+UpdateChecker 1.0 UpdateChecker.qml
 NetWidget 1.0 NetWidget.qml
 NotesWidget 1.0 NotesWidget.qml
 PillButton 1.0 PillButton.qml

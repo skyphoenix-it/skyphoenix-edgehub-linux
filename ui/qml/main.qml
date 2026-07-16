@@ -70,6 +70,13 @@ ApplicationWindow {
     // Its runtime knobs (accent/glass/glow/reduceMotion) are aliased onto root above.
     Theme {
         id: _theme
+        // OS reduce-motion signal, read by C++ over the XDG settings portal
+        // (SystemSettingsProbe — QML/Qt cannot see this setting on any Qt 6).
+        // Guarded so harnesses without the context property keep the safe
+        // default (false = no OS signal). Precedence lives in Theme.qml:
+        // an explicit reduceMotionPreference still beats this.
+        systemReduceMotion: (typeof systemSettings !== "undefined" && systemSettings)
+            ? systemSettings.reduceMotion : false
         Component.onCompleted: applyTheme(root.themeMode)
     }
 

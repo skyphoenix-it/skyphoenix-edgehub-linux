@@ -149,7 +149,47 @@ QtObject {
     property int fontLabel: Math.round(15 * textScaleEff)
     property int fontCaption: Math.round(13 * textScaleEff)
     property string fontMono: "JetBrains Mono, Fira Code, monospace"
-    property string fontDisplay: "Inter, Segoe UI, Roboto, sans-serif"
+
+    // ── Bundled a11y fonts (SIL OFL 1.1, unmodified; assets/fonts/) ──────────
+    // Loaded HERE so both apps and the test harness get them from the single
+    // token source. URL resolution: Theme.qml is loaded from qrc:/qml/ (hub),
+    // qrc:/manager/ (Manager) and the plain filesystem (qmltestrunner), so the
+    // qrc case uses the absolute resource path assets/fonts.qrc puts the files
+    // at, and the filesystem case walks to <repo>/assets/fonts/ — same bytes.
+    readonly property string _fontsDir:
+        Qt.resolvedUrl(".").toString().indexOf("qrc:") === 0
+            ? "qrc:/assets/fonts/"
+            : Qt.resolvedUrl("../../assets/fonts/").toString()
+    readonly property FontLoader hyperlegibleLoader:
+        FontLoader { source: t._fontsDir + "AtkinsonHyperlegible-Regular.ttf" }
+    readonly property FontLoader hyperlegibleBoldLoader:
+        FontLoader { source: t._fontsDir + "AtkinsonHyperlegible-Bold.ttf" }
+    readonly property FontLoader lexendLoader:
+        FontLoader { source: t._fontsDir + "Lexend-Regular.ttf" }
+    readonly property FontLoader lexendBoldLoader:
+        FontLoader { source: t._fontsDir + "Lexend-Bold.ttf" }
+
+    // Family tokens resolve through the loaders so a widget gets the REAL
+    // loaded family name; the literal-name fallback only matters if the
+    // resource is somehow missing (then fontconfig falls back to system).
+    readonly property string fontFamilyHyperlegible:
+        hyperlegibleLoader.status === FontLoader.Ready
+            ? hyperlegibleLoader.name : "Atkinson Hyperlegible"
+    readonly property string fontFamilyLexend:
+        lexendLoader.status === FontLoader.Ready
+            ? lexendLoader.name : "Lexend"
+
+    // User-facing font preference: "system" (default — the product's look) |
+    // "hyperlegible" | "lexend". Wires the UI family token (fontDisplay) so
+    // every widget follows for free; fontMono stays mono on purpose (tabular
+    // data readouts need fixed-pitch digits). Unknown values fall through to
+    // system, so a config from a newer build degrades safely.
+    property string fontChoice: "system"
+    readonly property string _fontDisplaySystem: "Inter, Segoe UI, Roboto, sans-serif"
+    property string fontDisplay:
+        fontChoice === "hyperlegible" ? fontFamilyHyperlegible
+      : fontChoice === "lexend" ? fontFamilyLexend
+      : _fontDisplaySystem
 
     property real glass: glassOpacity
     property bool glow: showWidgetGlow

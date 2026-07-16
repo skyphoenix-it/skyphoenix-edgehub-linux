@@ -175,6 +175,25 @@ Item {
         // rather than sending the reference as a token.
         secretResolver: (typeof configBridge !== "undefined") ? configBridge : null
     }
+    // E10: the opt-in update check. OFF by default (the `updateCheck` appearance
+    // flag is written by SettingsPanel); with a default config this constructs
+    // no request — the no-egress attestation depends on that. When enabled, its
+    // single GET rides the same NetHub gate as every widget.
+    UpdateChecker {
+        id: updateChecker
+        netHub: netHub
+        enabled: { var _ = store.revision; return store.appearance().updateCheck === true }
+        currentVersion: (typeof configBridge !== "undefined" && configBridge && configBridge.appVersion)
+                        ? configBridge.appVersion() : ""
+        envResolver: (typeof configBridge !== "undefined") ? configBridge : null
+    }
+    // Re-check daily while opted in. The Timer lives here (an Item can host
+    // children on every Qt 6) rather than inside the QtObject service.
+    Timer {
+        interval: 24 * 60 * 60 * 1000; repeat: true
+        running: updateChecker.enabled
+        onTriggered: updateChecker.check()
+    }
     WidgetConfigSchema { id: cfgSchema }
 
     // ── Tier-0 user widgets (E3) ─────────────────────────────────────────────
@@ -1118,6 +1137,7 @@ Item {
     // Appearance / settings overlay
     SettingsPanel {
         id: settings
+        updateChecker: updateChecker
         onCloseRequested: shown = false
     }
 }

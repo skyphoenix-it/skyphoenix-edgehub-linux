@@ -21,6 +21,7 @@ Item {
             theme.applyTheme("dark"); theme.applyAccent("blue"); theme.glassOpacity = 0.6
             theme.reduceMotion = false; theme.systemReduceMotion = false
             theme.reduceMotionPreference = "auto"; theme.textScale = 1.0
+            theme.fontChoice = "system"
         }
 
         // ── accentPresets ────────────────────────────────────────────────────
@@ -590,6 +591,60 @@ Item {
                 verify(Qt.colorEqual(theme.accent2, legacyB[name]),
                        "stored accent '" + name + "' keeps its secondary tone " + legacyB[name])
             }
+        }
+
+        // ── Bundled a11y fonts (E4) ──────────────────────────────────────────
+        // Proof the bundled TTFs ACTUALLY load — status must reach Ready and the
+        // family must resolve to the real name, not silently fall back to a
+        // system font. If the resource path or the qrc wiring breaks, the
+        // status assertion fails first; if the wrong file loads, the name does.
+        function test_bundled_fonts_actually_load() {
+            tryCompare(theme.hyperlegibleLoader, "status", FontLoader.Ready)
+            tryCompare(theme.hyperlegibleBoldLoader, "status", FontLoader.Ready)
+            tryCompare(theme.lexendLoader, "status", FontLoader.Ready)
+            tryCompare(theme.lexendBoldLoader, "status", FontLoader.Ready)
+            compare(theme.hyperlegibleLoader.name, "Atkinson Hyperlegible",
+                    "regular TTF resolves to its real family name")
+            compare(theme.lexendLoader.name, "Lexend",
+                    "Lexend TTF resolves to its real family name")
+        }
+
+        function test_font_family_tokens_resolve_to_loaded_families() {
+            tryCompare(theme.hyperlegibleLoader, "status", FontLoader.Ready)
+            tryCompare(theme.lexendLoader, "status", FontLoader.Ready)
+            compare(theme.fontFamilyHyperlegible, "Atkinson Hyperlegible")
+            compare(theme.fontFamilyLexend, "Lexend")
+        }
+
+        // Changing the default look is a product decision — the default MUST
+        // stay the system font stack.
+        function test_font_choice_defaults_to_system() {
+            var fresh = freshTheme.createObject(root)
+            compare(fresh.fontChoice, "system")
+            compare(fresh.fontDisplay, "Inter, Segoe UI, Roboto, sans-serif")
+            fresh.destroy()
+        }
+
+        function test_font_choice_wires_font_display() {
+            theme.fontChoice = "hyperlegible"
+            compare(theme.fontDisplay, theme.fontFamilyHyperlegible)
+            theme.fontChoice = "lexend"
+            compare(theme.fontDisplay, theme.fontFamilyLexend)
+            theme.fontChoice = "system"
+            compare(theme.fontDisplay, "Inter, Segoe UI, Roboto, sans-serif")
+        }
+
+        // A fontChoice value from a newer build must degrade to system, never
+        // to a broken family string.
+        function test_font_choice_unknown_value_falls_back_to_system() {
+            theme.fontChoice = "papyrus"
+            compare(theme.fontDisplay, "Inter, Segoe UI, Roboto, sans-serif")
+        }
+
+        // fontMono is exempt on purpose: tabular readouts need fixed pitch.
+        function test_font_choice_does_not_touch_mono() {
+            theme.fontChoice = "lexend"
+            compare(theme.fontMono, "JetBrains Mono, Fira Code, monospace")
         }
     }
 }
