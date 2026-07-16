@@ -29,7 +29,8 @@ Item {
 
     Component.onCompleted: store.load("blank")
 
-    Wg.SettingsPanel { id: panel }
+    property int presetsRequestedCount: 0
+    Wg.SettingsPanel { id: panel; onPresetsRequested: root.presetsRequestedCount++ }
 
     // ── tree helpers ─────────────────────────────────────────────────────────
     function eachItem(node, fn) {
@@ -66,6 +67,8 @@ Item {
             root.themeMode = "dark"; root.glassOpacity = 0.6
             root.showWidgetGlow = true; root.animatedBackground = true; root.reduceMotion = false
             _theme.applyTheme("dark"); _theme.applyAccent("blue")
+            root.presetsRequestedCount = 0
+            panel.presetsLocked = false
             panel.shown = true
             tryVerify(function () { return panel.opacity > 0.99 }, 2000)
         }
@@ -79,6 +82,28 @@ Item {
             wait(60)
         }
         function clickTarget(target) { bringIntoView(target); mouseClick(target) }
+
+        // ── Screens entry (post-setup preset library, W5 finding 3) ──────────
+        function test_screens_entry_opens_the_preset_library() {
+            var entry = findPred(panel, function (n) { return n.objectName === "screensEntry" })
+            verify(entry !== null, "the Screens entry is present in Settings")
+            verify(entry.visible, "…and visible when no policy lock holds")
+            verify(entry.height >= _theme.touchSecondary,
+                   "the entry is touch sized (" + entry.height + ")")
+            clickTarget(entry)
+            compare(root.presetsRequestedCount, 1, "tapping it emits presetsRequested")
+        }
+
+        function test_screens_entry_absent_under_policy_lock() {
+            panel.presetsLocked = true
+            var entry = findPred(panel, function (n) { return n.objectName === "screensEntry" })
+            verify(entry !== null && !entry.visible,
+                   "an org-forced preset removes the entry outright (absent, not greyed)")
+            var caption = findText(panel, "The ready-made screens from setup. Applying one replaces your pages — your theme stays.")
+            verify(caption === null || !caption.visible, "the caption disappears with it")
+            panel.presetsLocked = false
+            verify(entry.visible, "clearing the lock restores the entry")
+        }
 
         // ── Theme mode (segmented) ───────────────────────────────────────────
         function test_theme_mode_reflects_external_state() {

@@ -99,6 +99,15 @@ ApplicationWindow {
                 return (typeof configBridge !== "undefined" && configBridge)
                     ? configBridge.configJson() : ""
             })
+        // Diagnostics' Network tab reads the app-global egress gate (W5
+        // finding 6). The gate lives inside the Dashboard (one NetHub per
+        // app), so resolve it off the stack; when no dashboard exists
+        // (--diagnostics start) it stays null and the tab states that
+        // honestly rather than showing zeros.
+        if (item.hasOwnProperty("netHub")) {
+            var dash = stackView.find(function (it) { return it && it.netGate !== undefined })
+            if (dash) item.netHub = dash.netGate
+        }
     }
 
     // ── Orientation ──────────────────────────────────────────────────────────

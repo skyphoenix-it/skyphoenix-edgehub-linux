@@ -14,6 +14,25 @@ Item {
     property string userWidgetsJson: ""
     property int currentPage: 0
 
+    // The app-global NetHub egress gate (W5 finding 6): injected by the
+    // Dashboard's ⚙ push (or resolved off the stack by main.qml's
+    // bindStackItem). Null when no dashboard is running in this session
+    // (--diagnostics start) — the Network tab then states that honestly
+    // instead of rendering zeros that look like an attestation.
+    property var netHub: null
+
+    // byHost ({ host: count }) flattened to sorted rows for the Repeater.
+    // Reactive: NetHub reassigns byHost on every bump, and swapping netHub
+    // itself re-evaluates too.
+    readonly property var netHosts: {
+        if (!diag.netHub) return []
+        var m = diag.netHub.byHost || {}
+        var out = []
+        for (var k in m) out.push({ host: k, n: m[k] })
+        out.sort(function (a, b) { return b.n !== a.n ? b.n - a.n : (a.host < b.host ? -1 : 1) })
+        return out
+    }
+
     // Human-readable rendering of the loader report — every skipped directory
     // shows its reason HERE, so a broken manifest is diagnosable on-device.
     readonly property string userWidgetsText: {
@@ -78,7 +97,9 @@ Item {
             Layout.fillWidth: true
             spacing: 4
             Repeater {
-                model: ["Overview", "Config", "Screens", "Log"]
+                // "Network" is appended (index 4) so the existing page indexes
+                // stay stable for callers and tests.
+                model: ["Overview", "Config", "Screens", "Log", "Network"]
                 Button {
                     text: modelData; flat: true; checked: diag.currentPage === index
                     checkable: true; autoExclusive: true
@@ -249,6 +270,100 @@ Item {
                             anchors.fill: parent; anchors.margins: 12
                             text: "Run with RUST_LOG=debug for detailed logs.\n\nConfig dir: "+_configDir
                             color: theme.textPrimary; font.family: theme.fontMono; font.pixelSize: 11; wrapMode: Text.Wrap
+                        }
+                    }
+                }
+            }
+
+            // Page 4: Network — the NetHub attestation surface (W5 finding 6).
+            // NetHub.qml has counted "for Diagnostics" since it shipped and the
+            // README promises per-host counters; this is the page that finally
+            // reads them: kill-switch state, allowlist, sent/blocked totals,
+            // and per-host counts, straight off the injected gate.
+            Item {
+                Flickable {
+                    anchors.fill: parent; contentHeight: netCol.implicitHeight+20; clip: true
+                    ColumnLayout {
+                        id: netCol; width: parent.width; spacing: 10
+                        Text { text: "Network (egress gate)"; color: theme.textPrimary; font.pixelSize: 16; font.bold: true }
+                        Text {
+                            text: "Every outbound request a widget makes goes through one audited gate. These counters are that gate's own tally for this session."
+                            color: theme.textSecondary; font.pixelSize: 12; wrapMode: Text.WordWrap; Layout.fillWidth: true
+                        }
+
+                        // No gate in this session (--diagnostics starts without a
+                        // dashboard): say so — zeros here would read as an attestation.
+                        Text {
+                            visible: !diag.netHub
+                            text: "The network gate is not available in this session (no dashboard is running)."
+                            color: theme.warning; font.pixelSize: 12; wrapMode: Text.WordWrap; Layout.fillWidth: true
+                        }
+
+                        Rectangle {
+                            visible: !!diag.netHub
+                            Layout.fillWidth: true; implicitHeight: gateCol.implicitHeight+24; radius: 8
+                            color: theme.cardBackground; border.color: theme.cardBorder
+                            ColumnLayout {
+                                id: gateCol
+                                anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
+                                anchors.margins: 12; spacing: 6
+                                Text {
+                                    text: "Offline kill switch: " + (diag.netHub && diag.netHub.offline
+                                          ? "On — all remote requests are refused" : "Off")
+                                    color: diag.netHub && diag.netHub.offline ? theme.warning : theme.textPrimary
+                                    font.pixelSize: 13; wrapMode: Text.WordWrap; Layout.fillWidth: true
+                                }
+                                Text {
+                                    text: "Allowed hosts: " + (diag.netHub && diag.netHub.allowHosts
+                                                               && diag.netHub.allowHosts.length
+                                          ? diag.netHub.allowHosts.join(", ")
+                                          : "any host (no allowlist active)")
+                                    color: theme.textPrimary; font.pixelSize: 13
+                                    wrapMode: Text.WrapAnywhere; Layout.fillWidth: true
+                                }
+                                Text {
+                                    text: "Requests sent: " + (diag.netHub ? diag.netHub.requests : 0)
+                                    color: theme.textPrimary; font.pixelSize: 13
+                                }
+                                Text {
+                                    text: "Blocked by the gate: " + (diag.netHub ? diag.netHub.blocked : 0)
+                                    color: theme.textPrimary; font.pixelSize: 13
+                                }
+                            }
+                        }
+
+                        Text {
+                            visible: !!diag.netHub
+                            text: "Requests by host"; color: theme.textPrimary; font.pixelSize: 16; font.bold: true
+                        }
+                        Text {
+                            visible: !!diag.netHub && diag.netHosts.length === 0
+                            text: "No requests have been sent this session."
+                            color: theme.textSecondary; font.pixelSize: 12
+                        }
+                        Repeater {
+                            model: diag.netHosts
+                            Rectangle {
+                                Layout.fillWidth: true; implicitHeight: 40; radius: 8
+                                color: theme.backgroundColor; border.color: theme.cardBorder
+                                RowLayout {
+                                    anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 12
+                                    Text {
+                                        text: modelData.host; color: theme.textPrimary
+                                        font.family: theme.fontMono; font.pixelSize: 12
+                                        elide: Text.ElideMiddle; Layout.fillWidth: true
+                                    }
+                                    Text {
+                                        text: modelData.n + (modelData.n === 1 ? " request" : " requests")
+                                        color: theme.textSecondary; font.pixelSize: 12
+                                    }
+                                }
+                            }
+                        }
+                        Text {
+                            visible: !!diag.netHub
+                            text: "\"(local)\" counts file:/qrc: reads — they never leave this machine."
+                            color: theme.textTertiary; font.pixelSize: 11; wrapMode: Text.WordWrap; Layout.fillWidth: true
                         }
                     }
                 }

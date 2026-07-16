@@ -12,6 +12,19 @@ Item {
     property color color: "#FFFFFF"
     property real size: 24
     property bool tint: true
+
+    // W5 finding 4: under the SOFTWARE scenegraph (QT_QUICK_BACKEND=software —
+    // VMs, remote sessions, no-GL boxes — and headless capture platforms)
+    // MultiEffect draws NOTHING: it needs a shader pipeline the software
+    // rasterizer does not have, so every tinted icon rendered as an empty
+    // square (toolbar, steppers, config icons — all of them). Detect that
+    // backend on THIS item (GraphicsInfo is per-window/scenegraph) and fall
+    // back to the plain, untinted Image: a white glyph on the wrong surface
+    // still beats an invisible one.
+    // A plain default-bound property (not readonly) so tests can drive both
+    // branches without swapping the scenegraph backend mid-run.
+    property bool effectsAvailable: GraphicsInfo.api !== GraphicsInfo.Software
+
     implicitWidth: size
     implicitHeight: size
 
@@ -25,13 +38,15 @@ Item {
         fillMode: Image.PreserveAspectFit
         smooth: true
         mipmap: true
-        // When tinting, the raw white glyph is hidden; the MultiEffect renders it.
-        visible: !(root.tint && root.iconSource == "")
+        // When tinting (and the effect can actually render), the raw white
+        // glyph is hidden and the MultiEffect draws it. With no effects
+        // available the raw glyph IS the icon — the untinted fallback.
+        visible: !(root.tint && root.iconSource == "") || !root.effectsAvailable
     }
     MultiEffect {
         anchors.fill: img
         source: img
-        visible: root.tint && root.iconSource == ""
+        visible: root.tint && root.iconSource == "" && root.effectsAvailable
         colorization: 1.0
         colorizationColor: root.color
     }

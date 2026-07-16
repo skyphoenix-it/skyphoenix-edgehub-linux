@@ -68,6 +68,12 @@ Item {
     property var host: StackView.view
     property bool _applyingAppearance: false
 
+    // The app-global egress gate, exposed for Diagnostics' Network tab (W5
+    // finding 6). One NetHub exists per app and it lives here — main.qml's
+    // bindStackItem finds this property on the stack when Diagnostics is
+    // opened via Ctrl+D / --diagnostics rather than the ⚙ push below.
+    readonly property var netGate: netHub
+
     // ── Managed / org policy (E9) ────────────────────────────────────────────
     // Read ONCE at creation: the policy file is root-owned and static for the
     // life of the process (ConfigBridge caches it too). No bridge (QML test
@@ -226,6 +232,9 @@ Item {
     WidgetCatalog { id: catalog }
     WidgetSizes { id: sizes }
     WidgetPacker { id: packer }
+    // The curated screen library — consumed post-setup by the PresetPicker
+    // below (W5 finding 3: it used to have no consumer outside the wizard).
+    PresetCatalog { id: presetLib }
     // The single app-global egress gate. Every net widget routes through this one
     // instance (injected below), so the offline switch + host allowlist + request
     // counters are global. `offline` is driven by an appearance flag (set by a
@@ -358,6 +367,49 @@ Item {
         }
     }
     property var overlayLoaderItem: null
+
+    // Apply a preset from the post-setup Screens picker (W5 finding 3): the
+    // store's normal seed path (resetTo), with two deliberate twists.
+    //
+    //  • POLICY (E9): an org-forced preset wins over any interactive choice.
+    //    The picker surface is already absent under the lock, but the guard
+    //    lives HERE so no other caller can ever bypass the policy.
+    //  • "Your theme stays" — and it must stay across RESTART, not just live.
+    //    A preset document carries only its character keys (bgStyle/
+    //    animatedBg/reduceMotion/glow/presetSurface), so resetTo() would drop
+    //    every other persisted appearance key: themeMode/accent would fall
+    //    back to the stale legacy [theme] values on the next launch (W5
+    //    finding 15), and — worse — a user's netOffline/updateCheck/
+    //    enableUserWidgets choices would silently revert to defaults. So every
+    //    prior appearance key the preset does not define is carried over.
+    //  • Accessibility beats character: an explicit prior reduce-motion
+    //    choice survives even though presets DO define reduceMotion. Post-
+    //    setup, that flag is the user's a11y setting; a preset that silently
+    //    re-enabled motion would repeat the W3 bug class the calm work fixed.
+    //    (In the wizard the preset's character applies untouched — there is
+    //    no prior choice to protect there.)
+    //
+    // Returns whether the preset was applied.
+    function applyPreset(presetId) {
+        if (store.policyLockedPreset !== "") return false
+        var id = String(presetId || "")
+        if (id === "") return false
+        if (id !== "blank" && !presetLib.has(id)) return false
+        var prev = store.appearance()
+        var keep = {}
+        for (var k in prev) keep[k] = prev[k]
+        store.resetTo(id)
+        for (var kk in keep)
+            if (store.appearance()[kk] === undefined)
+                store.setAppearance(kk, keep[kk])
+        if (keep.reduceMotion !== undefined)
+            store.setAppearance("reduceMotion", keep.reduceMotion)
+        applyAppearance()
+        // Land the user on the new layout's first page, not an out-of-range
+        // index left over from a longer document.
+        swipeView.currentIndex = 0
+        return true
+    }
 
     // Close the expanded overlay + clear its transient state (shared by the
     // header back button and the reachable bottom "Done" bar).
@@ -968,6 +1020,8 @@ Item {
                 onClicked: if (dashboard.host && dashboard.host.depth <= 1) dashboard.host.push("qrc:/qml/Diagnostics.qml", {
                     "metricsJson": Qt.binding(function () { return metricsJson }),
                     "screensData": screensData,
+                    // The egress gate for the Network tab (W5 finding 6).
+                    "netHub": netHub,
                     "configJson": (typeof configBridge !== "undefined" && configBridge) ? configBridge.configJson() : "",
                     // User-widget loader report: enabled state + loaded entries
                     // + every skipped directory with its reason.
@@ -1095,10 +1149,23 @@ Item {
             rowSpacing: theme.spacingMd; columnSpacing: theme.spacingMd
 
             // ── Live, interactive widget ──
+            // W5 BLOCKER (finding 2): in landscape both columns declared
+            // fillWidth, and a GridLayout hands the stretch out in proportion
+            // to preferred widths — the preview's 0.46×width against the
+            // config panel's implicit ~0 — so the FORM collapsed to a ~10px
+            // sliver and on-device configuration ("connect CI to a URL",
+            // per-widget backdrop…) was impossible on a landscape mount.
+            // The landscape split is now explicit: the preview takes a FIXED
+            // 38% (fillWidth off, width capped) and the form fills every
+            // remaining pixel, with a hard minimum of half the overlay so no
+            // future sibling can starve it again. Portrait is unchanged:
+            // preview stacked on top (≤46% height), form full-width below.
             ColumnLayout {
-                Layout.fillWidth: true
+                Layout.fillWidth: !overlay.ovlWide
                 Layout.fillHeight: overlay.ovlWide
-                Layout.preferredWidth: overlay.ovlWide ? overlay.width * 0.46 : -1
+                Layout.preferredWidth: overlay.ovlWide ? Math.round(overlay.width * 0.38) : -1
+                Layout.maximumWidth: overlay.ovlWide ? Math.round(overlay.width * 0.38)
+                                                     : Number.POSITIVE_INFINITY
                 Layout.preferredHeight: overlay.ovlWide ? -1 : Math.min(overlay.height * 0.46, 1080)
                 spacing: theme.spacingSm
 
@@ -1162,6 +1229,10 @@ Item {
             // ── Configuration panel ──
             WidgetConfigPanel {
                 Layout.fillWidth: true; Layout.fillHeight: true
+                // The form may never be starved below half the overlay in
+                // landscape — this panel is the only way to configure a
+                // widget on-device (W5 blocker 2).
+                Layout.minimumWidth: overlay.ovlWide ? Math.round(overlay.width * 0.5) : 0
                 // User widgets carry their form in the manifest; shipped ones
                 // in WidgetConfigSchema. Both compose the same General/About/
                 // Appearance sections.
@@ -1290,6 +1361,19 @@ Item {
     SettingsPanel {
         id: settings
         updateChecker: updateChecker
+        // Under an org-forced preset the Screens entry is absent (E9).
+        presetsLocked: store.policyLockedPreset !== ""
+        onCloseRequested: shown = false
+        onPresetsRequested: { settings.shown = false; presetPicker.shown = true }
+    }
+
+    // Post-setup preset library ("Screens", W5 finding 3) — opened from the
+    // settings sheet; applying routes through applyPreset() above.
+    PresetPicker {
+        id: presetPicker
+        catalog: presetLib
+        locked: store.policyLockedPreset !== ""
+        onApplyRequested: (pid) => { if (dashboard.applyPreset(pid)) presetPicker.shown = false }
         onCloseRequested: shown = false
     }
 }

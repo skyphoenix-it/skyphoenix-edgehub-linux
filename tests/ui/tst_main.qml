@@ -108,6 +108,20 @@ Item {
             pg.destroy()
         }
 
+        // W5 finding 6: bindStackItem resolves the Dashboard's egress gate for
+        // a Diagnostics page. With no dashboard on the stack (--diagnostics
+        // start; here the StackView is empty) the page's netHub must STAY null
+        // — the Network tab then shows its honest "not available" state.
+        function test_bindStackItem_leaves_netHub_null_without_a_dashboard() {
+            var pg = Qt.createQmlObject(
+                'import QtQuick; QtObject { property var netHub: null; property string metricsJson: "" }',
+                root, "netpg")
+            win.bindStackItem(pg)
+            compare(pg.netHub, null, "no dashboard on the stack → netHub stays null (never a fake gate)")
+            compare(pg.metricsJson, win.metricsJson, "the other bindings still landed")
+            pg.destroy()
+        }
+
         function test_bindStackItem_ignores_null_and_bare_items() {
             win.bindStackItem(null)                  // no throw
             var bare = barePage.createObject(root)

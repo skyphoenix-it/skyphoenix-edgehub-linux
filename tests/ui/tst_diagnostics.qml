@@ -7,6 +7,9 @@ import "../../ui/qml" as App
 // name, so we provide them at the file root. Assert: metric rows render from the
 // injected metricsJson, empty/malformed frames degrade to N/A (no blank grid),
 // tab switching, screen rows, and the Back action firing through stackView.pop().
+// The Network tab (W5 finding 6) renders the injected NetHub gate: kill-switch
+// state, allowlist, sent/blocked totals and per-host counts — asserted against
+// a mock hub carrying the same property surface, including live updates.
 Item {
     id: root
     width: 700; height: 900
@@ -19,6 +22,17 @@ Item {
     property int popCount: 0
     QtObject { id: stackViewObj; function pop() { root.popCount++ } }
     property var stackView: stackViewObj
+
+    // Stand-in for the injected NetHub: the exact attestation surface the
+    // Network tab reads (offline / allowHosts / requests / blocked / byHost).
+    QtObject {
+        id: mockHub
+        property bool offline: false
+        property var allowHosts: []
+        property int requests: 0
+        property int blocked: 0
+        property var byHost: ({})
+    }
 
     App.Diagnostics { id: diag }
 
@@ -54,6 +68,12 @@ Item {
             diag.metricsJson = ""
             diag.configJson = ""
             diag.screensData = ""
+            diag.netHub = null
+            mockHub.offline = false
+            mockHub.allowHosts = []
+            mockHub.requests = 0
+            mockHub.blocked = 0
+            mockHub.byHost = ({})
             root.popCount = 0
         }
 
@@ -121,6 +141,88 @@ Item {
             diag.configJson = '{"version":1}'
             diag.currentPage = 1
             verify(findText(diag, '{"version":1}') !== null, "the config page shows the raw config JSON")
+        }
+
+        // ── Network tab (W5 finding 6): the NetHub attestation surface ──────
+        function test_network_tab_exists_and_switches() {
+            var tab = findButton("Network")
+            verify(tab !== null, "the Network tab is present")
+            mouseClick(tab)
+            compare(diag.currentPage, 4, "the Network tab selects page 4")
+        }
+
+        function test_network_without_gate_states_it_honestly() {
+            diag.netHub = null
+            diag.currentPage = 4
+            verify(findText(diag, "The network gate is not available in this session (no dashboard is running).") !== null,
+                   "no injected hub → an honest 'not available' line, never zeros posing as an attestation")
+            var counter = findText(diag, "Requests sent: 0")
+            verify(counter === null || !counter.visible,
+                   "…and no counter rows are shown (hidden with the gate card)")
+        }
+
+        function test_network_renders_gate_state_and_counters() {
+            mockHub.offline = false
+            mockHub.requests = 3
+            mockHub.blocked = 1
+            mockHub.byHost = ({ "api.example.com": 2, "(local)": 1 })
+            diag.netHub = mockHub
+            diag.currentPage = 4
+            verify(findText(diag, "Offline kill switch: Off") !== null, "kill-switch state renders (off)")
+            verify(findText(diag, "Allowed hosts: any host (no allowlist active)") !== null,
+                   "an empty allowlist reads as 'any host'")
+            verify(findText(diag, "Requests sent: 3") !== null, "sent total renders")
+            verify(findText(diag, "Blocked by the gate: 1") !== null, "blocked total renders")
+            compare(diag.netHosts.length, 2, "per-host rows flattened from byHost")
+            compare(diag.netHosts[0].host, "api.example.com", "sorted by count, busiest first")
+            compare(diag.netHosts[0].n, 2, "…with its tally")
+            verify(findText(diag, "api.example.com") !== null, "the host row renders")
+            verify(findText(diag, "2 requests") !== null, "…with its count")
+            verify(findText(diag, "1 request") !== null, "singular count for the (local) row")
+        }
+
+        function test_network_offline_and_allowlist_render() {
+            mockHub.offline = true
+            mockHub.allowHosts = ["ci.example.com", "api.corp.example"]
+            diag.netHub = mockHub
+            diag.currentPage = 4
+            verify(findText(diag, "Offline kill switch: On — all remote requests are refused") !== null,
+                   "the kill switch reads as ON with its consequence spelled out")
+            verify(findText(diag, "Allowed hosts: ci.example.com, api.corp.example") !== null,
+                   "a non-empty allowlist renders its hosts")
+        }
+
+        function test_network_counters_track_the_hub_live() {
+            diag.netHub = mockHub
+            diag.currentPage = 4
+            verify(findText(diag, "Requests sent: 0") !== null, "starts at zero")
+            verify(findText(diag, "No requests have been sent this session.") !== null,
+                   "empty byHost → an explicit empty state")
+            mockHub.requests = 5
+            mockHub.blocked = 2
+            mockHub.byHost = ({ "wttr.in": 5 })
+            verify(findText(diag, "Requests sent: 5") !== null, "sent total tracks the hub live")
+            verify(findText(diag, "Blocked by the gate: 2") !== null, "blocked total tracks live")
+            compare(diag.netHosts.length, 1, "the host row appeared")
+            compare(diag.netHosts[0].host, "wttr.in", "with the right host")
+            verify(findText(diag, "5 requests") !== null, "and its live count")
+        }
+
+        // The integration seam the REAL NetHub satisfies: the same property
+        // names the tab binds to exist on the genuine gate (guards against the
+        // mock drifting from the product).
+        function test_mock_matches_the_real_nethub_surface() {
+            var real = Qt.createQmlObject('import "../../ui/qml/widgets" as W; W.NetHub {}', root, "hub")
+            verify(real.offline !== undefined, "real NetHub has offline")
+            verify(real.allowHosts !== undefined, "real NetHub has allowHosts")
+            compare(typeof real.requests, "number", "real NetHub counts requests")
+            compare(typeof real.blocked, "number", "real NetHub counts blocked")
+            verify(real.byHost !== undefined, "real NetHub tallies byHost")
+            diag.netHub = real
+            diag.currentPage = 4
+            verify(findText(diag, "Requests sent: 0") !== null, "the tab renders off the REAL gate too")
+            diag.netHub = null
+            real.destroy()
         }
 
         // ── Back action fires through stackView.pop() ───────────────────────
