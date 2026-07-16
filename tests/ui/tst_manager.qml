@@ -332,25 +332,20 @@ Item {
             // snapshot would always equal the "after" value.
             var storedBg = _theme.backgroundColor.toString()
             win.previewTheme("light")
-            verify(!Qt.colorEqual(_theme.backgroundColor, storedBg),
-                   "previewTheme repainted the theme instance")
-            verify(_store.appearance().themeMode === undefined,
-                   "the store was NOT written by a hover preview")
+            verify(!Qt.colorEqual(_theme.backgroundColor, storedBg), "previewTheme repainted the theme instance")
+            verify(_store.appearance().themeMode === undefined, "previewTheme did NOT write the store")
             win.endThemePreview()
-            verify(Qt.colorEqual(_theme.backgroundColor, storedBg),
-                   "endThemePreview restored the stored theme")
+            verify(Qt.colorEqual(_theme.backgroundColor, storedBg), "endThemePreview restored the stored theme")
         }
 
         function test_previewAccent_is_transient_and_restorable() {
             _store.setAppearance("accent", "blue")           // a committed baseline
             var storedAccent = _theme.accent.toString()      // snapshot, not a live reference
             win.previewAccent("green")
-            verify(Qt.colorEqual(_theme.accent, _theme.accentPresets["green"].a),
-                   "previewAccent painted the hovered accent")
-            compare(_store.appearance().accent, "blue", "the stored accent is untouched")
+            verify(Qt.colorEqual(_theme.accent, _theme.accentPresets["green"].a), "previewAccent painted the hovered accent")
+            compare(_store.appearance().accent, "blue", "previewAccent left the stored accent untouched")
             win.endThemePreview()
-            verify(Qt.colorEqual(_theme.accent, storedAccent),
-                   "endThemePreview restored the committed accent")
+            verify(Qt.colorEqual(_theme.accent, storedAccent), "endThemePreview restored the committed accent")
         }
 
         // previewTheme must re-apply the COMMITTED accent (applyTheme resets it),
@@ -358,8 +353,7 @@ Item {
         function test_previewTheme_keeps_the_committed_accent() {
             _store.setAppearance("accent", "purple")
             win.previewTheme("midnight")
-            verify(Qt.colorEqual(_theme.accent, _theme.accentPresets["purple"].a),
-                   "the committed accent survives a theme hover")
+            verify(Qt.colorEqual(_theme.accent, _theme.accentPresets["purple"].a), "previewTheme keeps the committed accent")
             win.endThemePreview()
         }
 
@@ -369,8 +363,8 @@ Item {
             win.currentPageIndex = 1
             _store.addTile(1, "cpu")
             win.confirmRemovePage()
-            verify(_confirm.message.indexOf("Doomed") >= 0, "the confirm names the page")
-            verify(_confirm.message.indexOf("1 widget") >= 0, "…and counts its widgets")
+            verify(_confirm.message.indexOf("Doomed") >= 0, "confirmRemovePage names the page")
+            verify(_confirm.message.indexOf("1 widget") >= 0, "confirmRemovePage counts its widgets")
             _confirm.reject()                                // user says No
             compare(_store.pageCount(), 2, "rejecting the confirm removes nothing")
             win.confirmRemovePage()
