@@ -208,11 +208,13 @@ Item {
 
         function test_resize_repaints() {
             // Component.onCompleted + onWidthChanged/onHeightChanged ⇒ paint.
-            // Resize the top-level root (box/h/canvas are anchor-filled to it).
+            // The face is square and sized by the LIMITING dimension (here the
+            // height, on a 480x360 host), so resize that one — a width-only
+            // change legitimately leaves the square face untouched.
             settle()
-            root.width = 460
+            root.height = 330
             waitPaint(0, "a size change repaints the canvas")
-            root.width = 480
+            root.height = 360
         }
 
         // ── Real-bug locks (intentionally failing) ─────────────────────────
@@ -246,6 +248,100 @@ Item {
             wait(300)
             verify(root.paintCount > 0,
                    "switching app theme should repaint the face with new role colors")
+        }
+    }
+
+    // ── Per-sizeClass structure (W1) ──────────────────────────────────────
+    // Fixed-size hosts at real projected cell footprints; the Dashboard injects
+    // sizeClass, so the tests assign it the same way and pin what each size
+    // shows — a future edit can't silently collapse the sizes back into one
+    // stretched face.
+    Item { id: aMicroWrap; width: 344; height: 416
+        WidgetHarness { id: hAMicro; anchors.fill: parent; widgetFile: "AnalogClockWidget.qml"; expanded: false } }
+    Item { id: aBaseWrap; width: 696; height: 840
+        WidgetHarness { id: hABase; anchors.fill: parent; widgetFile: "AnalogClockWidget.qml"; expanded: false } }
+    Item { id: aWideWrap; width: 696; height: 416
+        WidgetHarness { id: hAWide; anchors.fill: parent; widgetFile: "AnalogClockWidget.qml"; expanded: false } }
+    Item { id: aTallWrap; width: 344; height: 840
+        WidgetHarness { id: hATall; anchors.fill: parent; widgetFile: "AnalogClockWidget.qml"; expanded: false } }
+
+    // Find a rendered Text whose content matches `re` (e.g. the digital time).
+    function findTextMatch(node, re) {
+        if (!node) return null
+        if (typeof node.text === "string" && node.hasOwnProperty("elide") && re.test(node.text))
+            return node
+        var kids = node.children
+        for (var i = 0; kids && i < kids.length; i++) {
+            var r = findTextMatch(kids[i], re)
+            if (r) return r
+        }
+        return null
+    }
+
+    TestCase {
+        name: "AnalogClockSizes"
+        when: windowShown
+
+        // 0.5x0.5 — the face IS the widget: no header, no date, no digital time.
+        function test_micro_face_only() {
+            tryVerify(function () { return hAMicro.ready }, 3000)
+            var w = hAMicro.item
+            w.sizeClass = "compact"
+            compare(w.micro, true, "a 344x416 compact box is the micro tile")
+            compare(w.showDate, false, "micro shows no date line")
+            compare(w.showDigital, false, "micro shows no digital time")
+            compare(w.showHeader, false, "no header competes with the face on a tile")
+        }
+
+        // 1x1 — face + date beneath it, still no digital duplicate.
+        function test_baseline_face_plus_date() {
+            tryVerify(function () { return hABase.ready }, 3000)
+            var w = hABase.item
+            w.sizeClass = "compact"
+            compare(w.micro, false, "696x840 compact is the baseline, not micro")
+            compare(w.showDate, true, "the 1x1 earns the date line")
+            compare(w.showDigital, false, "the 1x1 does NOT add a digital time")
+            // Locale-tolerant: "Wed, 16 July" (en) or "Mi., 16. Juli" (de).
+            var date = root.findTextMatch(w, /^[A-Za-zÄÖÜäöü]{2,4}\.?,? ?\d/)
+            verify(date !== null && date.visible, "the date line is rendered")
+        }
+
+        // wide — face beside digital time + date, in BOTH projections of the
+        // class (1x0.5 portrait 696x416, 0.5x1 landscape 840x344).
+        function test_wide_face_beside_time_both_orientations() {
+            tryVerify(function () { return hAWide.ready }, 3000)
+            var w = hAWide.item
+            w.sizeClass = "wide"
+            compare(w.horiz, true, "wide puts the info column beside the face")
+            compare(w.showDigital, true, "wide earns the digital time")
+            var time = root.findTextMatch(w, /^\d{2}:\d{2}/)
+            verify(time !== null && time.visible, "the digital time is rendered")
+            aWideWrap.width = 840; aWideWrap.height = 344
+            compare(w.showDigital, true, "the landscape projection keeps the info column")
+            aWideWrap.width = 696; aWideWrap.height = 416
+        }
+
+        // tall — face above digital time + date.
+        function test_tall_face_above_time() {
+            tryVerify(function () { return hATall.ready }, 3000)
+            var w = hATall.item
+            w.sizeClass = "tall"
+            compare(w.horiz, false, "tall stacks the info under the face")
+            compare(w.showDigital, true, "tall earns the digital time")
+            var time = root.findTextMatch(w, /^\d{2}:\d{2}/)
+            verify(time !== null && time.visible, "the digital time is rendered")
+        }
+
+        // full (the overlay) — header + face + the full info block.
+        function test_full_has_header_and_info() {
+            tryVerify(function () { return h.ready }, 3000)
+            var w = h.item
+            var prev = w.sizeClass
+            w.sizeClass = "full"
+            compare(w.micro, false, "full is never micro")
+            compare(w.showDigital, true, "the overlay shows the digital time")
+            compare(w.showDate, true, "and the date")
+            w.sizeClass = prev
         }
     }
 

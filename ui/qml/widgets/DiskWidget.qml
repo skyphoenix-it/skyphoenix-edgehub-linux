@@ -2,6 +2,15 @@ import QtQuick
 import QtQuick.Layouts
 
 // Root-filesystem usage — real data (statvfs via the Rust core).
+//
+// Sizing (W1): layout keys off `sizeClass` (injected by Dashboard), never off
+// `expanded`. Disk usage barely changes, so the ring carries the story and each
+// size earns what it can hold:
+//   • 0.5x0.5 (micro) — a bare ring + percent, headerless: nothing competes
+//     with the one number in a twelfth of the screen.
+//   • 1x1 (compact)   — header + ring with percent and used/total inside.
+//   • wide            — ring beside a Used / Free / Total detail column.
+//   • tall / full     — ring above the same detail column.
 WidgetChrome {
     id: w
     property var metrics: ({})
@@ -11,6 +20,7 @@ WidgetChrome {
     property string instanceId: ""
 
     title: "Disk"; iconName: "disk"; accentColor: theme.catInfo
+    showHeader: !micro
 
     // Live per-instance config (see WidgetConfigSchema "disk").
     readonly property var cfg: {
@@ -57,18 +67,104 @@ WidgetChrome {
     readonly property real usedBytes: (metrics.disk_total_bytes || 0) * w.v / 100
     readonly property real freeBytes: avail ? Math.max(0, (metrics.disk_total_bytes || 0) - usedBytes) : 0
 
-    // Disk usage barely changes; the gauge carries it, no sparkline needed.
-    MetricGauge {
-        anchors.fill: parent
-        ok: w.avail
-        value: Math.min(w.v / 100, 1)
-        big: w.avail ? w.v.toFixed(0) + "%" : "N/A"
-        sub: !w.avail ? ""
-             : w.expanded
-             ? (w.human(w.usedBytes) + " / " + w.human(metrics.disk_total_bytes || 0)
-                + "  ·  " + w.human(w.freeBytes) + " free")
-             : (w.human(w.usedBytes) + " / " + w.human(metrics.disk_total_bytes || 0))
-        color: w.col(w.v)
-        expanded: w.expanded
+    // ── Per-size layout (sizeClass is injected by Dashboard) ─────────────────
+    // 0.5x0.5 and 1x1 are both "compact" (shape, not footprint); the micro
+    // half-cell is told apart by the box (~344-416px short side vs ~690px+).
+    readonly property bool micro: sizeClass === "compact" && Math.min(width, height) < 480
+    readonly property bool horiz: sizeClass === "wide"
+    // The detail column earns its place wherever there is room beyond the ring.
+    readonly property bool showDetails: sizeClass === "wide" || sizeClass === "tall"
+                                        || sizeClass === "large" || sizeClass === "full"
+    // used/total inside the ring: only the baseline tile and the overlay — the
+    // micro ring is too small and the detail column already carries it elsewhere.
+    readonly property bool showInlineSub: avail && !micro && !showDetails
+    readonly property real ringDia: {
+        var boxW = width - 2 * contentMargins, boxH = height - 2 * contentMargins - (showHeader ? headerHeight : 0)
+        if (micro) return Math.max(0, Math.min(boxW, boxH) * 0.92)
+        if (horiz) return Math.max(0, Math.min(boxH * 0.88, boxW * 0.44))
+        if (sizeClass === "compact") return Math.max(0, Math.min(boxW, boxH) * 0.80)
+        return Math.max(0, Math.min(boxW * 0.72, boxH * 0.52))   // tall / full
+    }
+
+    GridLayout {
+        id: diskLayout
+        anchors.centerIn: parent
+        width: parent.width
+        columns: w.horiz ? 2 : 1
+        columnSpacing: theme.spacingLg
+        rowSpacing: w.micro ? 0 : theme.spacingMd
+
+        Item {
+            id: ringBox
+            Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
+            Layout.preferredWidth: Math.round(w.ringDia)
+            Layout.preferredHeight: Math.round(w.ringDia)
+            RingProgress {
+                id: ring
+                anchors.fill: parent
+                value: w.avail ? w.v / 100 : 0
+                thickness: Math.max(9, width * 0.10)
+                progressColor: w.col(w.v); progressColor2: w.col(w.v)
+                trackColor: Qt.rgba(theme.cardBorder.r, theme.cardBorder.g, theme.cardBorder.b, 0.6)
+            }
+            Column {
+                anchors.centerIn: parent
+                width: Math.max(24, ringBox.width - 2 * ring.thickness - 8)
+                spacing: 0
+                Text {
+                    width: parent.width
+                    horizontalAlignment: Text.AlignHCenter
+                    text: w.avail ? w.v.toFixed(0) + "%" : "N/A"
+                    font.pixelSize: Math.max(18, Math.min(ringBox.width * 0.30, w.sizeClass === "full" ? 108 : 72))
+                    fontSizeMode: Text.HorizontalFit; minimumPixelSize: 10; elide: Text.ElideRight
+                    font.bold: true; font.family: theme.fontMono
+                    color: w.avail ? w.col(w.v) : theme.textTertiary
+                }
+                Text {
+                    width: parent.width
+                    horizontalAlignment: Text.AlignHCenter
+                    visible: w.showInlineSub
+                    text: w.human(w.usedBytes) + " / " + w.human(metrics.disk_total_bytes || 0)
+                    font.pixelSize: Math.max(11, Math.min(ringBox.width * 0.055, 16))
+                    fontSizeMode: Text.HorizontalFit; minimumPixelSize: 9; elide: Text.ElideRight
+                    color: theme.textSecondary
+                }
+            }
+        }
+
+        // Used / Free / Total — the numbers the percent is made of, where a size
+        // has the room to spell them out.
+        ColumnLayout {
+            visible: w.showDetails
+            Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
+            Layout.fillWidth: true
+            Layout.maximumWidth: w.horiz ? Math.round(diskLayout.width * 0.5)
+                                         : Math.round(diskLayout.width * 0.86)
+            spacing: theme.spacingXs
+
+            Repeater {
+                model: [
+                    { k: "Used",  val: w.avail ? w.human(w.usedBytes) : "—", hot: true },
+                    { k: "Free",  val: w.avail ? w.human(w.freeBytes) : "—", hot: false },
+                    { k: "Total", val: w.avail ? w.human(metrics.disk_total_bytes || 0) : "—", hot: false }
+                ]
+                delegate: RowLayout {
+                    Layout.fillWidth: true
+                    spacing: theme.spacingMd
+                    Text {
+                        text: modelData.k
+                        font.pixelSize: Math.max(13, Math.min(w.width * 0.032, 18))
+                        color: theme.textSecondary
+                    }
+                    Item { Layout.fillWidth: true }
+                    Text {
+                        text: modelData.val
+                        font.pixelSize: Math.max(13, Math.min(w.width * 0.036, 20))
+                        font.family: theme.fontMono; font.bold: modelData.hot
+                        color: modelData.hot && w.avail ? w.col(w.v) : theme.textPrimary
+                    }
+                }
+            }
+        }
     }
 }

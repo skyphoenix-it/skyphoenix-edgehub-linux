@@ -124,44 +124,92 @@ WidgetChrome {
         w.manualIdx = n
     }
 
-    ColumnLayout {
+    // ── Per-size layout (sizeClass is injected by Dashboard) ─────────────────
+    // 0.5x0.5 and 1x1 are both "compact" (shape, not footprint); the micro
+    // half-cell is told apart by the box (~344-416px short side vs ~690px+).
+    readonly property bool micro: sizeClass === "compact" && Math.min(width, height) < 480
+    readonly property bool horiz: sizeClass === "wide"
+    // What each size earns: micro is the quote alone (no glyph/author/controls
+    // competing for a twelfth of the screen); every larger size adds the
+    // decorative glyph, the author, and a touch-sized shuffle.
+    readonly property bool showGlyph: !micro
+    readonly property bool showAuthor: !micro && q.a.length > 0
+    readonly property bool showShuffleTile: !expanded && !micro && pool.length > 1
+    readonly property real quotePx: {
+        if (sizeClass === "full") return 30
+        if (micro) return Math.max(12, Math.min(width * 0.06, 15))
+        if (sizeClass === "compact") return Math.max(13, Math.min(width * 0.045, 25))
+        if (horiz) return Math.max(14, Math.min(height * 0.07, width * 0.035, 30))
+        return Math.max(14, Math.min(width * 0.055, 30))   // tall
+    }
+    readonly property int quoteLines: {
+        if (sizeClass === "full") return 6
+        if (micro) return 4
+        if (horiz) return height > 500 ? 5 : 3
+        return sizeClass === "tall" ? 6 : 4
+    }
+
+    GridLayout {
+        id: quoteLayout
         anchors.centerIn: parent
-        width: parent.width * 0.9
-        spacing: w.expanded ? 14 : 4
-        Text { Layout.alignment: Qt.AlignHCenter; text: "“"; font.bold: true
-            font.pixelSize: w.expanded ? 72 : 30; color: w.effAccent }
+        // A very wide box (1x1.5 in landscape) narrows the reading column so a
+        // short quote sits as a centred block instead of hugging the left edge.
+        width: parent.width * (w.horiz && w.width > 1000 ? 0.62 : 0.9)
+        columns: w.horiz ? 2 : 1
+        columnSpacing: theme.spacingMd
+        rowSpacing: w.sizeClass === "full" ? 14 : (w.micro ? 2 : theme.spacingXs)
+
         Text {
-            Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
-            text: w.q.t; font.italic: true; color: theme.textPrimary
-            font.pixelSize: w.expanded ? 30 : Math.max(12, Math.min(w.width * 0.075, 16))
-            maximumLineCount: w.expanded ? 6 : 4; elide: Text.ElideRight
-            fontSizeMode: Text.Fit; minimumPixelSize: 10
+            visible: w.showGlyph
+            Layout.alignment: w.horiz ? (Qt.AlignTop | Qt.AlignLeft) : Qt.AlignHCenter
+            text: "“"; font.bold: true
+            font.pixelSize: w.sizeClass === "full" ? 72
+                            : Math.max(22, Math.min(Math.min(w.width, w.height) * 0.12, 56))
+            color: w.effAccent
         }
-        Text {
-            Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter
-            visible: w.q.a.length > 0; text: "— " + w.q.a
-            font.pixelSize: w.expanded ? 18 : 12; color: theme.textSecondary
-            elide: Text.ElideRight; maximumLineCount: 1
-        }
-        PillButton {
-            Layout.alignment: Qt.AlignHCenter; Layout.topMargin: theme.spacingSm
-            visible: w.expanded && w.pool.length > 1
-            label: "Shuffle"; glyph: "🔀"; tint: w.effAccent; onClicked: w.shuffle()
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignVCenter
+            spacing: w.micro ? 2 : theme.spacingXs
+            Text {
+                Layout.fillWidth: true
+                horizontalAlignment: w.horiz ? Text.AlignLeft : Text.AlignHCenter
+                wrapMode: Text.WordWrap
+                text: w.q.t; font.italic: true; color: theme.textPrimary
+                font.pixelSize: w.quotePx
+                maximumLineCount: w.quoteLines; elide: Text.ElideRight
+                fontSizeMode: Text.Fit; minimumPixelSize: 10
+            }
+            Text {
+                Layout.fillWidth: true
+                horizontalAlignment: w.horiz ? Text.AlignLeft : Text.AlignHCenter
+                visible: w.showAuthor; text: "— " + w.q.a
+                font.pixelSize: w.sizeClass === "full" ? 18
+                                : Math.max(12, Math.min(w.width * 0.03, 16))
+                color: theme.textSecondary
+                elide: Text.ElideRight; maximumLineCount: 1
+            }
+            PillButton {
+                Layout.alignment: Qt.AlignHCenter; Layout.topMargin: theme.spacingSm
+                visible: w.expanded && w.pool.length > 1
+                label: "Shuffle"; glyph: "🔀"; tint: w.effAccent; onClicked: w.shuffle()
+            }
         }
     }
 
-    // Compact shuffle — the one useful basic action in the collapsed tile. The
-    // top-right is reserved for config, so it sits bottom-right, clear of the
+    // Tile shuffle — the one useful basic action on the tile (every size that can
+    // host a touch-token target without crowding the text, i.e. all but micro).
+    // The top-right is reserved for config, so it sits bottom-right, clear of the
     // centred quote text. Reuses the same shuffle() the expanded pill calls.
     Rectangle {
         id: shuffleCompact
-        visible: !w.expanded && w.pool.length > 1
+        visible: w.showShuffleTile
         anchors.right: parent.right; anchors.bottom: parent.bottom
         anchors.rightMargin: theme.spacingXs; anchors.bottomMargin: theme.spacingXs
-        width: 36; height: 36; radius: width / 2
+        width: theme.touchTertiary; height: theme.touchTertiary; radius: width / 2
         color: Qt.rgba(w.effAccent.r, w.effAccent.g, w.effAccent.b,
                        shufMA.pressed ? 0.32 : (shufMA.containsMouse ? 0.22 : 0.14))
-        Text { anchors.centerIn: parent; text: "🔀"; font.pixelSize: 16 }
+        Text { anchors.centerIn: parent; text: "🔀"; font.pixelSize: 20 }
         MouseArea {
             id: shufMA; anchors.fill: parent; hoverEnabled: true
             cursorShape: Qt.PointingHandCursor; onClicked: w.shuffle()

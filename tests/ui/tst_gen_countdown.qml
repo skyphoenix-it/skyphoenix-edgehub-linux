@@ -400,6 +400,128 @@ Item {
         }
     }
 
+    // ── Per-sizeClass structure (W1) ──────────────────────────────────────────
+    // Fixed-size hosts at real projected cell footprints; the Dashboard injects
+    // sizeClass, so the tests assign it the same way and pin what each size
+    // shows — a future edit can't silently collapse the sizes back into one
+    // stretched number-in-a-void.
+    Item { id: cMicroWrap; width: 344; height: 416
+        WidgetHarness { id: hCMicro; anchors.fill: parent; widgetFile: "CountdownWidget.qml"; expanded: false } }
+    Item { id: cBaseWrap; width: 696; height: 840
+        WidgetHarness { id: hCBase; anchors.fill: parent; widgetFile: "CountdownWidget.qml"; expanded: false } }
+    Item { id: cWideWrap; width: 696; height: 416
+        WidgetHarness { id: hCWide; anchors.fill: parent; widgetFile: "CountdownWidget.qml"; expanded: false } }
+    Item { id: cTallWrap; width: 344; height: 840
+        WidgetHarness { id: hCTall; anchors.fill: parent; widgetFile: "CountdownWidget.qml"; expanded: false } }
+
+    TestCase {
+        name: "CountdownSizes"
+        when: windowShown
+
+        // Seed a valid one-time countdown WITH a progress baseline, exactly what
+        // the widget itself stamps when a date is stored: half the wait elapsed.
+        function seed(hh, daysOut) {
+            var ds = offsetStr(daysOut)
+            hh.storeCtl.patchSettings("test-instance", {
+                date: ds, label: "Trip", dateSetFor: ds,
+                dateSetEpoch: Date.now() - daysOut * 86400000   // set as long ago as it is away
+            })
+            return ds
+        }
+
+        // 0.5x0.5 — the count + one caption line, nothing else.
+        function test_micro_count_and_caption_only() {
+            tryVerify(function () { return hCMicro.ready }, 3000)
+            seed(hCMicro, 10)
+            var w = hCMicro.item
+            w.sizeClass = "compact"
+            compare(w.micro, true, "a 344x416 compact box is the micro tile")
+            compare(w.showDateRow, false, "micro drops the date row")
+            compare(w.showProgress, false, "micro has no progress bar")
+        }
+
+        // 1x1 — count + caption + the target-date row; still no progress bar.
+        function test_baseline_shows_date_row() {
+            tryVerify(function () { return hCBase.ready }, 3000)
+            seed(hCBase, 10)
+            var w = hCBase.item
+            w.sizeClass = "compact"
+            compare(w.micro, false, "696x840 compact is the baseline, not micro")
+            compare(w.showDateRow, true, "the 1x1 earns the target-date row")
+            compare(w.showProgress, false, "compact keeps the progress bar for bigger sizes")
+            var t = w.nextTarget()
+            verify(t !== null, "a target exists")
+            verify(findText(w, Qt.formatDate(t, "ddd, d MMM yyyy")) !== null,
+                   "the formatted target date is rendered")
+        }
+
+        // wide — count beside caption/date/progress, in BOTH projections of the
+        // class (1x0.5 portrait 696x416, 1x1.5 landscape 1264x696).
+        function test_wide_shows_progress_both_orientations() {
+            tryVerify(function () { return hCWide.ready }, 3000)
+            seed(hCWide, 10)
+            var w = hCWide.item
+            w.sizeClass = "wide"
+            compare(w.horiz, true, "wide lays the count beside the context column")
+            compare(w.showDateRow, true, "wide shows the date row")
+            compare(w.showProgress, true, "wide earns the progress bar")
+            verify(w.progress > 0.35 && w.progress < 0.65,
+                   "half the wait elapsed reads ≈50% (got " + w.progress + ")")
+            cWideWrap.width = 1264; cWideWrap.height = 696   // 1x1.5 in landscape
+            compare(w.showProgress, true, "the big landscape projection keeps the progress context")
+            cWideWrap.width = 696; cWideWrap.height = 416
+        }
+
+        // tall — stacked, with date + progress (0.5x1 / 1x1.5 portrait).
+        function test_tall_shows_date_and_progress() {
+            tryVerify(function () { return hCTall.ready }, 3000)
+            seed(hCTall, 10)
+            var w = hCTall.item
+            w.sizeClass = "tall"
+            compare(w.horiz, false, "tall stacks vertically")
+            compare(w.showDateRow, true, "tall shows the date row")
+            compare(w.showProgress, true, "tall earns the progress bar")
+        }
+
+        // A repeatYearly countdown carries its own honest baseline (the year
+        // cycle) — the progress bar works with no dateSetEpoch at all.
+        function test_yearly_progress_needs_no_stamp() {
+            tryVerify(function () { return hCTall.ready }, 3000)
+            var s = hCTall.storeCtl.settingsFor("test-instance")
+            for (var k in s) delete s[k]
+            hCTall.storeCtl._touchSettings()
+            hCTall.storeCtl.patchSettings("test-instance",
+                { date: offsetStr(-100), repeatYearly: true })
+            var w = hCTall.item
+            w.sizeClass = "tall"
+            verify(w.days > 200, "the anniversary rolled to next year")
+            verify(w.progress >= 0 && w.progress <= 1,
+                   "yearly progress derives from the year cycle (got " + w.progress + ")")
+            verify(w.progress > 0.15, "~100 days into the cycle is visibly non-zero")
+        }
+
+        // The widget stamps its own baseline when a date is stored (the tile and
+        // the overlay are two instances — only the active one writes).
+        function test_widget_stamps_dateSet_baseline() {
+            tryVerify(function () { return hCBase.ready }, 3000)
+            var s = hCBase.storeCtl.settingsFor("test-instance")
+            for (var k in s) delete s[k]
+            hCBase.storeCtl._touchSettings()
+            var ds = offsetStr(30)
+            hCBase.storeCtl.setSetting("test-instance", "date", ds)
+            tryVerify(function () {
+                var c = hCBase.storeCtl.settingsFor("test-instance")
+                return c.dateSetFor === ds && c.dateSetEpoch > 0
+            }, 2000, "storing a date stamps dateSetFor/dateSetEpoch")
+            // Re-storing the SAME date must not move the baseline.
+            var epoch1 = hCBase.storeCtl.settingsFor("test-instance").dateSetEpoch
+            hCBase.storeCtl.setSetting("test-instance", "label", "nudge")   // unrelated write
+            wait(50)
+            compare(hCBase.storeCtl.settingsFor("test-instance").dateSetEpoch, epoch1,
+                    "an unrelated settings write does not move the baseline")
+        }
+    }
+
     // ── Custom title (titleOverride wiring, as Dashboard supplies it) ─────────
     TestCase {
         name: "CountdownTitle"

@@ -23,6 +23,17 @@ Item {
     WidgetHarness { id: hRN;      anchors.fill: parent; widgetFile: "RightNowWidget.qml"; expanded: true  }
     WidgetHarness { id: hCompact; anchors.fill: parent; widgetFile: "RightNowWidget.qml"; expanded: false }
 
+    // Fixed-size hosts for the per-sizeClass structure tests (W1) — real
+    // projected cell footprints (half-cell ≈ 344x416, full cell ≈ 696x840).
+    Item { id: rMicroWrap; width: 344; height: 416
+        WidgetHarness { id: hRMicro; anchors.fill: parent; widgetFile: "RightNowWidget.qml"; expanded: false } }
+    Item { id: rBaseWrap; width: 696; height: 840
+        WidgetHarness { id: hRBase; anchors.fill: parent; widgetFile: "RightNowWidget.qml"; expanded: false } }
+    Item { id: rWideWrap; width: 696; height: 416
+        WidgetHarness { id: hRWide; anchors.fill: parent; widgetFile: "RightNowWidget.qml"; expanded: false } }
+    Item { id: rTallWrap; width: 344; height: 840
+        WidgetHarness { id: hRTall; anchors.fill: parent; widgetFile: "RightNowWidget.qml"; expanded: false } }
+
     // ── traversal helpers (mirrors tst_touch_targets / tst_clicks) ──────────
     function findAll(node, pred, acc) {
         if (!node) return acc
@@ -300,6 +311,113 @@ Item {
             hCompact.theme.reduceMotion = true
             compare(scaleAnim.easing.type, Easing.Linear, "reduced motion uses a linear ease")
             hCompact.theme.reduceMotion = false
+        }
+    }
+
+    // ── Per-sizeClass structure (W1) ─────────────────────────────────────────
+    // The Dashboard injects sizeClass; the tests assign it the same way and pin
+    // what each size shows — a future edit can't silently collapse the sizes
+    // back into one stretched hero line.
+    TestCase {
+        name: "RightNowSizes"
+        when: windowShown
+
+        function seed(hh, text, finished) {
+            var s = hh.storeCtl.settingsFor("test-instance")
+            for (var k in s) delete s[k]
+            hh.storeCtl._touchSettings()
+            var patch = { text: text }
+            if (finished !== undefined) {
+                patch.finishedToday = finished
+                patch.day = Qt.formatDate(new Date(), "yyyy-MM-dd")
+            }
+            hh.storeCtl.patchSettings("test-instance", patch)
+        }
+
+        // 0.5x0.5 — the focus text alone: no eyebrow, no button, no counter.
+        function test_micro_is_a_pure_cue() {
+            tryVerify(function () { return hRMicro.ready }, 3000)
+            seed(hRMicro, "Ship it", 2)
+            var w = hRMicro.item
+            w.sizeClass = "compact"
+            compare(w.micro, true, "a 344x416 compact box is the micro tile")
+            compare(w.showEyebrow, false, "micro drops the eyebrow")
+            compare(w.showDoneTile, false, "micro has no Done button")
+            compare(w.showCount, false, "micro drops the momentum line")
+            var hero = textWith(w, "Ship it")
+            verify(hero !== null && hero.visible, "the focus text is the whole tile")
+        }
+
+        // 1x1 — eyebrow + hero + Done + momentum: the tile earns real actions.
+        function test_baseline_has_eyebrow_done_and_count() {
+            tryVerify(function () { return hRBase.ready }, 3000)
+            seed(hRBase, "Ship it", 2)
+            var w = hRBase.item
+            w.sizeClass = "compact"
+            compare(w.micro, false, "696x840 compact is the baseline, not micro")
+            compare(w.showEyebrow, true, "the baseline shows the identity eyebrow")
+            var eyebrow = textWith(w, "RIGHT NOW")
+            verify(eyebrow !== null && eyebrow.visible, "the eyebrow is rendered")
+            compare(w.showDoneTile, true, "a set focus gets a Done button on the tile")
+            var done = findByProp(w, "label", "Done")
+            verify(done !== null && done.visible, "the Done pill is rendered")
+            verify(done.height >= 44, "the Done pill is touch sized (got " + done.height + ")")
+            compare(w.showCount, true, "the momentum line shows with finished > 0")
+            verify(textWith(w, "✓ 2 today") !== null, "the momentum line is rendered")
+        }
+
+        // The tile Done button IS the real action: it finishes the focus.
+        function test_tile_done_finishes_the_focus() {
+            tryVerify(function () { return hRBase.ready }, 3000)
+            seed(hRBase, "Ship it", 0)
+            var w = hRBase.item
+            w.sizeClass = "compact"
+            var done = findByProp(w, "label", "Done")
+            verify(done !== null && done.visible, "the Done pill is there")
+            done.clicked()
+            var c = hRBase.storeCtl.settingsFor("test-instance")
+            compare(c.text, "", "Done clears the focus")
+            compare(c.finishedToday, 1, "and counts the win")
+            compare(w.showDoneTile, false, "with no focus left, the button retires")
+        }
+
+        // Placeholder state: no Done button to press on an empty focus.
+        function test_no_done_without_focus() {
+            tryVerify(function () { return hRBase.ready }, 3000)
+            seed(hRBase, "")
+            var w = hRBase.item
+            w.sizeClass = "compact"
+            compare(w.showDoneTile, false, "no focus → no Done button")
+            var ph = textWith(w, "Tap to set your one focus")
+            verify(ph !== null && ph.visible, "the placeholder cue is shown")
+        }
+
+        // wide — hero beside the action column, in BOTH projections of the class
+        // (1x0.5 portrait 696x416, 0.5x1 landscape 840x344).
+        function test_wide_hero_beside_action_both_orientations() {
+            tryVerify(function () { return hRWide.ready }, 3000)
+            seed(hRWide, "Ship it", 1)
+            var w = hRWide.item
+            w.sizeClass = "wide"
+            compare(w.horiz, true, "wide puts the action column beside the hero")
+            compare(w.showDoneTile, true, "wide keeps the Done button")
+            compare(w.showCount, true, "wide keeps the momentum line")
+            rWideWrap.width = 840; rWideWrap.height = 344
+            compare(w.showDoneTile, true, "the landscape projection keeps the action column")
+            rWideWrap.width = 696; rWideWrap.height = 416
+        }
+
+        // tall — stacked, with more hero lines than the short classes.
+        function test_tall_stacks_and_earns_lines() {
+            tryVerify(function () { return hRTall.ready }, 3000)
+            seed(hRTall, "Ship it", 0)
+            var w = hRTall.item
+            w.sizeClass = "tall"
+            compare(w.horiz, false, "tall stacks vertically")
+            compare(w.showEyebrow, true, "tall shows the eyebrow")
+            var hero = textWith(w, "Ship it")
+            verify(hero !== null && hero.visible, "the hero is rendered")
+            compare(hero.maximumLineCount, 5, "tall earns the most hero lines")
         }
     }
 }

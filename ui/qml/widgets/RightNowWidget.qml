@@ -73,19 +73,79 @@ WidgetChrome {
         }
     }
 
-    // Compact / display mode
-    Item {
-        anchors.fill: parent
+    // ── Per-size layout (sizeClass is injected by Dashboard) ─────────────────
+    // 0.5x0.5 and 1x1 are both "compact" (shape, not footprint); the micro
+    // half-cell is told apart by the box (~344-416px short side vs ~690px+).
+    readonly property bool micro: sizeClass === "compact" && Math.min(width, height) < 480
+    readonly property bool horiz: sizeClass === "wide"
+    // What each size earns: micro is the focus text alone (a pure cue); every
+    // larger size adds the eyebrow (identity — the header is hidden on tiles),
+    // the daily momentum line, and a Done button — the single most useful
+    // action, so a finished focus doesn't need a trip through the overlay.
+    readonly property bool showEyebrow: !micro
+    readonly property bool showDoneTile: !micro && hasFocus
+    readonly property bool showCount: !micro && finishedToday > 0
+    readonly property real heroPx: {
+        if (micro) return Math.max(14, Math.min(width * 0.12, 22))
+        if (sizeClass === "compact") return Math.max(16, Math.min(width * 0.055, 34))
+        if (horiz) return Math.max(18, Math.min(height * 0.13, width * 0.045, 40))
+        return Math.max(16, Math.min(width * 0.10, 44))   // tall
+    }
+
+    // Tile / display mode
+    GridLayout {
+        id: tileLayout
+        anchors.centerIn: parent
+        width: parent.width * 0.92
         visible: !w.expanded
-        Text {
-            anchors.centerIn: parent; width: parent.width * 0.9
-            horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
-            text: w.hasFocus ? w.current : "Tap to set your one focus"
-            font.pixelSize: w.hasFocus ? Math.max(16, Math.min(parent.width * 0.11, 30)) : 14
-            font.bold: w.hasFocus
-            // Hero content adopts the per-instance accent (S7); placeholder stays muted.
-            color: w.hasFocus ? w.effAccent : theme.textTertiary
-            maximumLineCount: 3; elide: Text.ElideRight
+        columns: w.horiz ? 2 : 1
+        columnSpacing: theme.spacingLg
+        rowSpacing: w.micro ? 0 : theme.spacingSm
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignVCenter
+            spacing: w.micro ? 2 : theme.spacingXs
+            Text {
+                visible: w.showEyebrow
+                Layout.fillWidth: true
+                horizontalAlignment: w.horiz ? Text.AlignLeft : Text.AlignHCenter
+                text: "RIGHT NOW"
+                font.pixelSize: Math.max(11, Math.min(w.width * 0.026, 15))
+                font.letterSpacing: 2; font.weight: Font.DemiBold
+                color: theme.textTertiary
+                elide: Text.ElideRight; maximumLineCount: 1
+            }
+            Text {
+                Layout.fillWidth: true
+                horizontalAlignment: w.horiz ? Text.AlignLeft : Text.AlignHCenter
+                wrapMode: Text.WordWrap
+                text: w.hasFocus ? w.current : "Tap to set your one focus"
+                font.pixelSize: w.hasFocus ? w.heroPx : Math.max(14, Math.min(w.width * 0.035, 18))
+                font.bold: w.hasFocus
+                // Hero content adopts the per-instance accent (S7); placeholder stays muted.
+                color: w.hasFocus ? w.effAccent : theme.textTertiary
+                maximumLineCount: w.micro ? 3 : (w.sizeClass === "tall" ? 5 : 3)
+                elide: Text.ElideRight
+            }
+        }
+        ColumnLayout {
+            visible: w.showDoneTile || w.showCount
+            Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
+            spacing: theme.spacingXs
+            PillButton {
+                visible: w.showDoneTile
+                Layout.alignment: Qt.AlignHCenter
+                label: "Done"; glyph: "✓"; primary: true; tint: w.effAccent
+                onClicked: w.finish()
+            }
+            Text {
+                visible: w.showCount
+                Layout.alignment: Qt.AlignHCenter
+                text: "✓ " + w.finishedToday + " today"
+                font.pixelSize: Math.max(12, Math.min(w.width * 0.03, 15))
+                color: theme.textTertiary
+            }
         }
     }
 

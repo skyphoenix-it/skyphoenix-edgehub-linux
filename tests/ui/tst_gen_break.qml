@@ -21,6 +21,43 @@ Item {
     // Expanded instance (buttons + full controls exercised through functions).
     WidgetHarness { id: h; anchors.fill: parent; widgetFile: "BreakWidget.qml"; expanded: true }
 
+    // Fixed-size hosts for the per-sizeClass structure tests (W1) — real
+    // projected cell footprints (half-cell ≈ 344x416, full cell ≈ 696x840).
+    Item { id: bMicroWrap; width: 344; height: 416
+        WidgetHarness { id: hBMicro; anchors.fill: parent; widgetFile: "BreakWidget.qml"; expanded: false } }
+    Item { id: bBaseWrap; width: 696; height: 840
+        WidgetHarness { id: hBBase; anchors.fill: parent; widgetFile: "BreakWidget.qml"; expanded: false } }
+    Item { id: bWideWrap; width: 696; height: 416
+        WidgetHarness { id: hBWide; anchors.fill: parent; widgetFile: "BreakWidget.qml"; expanded: false } }
+    Item { id: bTallWrap; width: 344; height: 840
+        WidgetHarness { id: hBTall; anchors.fill: parent; widgetFile: "BreakWidget.qml"; expanded: false } }
+
+    // Recursively find the first descendant whose `prop` equals `val`.
+    function findByProp(node, prop, val) {
+        if (!node || !node.children) return null
+        for (var i = 0; i < node.children.length; i++) {
+            var c = node.children[i]
+            if (c[prop] !== undefined && c[prop] === val) return c
+            var r = findByProp(c, prop, val)
+            if (r) return r
+        }
+        return null
+    }
+    // The RingProgress is uniquely identifiable: value + thickness +
+    // progressColor + trackColor together.
+    function findRing(host) {
+        var found = null
+        function scan(n) {
+            if (!n || found) return
+            if (typeof n.value === "number" && typeof n.thickness === "number"
+                    && n.progressColor !== undefined && n.trackColor !== undefined)
+                { found = n; return }
+            for (var i = 0; n.children && i < n.children.length; i++) scan(n.children[i])
+        }
+        scan(host.item)
+        return found
+    }
+
     function clear(hh) {
         var s = hh.storeCtl.settingsFor("test-instance")
         for (var k in s) delete s[k]
@@ -330,6 +367,113 @@ Item {
             w.toggleRun()   // pause while due
             verify(root.cfg().pausedRemaining > 0,
                    "REAL BUG: pausing while due must not persist pausedRemaining:0")
+        }
+    }
+
+    // ── Per-sizeClass structure (W1) ─────────────────────────────────────────
+    // The Dashboard injects sizeClass; the tests assign it the same way and pin
+    // what each size shows — a future edit can't silently collapse the sizes
+    // back into one stretched countdown.
+    TestCase {
+        name: "BreakSizes"
+        when: windowShown
+
+        function prep(hh, patch) {
+            root.clear(hh)
+            hh.storeCtl.patchSettings("test-instance", patch || { running: false, due: false, pausedRemaining: 600 })
+        }
+
+        // 0.5x0.5 — a bare headerless ring: no caption, no controls.
+        function test_micro_is_a_bare_ring() {
+            tryVerify(function () { return hBMicro.ready }, 3000)
+            prep(hBMicro)
+            var w = hBMicro.item
+            w.sizeClass = "compact"
+            compare(w.micro, true, "a 344x416 compact box is the micro tile")
+            compare(w.showHeader, false, "micro hides the header — nothing competes with the ring")
+            compare(w.showTileControls, false, "micro carries no pause/reset controls")
+            verify(root.findRing(hBMicro) !== null, "the interval ring is there")
+            var pause = root.findByProp(w, "label", "Pause")
+            verify(pause === null || !pause.visible, "no visible Pause control at micro")
+        }
+
+        // …but a due break must ALWAYS be acknowledgeable, even at micro.
+        function test_micro_due_still_has_done() {
+            tryVerify(function () { return hBMicro.ready }, 3000)
+            prep(hBMicro, { due: true, running: true })
+            var w = hBMicro.item
+            w.sizeClass = "compact"
+            var done = root.findByProp(w, "label", "Done")
+            verify(done !== null && done.visible, "the Done pill is reachable at micro")
+            verify(done.height >= 44, "and it is touch sized (got " + done.height + ")")
+        }
+
+        // 1x1 — header + ring + caption + touch-token pause/reset + momentum.
+        function test_baseline_ring_caption_controls() {
+            tryVerify(function () { return hBBase.ready }, 3000)
+            prep(hBBase, { running: false, due: false, pausedRemaining: 600,
+                           day: Qt.formatDate(new Date(), "yyyy-MM-dd"), breaksToday: 3 })
+            var w = hBBase.item
+            w.sizeClass = "compact"
+            compare(w.micro, false, "696x840 compact is the baseline, not micro")
+            compare(w.showHeader, true, "the baseline keeps the header")
+            compare(w.showTileControls, true, "the baseline carries the tile controls")
+            var resume = root.findByProp(w, "label", "Resume")
+            verify(resume !== null && resume.visible, "the pause/resume pill is rendered")
+            verify(resume.implicitHeight >= 44,
+                   "tile controls are touch sized (got " + resume.implicitHeight + ")")
+            var caption = root.findByProp(w, "text", "until next break")
+            verify(caption !== null && caption.visible, "the caption is rendered")
+            var momentum = root.findByProp(w, "text", "✓ 3 breaks today")
+            verify(momentum !== null && momentum.visible, "the momentum line earns its place")
+        }
+
+        // The ring reads the interval: half the interval left ⇒ a half ring.
+        function test_ring_tracks_interval_fraction() {
+            tryVerify(function () { return hBBase.ready }, 3000)
+            prep(hBBase, { running: false, due: false, pausedRemaining: 900, intervalMin: 30 })
+            var w = hBBase.item
+            w.pulse++
+            verify(Math.abs(w.ringFrac - 0.5) < 0.01,
+                   "15 of 30 minutes left reads 0.5 (got " + w.ringFrac + ")")
+        }
+
+        // wide — ring beside the control column, in BOTH projections of the
+        // class (1x0.5 portrait 696x416, 0.5x1 landscape 840x344).
+        function test_wide_ring_beside_controls_both_orientations() {
+            tryVerify(function () { return hBWide.ready }, 3000)
+            prep(hBWide)
+            var w = hBWide.item
+            w.sizeClass = "wide"
+            compare(w.horiz, true, "wide lays ring and controls side by side")
+            compare(w.showTileControls, true, "wide carries the controls")
+            verify(w.ringDia <= hBWide.item.height, "the ring fits the short axis")
+            bWideWrap.width = 840; bWideWrap.height = 344
+            compare(w.showTileControls, true, "the landscape projection keeps the controls")
+            verify(w.ringDia <= 344, "the ring fits the landscape short axis")
+            bWideWrap.width = 696; bWideWrap.height = 416
+        }
+
+        // tall — stacked ring over controls (0.5x1 portrait, 1x0.5 landscape).
+        function test_tall_stacks_ring_over_controls() {
+            tryVerify(function () { return hBTall.ready }, 3000)
+            prep(hBTall)
+            var w = hBTall.item
+            w.sizeClass = "tall"
+            compare(w.horiz, false, "tall stacks vertically")
+            compare(w.showTileControls, true, "tall carries the controls")
+            verify(w.ringDia <= 344 * 0.8, "the ring is width-bound in the narrow tall box")
+        }
+
+        // The overlay (full) keeps the complete control set — ±5m lives there.
+        function test_full_overlay_has_interval_controls() {
+            tryVerify(function () { return h.ready }, 3000)
+            root.clear(h)
+            var w = h.item
+            var minus = root.findByProp(w, "label", "−5m")
+            verify(minus !== null && minus.visible, "−5m is an overlay control")
+            var tile = root.findByProp(hBBase.item, "label", "−5m")
+            verify(tile === null || !tile.visible, "…and never a tile control")
         }
     }
 }

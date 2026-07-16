@@ -18,7 +18,7 @@ import QtTest
 //     so warnPercent≥97 turns the ring red before the user's own warn line and
 //     the amber band becomes unreachable.
 //   • No unavailable/dimmed state: empty or statvfs-failure metrics render a
-//     confident "0%" full-track ring (MetricGauge.ok is never set false).
+//     confident "0%" full-track ring (the tile must read "N/A" instead).
 //   • The centre percentage (disk_usage_percent) and the "used / total" text use
 //     different accounting and disagree; a full disk can show "100%" + "N free".
 //   • col() branches on the raw value but the label is rounded → boundary text
@@ -37,6 +37,17 @@ Item {
         expanded: true
     }
 
+    // Fixed-size hosts for the per-sizeClass structure tests — real projected
+    // cell footprints (half-cell ≈ 344x416 portrait, full cell ≈ 696x840).
+    Item { id: microWrap; width: 344; height: 416
+        WidgetHarness { id: hMicro; anchors.fill: parent; widgetFile: "DiskWidget.qml"; expanded: false } }
+    Item { id: baseWrap; width: 696; height: 840
+        WidgetHarness { id: hBase; anchors.fill: parent; widgetFile: "DiskWidget.qml"; expanded: false } }
+    Item { id: wideWrap; width: 696; height: 416
+        WidgetHarness { id: hWide; anchors.fill: parent; widgetFile: "DiskWidget.qml"; expanded: false } }
+    Item { id: tallWrap; width: 344; height: 840
+        WidgetHarness { id: hTall; anchors.fill: parent; widgetFile: "DiskWidget.qml"; expanded: false } }
+
     // Recurse the widget's visual tree so we can inspect rendered nodes.
     function eachItem(node, fn) {
         if (!node) return
@@ -45,14 +56,15 @@ Item {
         if (kids)
             for (var i = 0; i < kids.length; i++) eachItem(kids[i], fn)
     }
-    // The MetricGauge instance is uniquely identifiable: it carries ok(bool) +
-    // big(string) + sub(string) + value(number) together.
-    function findGauge() {
+    // The RingProgress instance is uniquely identifiable: it carries value +
+    // thickness + progressColor + trackColor together. (The W1 sizing rework
+    // replaced the shared MetricGauge with a per-size ring + detail layout.)
+    function findRing(host) {
         var found = null
-        eachItem(h.item, function (n) {
+        eachItem((host || h).item, function (n) {
             if (found) return
-            if (typeof n.ok === "boolean" && typeof n.big === "string"
-                    && typeof n.sub === "string" && typeof n.value === "number")
+            if (typeof n.value === "number" && typeof n.thickness === "number"
+                    && n.progressColor !== undefined && n.trackColor !== undefined)
                 found = n
         })
         return found
@@ -158,28 +170,27 @@ Item {
         }
 
         // ── Unavailable state ────────────────────────────────────────────────
-        // BUG (audit, medium): with empty metrics (before the first sample) the
-        // gauge shows a confident 0% instead of a dimmed / N/A state. Intended:
-        // MetricGauge.ok is false so the tile reads "unavailable".
+        // With empty metrics (before the first sample) the tile must read
+        // unavailable — a dimmed "N/A", never a confident 0%.
         function test_empty_metrics_show_unavailable() {
             var w = h.item
             h.metricsJson = "{}"
             compare(w.v, 0, "no metrics → v is 0")
-            var g = findGauge()
-            verify(g !== null, "found the MetricGauge")
-            compare(g.ok, false,
-                    "with no data the gauge should be marked unavailable (ok=false), not a confident 0%")
+            compare(w.avail, false, "with no data the tile is marked unavailable")
+            var na = findText("N/A")
+            verify(na !== null, "the centre reads N/A, not a confident 0%")
+            verify(Qt.colorEqual(na.color, h.theme.textTertiary), "and it renders dimmed")
+            compare(findRing().value, 0, "the ring paints an empty track")
         }
 
-        // BUG (audit, medium): statvfs('/') failure returns total=used=percent=0.
-        // A crisp "0%" with '0 GB / 0 GB' looks like a real empty disk.
+        // statvfs('/') failure returns total=used=percent=0. A crisp "0%" with
+        // '0 GiB / 0 GiB' would look like a real empty disk.
         function test_statvfs_failure_shows_unavailable() {
             var w = h.item
             feed(0, 0, 0)
-            var g = findGauge()
-            verify(g !== null, "found the MetricGauge")
-            compare(g.ok, false,
-                    "all-zero (statvfs failure) metrics should render unavailable, not '0%'")
+            compare(w.avail, false,
+                    "all-zero (statvfs failure) metrics render unavailable, not '0%'")
+            verify(findText("N/A") !== null, "the centre reads N/A")
         }
 
         // ── Ring vs text accounting mismatch ─────────────────────────────────
@@ -280,11 +291,11 @@ Item {
                    "accent preset recolours effAccent")
             verify(Qt.colorEqual(w.col(50), h.theme.accentPresets["purple"].a),
                    "a below-warn (non-warning) ring recolours to the new accent")
-            var g = findGauge()
-            verify(g !== null, "found the MetricGauge")
+            var g = findRing()
+            verify(g !== null, "found the RingProgress")
             feed(50, 50 * gib, 100 * gib)
-            verify(Qt.colorEqual(g.color, h.theme.accentPresets["purple"].a),
-                   "the gauge itself paints with the new accent")
+            verify(Qt.colorEqual(g.progressColor, h.theme.accentPresets["purple"].a),
+                   "the ring itself paints with the new accent")
         }
 
         // Custom title from config is honoured by WidgetChrome.
@@ -321,11 +332,11 @@ Item {
             var w = h.item
             feed(100, 8 * tib, 8 * tib)
             compare(w.v, 100, "v reads 100")
-            var g = findGauge()
-            verify(g !== null, "found the MetricGauge")
-            compare(g.big, "100%", "centre label shows 100%")
+            var g = findRing()
+            verify(g !== null, "found the RingProgress")
+            verify(findText("100%") !== null, "centre label shows 100%")
             verify(Qt.colorEqual(w.col(w.v), h.theme.error), "a full disk is red")
-            verify(Qt.colorEqual(g.color, h.theme.error), "the gauge paints red")
+            verify(Qt.colorEqual(g.progressColor, h.theme.error), "the ring paints red")
             compare(w.human(8 * tib), "8.00 TiB", "human() renders TiB for an 8 tib disk")
         }
 
@@ -334,6 +345,84 @@ Item {
             var w = h.item
             feed(100, 120 * gib, 100 * gib)   // used > total (transient / rounding)
             compare(w.freeBytes, 0, "freeBytes clamps to 0 when used exceeds total")
+        }
+
+        // ── Per-sizeClass structure (W1) ─────────────────────────────────────
+        // The Dashboard injects sizeClass; the widget must key layout off it and
+        // must not silently collapse the sizes back into one stretched layout.
+        // The wrapper boxes are real projected cell sizes (portrait/landscape).
+
+        // 0.5x0.5 — a bare ring: no header, no inline used/total, no details.
+        function test_micro_is_a_bare_ring() {
+            tryVerify(function () { return hMicro.ready }, 3000)
+            hMicro.metricsJson = JSON.stringify({ disk_usage_percent: 50,
+                disk_used_bytes: 50 * gib, disk_total_bytes: 100 * gib })
+            var w = hMicro.item
+            w.sizeClass = "compact"
+            compare(w.micro, true, "a 344x416 compact box is the micro tile")
+            compare(w.showHeader, false, "micro hides the header — nothing competes with the ring")
+            compare(w.showInlineSub, false, "micro drops the used/total sub-line")
+            compare(w.showDetails, false, "micro has no detail column")
+            verify(findRing(hMicro) !== null, "the ring itself is there")
+        }
+
+        // 1x1 — header + ring with percent AND used/total inside.
+        function test_baseline_has_header_and_inline_sub() {
+            tryVerify(function () { return hBase.ready }, 3000)
+            hBase.metricsJson = JSON.stringify({ disk_usage_percent: 50,
+                disk_used_bytes: 50 * gib, disk_total_bytes: 100 * gib })
+            var w = hBase.item
+            w.sizeClass = "compact"
+            compare(w.micro, false, "a 696x840 compact box is the 1x1 baseline, not micro")
+            compare(w.showHeader, true, "the baseline keeps the header")
+            compare(w.showInlineSub, true, "the baseline shows used/total inside the ring")
+            compare(w.showDetails, false, "no detail column at 1x1")
+        }
+
+        // wide — ring beside a Used/Free/Total detail column. The SAME class is
+        // 1x0.5 in portrait (696x416) and 0.5x1 in landscape (840x344): both
+        // boxes must produce the side-by-side layout.
+        function test_wide_shows_detail_column_in_both_orientations() {
+            tryVerify(function () { return hWide.ready }, 3000)
+            hWide.metricsJson = JSON.stringify({ disk_usage_percent: 50,
+                disk_used_bytes: 50 * gib, disk_total_bytes: 100 * gib })
+            var w = hWide.item
+            w.sizeClass = "wide"
+            compare(w.horiz, true, "wide lays ring and details side by side")
+            compare(w.showDetails, true, "wide earns the Used/Free/Total column")
+            compare(w.showInlineSub, false, "the detail column replaces the inline sub-line")
+            var used = null
+            eachItem(w, function (n) { if (!used && n.text === "Used") used = n })
+            verify(used !== null && used.visible, "the Used row is rendered")
+            // The other projection of the same class (0.5x1 landscape).
+            wideWrap.width = 840; wideWrap.height = 344
+            compare(w.showDetails, true, "the landscape projection keeps the detail column")
+            verify(w.ringDia <= 344, "the ring fits the short landscape box")
+            wideWrap.width = 696; wideWrap.height = 416
+        }
+
+        // tall — ring above the detail column.
+        function test_tall_stacks_ring_over_details() {
+            tryVerify(function () { return hTall.ready }, 3000)
+            hTall.metricsJson = JSON.stringify({ disk_usage_percent: 50,
+                disk_used_bytes: 50 * gib, disk_total_bytes: 100 * gib })
+            var w = hTall.item
+            w.sizeClass = "tall"
+            compare(w.horiz, false, "tall stacks vertically")
+            compare(w.showDetails, true, "tall earns the Used/Free/Total column")
+            compare(w.showHeader, true, "tall keeps the header")
+            var free = null
+            eachItem(w, function (n) { if (!free && n.text === "Free") free = n })
+            verify(free !== null && free.visible, "the Free row is rendered")
+        }
+
+        // full (the overlay) — same rich layout as tall, never the micro one.
+        function test_full_is_rich() {
+            var w = h.item
+            w.sizeClass = "full"
+            compare(w.micro, false, "full is never micro")
+            compare(w.showDetails, true, "the overlay shows the detail column")
+            compare(w.showHeader, true, "the overlay keeps the header")
         }
 
         // ── The dead `active` gate ───────────────────────────────────────────
