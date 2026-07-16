@@ -206,4 +206,142 @@ Item {
             compare(hc.storeCtl.settingsFor("test-instance").entries[0].text, "buy", "persisted")
         }
     }
+
+    // ── Delegate survival (W1 wave 2b) ──────────────────────────────────────
+    // store.revision is GLOBAL: every widget's setting write bumps it, and the
+    // metric tiles write their sparkline `hist` every ~2s. `entries` is derived
+    // off `cfg`, so it IS a brand-new array roughly every two seconds — which
+    // looks like the SensorsWidget clunk (a model rebuilt on every tick).
+    //
+    // Measured, it is not: a ListView fed a JS array diffs it and reuses the
+    // delegates when the content is equal. That is the property the user actually
+    // feels, so it is pinned HERE rather than left to a comment — if a future
+    // change starts genuinely rebuilding the queue while someone is reading it,
+    // this fails.
+    TestCase {
+        name: "BraindumpIdentity"
+        when: windowShown
+        function init() { tryVerify(function () { return hc.ready }, 3000); clearSettings(hc) }
+
+        function rows() {
+            return root.findAll(hc.item, function (n) {
+                return n.hasOwnProperty("modelData") && n.hasOwnProperty("index") }, [])
+        }
+
+        function test_an_unrelated_write_does_not_rebuild_the_list() {
+            // A REALISTIC queue: with only one or two entries the delegates get
+            // recycled out of the pool either way and the test cannot see a rebuild.
+            var a = []
+            for (var i = 0; i < 40; i++) a.push({ text: "thought " + i, at: Date.now() - i * 1000 })
+            hc.storeCtl.setSetting("test-instance", "entries", a)
+            wait(50)
+            var before = rows()
+            verify(before.length > 5, "a realistic queue realises many delegates ("
+                   + before.length + ")")
+
+            // Exactly what a CPU/NET tile does every ~2s: an ephemeral write on a
+            // DIFFERENT instance. It must not disturb this widget's list.
+            var revBefore = hc.storeCtl.revision
+            hc.storeCtl.setSetting("cpu-somewhere-else", "hist", [0.1, 0.2, 0.3])
+            verify(hc.storeCtl.revision > revBefore, "the global revision did bump")
+            wait(50)
+
+            // Set membership, not index order: a ListView hands back its children
+            // in recycling order, so comparing index-wise reports false churn.
+            var after = rows()
+            var survived = 0
+            for (var j = 0; j < before.length; j++)
+                if (after.indexOf(before[j]) >= 0) survived++
+            compare(survived, before.length,
+                    "every realised delegate survives an unrelated sparkline tick ("
+                    + survived + "/" + before.length + ") — the queue is not rebuilt "
+                    + "under the reader every 2s")
+        }
+
+        // A genuine edit MUST still refresh the list.
+        function test_a_real_edit_still_updates_the_list() {
+            hc.storeCtl.setSetting("test-instance", "entries",
+                [{ text: "first", at: Date.now() }])
+            wait(32)
+            compare(hc.item.entries.length, 1)
+            hc.item.add("second")
+            wait(32)
+            compare(hc.item.entries.length, 2, "a real add re-derives the list")
+            compare(hc.item.entries[0].text, "second", "newest first")
+        }
+    }
+
+    // ── Per-sizeClass structure (W1 wave 2b) ────────────────────────────────
+    Item { width: 348; height: 819
+        WidgetHarness { id: dTall; anchors.fill: parent; widgetFile: "BraindumpWidget.qml"; expanded: false } }
+    Item { id: dWideWrap; width: 696; height: 409
+        WidgetHarness { id: dWide; anchors.fill: parent; widgetFile: "BraindumpWidget.qml"; expanded: false } }
+    Item { width: 696; height: 1639
+        WidgetHarness { id: dLarge; anchors.fill: parent; widgetFile: "BraindumpWidget.qml"; expanded: false } }
+
+    TestCase {
+        name: "BraindumpSizes"
+        when: windowShown
+
+        function seed(host) {
+            var now = Date.now(), a = []
+            for (var i = 0; i < 6; i++) a.push({ text: "thought " + i, at: now - i * 600000 })
+            host.storeCtl.setSetting(host.instanceId, "entries", a)
+        }
+        function field(host) {
+            return root.findAll(host.item, function (n) {
+                return n.hasOwnProperty("placeholderText") }, [])[0]
+        }
+        function listOf(host) {
+            return root.findAll(host.item, function (n) {
+                return n.hasOwnProperty("contentY") && n.hasOwnProperty("model") }, [])[0]
+        }
+
+        // The capture row is a real touch target at every size — it was a fixed
+        // 40px, under theme.touchTertiary (52), and capture is the whole product.
+        function test_the_capture_row_is_a_real_touch_target() {
+            tryVerify(function () { return dTall.ready }, 3000)
+            tryVerify(function () { return dWide.ready }, 3000)
+            var hosts = [dTall, dWide]
+            var classes = ["tall", "wide"]
+            for (var i = 0; i < hosts.length; i++) {
+                hosts[i].item.sizeClass = classes[i]
+                seed(hosts[i])
+                wait(32)
+                var f = field(hosts[i])
+                verify(f.height >= hosts[i].theme.touchTertiary,
+                       classes[i] + ": the capture field is >= touchTertiary ("
+                       + f.height + " >= " + hosts[i].theme.touchTertiary + ")")
+            }
+        }
+
+        // A taller box earns MORE ROWS, not bigger ones.
+        function test_a_taller_box_earns_more_rows() {
+            tryVerify(function () { return dLarge.ready }, 3000)
+            tryVerify(function () { return dTall.ready }, 3000)
+            dTall.item.sizeClass = "tall"; seed(dTall)
+            dLarge.item.sizeClass = "large"; seed(dLarge)
+            wait(32)
+            verify(listOf(dLarge).height > listOf(dTall).height,
+                   "the larger box shows more of the queue ("
+                   + listOf(dLarge).height.toFixed(0) + " vs "
+                   + listOf(dTall).height.toFixed(0) + "px)")
+        }
+
+        // wide — the capture column moves BESIDE the queue.
+        function test_wide_puts_capture_beside_the_queue() {
+            tryVerify(function () { return dWide.ready }, 3000)
+            var d = dWide.item
+            d.sizeClass = "tall"
+            seed(dWide)
+            wait(32)
+            var outer = listOf(dWide).parent.parent
+            compare(outer.columns, 1, "a tall box stacks the capture row under the queue")
+            d.sizeClass = "wide"
+            wait(32)
+            compare(d.horiz, true, "wide is the horizontal shape")
+            compare(outer.columns, 2, "wide puts the capture column beside the queue")
+            d.sizeClass = "tall"
+        }
+    }
 }
