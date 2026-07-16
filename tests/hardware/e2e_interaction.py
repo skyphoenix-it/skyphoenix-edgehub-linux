@@ -1,11 +1,21 @@
 #!/usr/bin/env python3
 """Real synthetic-touch interaction tests: compact widget controls + page swipe.
 
-Coordinates are for the fixed layout seeded in `run()` (Focus h1 top, Hydration
-h1, Tasks h2) at the Edge's native 720x2560 — verified pixel-accurate.
+Coordinates are for the fixed layout seeded in `run()` (Focus top, Hydration
+second, Tasks third) at the Edge's native 720x2560 — grab-measured 2026-07-16
+against the current build (the harness's IPC landing probe re-verifies two of
+them before any injection, so silent drift can no longer spray blind taps).
+
+SAFETY: this suite emits real input into the live session, so it is OPT-IN —
+without XENEON_HW_INPUT=1 it SKIPS loudly and completely. Even when opted in,
+the harness refuses to inject until the kill switch is connected, the owner is
+idle, the hub window is render-verified at the Edge rect, and an IPC landing
+probe passed (e2e_harness.ensure_injection_ready). Any real user input mid-run
+aborts injection for good.
 """
 import os
-from e2e_harness import doc, page, tile
+import uinput_touch as u
+from e2e_harness import doc, page, tile, InjectionRefused, UserActivityAbort
 
 
 def _seed_controls(h):
@@ -24,6 +34,27 @@ def _seed_controls(h):
 
 
 def run(h):
+    # ── opt-in gate + safety preconditions (skip loudly, never inject) ────
+    if not h.input_allowed:
+        h.skip("interaction_suite",
+               "synthetic input is OPT-IN: set XENEON_HW_INPUT=1 to enable "
+               "(kill switch + window verification still apply)")
+        return
+    try:
+        kind = h.ensure_injection_ready()
+        print("  injector ready: %s (window verified, kill switch armed)" % kind, flush=True)
+    except (u.InputGateError, InjectionRefused, UserActivityAbort) as e:
+        h.skip("interaction_suite", "injection refused: %s" % e)
+        return
+    try:
+        _run_gestures(h)
+    except UserActivityAbort as e:
+        # First-class kill switch: the owner touched a real input device.
+        h.skip("interaction_suite_remainder",
+               "KILL SWITCH aborted injection: %s" % e)
+
+
+def _run_gestures(h):
     # ── compact controls (touch) ──────────────────────────────────────────
     _seed_controls(h)
     st = h.settings()
@@ -31,27 +62,27 @@ def run(h):
             "running=%s count=%s" % (st["focus-1"].get("running"), st["hydration-1"].get("count")))
 
     # Focus Start -> running true; tap again -> paused (running false)
-    h.tap(317, 568)
+    h.tap(316, 787)
     st = h.settings()
     h.check("focus_start_touch", st["focus-1"].get("running") is True, "running=%s" % st["focus-1"].get("running"))
-    h.tap(317, 568)
+    h.tap(316, 787)
     st = h.settings()
     h.check("focus_pause_touch", st["focus-1"].get("running") is False, "running=%s" % st["focus-1"].get("running"))
 
     # Hydration +1 x2 -> 2, then -1 -> 1
-    h.tap(394, 955); h.tap(394, 955)
+    h.tap(394, 1281); h.tap(394, 1281)
     st = h.settings()
     h.check("hydration_plus_touch", st["hydration-1"].get("count") == 2, "count=%s" % st["hydration-1"].get("count"))
-    h.tap(321, 955)
+    h.tap(323, 1281)
     st = h.settings()
     h.check("hydration_minus_touch", st["hydration-1"].get("count") == 1, "count=%s" % st["hydration-1"].get("count"))
 
     # Task row toggle -> done true, tap again -> false
-    h.tap(95, 1277)
+    h.tap(95, 1728)
     st = h.settings()
     h.check("task_toggle_on_touch", st["tasks-1"]["items"][0]["done"] is True,
             "done=%s" % st["tasks-1"]["items"][0]["done"])
-    h.tap(95, 1277)
+    h.tap(95, 1728)
     st = h.settings()
     h.check("task_toggle_off_touch", st["tasks-1"]["items"][0]["done"] is False,
             "done=%s" % st["tasks-1"]["items"][0]["done"])

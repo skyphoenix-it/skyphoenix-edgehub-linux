@@ -1,19 +1,42 @@
 #!/usr/bin/env python3
-"""End-to-end test of the hub on the REAL Xeneon Edge: interaction, stability,
-performance, and synthetic touch. Designed to run headless (no human).
+"""DEPRECATED standalone hub test on the REAL Xeneon Edge.
 
-Requires: the Edge connected (DP-3), a built ./build/xeneon-edge-hub, /dev/uinput
-writable (see uinput_touch.py), and python3. Screenshots are optional (spectacle).
+Prefer `edge_e2e.py` — it isolates XDG_CONFIG_HOME *and* XDG_RUNTIME_DIR and
+verifies the target window before injecting. THIS script still uses the REAL
+config (backup/restore) and the REAL runtime dir, and requires that no hub you
+care about is running.
 
-SAFE: backs up ~/.config/xeneon-edge-hub/config.toml and restores it afterwards
-(setUiState persists to disk). Run from the repo root:  python3 tests/hardware/edge_hw_test.py
+SAFETY: refuses to run unless BOTH are set:
+  XENEON_HW_INPUT=1    (synthetic input on the live session is opt-in)
+  XENEON_HW_LEGACY=1   (acknowledge the real-config/runtime footprint)
+All injection is confined to the Edge rect (clamped VPointer) and guarded by
+the user-activity kill switch (input_guard) — any real input aborts.
 """
 import socket, json, time, os, sys, subprocess, shutil, glob
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, '..', '..'))
 sys.path.insert(0, HERE)
-from uinput_touch import VPointer, detect_edge
+from uinput_touch import VPointer, detect_edge, GATE_ENV
+import input_guard
+
+_BANNER = """
+================================================================================
+  DEPRECATED: tests/hardware/edge_hw_test.py touches the REAL config and the
+  REAL runtime dir. The safe, current suite is:
+
+      python3 tests/hardware/edge_e2e.py            (opt-in: XENEON_HW_INPUT=1)
+
+  It fully isolates config + runtime dir, render-verifies the hub window at
+  the Edge rect before the first event, and needs no backup/restore.
+
+  To run THIS legacy script anyway, set BOTH:
+      XENEON_HW_INPUT=1  XENEON_HW_LEGACY=1
+================================================================================
+"""
+if os.environ.get(GATE_ENV) != "1" or os.environ.get("XENEON_HW_LEGACY") != "1":
+    sys.stderr.write(_BANNER)
+    sys.exit(2)
 
 HUB = os.path.join(REPO, 'build', 'xeneon-edge-hub')
 CFG = os.path.expanduser('~/.config/xeneon-edge-hub/config.toml')
@@ -21,7 +44,7 @@ RUNTIME = os.environ.get('XDG_RUNTIME_DIR', '/run/user/1000')
 BAK = f'/tmp/xeneon-hwtest-config.bak'
 
 R = {'pass': True, 'checks': {}}
-p = None; vp = None
+p = None; vp = None; guard = None
 
 def check(name, ok, detail=None):
     R['checks'][name] = {'ok': bool(ok), **({'detail': detail} if detail is not None else {})}
@@ -121,8 +144,11 @@ try:
         except Exception: pass
     check('churn_500', churn == 500)
 
-    # ---- synthetic touch ----
-    vp = VPointer(cw, ch)
+    # ---- synthetic touch (clamped to the Edge rect + kill switch armed) ----
+    guard = input_guard.ActivityGuard.connect()
+    guard.require_user_idle()          # owner hands-off for >= 3s (default)
+    guard.arm()                        # any real input from here on aborts
+    vp = VPointer(cw, ch, (ex, ey, ew, eh), guard=guard)
     st0 = state(sock)
     # locate a focus tile on page 0 for the IPC-verifiable preset test
     focus_id = None
@@ -161,8 +187,13 @@ try:
         if p.poll() is not None: break
         time.sleep(0.2)
     check('exit_zero', p.poll() == 0, {'exit': p.poll()})
+except input_guard.UserActivityAbort as e:
+    R['pass'] = False
+    R['aborted_by_user_activity'] = str(e)
+    print('KILL SWITCH: injection aborted —', e, file=sys.stderr)
 finally:
     if vp: vp.close()
+    if guard: guard.close()
     if p and p.poll() is None:
         try: os.killpg(os.getpgid(p.pid), 15); time.sleep(1)
         except Exception: pass
