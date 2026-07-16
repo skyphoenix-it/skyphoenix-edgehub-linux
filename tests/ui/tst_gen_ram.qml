@@ -347,6 +347,67 @@ Item {
         }
     }
 
+    // ── Per-sizeClass structure (W1 wave 2a) ────────────────────────────────
+    // Fixed-size hosts at real projected cell footprints.
+    Item { width: 344; height: 416
+        WidgetHarness { id: hMicro; anchors.fill: parent; widgetFile: "RamWidget.qml"; expanded: false } }
+    Item { id: wideWrap; width: 696; height: 416
+        WidgetHarness { id: hWide; anchors.fill: parent; widgetFile: "RamWidget.qml"; expanded: false } }
+    Item { width: 344; height: 840
+        WidgetHarness { id: hTall; anchors.fill: parent; widgetFile: "RamWidget.qml"; expanded: false } }
+
+    TestCase {
+        name: "RamSizes"
+        when: windowShown
+        readonly property var m: ({ ram_usage_percent: 68,
+                                    ram_used_bytes: 23218000000,
+                                    ram_total_bytes: 34359738368 })
+
+        // 0.5x0.5 — headerless bare ring: only the one number.
+        function test_micro_is_bare_ring() {
+            tryVerify(function () { return hMicro.ready }, 3000)
+            var w = hMicro.item
+            w.sizeClass = "compact"
+            hMicro.metricsJson = JSON.stringify(m)
+            compare(w.micro, true, "a 344x416 compact box is the micro tile")
+            compare(w.showHeader, false, "micro hides the header")
+            var g = gaugeOf(w)
+            compare(g.showSpark, false, "micro reserves no sparkline slot")
+            compare(g.sub, "", "micro drops the used/total line — the number IS the tile")
+            verify(g.bigMax > 60, "the headerless number may fill its box")
+        }
+
+        // baseline 1x1 keeps the used/total sub-line and the sparkline strip
+        // (asserted throughout the cases above); wide goes side-by-side.
+        function test_wide_puts_spark_beside_ring_in_both_orientations() {
+            tryVerify(function () { return hWide.ready }, 3000)
+            var w = hWide.item
+            w.sizeClass = "wide"
+            hWide.metricsJson = JSON.stringify(m)
+            var g = gaugeOf(w)
+            compare(g.horizontal, true, "wide lays ring and sparkline side by side")
+            compare(g.showSpark, true, "the sparkline is the point of going wide")
+            verify(g.sub.length > 0, "wide keeps the used/total context inside the ring")
+            wideWrap.width = 840; wideWrap.height = 344
+            compare(g.horizontal, true, "the landscape projection stays side-by-side")
+            wideWrap.width = 696; wideWrap.height = 416
+        }
+
+        // tall — sparkline earns the height below a squared ring.
+        function test_tall_hands_spark_the_height() {
+            tryVerify(function () { return hTall.ready }, 3000)
+            var w = hTall.item
+            w.sizeClass = "tall"
+            hTall.metricsJson = JSON.stringify(m)
+            var g = gaugeOf(w)
+            compare(g.sparkFills, true, "tall hands the sparkline all the height below the ring")
+            verify(g.sub.length > 0, "tall keeps the used/total context")
+            w.sizeClass = "full"
+            compare(g.sparkFills, false, "the overlay keeps the classic expanded gauge")
+            compare(w.micro, false, "full is never micro")
+        }
+    }
+
     // ── The gauge must not swallow taps meant to expand the tile ────────────
     TestCase {
         name: "RamTapPassthrough"
