@@ -507,4 +507,102 @@ Item {
             verify(true, "toggleToday did not crash without a store")
         }
     }
+
+    // ── Per-sizeClass structure (W1 wave 2b) ────────────────────────────────
+    // Fixed-size hosts at the real projected cell footprints.
+    Item { width: 348; height: 409
+        WidgetHarness { id: bMicro; anchors.fill: parent; widgetFile: "HabitWidget.qml"; expanded: false } }
+    Item { width: 696; height: 819
+        WidgetHarness { id: bBase; anchors.fill: parent; widgetFile: "HabitWidget.qml"; expanded: false } }
+    Item { id: bWideWrap; width: 696; height: 409
+        WidgetHarness { id: bWide; anchors.fill: parent; widgetFile: "HabitWidget.qml"; expanded: false } }
+
+    TestCase {
+        name: "HabitSizes"
+        when: windowShown
+
+        function seed(host) {
+            var d = new Date(); d.setHours(12, 0, 0, 0)
+            var arr = []
+            for (var i = 0; i < 5; i++) {
+                var x = new Date(d); x.setDate(x.getDate() - i)
+                arr.push(Qt.formatDate(x, "yyyy-MM-dd"))
+            }
+            host.storeCtl.patchSettings(host.instanceId,
+                { checkins: arr, streak: 5, lastCheckinDay: arr[0], bestStreak: 9 })
+        }
+        function findAll(node, pred, acc) {
+            if (!node) return acc
+            if (pred(node)) acc.push(node)
+            var kids = node.children
+            for (var i = 0; kids && i < kids.length; i++) findAll(kids[i], pred, acc)
+            return acc
+        }
+        // The heatmap: the GridLayout whose columns === 7.
+        function heat(host) {
+            return findAll(host.item, function (n) {
+                return n.hasOwnProperty("columns") && n.columns === 7
+                       && n.hasOwnProperty("rowSpacing") }, [])[0]
+        }
+        function pill(host) {
+            return findAll(host.item, function (n) {
+                return n.hasOwnProperty("label") && n.hasOwnProperty("glyph")
+                       && n.hasOwnProperty("primary") }, [])[0]
+        }
+
+        // 0.5x0.5 — the streak and the tap. 28 cells are not legible here.
+        function test_micro_is_streak_plus_checkin() {
+            tryVerify(function () { return bMicro.ready }, 3000)
+            var b = bMicro.item
+            b.sizeClass = "compact"
+            seed(bMicro)
+            compare(b.micro, true, "a 348x409 compact box is the micro tile")
+            compare(b.showHeader, false, "micro drops the chrome header")
+            compare(b.showHeatmap, false, "micro drops the heatmap")
+            verify(b.streakPx >= 18, "the streak stays a readout ("
+                   + b.streakPx.toFixed(0) + "px)")
+            var p = pill(bMicro)
+            verify(p.visible, "micro keeps the check-in button")
+            verify(p.height >= bMicro.theme.touchTertiary,
+                   "…at >= touchTertiary (" + p.height + ") — never shrunk to fit")
+        }
+
+        // 1x1 — the heatmap is EARNED (it used to be overlay-only).
+        function test_baseline_earns_the_heatmap() {
+            tryVerify(function () { return bBase.ready }, 3000)
+            var b = bBase.item
+            b.sizeClass = "compact"
+            seed(bBase)
+            compare(b.micro, false, "a 696x819 baseline tile is not micro")
+            compare(b.showHeatmap, true,
+                    "the baseline tile earns the 28-day heatmap without expanding")
+            var g = heat(bBase)
+            verify(g.visible, "…and it is actually visible")
+            compare(g.columns, 7, "the heatmap stays 7 wide")
+            verify(b.heatCell > 12, "cells scale to the box, past the old fixed 12px ("
+                   + b.heatCell.toFixed(0) + ")")
+            // 28 cells, all live.
+            var cells = findAll(g, function (n) { return n.hasOwnProperty("dk") }, [])
+            compare(cells.length, 28, "all 28 days are rendered")
+        }
+
+        // wide — the streak/button column moves beside the heatmap; the cells are
+        // the SAME objects (the literal-28 model never rebuilds).
+        function test_wide_puts_streak_beside_heatmap() {
+            tryVerify(function () { return bWide.ready }, 3000)
+            var b = bWide.item
+            b.sizeClass = "compact"
+            seed(bWide)
+            var outer = heat(bWide).parent
+            compare(outer.columns, 1, "a stacked box is one column")
+            var cellBefore = findAll(b, function (n) { return n.hasOwnProperty("dk") }, [])[0]
+            b.sizeClass = "wide"
+            compare(b.horiz, true, "wide is the horizontal shape")
+            compare(outer.columns, 2, "wide puts the streak beside the heatmap")
+            var cellAfter = findAll(b, function (n) { return n.hasOwnProperty("dk") }, [])[0]
+            verify(cellAfter === cellBefore,
+                   "the same heatmap cell survives the class flip (no rebuild)")
+            b.sizeClass = "compact"
+        }
+    }
 }

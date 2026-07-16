@@ -3,6 +3,20 @@ import QtQuick.Layouts
 
 // Habit streak — daily check-ins with a real streak count + heatmap.
 // Persisted; streak is computed from consecutive days ending today/yesterday.
+//
+// Sizing (W1 wave 2b): the heatmap used to be expanded-only, on the reasoning
+// (still in WidgetCatalog) that "a tile shows a streak number + one button,
+// whatever room it is given". That outlived its truth: the 28-day grid is 7x4
+// cells, which fits a 696x819 baseline tile with room to spare — so a tile with
+// the space now earns the history rather than showing a lone number in a big box.
+//   • 0.5x0.5 (micro) — headerless: the streak number + Check in. The heatmap is
+//                       genuinely too small to read at 348x409, so it stays off.
+//   • 1x1 (baseline)  — streak + the 28-day heatmap + Check in.
+//   • wide            — the streak/button column BESIDE the heatmap.
+//   • tall            — streak, heatmap, button stacked.
+//   • full (overlay)  — unchanged: streak + best + heatmap + button.
+// The check-in button is a PillButton (theme.touchSecondary) at every size — it is
+// the whole interaction, so it is never shrunk to make a layout fit.
 WidgetChrome {
     id: w
     property var metrics: ({})
@@ -13,6 +27,7 @@ WidgetChrome {
     property int tick: 0
 
     title: w.name.length ? w.name : "Habit"; iconName: "habit"; accentColor: theme.catProductivity
+    showHeader: !micro
 
     readonly property var cfg: {
         var _ = store ? store.revision : 0
@@ -76,6 +91,21 @@ WidgetChrome {
     // Best streak ever — persisted, but never less than the current run.
     readonly property int bestStreak: Math.max(cfg.bestStreak || 0, streak)
     status: w.expanded ? "" : w.streak + "🔥"
+
+    // ── Per-size layout (sizeClass injected by Dashboard) ────────────────────
+    readonly property bool horiz: sizeClass === "wide"
+    // The heatmap is 7 wide x 4 down; a micro tile cannot show 28 legible cells.
+    readonly property bool showHeatmap: w.expanded || !w.micro
+    readonly property real streakPx: w.expanded ? 40
+        : w.micro ? Math.max(18, Math.min(width * 0.22, height * 0.20, 64))
+        : Math.max(16, Math.min((w.horiz ? width * 0.5 : width) * 0.10,
+                                height * 0.10, 44))
+    // Cell size follows the box. `horiz` measures against its own column, and
+    // gives the 4 rows a real height budget (the shared 0.06 term starved a
+    // 846x306 wide box where the map sits beside the number, not under it).
+    readonly property real heatCell: w.expanded ? 24
+        : Math.max(8, Math.min((w.horiz ? width * 0.5 : width) / 9,
+                               height * (w.horiz ? 0.14 : 0.06), 34))
 
     readonly property var milestones: [7, 14, 30, 60, 100, 200, 365]
     function milestoneMsg(n) {
@@ -158,33 +188,35 @@ WidgetChrome {
         }
     }
 
-    ColumnLayout {
-        anchors.centerIn: parent; spacing: w.expanded ? 14 : 4
-        Text {
-            Layout.alignment: Qt.AlignHCenter; Layout.fillWidth: true
-            text: w.streak + (w.streak === 1 ? " day 🔥" : " days 🔥")
-            font.pixelSize: w.expanded ? 40 : 22; font.bold: true; color: w.effAccent
-            horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight
-        }
-        // Best streak — a record to beat (expanded).
-        Text {
-            Layout.alignment: Qt.AlignHCenter; visible: w.expanded && w.bestStreak > 0
-            text: "Best: " + w.bestStreak + (w.bestStreak === 1 ? " day" : " days")
-                  + (w.streak >= w.bestStreak && w.streak > 0 ? "  ·  personal best! 🏆" : "")
-            font.pixelSize: 14; color: theme.textSecondary
-        }
-        // 28-day heatmap. Hidden on compact tiles so the streak + check-in
-        // button stay fully within a 1x1 tile (the grid can't fit at that size).
+    // `columns` flips for a wide box; that only RESHAPES — no delegate is rebuilt
+    // (the heatmap's model is the literal 28, so its cells live for the widget's
+    // whole life and a check-in only moves their bound values).
+    GridLayout {
+        anchors.centerIn: parent
+        width: parent.width
+        columns: w.horiz ? 2 : 1
+        rowSpacing: w.expanded ? 14 : 6
+        columnSpacing: theme.spacingLg
+
+        // 28-day heatmap. Was expanded-only "because the grid can't fit"; at
+        // 7x4 cells it fits every size but the 1/12 tile, so it is now earned by
+        // room rather than by mode.
         GridLayout {
-            Layout.alignment: Qt.AlignHCenter; columns: 7
-            visible: w.expanded
-            rowSpacing: w.expanded ? 6 : 3; columnSpacing: w.expanded ? 6 : 3
+            Layout.alignment: Qt.AlignCenter
+            columns: 7
+            visible: w.showHeatmap
+            rowSpacing: Math.max(2, w.heatCell * 0.18)
+            columnSpacing: Math.max(2, w.heatCell * 0.18)
             Repeater {
                 model: 28
                 delegate: Rectangle {
                     required property int index
-                    property int cell: w.expanded ? 24 : 12
-                    width: cell; height: cell; radius: 4
+                    // Layout.preferred*, not width/height: a GridLayout sizes its
+                    // children from their implicit/preferred hints and IGNORES a
+                    // plain width, which collapsed every cell to a ~11px speck.
+                    Layout.preferredWidth: Math.round(w.heatCell)
+                    Layout.preferredHeight: Math.round(w.heatCell)
+                    radius: Math.max(2, Math.round(w.heatCell) * 0.17)
                     // index 27 = today, going back. Calendar-date stepping (S6)
                     // so cells never collide across a DST boundary.
                     property string dk: {
@@ -200,14 +232,34 @@ WidgetChrome {
                 }
             }
         }
-        // Check in from either mode — a bounded target so a compact tap elsewhere
-        // still expands the tile (matches Hydration's "+1" pattern).
-        PillButton {
-            Layout.alignment: Qt.AlignHCenter
-            label: w.doneToday ? (w.expanded ? "Done today ✓" : "✓ today") : "Check in"
-            glyph: w.doneToday ? "" : "🔥"
-            primary: !w.doneToday; tint: w.effAccent
-            onClicked: w.toggleToday()
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignCenter
+            spacing: w.expanded ? 14 : 4
+
+            Text {
+                Layout.alignment: Qt.AlignHCenter; Layout.fillWidth: true
+                text: w.streak + (w.streak === 1 ? " day 🔥" : " days 🔥")
+                font.pixelSize: Math.round(w.streakPx); font.bold: true; color: w.effAccent
+                horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight
+            }
+            // Best streak — a record to beat (expanded).
+            Text {
+                Layout.alignment: Qt.AlignHCenter; visible: w.expanded && w.bestStreak > 0
+                text: "Best: " + w.bestStreak + (w.bestStreak === 1 ? " day" : " days")
+                      + (w.streak >= w.bestStreak && w.streak > 0 ? "  ·  personal best! 🏆" : "")
+                font.pixelSize: 14; color: theme.textSecondary
+            }
+            // Check in from every size — a PillButton is theme.touchSecondary (60),
+            // above the 52 minimum, and this is the widget's whole interaction.
+            PillButton {
+                Layout.alignment: Qt.AlignHCenter
+                label: w.doneToday ? (w.expanded ? "Done today ✓" : "✓ today") : "Check in"
+                glyph: w.doneToday ? "" : "🔥"
+                primary: !w.doneToday; tint: w.effAccent
+                onClicked: w.toggleToday()
+            }
         }
     }
 }
