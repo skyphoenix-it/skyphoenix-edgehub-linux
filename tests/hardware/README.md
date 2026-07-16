@@ -47,6 +47,15 @@ structurally impossible for events to land outside the Edge:
    **rejected** on mismatch (only `XENEON_GEOM_TRUST=1` skips the check,
    for non-KDE setups).
 
+Measured on this box (2026-07-16, KWin 6.7.3): the VTouch axis transform is
+`rot270` — KWin scales the MT device in the panel's native landscape axes
+and then applies DP-3's 270° output transform; the harness probes this per
+run, so it is measured, never assumed. Side effect to know about: KWin
+persists the device→output binding in `~/.config/kcminputrc` as
+`[Libinput][4660][22136][xeneon-virt-touch] OutputUuid=…` — scoped to the
+virtual device's vendor/product/name, inert for every real device, and it
+makes the mapping automatic on future runs.
+
 Unit tests for all of the above (no injection, no compositor traffic):
 
 ```sh
