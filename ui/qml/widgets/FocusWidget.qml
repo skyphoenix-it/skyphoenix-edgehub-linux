@@ -8,6 +8,21 @@ import QtQuick.Layouts
 // the SAME timer, a running session survives expand/collapse, and it resumes
 // after a restart. Uses an absolute end time (not a decrementing counter) so it
 // stays correct across backgrounding.
+//
+// Sizing (W1 wave 3): layout keys off the injected `sizeClass`. This widget
+// declares only `1x1` and `1x1.5` because the ring needs a roughly SQUARE cell
+// and a Pomodoro tile you cannot start is not a Pomodoro tile — every half size
+// is wide-short or narrow-tall in one orientation, which collides the ring with
+// the ≥52px control row. The two it does declare now earn their box:
+//   • 1x1 (compact, both orientations) — the ring in a cell that STOPS above the
+//     control row instead of running under it, with the clock sized from the
+//     ring (it used to cap at 34px and float in a 819px box).
+//   • 1x1.5 tall (portrait) — the same ring, plus the momentum readout that was
+//     locked in the overlay (sessions/goal, dots, points) + the nudge, + "+5".
+//   • 1x1.5 wide (landscape) — ring BESIDE that column, so 1269px of width is
+//     content rather than air either side of a centred ring.
+//   • full (overlay) — unchanged: the preset switcher and the 4-button row are
+//     genuinely modal and stay there.
 WidgetChrome {
     id: w
     property var metrics: ({})
@@ -198,40 +213,182 @@ WidgetChrome {
         }
     }
 
-    // ── Compact ──
+    // ── Per-size layout (sizeClass injected by Dashboard) ────────────────────
+    readonly property bool horiz: sizeClass === "wide"
+    // `large` is unreachable for this type's declared sizes (1x2/1x3 are not
+    // offered); treated as tall so a forced class degrades sanely rather than
+    // falling through to the compact branch.
+    readonly property bool tallish: sizeClass === "tall" || sizeClass === "large"
+    // The momentum readout (sessions/goal, dots, points) and the nudge are the
+    // overlay's content; 1x1.5 has the room to earn them for the TILE. 1x1 does
+    // not — a ring big enough to read plus a real 52px control row fills it, and
+    // squeezing a stats block in would just shrink the clock.
+    readonly property bool showMomentum: tallish || horiz
+
     Item {
         anchors.fill: parent; visible: !w.expanded
-        RingProgress {
-            anchors.centerIn: parent
-            width: Math.min(parent.width, parent.height) * 0.9; height: width
-            value: w.ringValue
-            progressColor: w.phaseColor(); progressColor2: w.phaseColor()
-        }
-        ColumnLayout {
-            anchors.centerIn: parent; anchors.verticalCenterOffset: -theme.spacingMd
-            spacing: 0
-            Text { Layout.alignment: Qt.AlignHCenter; text: w.fmt(w.remaining)
-                font.pixelSize: Math.max(20, Math.min(parent.width * 0.26, 34))
-                font.family: theme.fontMono; font.bold: true
-                color: w.running ? w.phaseColor() : theme.textPrimary }
-            Text { Layout.alignment: Qt.AlignHCenter; Layout.maximumWidth: parent.width
-                text: w.phaseLabel(); elide: Text.ElideRight
-                font.pixelSize: 12; color: theme.textSecondary }
-        }
-        // Compact controls — operate the timer straight from the tile (no expand).
-        RowLayout {
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottom: parent.bottom; anchors.bottomMargin: theme.spacingSm
-            spacing: theme.spacingSm
-            PillButton {
-                implicitHeight: 36
-                label: w.running ? "Pause" : "Start"; glyph: w.running ? "⏸" : "▶"
-                primary: true; tint: w.phaseColor(); onClicked: w.toggle()
+
+        GridLayout {
+            anchors.fill: parent
+            // Wide reflows the SAME children into two columns — the ring keeps a
+            // square cell and the stats/controls column takes the width that a
+            // centred ring used to waste.
+            columns: w.horiz ? 2 : 1
+            rowSpacing: theme.spacingSm
+            columnSpacing: theme.spacingLg
+
+            // Tall only: split the slack ABOVE and BELOW the group so the whole
+            // thing sits centred. A circle in a 696px-wide box tops out at ~600px
+            // however tall the box gets, so 1x1.5 portrait has ~450px it cannot
+            // spend on the ring. Letting the ring cell absorb it instead (the
+            // fillHeight path) centres the RING and strands the stats at the
+            // bottom edge, a third of a screen away from what they describe.
+            // These spacers are invisible in the other classes, and an invisible
+            // item is skipped by GridLayout — so they never consume a cell in the
+            // 2-column (wide) arrangement.
+            Item { Layout.fillWidth: true; Layout.fillHeight: true; visible: w.tallish }
+
+            // Ring + the clock inside it. The cell is a real layout cell, so the
+            // ring STOPS above the control row instead of being centred in the
+            // whole box with the buttons anchored over its bottom arc.
+            Item {
+                id: ringCell
+                Layout.fillWidth: !w.horiz
+                // Tall hands the slack to the spacers, so the cell shrink-wraps
+                // to a square instead of stretching into a void.
+                Layout.fillHeight: !w.tallish
+                Layout.preferredHeight: w.tallish ? Math.round(w.width * 0.9) : -1
+                // Side-by-side: a square cell sized by the box height, capped so
+                // the stats column keeps the majority of the width.
+                Layout.preferredWidth: w.horiz ? Math.round(Math.min(w.height, w.width * 0.42)) : -1
+                readonly property real d: Math.max(1, Math.min(width, height) * 0.9)
+                // Text must fit the ring's INNER diameter, not the cell.
+                readonly property real inner: Math.max(40, ringCell.d * 0.62)
+                RingProgress {
+                    anchors.centerIn: parent
+                    width: ringCell.d; height: width
+                    value: w.ringValue
+                    progressColor: w.phaseColor(); progressColor2: w.phaseColor()
+                }
+                ColumnLayout {
+                    anchors.centerIn: parent
+                    spacing: 0
+                    Text {
+                        Layout.alignment: Qt.AlignHCenter
+                        // Sized from the RING, not a magic 34px cap: the old cap
+                        // left a 34px clock floating inside a 626px ring.
+                        // preferredWidth (not a bare maximumWidth — Qt 6.7 ignores
+                        // that) so HorizontalFit has a width to fit against.
+                        Layout.preferredWidth: ringCell.inner
+                        horizontalAlignment: Text.AlignHCenter
+                        text: w.fmt(w.remaining)
+                        font.pixelSize: Math.max(18, Math.min(ringCell.d * 0.28, 110))
+                        fontSizeMode: Text.HorizontalFit; minimumPixelSize: 12
+                        elide: Text.ElideRight
+                        font.family: theme.fontMono; font.bold: true
+                        color: w.running ? w.phaseColor() : theme.textPrimary
+                    }
+                    Text {
+                        Layout.alignment: Qt.AlignHCenter
+                        Layout.preferredWidth: ringCell.inner
+                        horizontalAlignment: Text.AlignHCenter
+                        text: w.phaseLabel(); elide: Text.ElideRight
+                        fontSizeMode: Text.HorizontalFit; minimumPixelSize: 9
+                        font.pixelSize: Math.max(12, Math.min(ringCell.d * 0.075, 20))
+                        color: theme.textSecondary
+                    }
+                }
             }
-            PillButton {
-                implicitHeight: 36
-                label: "Skip"; glyph: "⏭"; tint: theme.textSecondary; onClicked: w.skip()
+
+            // Stats + controls. Below the ring when stacked, beside it when wide.
+            //
+            // Two Qt Layouts traps are load-bearing here (both caught on the real
+            // panel, both pinned by tests):
+            //  • No `Layout.alignment` on THIS column: alignment beats fill on
+            //    that axis, so it would collapse to its implicit width and hug
+            //    the left edge, dragging the centred control row with it. The
+            //    wide projection centres vertically with the two spacers instead.
+            //  • `Layout.maximumWidth` must be released explicitly: a nested
+            //    Layout derives its implicit maximumWidth from its children, and
+            //    the control row's own `Layout.alignment` pins that row's maximum
+            //    to its implicit width. That maximum propagates UP and silently
+            //    caps this column at ~164px even with fillWidth set — so the
+            //    buttons landed under the ring's left edge, not its centre.
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: w.horiz
+                Layout.maximumWidth: Number.POSITIVE_INFINITY
+                spacing: theme.spacingSm
+
+                // Centre the column against the ring when side-by-side.
+                Item { Layout.fillHeight: true; visible: w.horiz }
+
+                // Momentum — earned by 1x1.5, not shown at 1x1.
+                ColumnLayout {
+                    visible: w.showMomentum
+                    Layout.fillWidth: true
+                    spacing: theme.spacingXs
+                    RowLayout {
+                        Layout.alignment: Qt.AlignHCenter
+                        spacing: theme.spacingSm
+                        Text { text: w.completedWork + " / " + w.dailyGoal + " today"
+                            font.pixelSize: theme.fontCaption
+                            color: w.completedWork >= w.dailyGoal ? theme.success : theme.textSecondary
+                            font.bold: w.completedWork >= w.dailyGoal }
+                        Text { visible: w.rewardPoints; text: "·  ⭐ " + w.points + " pts"
+                            font.pixelSize: theme.fontCaption; color: theme.textSecondary }
+                    }
+                    // Goal progress dots — the glanceable streak bar. The model is
+                    // an int derived from CONFIG, so a tick never rebuilds it.
+                    RowLayout {
+                        Layout.alignment: Qt.AlignHCenter
+                        spacing: 4
+                        Repeater {
+                            model: Math.min(w.dailyGoal, 8)
+                            delegate: Rectangle {
+                                required property int index
+                                width: 8; height: 8; radius: 4
+                                color: index < w.completedWork ? theme.success : theme.cardBorder
+                            }
+                        }
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        visible: (w.phase === "work" && w.showNudges)
+                                 || (w.phase !== "work" && w.breakSuggestions)
+                        horizontalAlignment: Text.AlignHCenter
+                        text: w.phase === "work"
+                              ? w.nudges[w.completedWork % w.nudges.length]
+                              : "Break idea: " + w.breakIdeas[w.completedWork % w.breakIdeas.length]
+                        font.pixelSize: theme.fontCaption; font.italic: true
+                        color: theme.textTertiary; elide: Text.ElideRight
+                    }
+                }
+
+                // Controls — operate the timer straight from the tile (no expand).
+                // The PillButton default height (theme.touchSecondary) stands: the
+                // old `implicitHeight: 36` override undercut the touch minimum.
+                RowLayout {
+                    Layout.alignment: Qt.AlignHCenter
+                    spacing: theme.spacingSm
+                    PillButton {
+                        label: w.running ? "Pause" : "Start"; glyph: w.running ? "⏸" : "▶"
+                        primary: true; tint: w.phaseColor(); onClicked: w.toggle()
+                    }
+                    // "+5" is the control a running timer actually reaches for; only
+                    // 1x1.5 has the width for a third button without shrinking one.
+                    PillButton {
+                        visible: w.showMomentum
+                        label: "+5"; glyph: "＋"; tint: w.phaseColor(); onClicked: w.addFive()
+                    }
+                    PillButton {
+                        label: "Skip"; glyph: "⏭"; tint: theme.textSecondary; onClicked: w.skip()
+                    }
+                }
+                Item { Layout.fillHeight: true; visible: w.horiz }
             }
+
+            Item { Layout.fillWidth: true; Layout.fillHeight: true; visible: w.tallish }
         }
     }
 
