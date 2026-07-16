@@ -48,6 +48,10 @@ rt_mkroot() {
 
 # rt_run_hub <root> <seconds> [VAR=VALUE ...] — run the hub headless, bounded.
 # Log lands in <root>/hub.log; sets RT_RC (137 = ran the full window).
+#
+# Extra HUB CLI flags: set the RT_HUB_ARGS array before calling (it is passed
+# after --windowed and cleared by nobody — reset it yourself between runs):
+#   RT_HUB_ARGS=(--reset-wizard); rt_run_hub "$RT_ROOT" 8; RT_HUB_ARGS=()
 rt_run_hub() {
     local root="$1" secs="$2"; shift 2
     # --foreground: timeout signals ONLY the hub, not a whole new process
@@ -56,7 +60,8 @@ rt_run_hub() {
     env "$@" \
         XDG_CONFIG_HOME="$root/config" XDG_RUNTIME_DIR="$root/run" \
         QT_QPA_PLATFORM=offscreen \
-        timeout --foreground -s KILL "$secs" "$HUB" --windowed >"$root/hub.log" 2>&1
+        timeout --foreground -s KILL "$secs" "$HUB" --windowed \
+            ${RT_HUB_ARGS[@]+"${RT_HUB_ARGS[@]}"} >"$root/hub.log" 2>&1
     RT_RC=$?
 }
 

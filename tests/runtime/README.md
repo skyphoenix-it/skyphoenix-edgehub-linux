@@ -24,11 +24,15 @@ XENEON_HUB=/usr/bin/xeneon-edge-hub bash tests/runtime/run_04_secret_refs.sh
 | 03 | `run_03_update_check_off.sh` | on a default config the update check stays off: no enabled `updateCheck` key in a **hub-authored** save, no check activity in the log (proxy); runs `packaging/ci/no-egress.sh default` as the real zero-egress assertion when the box has `strace` + unprivileged userns, and prints which level ran | 10 s (+~15 s with no-egress) |
 | 04 | `run_04_secret_refs.sh` | an `${env:VAR}` Bearer-token ref is resolved and *used* (the loopback sink sees `Authorization: Bearer <value>` — the non-vacuousness guard), yet after a real save round-trip the config carries only the REFERENCE and the resolved value appears nowhere under the config dir | 9 s |
 | 05 | `run_05_corrupt_salvage.sh` | a torn-write config is preserved byte-for-byte under a timestamped `config.toml.corrupt-*.bak`, the canonical `config.toml.bak` is not clobbered, the hub stays up, `first_run_complete` survives (no wizard re-trigger), and the hub recovers to a valid persisted state | 8 s |
+| 06 | `run_06_reset_flags.sh` | the destructive/non-destructive pair: `--reset-wizard` re-triggers the wizard (observed behaviorally — the user's polling tile does not run) while leaving `config.toml` byte-identical and `first_run_complete` true; `--reset` discards the user's layout. A no-flag control run proves the channel first | 26 s |
+| 07 | `run_07_live_push_single_writer.sh` | the single-writer rule (B5): over the REAL control socket the hub serves its live state, and a pushed layout is applied AND persisted *by the hub* — present in `config.toml` the instant the ack is read, and still there after a restart (SIGKILLed, so no shutdown save can fake it). A rejected (empty) push writes nothing | 12 s |
+| 08 | `run_08_page_dedup_roundtrip.sh` | duplicate page names (the real "two Page 5 tabs" bug) are reconciled on a real load→save trip: persisted names are unique + deterministic, no tile is merged or dropped, and the names round-trip UNCHANGED on a second (re-armed) launch — the rename must not creep every boot | 17 s |
 
 Shared plumbing: `rt_common.sh` (launching, liveness gate, loopback sink),
 `seed_config.py` (ui_state JSON on stdin → nested config.toml),
 `read_config.py` (config.toml → one JSON blob), `http_sink.py` (the loopback
-egress observer: per-request JSON log incl. the Authorization header).
+egress observer: per-request JSON log incl. the Authorization header),
+`ipc_client.py` (a Manager stand-in speaking the real control protocol).
 
 ## Design rules (why the scenarios look like this)
 
@@ -47,6 +51,33 @@ egress observer: per-request JSON log incl. the Authorization header).
   on load and the debounced save lands ~0.5–2 s later. Scenarios that assert
   "the hub re-serialized the doc" all use it, and check the `Configuration
   saved` log line so the assertion can never pass vacuously.
+  **The trigger is single-use, and re-arming it needs `phase: "work"`.** After
+  it fires, the timer sits on a BREAK, and `FocusWidget` only counts a
+  completion toward `doneToday` when `phase === "work"` — so a second launch
+  over the same config saves NOTHING unless the scenario re-arms
+  `{phase: "work", running: true, endEpoch: <expired>}` on disk between runs.
+  This is a vacuity trap, not a nuisance: a second-launch assertion without a
+  re-arm just re-reads the file the FIRST run wrote and passes no matter what
+  the second run did (scenario 08's idempotence check was green against a
+  deliberately creeping dedup until it grew its `[resave]` guard). Any scenario
+  asserting on a *second* run's output must prove that run saved.
+- **A SIGTERM'd hub SAVES — which can fake a passing assertion.** The graceful
+  shutdown handler persists the config. So ending a hub with a plain `kill` and
+  then asserting "the state survived a restart" proves nothing about the write
+  you meant to test: the shutdown write produces the same evidence. Scenario 07
+  found this the hard way (with the push-save deleted, the assertion still
+  passed via the shutdown save) and now uses `kill -9` for exactly that reason.
+  When a scenario's subject is *which* write persisted something, kill the hub
+  hard — and only once the write under test has been read back off disk.
+- **Known product gap (deliberately not asserted).** `--reset` (`reset_config()`
+  in `core/src/config.rs`) `remove_file`s `config.toml` with **no backup** —
+  unlike the corruption path, which always preserves a `.corrupt-*.bak`. A
+  mistyped `--reset` (its neighbour `--reset-wizard` is one word away and
+  non-destructive) is therefore unrecoverable. That is arguably what "reset"
+  means, so scenario 06 asserts the flag CONTRACT (the user's layout is not
+  what loads afterwards) rather than the mechanism — a future "back up before
+  reset" would be an improvement and must not fail a test that pinned today's
+  file-removal behavior.
 - **Known product gap (deliberately not asserted).** `salvage_partial_config()`
   in `core/src/config.rs` recovers `ui_state` only from a double-quoted TOML
   string, but the hub itself serializes it as a single-quoted *literal* — so

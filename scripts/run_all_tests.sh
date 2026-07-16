@@ -6,11 +6,12 @@
 #   2. QML GUI              : scripts/run_ui_tests.sh (offscreen qmltestrunner)
 #   3. C++ (ctest)         : only if a build dir with tests already exists
 #   4. QML behavior matrix : python3 scripts/qml_coverage.py
-#   5. Runtime E2E battery : tests/runtime/run_*.sh — six scenarios driving the
+#   5. Runtime E2E battery : tests/runtime/run_*.sh — nine scenarios driving the
 #                            REAL hub binary (focus goal bonus, w/h→size
 #                            migration, org policy, update-check-off, secret
-#                            refs, corrupt salvage). Each needs a hub binary
-#                            and SKIPs (77) if none is built/installed.
+#                            refs, corrupt salvage, reset flags, live-push
+#                            single-writer, page-name dedup). Each needs a hub
+#                            binary and SKIPs (77) if none is built/installed.
 #
 # Exits non-zero if any suite fails. Prints a clear per-suite summary.
 set -euo pipefail
@@ -78,6 +79,9 @@ runtime_scenarios=(
     "03 update check off:run_03_update_check_off.sh"
     "04 secret refs:run_04_secret_refs.sh"
     "05 corrupt salvage:run_05_corrupt_salvage.sh"
+    "06 reset flags:run_06_reset_flags.sh"
+    "07 live push single-writer:run_07_live_push_single_writer.sh"
+    "08 page dedup roundtrip:run_08_page_dedup_roundtrip.sh"
 )
 for entry in "${runtime_scenarios[@]}"; do
     rt_name="${entry%%:*}"; rt_script="${entry#*:}"
