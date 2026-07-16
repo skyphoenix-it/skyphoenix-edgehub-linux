@@ -24,6 +24,7 @@
 #include "../../app/src/single_instance.h"
 #include "../../app/src/timezone_bridge.h"
 #include "../../app/src/distro_bridge.h"
+#include "../../app/src/system_settings_probe.h"
 
 // Build a dark QPalette from the app's dark design tokens. Fusion (set below)
 // draws every Qt Quick control that ISN'T hand-restyled (Switch/Slider/Button/
@@ -118,6 +119,12 @@ int main(int argc, char* argv[]) {
     // placeholder in the preview while the Edge showed a real count.
     DistroBridge distroBridge;
     engine.rootContext()->setContextProperty("distro", &distroBridge);
+
+    // Same OS reduce-motion probe as the hub (XDG settings portal), so the
+    // Manager's live previews honor the desktop's a11y setting too.
+    SystemSettingsProbe systemSettings;
+    systemSettings.start();
+    engine.rootContext()->setContextProperty("systemSettings", &systemSettings);
 
     engine.load(QUrl(QStringLiteral("qrc:/manager/Manager.qml")));
     if (engine.rootObjects().isEmpty()) {

@@ -119,6 +119,11 @@ add_qt_test(timezone_bridge SOURCES "${APP_SRC}/timezone_bridge.h" LINK Qt6::Gui
 # bridge and its worker) or AUTOMOC never runs and both vtables go undefined.
 add_qt_test(distro_bridge SOURCES "${APP_SRC}/distro_bridge.h" LINK Qt6::Gui)
 
+# OS reduce-motion probe (XDG settings portal). Q_OBJECT header as a SOURCE for
+# AUTOMOC (vtable rule above). Tests drive the parsing seam with crafted
+# variants; the one real-bus case QSKIPs when the sandbox has no session bus.
+add_qt_test(system_settings_probe SOURCES "${APP_SRC}/system_settings_probe.h" LINK Qt6::DBus)
+
 # ── Smoke: launch the REAL binaries offscreen (main()/screen match/thread lifecycle;
 #    doubles as the XENEON_GRAB UAF regression) ──
 add_executable(smoke_hub tst_smoke_hub.cpp)

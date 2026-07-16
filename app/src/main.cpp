@@ -24,6 +24,7 @@
 #include "single_instance.h"
 #include "timezone_bridge.h"
 #include "distro_bridge.h"
+#include "system_settings_probe.h"
 #include <QColor>
 #include <csignal>
 #include <unistd.h>
@@ -425,6 +426,13 @@ int main(int argc, char *argv[]) {
     // bridge probes on its own thread — see distro_bridge.h.
     DistroBridge* distroBridge = new DistroBridge(&engine);
     engine.rootContext()->setContextProperty("distro", distroBridge);
+
+    // OS reduce-motion signal via the XDG settings portal. Qt has no style hint
+    // for it on any Qt 6, so QML binds theme.systemReduceMotion to this probe.
+    // No bus / no portal → the property just stays false, silently.
+    SystemSettingsProbe* systemSettings = new SystemSettingsProbe(&engine);
+    systemSettings->start();
+    engine.rootContext()->setContextProperty("systemSettings", systemSettings);
 
     // Expose the MPRIS media bridge (Now Playing + transport control).
     MprisBridge* mediaBridge = new MprisBridge(&engine);
