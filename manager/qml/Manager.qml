@@ -185,12 +185,42 @@ ApplicationWindow {
     // Scope pill ("Whole Edge" / "This page only" / …): the audit's core finding
     // was that no control said what it would affect, so scope becomes a visible,
     // uniform part of every section header rather than prose.
+    //
+    // The pills are a VOCABULARY, and a vocabulary needs definitions: the audit's
+    // F3 was that "Whole Edge" and "All pages" both appeared, both meant global,
+    // and nothing said which was broader (the difference is real — a page can
+    // override the background but not the theme — it was just never stated). So a
+    // pill now carries `detail`, the precise rule, on hover. `scopeDetail()` is the
+    // single source of that text: pass a label from `scopeLabels` and the wording
+    // can never drift between two sections claiming the same scope.
+    readonly property var scopeLabels: ({
+        widget: "This widget only", page: "This page only", pages: "All pages",
+        edge: "Whole Edge", computer: "This computer", window: "This window only"
+    })
+    function scopeDetail(label) {
+        switch (label) {
+        case "This widget only": return "Changes this one tile. Other widgets of the same type are untouched."
+        case "This page only":   return "Changes this page only. Your other pages are untouched."
+        case "All pages":        return "The default for every page — but a page can override it (Layout → “This page's background”)."
+        case "Whole Edge":       return "Changes every page and every widget. There is no per-page override for this."
+        case "This computer":    return "Changes this computer's hub, not the Edge layout. Other machines are untouched."
+        case "This window only": return "Changes the Manager window you're looking at. Your Edge is untouched."
+        }
+        return ""
+    }
     component ScopeTag: Rectangle {
+        id: stag
+        objectName: "scopePill"          // test seam: every pill is findable as one set
         property string label: ""
         implicitWidth: stLbl.implicitWidth + 18; implicitHeight: 22; radius: 11
         color: "transparent"; border.width: 1; border.color: m.accent
-        Text { id: stLbl; anchors.centerIn: parent; text: parent.label
+        Text { id: stLbl; anchors.centerIn: parent; text: stag.label
             color: m.accent; font.pixelSize: 11; font.bold: true }
+        // Hovering the pill spells the rule out, so the short label can stay short.
+        ToolTip.visible: stMA.containsMouse && ToolTip.text !== ""
+        ToolTip.delay: 250
+        ToolTip.text: win.scopeDetail(stag.label)
+        MouseArea { id: stMA; anchors.fill: parent; hoverEnabled: true }
     }
 
     property int currentPageIndex: 0
@@ -204,9 +234,34 @@ ApplicationWindow {
         var p = store.pages()[currentPageIndex]
         return p ? p.name : ""
     }
+    // Commit whatever is typed in the rename field to the page the field belongs to
+    // (`pageName.forIndex`, NOT the current page — the two differ exactly when the
+    // user switches page mid-edit, which is the case that used to lose the name).
+    //
+    // Audit F1: the field committed on `editingFinished` alone. Nothing else in the
+    // pane takes keyboard focus (the chips and buttons are MouseAreas), so it never
+    // blurred: typing "Yen" and clicking another page chip ran the index handler,
+    // which overwrote the field with the new page's name — the rename was gone,
+    // silently. Every neighbouring control applies instantly, so an Enter-only
+    // contract is unguessable. Now every path out of the field commits it.
+    function commitRename() {
+        var i = pageName.forIndex
+        var pages = store.pages()
+        if (i < 0 || i >= pages.length) return
+        // No-op guard: this runs on every page switch, and renamePage() bumps the
+        // structure revision (rebuilding every chip + tile) even for an equal name.
+        if (pageName.text === pages[i].name) return
+        store.renamePage(i, pageName.text)
+        // Reflect the validated (trimmed / de-duped) name the store actually stored.
+        if (i === win.currentPageIndex) pageName.text = win.currentPageName()
+    }
     // Keep the rename field in step with the selected page WITHOUT a `text:` binding
     // (a binding breaks the moment the user types, which caused wrong-page renames).
-    onCurrentPageIndexChanged: pageName.text = currentPageName()
+    onCurrentPageIndexChanged: {
+        commitRename()                       // save the previous page's edit first
+        pageName.forIndex = currentPageIndex
+        pageName.text = currentPageName()
+    }
 
     // Guard against re-applying the whole theme on every store bump: the store
     // fires `changed()` on every keystroke/tile edit, but only appearance changes
@@ -285,7 +340,11 @@ ApplicationWindow {
 
         // Sidebar
         Rectangle {
+            // maximumWidth, not just preferredWidth: a child wider than 240 (a long
+            // label + a scope pill on one row) otherwise widens the whole sidebar and
+            // steals it from the content pane.
             Layout.preferredWidth: 240
+            Layout.maximumWidth: 240
             Layout.fillHeight: true
             color: m.panel
             ColumnLayout {
@@ -360,8 +419,14 @@ ApplicationWindow {
                         font.pixelSize: 10; font.family: theme.fontMono
                         opacity: 0.85; Layout.leftMargin: 2
                     }
+                    // Audit F5: this was the one Design control whose scope lived in
+                    // prose instead of a pill. An exception teaches the user the pills
+                    // are decorative, so it gets the same treatment. On its OWN row:
+                    // beside the mono heading the pair's implicit width exceeded the
+                    // 240px sidebar and pushed the whole sidebar wider.
+                    ScopeTag { label: win.scopeLabels.window; Layout.leftMargin: 2 }
                     Text {
-                        text: "This window only — your Edge's theme is set in Appearance."
+                        text: "Your Edge's own theme is set in Appearance."
                         color: m.textSecondary; font.pixelSize: 10; opacity: 0.85
                         Layout.fillWidth: true; Layout.leftMargin: 2; wrapMode: Text.WordWrap
                     }
@@ -431,6 +496,9 @@ ApplicationWindow {
             Layout.fillWidth: true
             Layout.fillHeight: true
             currentIndex: backend.startTab()
+            // Leaving the Layout tab is also a way out of the rename field that
+            // never blurs it — commit rather than strand the edit (audit F1).
+            onCurrentIndexChanged: win.commitRename()
 
             // ═══ 1. LAYOUT ═══
             Item {
@@ -485,16 +553,16 @@ ApplicationWindow {
                         TextField {
                             id: pageName; Layout.preferredWidth: 240; Layout.preferredHeight: m.touch
                             color: m.textPrimary; selectByMouse: true
-                            Component.onCompleted: text = win.currentPageName()
+                            // The page this text belongs to. Held separately from
+                            // currentPageIndex so a mid-edit page switch can still
+                            // commit to the RIGHT page (audit F1).
+                            property int forIndex: 0
+                            Component.onCompleted: { forIndex = win.currentPageIndex; text = win.currentPageName() }
                             background: Rectangle { radius: 8; color: m.panel; border.width: 1
                                 border.color: pageName.activeFocus ? m.accent : m.border }
-                            // Commit on Enter/blur, then reflect the validated (trimmed/
-                            // de-duped) name the store actually stored.
-                            onEditingFinished: {
-                                store.renamePage(win.currentPageIndex, text)
-                                text = win.currentPageName()
-                            }
+                            onEditingFinished: win.commitRename()
                         }
+                        ScopeTag { label: win.scopeLabels.page; Layout.alignment: Qt.AlignVCenter }
                         Item { Layout.fillWidth: true }
                         MButton { text: "Remove page"; iconName: "ui-trash"
                             enabled: (store.revision, store.pageCount() > 1)
@@ -547,7 +615,7 @@ ApplicationWindow {
                                     Layout.topMargin: 6; spacing: 8
                                     Text { text: "This page's background"; color: m.textPrimary
                                         font.pixelSize: 15; font.bold: true }
-                                    ScopeTag { label: "This page only" }
+                                    ScopeTag { label: win.scopeLabels.page }
                                 }
                                 Text { text: "Overrides the Edge-wide background from Appearance, for this page alone. “Use global” returns to the shared one."
                                     color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
@@ -583,13 +651,21 @@ ApplicationWindow {
                     width: apScroll.availableWidth
                     spacing: 18
                     Text { text: "Appearance"; color: m.textPrimary; font.pixelSize: 24; font.bold: true }
-                    Text { text: "How your Edge looks. Hover a swatch to try it in the preview — nothing is applied until you click."
+                    // Audit F2: this line used to promise "Hover a swatch to try it —
+                    // nothing is applied until you click" for the WHOLE tab, but the
+                    // Background chips two sections down commit on click with no
+                    // try-on. A user trusting the header would change their background
+                    // while "trying" it. Say what is true, and name the sections it is
+                    // true of. (Giving the background chips a real hover preview would
+                    // be the better fix — it needs BackgroundPicker, which this
+                    // workstream does not own. Recorded in the audit.)
+                    Text { text: "How your Edge looks. Hover a theme or accent swatch to try it in the preview — those two are only applied when you click. Every other control here applies as soon as you change it."
                         color: m.textSecondary; font.pixelSize: 14; Layout.fillWidth: true; wrapMode: Text.WordWrap }
 
                     RowLayout {
                         Layout.topMargin: 4; spacing: 8
                         Text { text: "Edge theme"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
-                        ScopeTag { label: "Whole Edge" }
+                        ScopeTag { label: win.scopeLabels.edge }
                     }
                     Text { text: "The colour palette for every page and widget. (The Manager window's own style is separate — bottom of the sidebar.)"
                         color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
@@ -656,7 +732,7 @@ ApplicationWindow {
                     RowLayout {
                         Layout.topMargin: 4; spacing: 8
                         Text { text: "Accent colour"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
-                        ScopeTag { label: "Whole Edge" }
+                        ScopeTag { label: win.scopeLabels.edge }
                     }
                     Text { text: "The highlight colour for rings, buttons and charts. A widget can override it just for itself (⚙ → Widget appearance)."
                         color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
@@ -688,7 +764,7 @@ ApplicationWindow {
                     RowLayout {
                         Layout.topMargin: 4; spacing: 8
                         Text { text: "Background"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
-                        ScopeTag { label: "All pages" }
+                        ScopeTag { label: win.scopeLabels.pages }
                     }
                     Text { text: "Pick an animated style OR a wallpaper — the default every page starts from. One page can go its own way in Layout → “This page's background”."
                         color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
@@ -710,7 +786,7 @@ ApplicationWindow {
                     RowLayout {
                         Layout.topMargin: 4; spacing: 8
                         Text { text: "Effects"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
-                        ScopeTag { label: "Whole Edge" }
+                        ScopeTag { label: win.scopeLabels.edge }
                     }
                     RowLayout {
                         Layout.fillWidth: true; spacing: 12
@@ -866,9 +942,19 @@ ApplicationWindow {
                         Item { Layout.fillWidth: true }
                     }
 
-                    Text { text: "Your images"; color: m.textSecondary; font.pixelSize: 14; font.bold: true }
-                    Text { text: "Click an image to use it as the wallpaper."
-                        color: m.textSecondary; font.pixelSize: 12; visible: imagesModel.count > 0 }
+                    // Audit F6: clicking a card writes appearance.wallpaper — the
+                    // biggest unlabelled scope jump in the app. The tab had no pill,
+                    // no preview, and copy ("use it as the wallpaper") that never said
+                    // every page changes. Say the scope, and say where to undo it.
+                    RowLayout {
+                        Layout.fillWidth: true; spacing: 8
+                        Text { text: "Your images"; color: m.textSecondary; font.pixelSize: 14; font.bold: true }
+                        ScopeTag { visible: imagesModel.count > 0; label: win.scopeLabels.pages }
+                        Item { Layout.fillWidth: true }
+                    }
+                    Text { text: "Click an image to make it the wallpaper on every page. To use one on a single page instead, go to Layout → “This page's background”."
+                        color: m.textSecondary; font.pixelSize: 12; visible: imagesModel.count > 0
+                        Layout.fillWidth: true; wrapMode: Text.WordWrap }
                     // Empty state. The trailing filler keeps the column top-packed while the
                     // grid is hidden — without it the few remaining rows spread out
                     // over the full tab height (audit finding F8).
@@ -940,8 +1026,41 @@ ApplicationWindow {
                     width: dpScroll.availableWidth - 48
                     x: 24; y: 24; spacing: 16
                     Text { text: "Display & Startup"; color: m.textPrimary; font.pixelSize: 24; font.bold: true }
-                    Text { text: "Choose which screen the hub runs on. Applies next time the hub starts."
-                        color: m.textSecondary; font.pixelSize: 14 }
+                    // Audit F7: "Applies next time the hub starts" used to sit HERE,
+                    // as the tab subtitle — above Orientation (which pushes live) and
+                    // the autostart switch (immediate). Read as tab-level guidance it
+                    // simply wasn't true, so it moved down onto the screen picker,
+                    // which is the only thing it describes.
+                    Text { text: "Where the hub runs, how it's turned, and whether it starts itself."
+                        color: m.textSecondary; font.pixelSize: 14; Layout.fillWidth: true; wrapMode: Text.WordWrap }
+
+                    RowLayout {
+                        Layout.topMargin: 8; spacing: 8
+                        Text { text: "Screen the hub runs on"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
+                        ScopeTag { label: win.scopeLabels.computer }
+                    }
+                    Text { text: "Applies next time the hub starts — a running hub stays where it is."
+                        color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
+
+                    // Audit F8 / W5 #13: with no screens the tab showed a sentence
+                    // about choosing a screen, then blank space, then Orientation —
+                    // so Orientation read as the answer to "choose which screen".
+                    Rectangle {
+                        objectName: "screensEmpty"
+                        visible: win.screens.length === 0
+                        Layout.fillWidth: true; Layout.preferredHeight: 64
+                        radius: m.radius; color: m.panel
+                        border.width: 1; border.color: m.border
+                        RowLayout {
+                            anchors.fill: parent; anchors.margins: 12; spacing: 12
+                            AppIcon { name: "ui-display"; color: m.textSecondary; size: 22 }
+                            Text {
+                                Layout.fillWidth: true; wrapMode: Text.WordWrap
+                                text: "No screens detected. Connect your Xeneon Edge (or any display) and it will appear here."
+                                color: m.textSecondary; font.pixelSize: 13
+                            }
+                        }
+                    }
 
                     Repeater {
                         model: win.screens
@@ -975,7 +1094,7 @@ ApplicationWindow {
                     RowLayout {
                         Layout.topMargin: 8; spacing: 8
                         Text { text: "Orientation"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
-                        ScopeTag { label: "Whole Edge" }
+                        ScopeTag { label: win.scopeLabels.edge }
                     }
                     Text { text: "Pick a fixed mode to rotate the dashboard for a wall/arm mount. Auto follows the system only when an orientation sensor is present."
                         color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
@@ -1000,16 +1119,29 @@ ApplicationWindow {
                         }
                     }
 
-                    MSwitch {
-                        id: autostartSwitch; text: "Start the hub automatically on login"
-                        checked: backend.isAutostart()
-                        // Toggling severs the `checked:` binding; re-read the backend's
-                        // real state (the write can fail) so the control never diverges
-                        // and onActiveChanged can keep refreshing it [S2].
-                        onToggled: {
-                            backend.setAutostart(checked)
-                            checked = backend.isAutostart()
+                    // Audit F8: the one control that reaches outside the Edge entirely
+                    // (it writes a login autostart entry) carried no scope and no note.
+                    RowLayout {
+                        Layout.topMargin: 8; spacing: 8
+                        Text { text: "Startup"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
+                        ScopeTag { label: win.scopeLabels.computer }
+                    }
+                    ColumnLayout {
+                        spacing: 2
+                        MSwitch {
+                            id: autostartSwitch; text: "Start the hub automatically on login"
+                            checked: backend.isAutostart()
+                            // Toggling severs the `checked:` binding; re-read the backend's
+                            // real state (the write can fail) so the control never diverges
+                            // and onActiveChanged can keep refreshing it [S2].
+                            onToggled: {
+                                backend.setAutostart(checked)
+                                checked = backend.isAutostart()
+                            }
                         }
+                        Text { text: "Adds the hub to this computer's login startup. Takes effect at your next login; it doesn't start or stop the hub now."
+                            color: m.textSecondary; font.pixelSize: 12; Layout.leftMargin: 56
+                            Layout.fillWidth: true; wrapMode: Text.WordWrap }
                     }
                     Item { Layout.preferredHeight: 12 }   // bottom padding
                 }
@@ -1116,13 +1248,25 @@ ApplicationWindow {
         height: Math.min(parent ? parent.height * 0.85 : 560, 620)
         standardButtons: Dialog.Close
         background: Rectangle { color: m.panel; radius: m.radius; border.width: 1; border.color: m.border }
+        // Audit F4: the picker never said WHICH page the widget lands on — with
+        // three pages the only clue was remembering where you were. Name the page
+        // and pill the scope, like every other control.
         header: Rectangle {
-            color: "transparent"; implicitHeight: 60
+            color: "transparent"; implicitHeight: 68
             RowLayout {
                 anchors.fill: parent; anchors.leftMargin: 20; anchors.rightMargin: 20; spacing: 12
                 AppIcon { name: "ui-plus"; size: 24; color: m.accent; Layout.alignment: Qt.AlignVCenter }
-                Text { text: "Add a widget"; color: m.textPrimary; font.pixelSize: 19; font.bold: true
-                    Layout.fillWidth: true }
+                ColumnLayout {
+                    spacing: 1; Layout.fillWidth: true
+                    Text { text: "Add a widget"; color: m.textPrimary; font.pixelSize: 19; font.bold: true }
+                    Text {
+                        objectName: "addPickerTarget"
+                        text: "Adds to the page “" + (store.structureRevision, win.currentPageName()) + "”."
+                        color: m.textSecondary; font.pixelSize: 12
+                        elide: Text.ElideRight; Layout.fillWidth: true
+                    }
+                }
+                ScopeTag { label: win.scopeLabels.page; Layout.alignment: Qt.AlignVCenter }
             }
         }
         contentItem: ScrollView {
@@ -1240,6 +1384,7 @@ ApplicationWindow {
             win.refreshImages()
             if (win.currentPageIndex >= store.pageCount())
                 win.currentPageIndex = Math.max(0, store.pageCount() - 1)
+            pageName.forIndex = win.currentPageIndex
             pageName.text = win.currentPageName()
         }
         // Display hotplug.

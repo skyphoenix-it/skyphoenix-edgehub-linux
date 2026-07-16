@@ -133,8 +133,17 @@ int main(int argc, char* argv[]) {
     }
 
     // Doc/review capture: XENEON_GRAB=<path> renders the window to a PNG and quits.
+    // Optional XENEON_GRAB_W / XENEON_GRAB_H resize the window first — without them an
+    // offscreen grab is clamped to the offscreen platform's tiny virtual screen, so a
+    // UX audit of the panes could never see them at the size a user sees (mirrors the
+    // hub's branch in app/src/main.cpp; W5 finding 19).
     const QString grabPath = qaGrabPath;   // empty unless built with XENEON_QA_HOOKS
     if (!grabPath.isEmpty()) {
+        if (auto* gwin = qobject_cast<QQuickWindow*>(engine.rootObjects().first())) {
+            const int gw = qEnvironmentVariable("XENEON_GRAB_W", "0").toInt();
+            const int gh = qEnvironmentVariable("XENEON_GRAB_H", "0").toInt();
+            if (gw > 0 && gh > 0) gwin->resize(gw, gh);
+        }
         QObject* root = engine.rootObjects().first();
         QTimer::singleShot(1800, [root, grabPath]() {
             auto* win = qobject_cast<QQuickWindow*>(root);

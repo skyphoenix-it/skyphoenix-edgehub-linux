@@ -4,6 +4,7 @@ import QtTest
 // COVERS: fn:Manager.confirmDeleteImage, fn:Manager.currentPageName, fn:Manager.onChanged, fn:Manager.onConfigChanged, fn:Manager.onHubConnectedChanged, fn:Manager.onImagesChanged
 // COVERS: fn:Manager.onScreensChanged, fn:Manager.pageTiles, fn:Manager.refreshImages, fn:Manager.syncTheme
 // COVERS: fn:Manager.previewTheme, fn:Manager.previewAccent, fn:Manager.endThemePreview, fn:Manager.confirmRemovePage
+// COVERS: fn:Manager.scopeDetail, fn:Manager.commitRename
 //
 // manager/qml/Manager.qml (hosted with a STUBBED `backend`) —
 //   • the 5-tab StackLayout (Layout/Appearance/Images/Display/About) switches
@@ -412,6 +413,110 @@ Item {
             verify(tag, "the dialog header carries a scope tag")
             compare(tag.text, "This widget only", "…that says the settings touch one tile")
             dlg.close()
+        }
+
+        // ── W2 scope vocabulary ───────────────────────────────────────────────
+        // The pills are the answer to "which setting changes which behavior", so
+        // they must be a CLOSED vocabulary: the audit's F3 was two words for one
+        // scope ("Whole Edge" vs "All pages") with nothing to tell them apart. This
+        // fails the moment a section invents its own wording, or ships a pill whose
+        // rule scopeDetail() can't state.
+        function test_every_scope_pill_uses_the_defined_vocabulary() {
+            var seen = []
+            findAll(win, function (x) {
+                if (x && x.objectName === "scopePill" && seen.indexOf(x) < 0) seen.push(x)
+                return false
+            })
+            verify(seen.length >= 8, "found the scope pills (got " + seen.length + ")")
+            var vocab = []
+            for (var k in win.scopeLabels) vocab.push(win.scopeLabels[k])
+            for (var i = 0; i < seen.length; i++) {
+                var lbl = seen[i].label
+                verify(vocab.indexOf(lbl) >= 0,
+                       "pill “" + lbl + "” is drawn from the scope vocabulary")
+                verify(win.scopeDetail(lbl).length > 0,
+                       "pill “" + lbl + "” can state its rule on hover")
+            }
+        }
+
+        // scopeDetail is the single source of each scope's meaning — the pills and
+        // the config dialog both read it, so a label with no rule (or a typo'd one)
+        // must be an empty string, never a guess.
+        function test_scopeDetail_defines_each_scope_and_rejects_unknown() {
+            verify(win.scopeDetail(win.scopeLabels.page).indexOf("other pages") >= 0,
+                   "scopeDetail spells out the per-page rule")
+            verify(win.scopeDetail(win.scopeLabels.pages).indexOf("override") >= 0,
+                   "scopeDetail explains that 'All pages' is a default a page can override")
+            verify(win.scopeDetail(win.scopeLabels.edge).indexOf("every page") >= 0,
+                   "scopeDetail explains 'Whole Edge' covers every page")
+            compare(win.scopeDetail("Sometimes"), "", "an unknown scope label states no rule")
+        }
+
+        // ── commitRename: a typed page name is never silently lost (audit F1) ──
+        // The field commits on Enter only, and nothing else in the pane takes focus,
+        // so switching page mid-edit used to overwrite the field with the NEW page's
+        // name — destroying the rename with no trace. The commit must land on the
+        // page the text belonged to, not the page now selected.
+        function test_commitRename_saves_the_edit_when_the_page_switches() {
+            _store.addPage("Second")
+            win.currentPageIndex = 0
+            var field = findPred(win, function (x) {
+                return x && x.forIndex !== undefined && typeof x.text === "string" })
+            verify(field, "found the page-name field")
+            compare(field.text, "Home", "field starts on the current page's name")
+            field.text = "Yen"                 // user types, does NOT press Enter
+            win.currentPageIndex = 1           // …and clicks another page chip
+            compare(_store.pages()[0].name, "Yen", "commitRename saved the typed name onto the page it was typed for")
+            compare(_store.pages()[1].name, "Second", "the newly selected page is untouched")
+            compare(field.text, "Second", "the field now shows the newly selected page")
+        }
+
+        // The no-op guard: switching pages without editing must not rename anything
+        // (renamePage bumps the structure revision and rebuilds every tile).
+        function test_commitRename_is_a_noop_when_nothing_was_typed() {
+            _store.addPage("Second")
+            win.currentPageIndex = 0
+            var before = _store.structureRevision
+            win.currentPageIndex = 1           // switch with no edit pending
+            win.currentPageIndex = 0
+            compare(_store.pages()[0].name, "Home", "an untouched page keeps its name")
+            compare(_store.structureRevision, before, "commitRename wrote nothing, so no structural rebuild was triggered")
+        }
+
+        // ── Display: the screen list has an honest empty state (audit F8) ──────
+        // With no screens the tab used to show "choose which screen…" followed by
+        // blank space, so Orientation read as the answer to it.
+        function test_display_shows_an_empty_state_when_no_screens() {
+            // Item.visible is recursive — a StackLayout hides its non-current
+            // children, so the Display tab must actually be the shown one before
+            // `visible` says anything about this row.
+            _nav.currentIndex = 3
+            var empty = findPred(win, function (x) { return x && x.objectName === "screensEmpty" })
+            verify(empty, "found the no-screens empty state")
+            win.screens = []
+            verify(empty.visible, "the empty state shows when no screens are detected")
+            win.screens = [{ name: "DP-3", model: "Xeneon Edge", width: 720, height: 2560, isEdge: true }]
+            verify(!empty.visible, "…and hides as soon as a screen exists")
+            win.screens = []
+        }
+
+        // ── Add-widget picker names its target page (audit F4) ────────────────
+        function test_add_picker_names_the_page_it_adds_to() {
+            _store.addPage("Second")
+            win.currentPageIndex = 1
+            // A Dialog builds its header/content lazily on first open, so the label
+            // does not exist in the tree until the user actually opens the picker.
+            var picker = findPred(win, function (x) {
+                return x && x.title === "Add a widget" && typeof x.open === "function" })
+            verify(picker, "found the add-widget picker")
+            picker.open()
+            var lbl = findPred(win, function (x) { return x && x.objectName === "addPickerTarget" })
+            verify(lbl, "the picker header carries a target-page line")
+            verify(lbl.text.indexOf("Second") >= 0,
+                   "…naming the page the widget will land on (got: " + lbl.text + ")")
+            win.currentPageIndex = 0
+            verify(lbl.text.indexOf("Home") >= 0, "…and it follows the selected page")
+            picker.close()
         }
 
         // ── inline MSwitch (Widget glow) ──────────────────────────────────────

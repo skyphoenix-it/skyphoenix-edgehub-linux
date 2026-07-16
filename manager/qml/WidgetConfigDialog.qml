@@ -181,15 +181,22 @@ Dialog {
                     elide: Text.ElideRight; Layout.fillWidth: true }
             }
             // Scope pill: these settings touch ONE tile, not the widget type —
-            // the owner's "which setting changes which behavior" complaint.
+            // the owner's "which setting changes which behavior" complaint. Label +
+            // hover detail come from the Manager's ONE scope vocabulary (win.scopeLabels
+            // / win.scopeDetail), so this dialog can't drift from the tabs' wording.
             Rectangle {
+                id: scopePill
                 objectName: "scopeTag"
                 Layout.alignment: Qt.AlignVCenter
                 implicitWidth: scopeLbl.implicitWidth + 18; implicitHeight: 24; radius: 12
                 color: "transparent"; border.width: 1; border.color: m.accent
                 property alias text: scopeLbl.text
-                Text { id: scopeLbl; anchors.centerIn: parent; text: "This widget only"
+                Text { id: scopeLbl; anchors.centerIn: parent; text: win.scopeLabels.widget
                     color: m.accent; font.pixelSize: 11; font.bold: true }
+                ToolTip.visible: scopeMA.containsMouse && ToolTip.text !== ""
+                ToolTip.delay: 250
+                ToolTip.text: win.scopeDetail(scopeLbl.text)
+                MouseArea { id: scopeMA; anchors.fill: parent; hoverEnabled: true }
             }
         }
     }
