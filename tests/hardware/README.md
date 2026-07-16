@@ -5,6 +5,54 @@ Headless end-to-end tests that run against the **actual Edge panel** — interac
 `tests/ui` qmltest suite, which can't exercise the real compositor, touch input, or
 the C++ backend on-device.
 
+## Synthetic-input safety (READ THIS FIRST)
+
+These suites can emit **real input events into a live desktop session**. That
+is never allowed to be a surprise side effect of "run the tests", and it is
+structurally impossible for events to land outside the Edge:
+
+1. **Opt-in gate** — all synthetic input is **SKIPPED unless
+   `XENEON_HW_INPUT=1`** is explicitly set. Without it, `edge_e2e.py` runs
+   everything IPC/grab-driven and loudly skips the interaction suite;
+   creating a real uinput device raises `InputGateError` before the device
+   node is even opened. (`edge_hw_test.py`, the deprecated legacy script,
+   additionally requires `XENEON_HW_LEGACY=1`.)
+2. **Confinement to the Edge rect, at the event-synthesis layer** —
+   preferred injector is `VTouch`, a true multitouch (ABS_MT) touchscreen
+   that KWin **physically maps to the Edge output** (the writable
+   `org.kde.KWin.InputDevice.outputName` DBus property, readback-verified;
+   the Edge's own "wch.cn TouchScreen" is mapped the same way). Its events
+   *cannot* land on another monitor. The fallback `VPointer` clamps every
+   coordinate to the Edge rect inside the single emit path — there is no
+   unclamped API. Both are unit-tested via a capture sink
+   (`test_input_safety.py`) without injecting anything.
+3. **Target-window verification before the first event** — the harness
+   render-probes the hub (two opposite wallpaper states must show up in
+   grabs of exactly the Edge rect) and then requires an **IPC-verified
+   landing probe** (a tapped hydration counter must actually increment).
+   No verification → no injection, loud skip.
+4. **User-activity kill switch** — a pure-python Wayland
+   `ext-idle-notify-v1` monitor (`input_guard.py`; `/dev/input` is not
+   readable by regular users here) watches for REAL input-device activity.
+   Injection never starts until the owner has been hands-off for
+   `XENEON_HW_IDLE_SECONDS` (default **3 s** — longer than any intra-burst
+   typing/mousing gap, short enough not to stall the suite), and any real
+   event mid-run raises `UserActivityAbort` and disables injection for the
+   rest of the run. Known limit: an event landing within ~150 ms right
+   after one of our own writes is masked until the next idle cycle
+   (~100 ms) — the per-event abort checks keep that exposure well under a
+   second.
+5. **Stale-geometry defense** — `XENEON_EDGE_GEOM`/`XENEON_CANVAS`
+   overrides are cross-checked against live `kscreen-doctor` output and
+   **rejected** on mismatch (only `XENEON_GEOM_TRUST=1` skips the check,
+   for non-KDE setups).
+
+Unit tests for all of the above (no injection, no compositor traffic):
+
+```sh
+python3 tests/hardware/test_input_safety.py
+```
+
 ## Requirements
 
 - The Edge connected and enabled (normally DP-3). The hub auto-detects it.
@@ -24,13 +72,17 @@ the C++ backend on-device.
 ## Run
 
 ```sh
-python3 tests/hardware/edge_hw_test.py     # exits 0 on pass, 1 on any failure; prints JSON
+XENEON_HW_INPUT=1 python3 tests/hardware/edge_e2e.py        # the current suite
+
+# legacy, DEPRECATED (real config + runtime dir; double opt-in required):
+XENEON_HW_INPUT=1 XENEON_HW_LEGACY=1 python3 tests/hardware/edge_hw_test.py
 ```
 
-It **backs up and restores** `~/.config/xeneon-edge-hub/config.toml` (a live
-`setUiState` persists to disk), so your layout/appearance is untouched.
+`edge_hw_test.py` **backs up and restores** `~/.config/xeneon-edge-hub/config.toml`
+(a live `setUiState` persists to disk), so your layout/appearance is untouched.
+Without both env vars it prints a deprecation banner and exits 2.
 
-## What it covers
+## What it covers (`edge_hw_test.py`, legacy)
 
 - **Launch/placement** on the Edge + control socket comes up.
 - **IPC**: `ping`, 300 `getUiState` round-trips (latency p50/p99), 25 concurrent
@@ -46,9 +98,14 @@ It **backs up and restores** `~/.config/xeneon-edge-hub/config.toml` (a live
 ## Files
 
 - `uinput_touch.py` — reusable pure-python synthetic touch/pointer (no sudo, no
-  ydotool). `VPointer` + `detect_edge()`. See its header for the two Wayland gotchas
-  (24-byte `input_event` packing; the move→settle→click sequence).
-- `edge_hw_test.py` — the consolidated test above.
+  ydotool), gated + confined as described above. `VTouch` (ABS_MT, output-bound)
+  + `VPointer` (clamped) + `detect_edge_ex()`. See its header for the two Wayland
+  gotchas (24-byte `input_event` packing; the move→settle→click sequence).
+- `input_guard.py` — the user-activity kill switch (Wayland ext-idle-notify-v1).
+- `test_input_safety.py` — injection-free unit tests for gate/clamp/kill switch/
+  geometry.
+- `edge_hw_test.py` — the consolidated legacy test above (DEPRECATED — prefer
+  `edge_e2e.py`).
 
 ## Not covered (needs a human)
 
@@ -116,7 +173,10 @@ E2E_SOAK_SECONDS=5 python3 tests/hardware/edge_e2e.py   # quick smoke (~2 min)
   soak rotation reuses them, so a new theme or style can't go silently unexercised.
 - **Interaction (synthetic touch)** — compact widget controls (Focus Start/Pause,
   Hydration ±, Task toggle) verified over IPC; **page-swipe navigation** verified
-  by distinct per-page wallpapers (average-colour distance).
+  by distinct per-page wallpapers (average-colour distance). **Opt-in only**
+  (`XENEON_HW_INPUT=1`) and preceded by window verification + landing probe +
+  kill-switch arming — see "Synthetic-input safety" above. Skipped loudly
+  otherwise; the soak's periodic swipes obey the same gate.
 - **IPC** — malformed/partial/oversized input (no crash), latency p50/p99 over 200
   round-trips, 20 concurrent connections.
 - **Soak** — sustained **mixed** operations (add/remove/resize/theme/background/
