@@ -99,9 +99,20 @@ had no single answer.
 
 ## Issues and blockers
 
-- **CI for the final HEAD (`6885b80`) is unverified.** All four workflows were green
-  on `80352d3`; GitHub's API then returned 503 and I could not confirm the last run.
-  The full local suite is green. **Check before trusting the tree.**
+- **CI for the final HEAD is unverified — and the cause is your local `gh`, not CI.**
+  All four workflows were green on `80352d3` (Docs, CI, Supply Chain incl. the
+  no-egress attestation with its three negative controls, Distro). After that the
+  Actions API began returning 503 for every call. It is **not** a GitHub outage:
+  githubstatus reports Actions operational, `git` over SSH works fine (the pushes
+  all landed), but `gh auth status` says:
+
+      X Failed to log in to github.com account SimonKreitmayer (keyring)
+        The token in keyring is invalid.
+
+  Earlier `gh run list` calls in this same session succeeded, so the token was
+  valid and was invalidated partway through (a locked keyring is the likely
+  culprit). **Re-auth with `gh auth login` and check the runs for `b098727`.** The
+  full local suite is green; the tree itself is not implicated.
 - **Secret scanning + push protection could not be enabled** — the repo-settings API
   call was blocked by the permission classifier, correctly. Both are free on public
   repos and currently **disabled**; enabling push protection is a one-click item and
@@ -127,8 +138,12 @@ single-writer rule, the AppImage update path, and CI on the final commit.
 1. **Install the build** (below) and confirm the reorder animation + Manager clarity
    on the real Edge — W3/W2 are verified offscreen; the harness cannot instantiate
    `qrc:` widgets, so widget-instance survival is asserted via the Loader only.
-2. **Verify CI on `6885b80`** once GitHub is healthy.
-3. **Enable secret scanning + push protection** (Settings → Code security).
+2. **`gh auth login`**, then verify CI on `b098727` — the Actions API has been
+   unreachable since mid-session because the local token went invalid, not because
+   anything is wrong with the tree.
+3. **Enable secret scanning + push protection** (Settings → Code security). Both
+   are free on public repos and currently off; the API call to enable them was
+   blocked by the permission classifier, correctly — it is yours to click.
 4. **Make the four beta decisions** — they gate feature freeze.
 5. Port the `animS/animL` pattern to `EdgeClone.qml`.
 6. Decide the `--reset` backup policy.
