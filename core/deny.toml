@@ -46,24 +46,17 @@ allow = [
     "Apache-2.0",
     "Unicode-3.0",
     "MPL-2.0",
+    # BSD-3-Clause — the dalek/RustCrypto stack (curve25519-dalek, ed25519-dalek,
+    # subtle) that E11's licence verification links. Permissive, no copyleft, no
+    # advertising clause (that is the 4-clause variant): it may be linked into a
+    # product we sell, and its only obligation is attribution in the distributed
+    # notices. Added by review when E11 landed — which is the point of pinning the
+    # allowlist to exactly what the graph contains: a NEW licence is meant to fail
+    # the build and force this decision, not slip in.
+    "BSD-3-Clause",
 ]
 confidence-threshold = 0.9
 
-# OPEN FINDING, not a workaround: core/Cargo.toml declares no `license` field, so
-# cargo-deny correctly reports our OWN crate as `unlicensed`. The repo ships
-# LICENSE-MIT + LICENSE-APACHE and the README states the dual license, so the
-# manifest is simply out of step with the project.
-#
-# This clarify states the licence the project already grants — it is a true
-# statement about xeneon-core, and it allows no third-party license whatsoever.
-# The actual fix is one line in core/Cargo.toml:
-#     license = "MIT OR Apache-2.0"
-# and once that lands this block should be DELETED. core/Cargo.toml is owned by
-# another workstream right now; tracked in docs/security/supply-chain.md.
-[[licenses.clarify]]
-name = "xeneon-core"
-expression = "MIT OR Apache-2.0"
-license-files = []
 
 [bans]
 multiple-versions = "warn"

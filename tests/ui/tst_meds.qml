@@ -342,7 +342,11 @@ Item {
             compare(w.takenToday.length, 0, "a stale day reads as nothing taken")
             compare(w.isTaken("08:00 Vitamin D"), false)
             compare(w.takenCount, 0)
-            compare(w.stateOf(w.doses[0]), "open", "…and the dose is open again, not taken")
+            // PINNED to 09:00, not the wall clock: an 08:00 dose is only "open" once
+            // 08:00 has PASSED. Read before then it is legitimately "later", so this
+            // asserted the rollover but silently also asserted "the suite runs after
+            // 08:00" — and it failed the first time it ran just after midnight.
+            compare(w.stateOf(w.doses[0], 9 * 60), "open", "…and the dose is open again, not taken")
         }
 
         // Marking after a rollover must re-stamp the day rather than append to
