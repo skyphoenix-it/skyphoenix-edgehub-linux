@@ -14,6 +14,11 @@
 
 #include "manager_backend.h"
 
+// Refuse to run outside a sandbox: this test would otherwise clobber the
+// developer's real config / running hub. See hermetic.h.
+#include "hermetic.h"
+XENEON_REQUIRE_HERMETIC_ENV();
+
 static const char* kSock = "xeneon-edge-hub-ctl";
 
 // A minimal stand-in for the hub's ControlServer: records the requests it receives

@@ -35,5 +35,15 @@ Exit: `0` pass, `1` fail, `77` skip (no hub binary found). Hub binary resolution
 - **Never `pkill -f xeneon-edge-hub`** in a script that also names the binary —
   `pkill -f` matches the script's own command line (and any real hub the user has
   open). `timeout -s KILL` reaps each isolated run; no manual cleanup is needed.
-- Each run gets its own `XDG_RUNTIME_DIR` so the single-instance lock and control
-  socket never collide with each other or a live instance.
+- Each run gets its own `XDG_RUNTIME_DIR` so the single-instance **lock** never
+  collides with another run or a live instance. `QLockFile` honours
+  `XDG_RUNTIME_DIR`, so that isolation is real.
+- **The control socket is NOT isolated by `XDG_RUNTIME_DIR`** (this line used to
+  claim it was — it is wrong). The hub names the socket `xeneon-edge-hub-ctl`, a
+  bare name, and Qt resolves a bare `QLocalServer` name via `QDir::tempPath()`,
+  i.e. `/tmp` — `XDG_RUNTIME_DIR` is ignored. Every hub launched here therefore
+  binds the REAL `/tmp/xeneon-edge-hub-ctl`, and `ControlServer::start()`'s
+  `removeServer()` unlinks it first. Consequences: (a) running this while a hub
+  is live silently strands that hub's Manager connection until it restarts, and
+  (b) a `timeout -s KILL`'d run leaves a stale socket file behind (harmless — the
+  next hub's `removeServer()` clears it).

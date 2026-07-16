@@ -8,6 +8,11 @@
 #include <QFile>
 #include <QImage>
 
+// Refuse to run outside a sandbox: this test would otherwise clobber the
+// developer's real config / running hub. See hermetic.h.
+#include "hermetic.h"
+XENEON_REQUIRE_HERMETIC_ENV();
+
 class TstSmokeManager : public QObject {
     Q_OBJECT
 private slots:

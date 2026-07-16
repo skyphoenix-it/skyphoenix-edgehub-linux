@@ -9,6 +9,11 @@
 #include "config_bridge.h"
 #include "xeneon_core.h"
 
+// Refuse to run outside a sandbox: this test would otherwise clobber the
+// developer's real config / running hub. See hermetic.h.
+#include "hermetic.h"
+XENEON_REQUIRE_HERMETIC_ENV();
+
 class TstConfigBridge : public QObject {
     Q_OBJECT
     ConfigHandle* cfg_ = nullptr;

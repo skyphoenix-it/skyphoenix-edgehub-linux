@@ -6,8 +6,27 @@
 #include <QLocalServer>
 #include <QLocalSocket>
 
-// Well-known socket name. QLocalServer places it under $XDG_RUNTIME_DIR on
-// Linux, so it is per-user and does not touch the filesystem tree.
+// Well-known socket name.
+//
+// CAUTION — this is NOT under $XDG_RUNTIME_DIR, whatever you may have been told.
+// It is a bare name (no '/'), and Qt resolves a bare QLocalServer/QLocalSocket
+// name via QDir::tempPath(): the socket is /tmp/xeneon-edge-hub-ctl, one shared
+// path for the whole machine, ignoring XDG_RUNTIME_DIR entirely. (Verified: a hub
+// launched with XDG_RUNTIME_DIR pointed at a private sandbox still created
+// /tmp/xeneon-edge-hub-ctl and nothing in the sandbox.) `ss` won't show that path
+// — UserAccessOption makes Qt bind inside a private mkdtemp'd dir and rename the
+// node into place, so ss reports the stale /tmp/.XXXXXX/s bind path forever.
+//
+// Two consequences, both bitten:
+//   * NOT per-user-session-isolated: anything that binds this name — including
+//     the C++ tests, which believe their per-test XDG_RUNTIME_DIR sandboxes them
+//     — collides with a live hub. start()'s removeServer() below then unlinks the
+//     live hub's socket; that hub keeps its listening fd and logs nothing, so it
+//     looks healthy while every client gets ENOENT until it restarts.
+//   * Anyone with write access to /tmp can pre-create or replace the node.
+// Fixing it means resolving an absolute path under XDG_RUNTIME_DIR here AND in
+// the Manager's client (manager/src/manager_backend.h) — they must agree, so it
+// is an IPC-contract change and is deliberately not made unilaterally here.
 static const char* kSocketName = "xeneon-edge-hub-ctl";
 
 ControlServer::ControlServer(QObject* parent) : QObject(parent) {}

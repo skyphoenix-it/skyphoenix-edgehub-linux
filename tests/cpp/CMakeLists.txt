@@ -3,7 +3,21 @@
 # Each test is a standalone executable that links the REAL libxeneon_core.a (the
 # same static lib the products link — no fake) and the specific extracted logic
 # TUs it exercises. Tests run offscreen with a per-test temp XDG_CONFIG_HOME /
-# XDG_RUNTIME_DIR so Rust config round-trips and the local IPC socket are hermetic.
+# XDG_RUNTIME_DIR so the Rust config round-trips are hermetic, and tests/cpp/
+# hermetic.h makes every test REFUSE to start unless it is actually in one of
+# those sandboxes (a raw `./tests/cpp/<test>` run once ate a developer's real
+# config — see that header).
+#
+# WARNING — the IPC socket is NOT hermetic, despite the per-test XDG_RUNTIME_DIR.
+# ControlServer/ManagerBackend name the socket "xeneon-edge-hub-ctl" (a bare name,
+# no '/'), and Qt resolves a bare QLocalServer name via QDir::tempPath() — i.e.
+# /tmp — IGNORING XDG_RUNTIME_DIR. So control_server, manager_backend_sync and
+# rx_cap all bind, and removeServer(), the REAL /tmp/xeneon-edge-hub-ctl. Running
+# them while a hub is live UNLINKS that hub's socket: the hub keeps its listening
+# fd and logs nothing, but no client can ever reach it again until it restarts.
+# Fixing this needs the socket to resolve to an absolute path under
+# XDG_RUNTIME_DIR on BOTH sides (app/src/control_server.cpp + the Manager's
+# client in manager/src/manager_backend.h) — an IPC-contract change, not done here.
 
 set(APP_SRC "${CMAKE_SOURCE_DIR}/app/src")
 set(MGR_SRC "${CMAKE_SOURCE_DIR}/manager/src")
@@ -24,6 +38,11 @@ function(add_qt_test name)
     target_link_libraries(${name} PRIVATE
         Qt6::Test Qt6::Core ${T_LINK} ${RUST_LIB} pthread dl)
     add_dependencies(${name} rust_core)
+
+    # Tell hermetic.h where the build system puts its sandboxes, so a test run
+    # outside one can refuse to start. See tests/cpp/hermetic.h.
+    target_compile_definitions(${name} PRIVATE
+        XENEON_TEST_SANDBOX_ROOT="${CMAKE_CURRENT_BINARY_DIR}/tmp")
 
     if(XENEON_COVERAGE)
         target_compile_options(${name} PRIVATE --coverage -O0 -g)
@@ -83,7 +102,8 @@ target_link_libraries(smoke_hub PRIVATE Qt6::Test Qt6::Core Qt6::Gui)
 # fail on a 30s timeout instead of reporting the real reason. See the QSKIP.
 target_compile_definitions(smoke_hub PRIVATE
     HUB_BIN="$<TARGET_FILE:xeneon-edge-hub>"
-    QA_HOOKS_BUILD=$<BOOL:${XENEON_QA_HOOKS}>)
+    QA_HOOKS_BUILD=$<BOOL:${XENEON_QA_HOOKS}>
+    XENEON_TEST_SANDBOX_ROOT="${CMAKE_CURRENT_BINARY_DIR}/tmp")
 add_dependencies(smoke_hub xeneon-edge-hub)
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/tmp/smoke_hub/config"
                     "${CMAKE_CURRENT_BINARY_DIR}/tmp/smoke_hub/run")
@@ -97,7 +117,8 @@ set_target_properties(smoke_manager PROPERTIES AUTOMOC ON)
 target_link_libraries(smoke_manager PRIVATE Qt6::Test Qt6::Core Qt6::Gui)
 target_compile_definitions(smoke_manager PRIVATE
     MGR_BIN="$<TARGET_FILE:xeneon-edge-manager>"
-    QA_HOOKS_BUILD=$<BOOL:${XENEON_QA_HOOKS}>)
+    QA_HOOKS_BUILD=$<BOOL:${XENEON_QA_HOOKS}>
+    XENEON_TEST_SANDBOX_ROOT="${CMAKE_CURRENT_BINARY_DIR}/tmp")
 add_dependencies(smoke_manager xeneon-edge-manager)
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/tmp/smoke_manager/config"
                     "${CMAKE_CURRENT_BINARY_DIR}/tmp/smoke_manager/run")

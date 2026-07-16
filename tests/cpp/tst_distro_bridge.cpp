@@ -16,6 +16,11 @@
 
 #include "distro_bridge.h"
 
+// Refuse to run outside a sandbox: this test would otherwise clobber the
+// developer's real config / running hub. See hermetic.h.
+#include "hermetic.h"
+XENEON_REQUIRE_HERMETIC_ENV();
+
 // Write `text` to <root>/<rel>, creating parent dirs.
 static void writeFile(const QString& root, const QString& rel, const QByteArray& text) {
     const QString path = root + "/" + rel;

@@ -14,6 +14,11 @@
 
 #include "timezone_bridge.h"
 
+// Refuse to run outside a sandbox: this test would otherwise clobber the
+// developer's real config / running hub. See hermetic.h.
+#include "hermetic.h"
+XENEON_REQUIRE_HERMETIC_ENV();
+
 // 2026 transitions, as UTC instants.
 //   US: DST 2nd Sun Mar 02:00 local -> 1st Sun Nov 02:00 local
 //       2026-03-08 07:00Z (EST->EDT), 2026-11-01 06:00Z (EDT->EST)

@@ -4,6 +4,11 @@
 
 #include "reconcile.h"
 
+// Refuse to run outside a sandbox: this test would otherwise clobber the
+// developer's real config / running hub. See hermetic.h.
+#include "hermetic.h"
+XENEON_REQUIRE_HERMETIC_ENV();
+
 Q_DECLARE_METATYPE(ReconcileAction)
 
 class TstReconcile : public QObject {
