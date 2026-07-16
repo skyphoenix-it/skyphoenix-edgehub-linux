@@ -270,4 +270,100 @@ Item {
             compare(hc.storeCtl.settingsFor("test-instance").done[0], "Meds", "and it persisted")
         }
     }
+
+    // ── Per-sizeClass structure (W1 wave 2b) ────────────────────────────────
+    // Fixed-size hosts at the real projected cell footprints. routine declares no
+    // 0.5x0.5, so there is no micro case.
+    Item { width: 348; height: 819
+        WidgetHarness { id: rTall; anchors.fill: parent; widgetFile: "RoutineWidget.qml"; expanded: false } }
+    Item { id: rWideWrap; width: 696; height: 409
+        WidgetHarness { id: rWide; anchors.fill: parent; widgetFile: "RoutineWidget.qml"; expanded: false } }
+    Item { width: 696; height: 1639
+        WidgetHarness { id: rLarge; anchors.fill: parent; widgetFile: "RoutineWidget.qml"; expanded: false } }
+
+    TestCase {
+        name: "RoutineSizes"
+        when: windowShown
+
+        function seed(host) {
+            host.storeCtl.patchSettings(host.instanceId,
+                { steps: "Meds\nPack bag\nStretch\nWater plants\nInbox zero" })
+        }
+        function rowsOf(host) {
+            return root.findAll(host.item, function (n) {
+                return n.hasOwnProperty("done") && n.hasOwnProperty("modelData") }, [])
+        }
+        function listOf(host) {
+            return root.findAll(host.item, function (n) {
+                return n.hasOwnProperty("contentY") && n.hasOwnProperty("model") }, [])[0]
+        }
+
+        // The row is a real touch target at EVERY size — it was 22px on a tile.
+        function test_every_tile_row_is_a_real_touch_target() {
+            tryVerify(function () { return rTall.ready }, 3000)
+            tryVerify(function () { return rWide.ready }, 3000)
+            var hosts = [rTall, rWide]
+            var classes = ["tall", "wide"]
+            for (var i = 0; i < hosts.length; i++) {
+                hosts[i].item.sizeClass = classes[i]
+                seed(hosts[i])
+                wait(32)
+                var rows = rowsOf(hosts[i])
+                verify(rows.length > 0, classes[i] + ": rows render")
+                for (var j = 0; j < rows.length; j++)
+                    verify(rows[j].height >= hosts[i].theme.touchTertiary,
+                           classes[i] + " row " + j + " is >= touchTertiary ("
+                           + rows[j].height + " >= " + hosts[i].theme.touchTertiary
+                           + ") — a tick is never a 22px target")
+            }
+        }
+
+        // A taller box earns MORE ROWS, not bigger ones.
+        function test_a_taller_box_earns_more_rows_not_bigger_ones() {
+            tryVerify(function () { return rLarge.ready }, 3000)
+            tryVerify(function () { return rWide.ready }, 3000)
+            rWide.item.sizeClass = "wide"; seed(rWide)
+            rLarge.item.sizeClass = "large"; seed(rLarge)
+            wait(32)
+            compare(rLarge.item.rowH, rWide.item.rowH,
+                    "the row height is the same at both sizes")
+            verify(listOf(rLarge).height > listOf(rWide).height,
+                   "…the taller box just shows more of them ("
+                   + listOf(rLarge).height.toFixed(0) + " vs "
+                   + listOf(rWide).height.toFixed(0) + "px of list)")
+        }
+
+        // wide — the summary moves BESIDE the list.
+        function test_wide_puts_the_summary_beside_the_list() {
+            tryVerify(function () { return rWide.ready }, 3000)
+            var r = rWide.item
+            r.sizeClass = "tall"
+            seed(rWide)
+            var outer = listOf(rWide).parent.parent
+            compare(outer.columns, 1, "a tall box stacks")
+            r.sizeClass = "wide"
+            compare(r.horiz, true, "wide is the horizontal shape")
+            compare(outer.columns, 2, "wide puts the summary beside the list")
+            compare(r.showSummary, true, "…and the summary is shown")
+            r.sizeClass = "tall"
+        }
+
+        // The summary is earned by room — and it still never scolds.
+        function test_the_summary_is_earned_and_still_states_a_fact() {
+            tryVerify(function () { return rLarge.ready }, 3000)
+            var r = rLarge.item
+            r.sizeClass = "large"
+            seed(rLarge)
+            r.toggle("Meds")
+            compare(r.showSummary, true, "a large tile earns the summary bar")
+            var texts = root.findAll(r, function (n) {
+                return n.hasOwnProperty("text") && n.visible && String(n.text).length > 0
+            }, []).map(function (n) { return String(n.text).toLowerCase() }).join(" | ")
+            verify(texts.indexOf("1 of 5") >= 0, "it says where you are")
+            var banned = ["missed", "failed", "behind", "streak", "overdue"]
+            for (var i = 0; i < banned.length; i++)
+                verify(texts.indexOf(banned[i]) < 0,
+                       "the earned summary never says '" + banned[i] + "'")
+        }
+    }
 }
