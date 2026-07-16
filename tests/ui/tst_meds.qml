@@ -232,10 +232,14 @@ Item {
         // The core requirement: a passed, un-marked dose is quiet. If someone ever
         // "improves" this into an alert, this test is what stops it.
         function test_a_passed_dose_is_never_red_and_never_missed() {
+            // Absolute dose + absolute clock: `stateOf(dose, nowM)` is a pure
+            // function by design, so this needs no wall clock at all. It used
+            // `hhmm(-300)`, which five hours before 00:07 is "19:07" — read as
+            // a dose due LATER today, i.e. "later", not the "open" asserted.
             h.storeCtl.patchSettings("test-instance",
-                { schedule: root.hhmm(-300) + " Forgotten", dueWindowMin: 60 })
+                { schedule: "08:00 Forgotten", dueWindowMin: 60 })
             var w = h.item
-            var st = w.stateOf(w.doses[0])
+            var st = w.stateOf(w.doses[0], 13 * 60)   // 13:00 — five hours past
             compare(st, "open", "a long-passed dose settles into 'open'")
             compare(String(w.colorOf(st)), String(h.theme.textTertiary),
                     "it is muted, not an alarm")
@@ -371,9 +375,15 @@ Item {
 
         // Logging a dose must cost one tap on the tile — not an expand-then-tap.
         function test_tile_button_marks_the_focus_dose_taken() {
-            hc.storeCtl.patchSettings("test-instance",
-                { schedule: root.hhmm(-10) + " Ritalin", dueWindowMin: 60 })
+            // Pin the clock BEFORE seeding, so `focusDose` resolves against it.
+            // `hhmm(-10)` formats a bare "HH:mm": ten minutes before 00:07 is
+            // "23:57", which the widget correctly reads as a dose due LATER
+            // TODAY — so this asserted "due" on a dose 23h50m away and failed
+            // every night between 00:00 and 00:10.
             var w = hc.item
+            w.nowMinsOverride = 13 * 60 + 10          // 13:10, ten past the dose
+            hc.storeCtl.patchSettings("test-instance",
+                { schedule: "13:00 Ritalin", dueWindowMin: 60 })
             compare(w.stateOf(w.focusDose), "due")
             // Find the PillButton by its label rather than by tree position.
             var pills = root.findAll(w, function (n) {

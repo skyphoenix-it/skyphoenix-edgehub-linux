@@ -105,7 +105,24 @@ WidgetChrome {
     }
 
     function isTaken(key) { return w.takenToday.indexOf(key) >= 0 }
-    function nowMins() { var d = new Date(); return d.getHours() * 60 + d.getMinutes() }
+    // The ONE place the wall clock enters this widget. `stateOf`/`focusDoseAt`
+    // already accept an explicit `nowM` so they can be pure functions of
+    // (dose, clock); this extends that same seam to the RENDERED tile, which
+    // otherwise always reads the real clock and so can only be tested at the
+    // mercy of when the suite happens to run.
+    //
+    // -1 (the default) = use the wall clock. Nothing in the config schema or the
+    // Manager can set this; it is a seam, not a setting.
+    //
+    // Tests MUST pin it. A schedule is a bare "HH:mm" with no date, so a dose
+    // written as "ten minutes ago" silently becomes a dose due in 23h50m when
+    // the suite runs at 00:07 — which is exactly how tst_meds failed every
+    // night in the first ten minutes after midnight.
+    property int nowMinsOverride: -1
+    function nowMins() {
+        if (w.nowMinsOverride >= 0) return w.nowMinsOverride
+        var d = new Date(); return d.getHours() * 60 + d.getMinutes()
+    }
 
     // "taken" | "due" | "later" | "open"
     //   due   — its time has arrived and is still inside the window
