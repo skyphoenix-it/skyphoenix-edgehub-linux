@@ -8,7 +8,8 @@ import "../../ui/qml" as App
 //   • wsrc(type): rewrites the hub qrc path to the manager alias; "" for unknown
 //   • injectInto: sets instanceId/store/expanded/active + binds titleOverride/
 //     accentName/cardBackdrop/metrics/tick; null item is safe
-//   • targetAt(gx,gy): hit-tests placed tiles (in-bounds → index, outside → -1)
+//   • targetAt(gx,gy): hit-tests placed tiles (in-bounds → the hit delegate's STORE
+//     tile index, outside → -1)
 //   • resize handle drag → snaps to a size the TYPE declares → store.setTileSize
 //
 // `spanH(h) = 180n + 10(n-1)` is GONE with its test: it hard-coded a 180px row
@@ -71,12 +72,15 @@ Item {
     }
     function tileDelegates() {
         return findAll(ld.item, function (x) {
-            return x && x.effSize !== undefined && x.pvSize !== undefined && x.modelData !== undefined
+            return x && x.effSize !== undefined && x.pvSize !== undefined && x.tileId !== undefined
         })
     }
-    function tileAtIndex(i) {
+    // Keyed on the STORE tile index the delegate carries, not the Repeater's row
+    // number: rows are patched in place by _syncPlacements, so the two part company
+    // after the first reorder.
+    function tileAtIdx(i) {
         var ds = tileDelegates()
-        for (var k = 0; k < ds.length; k++) if (ds[k].index === i) return ds[k]
+        for (var k = 0; k < ds.length; k++) if (ds[k].tileIdx === i) return ds[k]
         return null
     }
     // The resize-handle MouseArea: it carries the press-origin (sx/sy) but, unlike
@@ -170,11 +174,11 @@ Item {
             var c = ld.item
             root.seed([ { type: "cpu" }, { type: "clock" } ])
             tryVerify(function () {
-                var t0 = tileAtIndex(0), t1 = tileAtIndex(1)
+                var t0 = tileAtIdx(0), t1 = tileAtIdx(1)
                 return t0 && t1 && t0.width > 0 && t1.width > 0
             }, 3000, "two tiles laid out")
 
-            var t0 = tileAtIndex(0), t1 = tileAtIndex(1)
+            var t0 = tileAtIdx(0), t1 = tileAtIdx(1)
             // Delegate x/y are in the tile container's coordinate space — exactly what
             // targetAt() compares against (it reads rep.itemAt(i).x/y).
             var c0x = t0.x + t0.width / 2, c0y = t0.y + t0.height / 2
@@ -206,13 +210,13 @@ Item {
         function test_resize_drag_grows_the_tile_to_a_bigger_declared_size() {
             root.seed([ { type: "cpu" } ])
             tryVerify(function () {
-                var t = tileAtIndex(0)
+                var t = tileAtIdx(0)
                 return t && t.width > 0 && resizeHandles().length === 1
             }, 3000, "single tile + its resize handle are ready")
 
             var id = tile0().id
             compare(tile0().size, catalog.defaultSize("cpu"), "starts at cpu's default size")
-            var t0 = tileAtIndex(0)
+            var t0 = tileAtIdx(0)
             var startH = t0.height
             var h = resizeHandles()[0]
 
@@ -228,18 +232,54 @@ Item {
             verify(id.length > 0, "tile id was stable through the resize")
         }
 
+        // THE EXTENT IS NOT EASED. A reorder now glides the tile to its new slot, but
+        // the corner drag is DIRECT MANIPULATION: the previewed box has to be under the
+        // cursor in the same event, not 250ms behind the hand sizing it. This is the
+        // deliberate difference from the hub's Dashboard, where a resize is a discrete
+        // button click and easing the extent costs nothing.
+        //
+        // PIN: copying the hub's animEs/animEl into EdgeClone would make this red.
+        function test_resize_preview_tracks_the_cursor_instantly() {
+            theme.reduceMotionPreference = "off"
+            compare(theme.motionPage, 250, "precondition: easing is ON, so any lag would show")
+            root.seed([ { type: "cpu" } ])
+            tryVerify(function () {
+                var t = tileAtIdx(0)
+                return t && t.height > 0 && resizeHandles().length === 1
+            }, 3000, "a cpu tile + its resize handle are ready")
+
+            var t0 = tileAtIdx(0)
+            var startH = t0.height
+            var h = resizeHandles()[0]
+
+            mousePress(h, 12, 12)
+            mouseMove(h, 12, 12 + startH * 0.5)
+            // Read the geometry in the SAME event as the move — before any animation
+            // could have ticked.
+            var immediate = t0.height
+            compare(t0.pvSize, "1x1.5", "the drag snapped the preview to the next declared size")
+            verify(immediate > startH + 1, "and the box really did grow on the spot")
+
+            wait(400)   // comfortably longer than motionPage (250ms)
+            compare(t0.height, immediate,
+                    "the box was ALREADY at its previewed size — the extent never eased")
+
+            mouseRelease(h, 12, 12 + startH * 0.5)
+            theme.reduceMotionPreference = "auto"
+        }
+
         // The SHRINK branch: drag the handle up-and-left and the tile snaps down.
         function test_resize_drag_shrinks_the_tile() {
             root.seed([ { type: "cpu" } ])
             var id = tile0().id
             store.setTileSize(0, id, "1x1")
             tryVerify(function () {
-                var t = tileAtIndex(0)
+                var t = tileAtIdx(0)
                 return t && t.width > 100 && resizeHandles().length === 1
             }, 3000, "a baseline tile + its resize handle are ready")
             compare(tile0().size, "1x1", "precondition: a full third of the screen")
 
-            var t0 = tileAtIndex(0)
+            var t0 = tileAtIdx(0)
             var h = resizeHandles()[0]
             mousePress(h, 12, 12)
             mouseMove(h, 12 - t0.width * 0.3, 12 - t0.height * 0.3)
@@ -258,11 +298,11 @@ Item {
             compare(catalog.sizesFor("focus").join(","), "1x1,1x1.5",
                     "precondition: focus declares only two sizes")
             tryVerify(function () {
-                var t = tileAtIndex(0)
+                var t = tileAtIdx(0)
                 return t && t.width > 0 && resizeHandles().length === 1
             }, 3000, "the focus tile + its resize handle are ready")
 
-            var t0 = tileAtIndex(0)
+            var t0 = tileAtIdx(0)
             var h = resizeHandles()[0]
             // A runaway drag down-and-right: way past the whole screen.
             mousePress(h, 12, 12)
@@ -272,7 +312,7 @@ Item {
                     "a runaway drag stops at focus's largest DECLARED size — never 1x2 or 1x3")
 
             // …and a runaway drag inward cannot reach the half sizes it does not declare.
-            t0 = tileAtIndex(0)
+            t0 = tileAtIdx(0)
             h = resizeHandles()[0]
             mousePress(h, 12, 12)
             mouseMove(h, 12 - t0.width * 2, 12 - t0.height * 2)
@@ -297,7 +337,7 @@ Item {
         function test_editable_false_hides_every_edit_affordance() {
             root.seed([ { type: "cpu" } ])
             tryVerify(function () {
-                var t = tileAtIndex(0)
+                var t = tileAtIdx(0)
                 return t && t.width > 0 && resizeHandles().length === 1
             }, 3000, "an editable tile with its handle is ready")
             var c = ld.item
