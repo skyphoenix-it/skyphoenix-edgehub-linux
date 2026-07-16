@@ -358,7 +358,8 @@ QtObject {
                 { key: "unit", label: "Unit", type: "text", placeholder: "ms · % · req/s", dflt: "" },
                 { key: "gaugeMax", label: "Gauge maximum", type: "number", min: 1, max: 1000000, step: 1, dflt: 100,
                   help: "Full-scale value for the gauge ring." },
-                { key: "listMax", label: "List rows", type: "number", min: 1, max: 12, step: 1, dflt: 5 } ] },
+                { key: "listMax", label: "List rows", type: "number", min: 1, max: 12, step: 1, dflt: 5,
+                  help: "At most this many. A smaller tile shows fewer — it never overflows, and never shows more than you ask for." } ] },
             { title: "Thresholds (colour)", cols: 2,
               desc: "Colour the value amber at “Warn” and red at “Critical”. Leave blank to disable.", fields: [
                 { key: "warnAt", label: "Warn ≥", type: "text", placeholder: "80", dflt: "" },

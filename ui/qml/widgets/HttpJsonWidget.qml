@@ -11,6 +11,19 @@ import QtQuick.Layouts
 // store settings and registered as EPHEMERAL keys, so: (a) the compact tile and its
 // expanded overlay show the same reading without polling twice, and (b) a poll every
 // N seconds never rewrites config.toml (the flash-wear win already used by metrics).
+//
+// Sizing (W1 wave 3): 3 modes x 6 declared sizes, so layout keys off `sizeClass`
+// per MODE rather than once for the widget:
+//   • value — micro is the number alone (no trend, no path); the baseline adds
+//     the trend; wide puts the trend BESIDE the number; tall/large hand it the
+//     height. The number scales with the box (it was a flat 32px everywhere).
+//   • gauge — delegates to the shared MetricGauge and drives its wave-2a knobs
+//     (showSpark / horizontal / sparkFills / bigMax), exactly as CpuWidget does.
+//   • list  — rows scale with the box, and the row count follows the same rule
+//     calendar applies to maxEvents (see `listShown`).
+//
+// The UNCONFIGURED state ("Add a URL in settings") is what ships in the presets,
+// so it is sized from the box and asserted legible at every size x mode.
 WidgetChrome {
     id: w
     property var metrics: ({})
@@ -27,6 +40,39 @@ WidgetChrome {
     property var xhrFactory: null
 
     title: "HTTP / JSON"; iconName: "net"; accentColor: theme.catInfo
+    showHeader: !micro
+
+    // ── Per-size layout (sizeClass injected by Dashboard) ────────────────────
+    readonly property bool horiz: sizeClass === "wide"
+    readonly property bool tallish: sizeClass === "tall" || sizeClass === "large"
+    // Anything beyond the bare reading needs more than a half-cell.
+    readonly property bool rich: !micro
+
+    // The reading's type, sized from the box (it was a flat 32px on every tile,
+    // so a 696x1637 box printed a 32px number).
+    readonly property real valuePx: w.expanded ? 72
+        : w.micro ? Math.max(20, Math.min(w.width * 0.26, w.height * 0.30, 76))
+        : w.horiz ? Math.max(20, Math.min(w.width * 0.13, w.height * 0.34, 84))
+        : Math.max(20, Math.min(w.width * 0.20, w.height * 0.16, 84))
+    readonly property real unitPx: Math.max(11, Math.round(w.valuePx * 0.28))
+    readonly property real hintPx: Math.max(11, Math.min(w.width * 0.038, w.height * 0.05,
+                                                         w.expanded ? 16 : 15))
+
+    // ── list mode: how many rows, and the same rule calendar uses ────────────
+    // `listMax` is a MAXIMUM the user asks for (schema: 1..12); the SIZE decides
+    // how many of those actually fit. Never more than asked for, never more than
+    // we have, never an overflowing box.
+    readonly property real listRowH: Math.max(28, Math.min(height * 0.06, 44))
+    readonly property int listRowsFit: {
+        var avail = w.height - w.headerHeight - 2 * theme.spacingSm
+                    - (w.micro ? 0 : theme.touchTertiary)
+        return Math.max(1, Math.floor(avail / (w.listRowH + 2)))
+    }
+    // The overlay keeps its own floor (>= 12) and scrolls nothing away.
+    readonly property int listWant: w.expanded ? Math.max(w.listMax, 12) : w.listMax
+    readonly property int listShown: w.expanded
+        ? Math.min(w.listWant, w.listItems.length)
+        : Math.max(0, Math.min(w.listWant, w.listItems.length, w.listRowsFit))
 
     readonly property var cfg: {
         var _ = store ? store.revision : 0
@@ -169,19 +215,25 @@ WidgetChrome {
             onTriggered: w.refresh() }
 
     // ── Presentation ─────────────────────────────────────────────────────────
-    ColumnLayout {
+    GridLayout {
         anchors.fill: parent
         anchors.margins: w.expanded ? 8 : 2
-        spacing: w.expanded ? 10 : 4
+        // Wide seats the refresh control BESIDE the content; everything else puts
+        // it on its own row underneath. (Invisible items are skipped by
+        // GridLayout, so at micro neither cell is consumed.)
+        columns: w.horiz ? 2 : 1
+        rowSpacing: w.expanded ? 10 : 4
+        columnSpacing: theme.spacingSm
 
-        // Empty / unconfigured hint.
+        // Empty / unconfigured hint. This is what the presets ship, so it scales
+        // with the box rather than sitting at a flat 12px in a 1637px tile.
         Text {
             visible: !w.url.length
             Layout.fillWidth: true; Layout.fillHeight: true
             horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
             wrapMode: Text.WordWrap
             text: "Add a URL in settings\nto connect a data source"
-            color: theme.textTertiary; font.pixelSize: w.expanded ? 16 : 12
+            color: theme.textTertiary; font.pixelSize: w.hintPx
         }
 
         // VALUE / GAUGE — a single reading.
@@ -196,61 +248,144 @@ WidgetChrome {
         ColumnLayout {
             visible: w.url.length > 0 && w.mode === "list"
             Layout.fillWidth: true; Layout.fillHeight: true
+            Layout.maximumWidth: Number.POSITIVE_INFINITY
             spacing: 2
             Repeater {
-                model: w.listItems.slice(0, w.expanded ? Math.max(w.listMax, 12) : w.listMax)
+                // The model is the COUNT: a poll every N seconds moves the bound
+                // text of long-lived delegates instead of rebuilding the list
+                // (which is what a `listItems.slice(...)` model did — a fresh JS
+                // array every tick, destroying and recreating every row).
+                model: w.listShown
                 delegate: Text {
-                    required property var modelData
+                    id: listRow
+                    required property int index
                     Layout.fillWidth: true
-                    text: "• " + modelData
+                    Layout.preferredHeight: Math.round(w.listRowH)
+                    verticalAlignment: Text.AlignVCenter
+                    text: "• " + (w.listItems[listRow.index] !== undefined
+                                  ? w.listItems[listRow.index] : "")
                     elide: Text.ElideRight; maximumLineCount: 1
-                    color: theme.textPrimary; font.pixelSize: w.expanded ? 15 : 12
+                    color: theme.textPrimary
+                    font.pixelSize: Math.max(11, Math.min(w.listRowH * 0.42,
+                                                          w.expanded ? 15 : 20))
                 }
             }
             Item { Layout.fillHeight: true }
             Text {
                 visible: w.errText.length > 0
-                text: w.errText; color: theme.warning; font.pixelSize: 12
+                text: w.errText; color: theme.warning
+                font.pixelSize: Math.max(11, Math.min(w.listRowH * 0.40, 16))
+            }
+        }
+
+        // Manual refresh — a real touch target in its own cell. It used to be a
+        // 34px circle (under the token) anchored over the bottom-right, which sat
+        // on top of the last list row. The half-cell has no room for it, so it
+        // shows the readout and leaves refreshing to the poll and the overlay.
+        Item {
+            visible: !w.expanded && w.url.length > 0 && !w.micro
+            Layout.preferredHeight: theme.touchTertiary
+            Layout.preferredWidth: w.horiz ? theme.touchTertiary : -1
+            Layout.fillWidth: !w.horiz
+            Layout.alignment: w.horiz ? Qt.AlignVCenter : Qt.AlignRight
+            Rectangle {
+                anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                width: theme.touchTertiary; height: theme.touchTertiary; radius: width / 2
+                color: Qt.rgba(w.effAccent.r, w.effAccent.g, w.effAccent.b,
+                               rMA.pressed ? 0.32 : (rMA.containsMouse ? 0.22 : 0.14))
+                Text { anchors.centerIn: parent; text: "⟳"; font.pixelSize: 22; color: w.effAccent }
+                MouseArea { id: rMA; anchors.fill: parent; hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor; onClicked: w.refresh() }
             }
         }
     }
 
+    // VALUE — the number is the tile. Per size: micro shows it alone; wide puts
+    // the trend beside it; tall/large hand the trend real height.
     Component {
         id: valueView
-        ColumnLayout {
+        GridLayout {
             anchors.fill: parent
-            RowLayout {
-                Layout.alignment: Qt.AlignCenter; spacing: 4
-                Text {
-                    text: w.errText.length ? "—" : (w.valText.length ? w.valText : "…")
-                    font.pixelSize: w.expanded ? 72 : 32; font.bold: true
-                    color: w.valColor
-                    fontSizeMode: Text.HorizontalFit; minimumPixelSize: 14; elide: Text.ElideRight
-                    Layout.maximumWidth: w.width - 24
+            columns: w.horiz ? 2 : 1
+            rowSpacing: 2
+            columnSpacing: theme.spacingMd
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                // Exactly ONE of these two may absorb the height when they are
+                // stacked in one column, or they compete and the nested Layout
+                // wins — which left the trend 6px tall (a flat line) in every
+                // tall tile. When the box is WIDE they sit in different columns,
+                // so there is nothing to compete over. Mirrors MetricGauge, where
+                // the ring cell stops filling exactly when sparkFills is on.
+                Layout.fillHeight: !(w.tallish && !w.horiz)
+                Layout.maximumWidth: Number.POSITIVE_INFINITY
+                spacing: 0
+                Item { Layout.fillHeight: true }
+                // The reading + its unit. NOT a RowLayout: the number needs a
+                // width cap so HorizontalFit can shrink a long value, but a Text
+                // GIVEN that cap centres its glyphs inside it — which parked the
+                // unit against the far edge of the tile, half a screen from the
+                // number it belongs to (and squeezed "ms" down to "m").
+                // So the number is capped and centred, and the unit is pinned to
+                // its PAINTED right edge instead. paintedWidth is an output, so
+                // there is no binding loop.
+                Item {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: valueLabel.implicitHeight
+                    readonly property real unitW: unitLabel.visible ? unitLabel.implicitWidth + 4 : 0
+                    Text {
+                        id: valueLabel
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.horizontalCenterOffset: -parent.unitW / 2
+                        width: Math.max(40, parent.width - parent.unitW)
+                        text: w.errText.length ? "—" : (w.valText.length ? w.valText : "…")
+                        font.pixelSize: w.valuePx; font.bold: true
+                        color: w.valColor
+                        horizontalAlignment: Text.AlignHCenter
+                        fontSizeMode: Text.HorizontalFit; minimumPixelSize: 14
+                        elide: Text.ElideRight
+                    }
+                    Text {
+                        id: unitLabel
+                        visible: w.unit.length > 0 && !w.errText.length
+                        text: w.unit; font.pixelSize: w.unitPx; color: theme.textSecondary
+                        // Sit just past the number's painted right edge.
+                        x: valueLabel.x + (valueLabel.width + valueLabel.paintedWidth) / 2 + 4
+                        anchors.baseline: valueLabel.baseline
+                    }
                 }
                 Text {
-                    visible: w.unit.length > 0 && !w.errText.length
-                    text: w.unit; font.pixelSize: w.expanded ? 22 : 14; color: theme.textSecondary
-                    Layout.alignment: Qt.AlignBottom; bottomPadding: w.expanded ? 12 : 4
+                    Layout.alignment: Qt.AlignHCenter; Layout.fillWidth: true
+                    horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight
+                    // The half-cell has no room for the path caption; an error
+                    // still wins at every size (it explains a missing reading).
+                    visible: w.errText.length > 0
+                             || ((w.expanded || w.tallish) && w.rich && w.jsonPath.length > 0)
+                    text: w.errText.length ? w.errText : w.jsonPath
+                    color: w.errText.length ? theme.warning : theme.textTertiary
+                    font.pixelSize: Math.max(11, Math.min(w.valuePx * 0.24, 16))
                 }
+                Item { Layout.fillHeight: true }
             }
-            Text {
-                Layout.alignment: Qt.AlignHCenter; Layout.fillWidth: true
-                horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight
-                visible: w.errText.length > 0 || (w.expanded && w.jsonPath.length > 0)
-                text: w.errText.length ? w.errText : w.jsonPath
-                color: w.errText.length ? theme.warning : theme.textTertiary
-                font.pixelSize: 12
-            }
-            // Tiny trend line under the number (numeric readings only).
+
+            // Trend. Micro reserves no slot for it at all.
             Sparkline {
-                visible: w.hist.length > 1 && !w.errText.length
-                Layout.fillWidth: true; Layout.preferredHeight: w.expanded ? 60 : 22
+                visible: w.rich && w.hist.length > 1 && !w.errText.length
+                Layout.fillWidth: true
+                // Stacked: a strip, or real height once the box is tall.
+                // Wide: the trend takes the height beside the number.
+                Layout.fillHeight: w.horiz || w.tallish
+                Layout.preferredHeight: (w.horiz || w.tallish) ? -1
+                                        : (w.expanded ? 60 : Math.max(22, w.height * 0.14))
                 values: w.hist; color: w.valColor
             }
         }
     }
 
+    // GAUGE — the shared MetricGauge carries the ring; wave 2a gave it the
+    // per-size knobs and this drives them exactly as CpuWidget does.
     Component {
         id: gaugeView
         MetricGauge {
@@ -259,23 +394,20 @@ WidgetChrome {
             value: (typeof w.valNum === "number" && w.gaugeMax > 0)
                    ? Math.max(0, Math.min(1, w.valNum / w.gaugeMax)) : 0
             big: w.errText.length ? "—" : (w.valText.length ? w.valText + (w.unit.length ? w.unit : "") : "…")
-            sub: w.expanded ? (w.errText.length ? w.errText : w.jsonPath) : ""
+            // The overlay captions with the path; a tall TILE has earned it too.
+            sub: (w.expanded || w.tallish)
+                 ? (w.errText.length ? w.errText : w.jsonPath) : ""
             color: w.valColor
             history: w.hist
             expanded: w.expanded
+            // Per-size layout: micro is a bare ring + the one number; wide lays
+            // the ring beside the sparkline; a tall TILE squares the ring and
+            // hands the trend all the height below it.
+            showSpark: w.rich
+            horizontal: w.horiz
+            sparkFills: w.tallish && !w.expanded
+            bigMax: w.micro ? 72 : 60
         }
     }
 
-    // Compact manual refresh (bottom-right), clear of the top-right config affordance.
-    Rectangle {
-        visible: !w.expanded && w.url.length > 0
-        anchors.right: parent.right; anchors.bottom: parent.bottom
-        anchors.rightMargin: theme.spacingXs; anchors.bottomMargin: theme.spacingXs
-        width: 34; height: 34; radius: width / 2
-        color: Qt.rgba(w.effAccent.r, w.effAccent.g, w.effAccent.b,
-                       rMA.pressed ? 0.32 : (rMA.containsMouse ? 0.22 : 0.14))
-        Text { anchors.centerIn: parent; text: "⟳"; font.pixelSize: 18; color: w.effAccent }
-        MouseArea { id: rMA; anchors.fill: parent; hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor; onClicked: w.refresh() }
-    }
 }
