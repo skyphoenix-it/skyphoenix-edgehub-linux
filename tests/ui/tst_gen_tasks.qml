@@ -375,4 +375,116 @@ Item {
             compare(w.status, "1/2", "compact tile still shows the count summary")
         }
     }
+
+    // ── Per-sizeClass structure (W1 wave 2b) ────────────────────────────────
+    // Fixed-size hosts at the real projected cell footprints. tasks declares no
+    // 0.5x0.5, so there is no micro case.
+    Item { width: 348; height: 819
+        WidgetHarness { id: tTall; anchors.fill: parent; widgetFile: "TasksWidget.qml"; expanded: false } }
+    Item { id: tWideWrap; width: 696; height: 409
+        WidgetHarness { id: tWide; anchors.fill: parent; widgetFile: "TasksWidget.qml"; expanded: false } }
+    // 1x3 portrait — the whole panel.
+    Item { width: 696; height: 2459
+        WidgetHarness { id: tBoard; anchors.fill: parent; widgetFile: "TasksWidget.qml"; expanded: false } }
+
+    TestCase {
+        name: "TasksSizes"
+        when: windowShown
+
+        function findAll(node, pred, acc) {
+            acc = acc || []
+            if (!node) return acc
+            if (pred(node)) acc.push(node)
+            var kids = node.children
+            for (var i = 0; kids && i < kids.length; i++) findAll(kids[i], pred, acc)
+            return acc
+        }
+        function seed(host) {
+            host.storeCtl.setSetting(host.instanceId, "items", [
+                { text: "Renew the domain", done: true },
+                { text: "Send the invoice", done: false },
+                { text: "Book the dentist", done: false },
+                { text: "Water the plants", done: false }])
+        }
+        function rows(host) {
+            return findAll(host.item, function (n) {
+                return n.hasOwnProperty("modelData") && n.hasOwnProperty("index") }, [])
+        }
+        function listOf(host) {
+            return findAll(host.item, function (n) {
+                return n.hasOwnProperty("contentY") && n.hasOwnProperty("model") }, [])[0]
+        }
+        function field(host) {
+            return findAll(host.item, function (n) {
+                return n.hasOwnProperty("placeholderText") }, [])[0]
+        }
+
+        // The row AND its checkbox cell are real touch targets at every size.
+        // The checkbox cell used to be 18px wide on a tile, in a 24px row.
+        function test_checking_a_task_off_is_a_real_touch_target() {
+            tryVerify(function () { return tTall.ready }, 3000)
+            tryVerify(function () { return tWide.ready }, 3000)
+            var hosts = [tTall, tWide]
+            var classes = ["tall", "wide"]
+            for (var i = 0; i < hosts.length; i++) {
+                hosts[i].item.sizeClass = classes[i]
+                seed(hosts[i])
+                wait(32)
+                var rr = rows(hosts[i])
+                verify(rr.length > 0, classes[i] + ": rows render")
+                var minT = hosts[i].theme.touchTertiary
+                for (var j = 0; j < rr.length; j++) {
+                    verify(rr[j].height >= minT,
+                           classes[i] + " row " + j + " is >= touchTertiary (" + rr[j].height + ")")
+                    // The checkbox cell is the first child: it holds the MouseArea.
+                    var cell = rr[j].children[0]
+                    verify(cell.width >= minT && cell.height >= minT,
+                           classes[i] + " row " + j + " checkbox cell is >= touchTertiary ("
+                           + cell.width + "x" + cell.height + ") — it was 18x24")
+                }
+            }
+        }
+
+        // The add field is a real target too (it was a fixed 40px on tiles).
+        function test_the_add_field_is_a_real_touch_target() {
+            tryVerify(function () { return tTall.ready }, 3000)
+            tTall.item.sizeClass = "tall"
+            seed(tTall)
+            wait(32)
+            var f = field(tTall)
+            verify(f.height >= tTall.theme.touchTertiary,
+                   "the add field is >= touchTertiary (" + f.height + ")")
+        }
+
+        // 1x3 — the whole panel is just MORE ROWS, not bigger ones.
+        function test_the_full_panel_earns_rows_not_bulk() {
+            tryVerify(function () { return tBoard.ready }, 3000)
+            tryVerify(function () { return tTall.ready }, 3000)
+            tTall.item.sizeClass = "tall"; seed(tTall)
+            tBoard.item.sizeClass = "large"; seed(tBoard)
+            wait(32)
+            compare(tBoard.item.rowH, tTall.item.rowH,
+                    "a 696x2459 panel uses the SAME row height as a 348x819 sliver")
+            verify(listOf(tBoard).height > listOf(tTall).height * 2,
+                   "…it just shows far more of them ("
+                   + listOf(tBoard).height.toFixed(0) + " vs "
+                   + listOf(tTall).height.toFixed(0) + "px of list)")
+        }
+
+        // wide — the controls move BESIDE the list.
+        function test_wide_puts_the_controls_beside_the_list() {
+            tryVerify(function () { return tWide.ready }, 3000)
+            var t = tWide.item
+            t.sizeClass = "tall"
+            seed(tWide)
+            wait(32)
+            var outer = listOf(tWide).parent.parent
+            compare(outer.columns, 1, "a tall box stacks the add row under the list")
+            t.sizeClass = "wide"
+            wait(32)
+            compare(t.horiz, true, "wide is the horizontal shape")
+            compare(outer.columns, 2, "wide puts the controls beside the list")
+            t.sizeClass = "tall"
+        }
+    }
 }
