@@ -136,6 +136,28 @@ void ControlServer::handleLine(QLocalSocket* sock, const QByteArray& line) {
                                                       {"message", "failed to apply state"}})
                                 .toJson(QJsonDocument::Compact));
         }
+    } else if (type == "setTargetDisplay") {
+        const QString connector = obj.value("connector").toString();
+        const QString model = obj.value("model").toString();
+        // At least one identifier is required: an all-empty target would blank the
+        // hub's display match rather than express a choice.
+        if (connector.isEmpty() && model.isEmpty()) {
+            writeAck(sock, false, type, QStringLiteral("empty target display"));
+            return;
+        }
+        bool ok = false;
+        emit targetDisplayReceived(connector, model, &ok);
+        writeAck(sock, ok, type, QStringLiteral("failed to apply target display"));
+    } else if (type == "setAutostart") {
+        // Require a real bool: toBool() on a missing/garbage value silently means
+        // false, which would turn a malformed request into "autostart off".
+        if (!obj.value("enabled").isBool()) {
+            writeAck(sock, false, type, QStringLiteral("missing enabled flag"));
+            return;
+        }
+        bool ok = false;
+        emit autostartReceived(obj.value("enabled").toBool(), &ok);
+        writeAck(sock, ok, type, QStringLiteral("failed to apply autostart"));
     } else if (type == "ping") {
         writeJson(sock, QJsonDocument(QJsonObject{{"type", "pong"}}).toJson(QJsonDocument::Compact));
     } else if (type == "shutdown") {
@@ -149,6 +171,14 @@ void ControlServer::handleLine(QLocalSocket* sock, const QByteArray& line) {
                                                   {"message", "unknown type"}})
                             .toJson(QJsonDocument::Compact));
     }
+}
+
+void ControlServer::writeAck(QLocalSocket* sock, bool ok, const QString& forType,
+                             const QString& failMessage) {
+    QJsonObject o{{"type", ok ? "ok" : "error"}, {"for", forType}};
+    if (!ok)
+        o.insert("message", failMessage);
+    writeJson(sock, QJsonDocument(o).toJson(QJsonDocument::Compact));
 }
 
 void ControlServer::writeJson(QLocalSocket* sock, const QByteArray& compactJson) {

@@ -9,9 +9,12 @@
 #include <QJsonObject>
 #include <QSignalSpy>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QImage>
 
+#include "autostart.h"
+#include "control_server.h"
 #include "manager_backend.h"
 
 // Refuse to run outside a sandbox: this test would otherwise clobber the
@@ -24,6 +27,42 @@ XENEON_REQUIRE_HERMETIC_ENV();
 // drift apart — and so this never binds the shared /tmp node a live hub used
 // to own. See app/src/control_socket_path.h.
 static QString kSock() { return xeneon::controlSocketPath(); }
+
+// Emulates the REAL hub for the B5 two-writer-race tests: the REAL ControlServer
+// wired to a REAL ConfigHandle exactly as app/src/main.cpp wires it (minus the
+// window migration, which needs a live QScreen the offscreen platform can't give).
+// This is what lets a test reproduce "the hub's next save reverts the Manager's
+// change" — a hand-rolled fake that never held a config could not.
+class HubEmu : public QObject {
+    Q_OBJECT
+public:
+    ConfigHandle* cfg = nullptr;
+    ControlServer srv;
+    bool failApply = false;           // make the owner's apply report failure
+
+    HubEmu() {
+        cfg = xeneon_config_load();
+        connect(&srv, &ControlServer::targetDisplayReceived, this,
+                [this](const QString& c, const QString& m, bool* ok) {
+                    if (failApply) { if (ok) *ok = false; return; }
+                    xeneon_config_set_target_connector(cfg, c.toUtf8().constData());
+                    xeneon_config_set_target_model(cfg, m.toUtf8().constData());
+                    if (ok) *ok = xeneon_config_save(cfg) == 0;
+                }, Qt::DirectConnection);
+        connect(&srv, &ControlServer::autostartReceived, this,
+                [this](bool enabled, bool* ok) {
+                    if (failApply) { if (ok) *ok = false; return; }
+                    xeneon_config_set_autostart(cfg, enabled ? 1 : 0);
+                    const bool fileOk = applyAutostart(enabled);
+                    if (ok) *ok = fileOk && xeneon_config_save(cfg) == 0;
+                }, Qt::DirectConnection);
+    }
+    ~HubEmu() override { if (cfg) xeneon_config_free(cfg); }
+
+    // What the real hub does on clean exit / SIGTERM (app/src/main.cpp): persist its
+    // in-memory config. THIS is the write that used to revert the Manager's edit.
+    void save() { QVERIFY(xeneon_config_save(cfg) == 0); }
+};
 
 // A minimal stand-in for the hub's ControlServer: records the requests it receives
 // and lets the test push uiState replies on demand.
@@ -403,6 +442,110 @@ private slots:
         QCOMPARE(b.uiState(), QStringLiteral("{\"connected\":9}"));
         // …but the Manager did NOT persist config.toml itself (hub is the writer).
         QVERIFY(!QFile::exists(cfg));
+    }
+
+    // ── B5 REGRESSION (two-writer race): with a hub CONNECTED, a Manager
+    //    setTargetDisplay must survive the hub's next save.
+    //    Pre-fix the Manager wrote config.toml itself while the hub's in-memory config
+    //    still held the old target, so the hub's next save (clean exit / SIGTERM)
+    //    silently REVERTED the user's choice. The fix routes the change through the
+    //    hub, which adopts it into its LIVE config — so its own save re-writes the NEW
+    //    value. ──
+    void targetDisplaySurvivesHubSave() {
+        XeneonString cd(xeneon_config_dir());
+        const QString cfgPath = cd.qstring() + "/config.toml";
+        QFile::remove(cfgPath);
+
+        HubEmu hub;                          // in-memory config: no target set
+        QVERIFY(hub.srv.start());
+        ManagerBackend b;
+        b.setClockForTest([this] { return clockMs_; });
+        QTRY_VERIFY_WITH_TIMEOUT(b.hubConnected(), 5000);
+
+        QVERIFY(b.setTargetDisplay(QStringLiteral("DP-9"), QStringLiteral("XENEON EDGE 45")));
+
+        // The HUB adopted the change into its LIVE config…
+        XeneonString hc(xeneon_config_get_target_connector(hub.cfg));
+        XeneonString hm(xeneon_config_get_target_model(hub.cfg));
+        QCOMPARE(hc.qstring(), QStringLiteral("DP-9"));
+        QCOMPARE(hm.qstring(), QStringLiteral("XENEON EDGE 45"));
+
+        // …so the hub's next save cannot clobber it.
+        hub.save();
+
+        ConfigHandle* onDisk = xeneon_config_load();
+        QVERIFY(onDisk);
+        XeneonString dc(xeneon_config_get_target_connector(onDisk));
+        XeneonString dm(xeneon_config_get_target_model(onDisk));
+        xeneon_config_free(onDisk);
+        QCOMPARE(dc.qstring(), QStringLiteral("DP-9"));
+        QCOMPARE(dm.qstring(), QStringLiteral("XENEON EDGE 45"));
+    }
+
+    // ── B5 REGRESSION: the same for autostart — the flag survives the hub's next
+    //    save, the HUB (not the Manager) writes the XDG entry, and the Manager's
+    //    immediate isAutostart() readback (which the QML Switch does on the very next
+    //    line) already sees it because the setter waits for the hub's ack. ──
+    void autostartSurvivesHubSave() {
+        XeneonString cd(xeneon_config_dir());
+        const QString cfgPath = cd.qstring() + "/config.toml";
+        const QString entry = QDir::homePath() + "/.config/autostart/xeneon-edge-hub.desktop";
+        QFile::remove(cfgPath);
+        QFile::remove(entry);
+
+        HubEmu hub;
+        QVERIFY(hub.srv.start());
+        ManagerBackend b;
+        b.setClockForTest([this] { return clockMs_; });
+        QTRY_VERIFY_WITH_TIMEOUT(b.hubConnected(), 5000);
+
+        QVERIFY(b.setAutostart(true));
+        QVERIFY(QFile::exists(entry));   // hub wrote the entry BEFORE acking…
+        QVERIFY(b.isAutostart());        // …so the readback is honest, not racy.
+
+        hub.save();
+        ConfigHandle* onDisk = xeneon_config_load();
+        QVERIFY(onDisk);
+        XeneonString js(xeneon_config_to_json(onDisk));
+        xeneon_config_free(onDisk);
+        const QJsonObject o = QJsonDocument::fromJson(js.qstring().toUtf8()).object();
+        QCOMPARE(o.value("startup").toObject().value("autostart").toBool(), true);
+
+        // …and off again, through the same path.
+        QVERIFY(b.setAutostart(false));
+        QVERIFY(!QFile::exists(entry));
+        QVERIFY(!b.isAutostart());
+    }
+
+    // ── An honest error ack must surface as false + saveError, never an optimistic
+    //    true (the user would think the target was saved when it wasn't). ──
+    void rejectedSetterReportsFailure() {
+        HubEmu hub; hub.failApply = true;
+        QVERIFY(hub.srv.start());
+        ManagerBackend b;
+        b.setClockForTest([this] { return clockMs_; });
+        QTRY_VERIFY_WITH_TIMEOUT(b.hubConnected(), 5000);
+
+        QSignalSpy spy(&b, &ManagerBackend::saveError);
+        QVERIFY(!b.setTargetDisplay(QStringLiteral("DP-1"), QStringLiteral("M")));
+        QCOMPARE(spy.count(), 1);
+        QVERIFY(!b.setAutostart(true));
+        QCOMPARE(spy.count(), 2);
+    }
+
+    // ── A hub that accepts the connection but never acks must not hang the Manager:
+    //    the bounded wait expires and the setter reports an honest false. FakeHub
+    //    ignores the per-field setters entirely, which is exactly that case. ──
+    void unackedSetterTimesOutHonestly() {
+        FakeHub hub; hub.getReply = QString(); QVERIFY(hub.start());
+        ManagerBackend b;
+        b.setClockForTest([this] { return clockMs_; });
+        QTRY_VERIFY_WITH_TIMEOUT(b.hubConnected(), 5000);
+
+        QElapsedTimer t; t.start();
+        QVERIFY(!b.setTargetDisplay(QStringLiteral("DP-1"), QStringLiteral("M")));
+        QVERIFY2(t.elapsed() < 5000, "waitForAck must be bounded");
+        QVERIFY(hub.received.contains(QStringLiteral("setTargetDisplay")));
     }
 
     // ── Offline: with no hub reachable, the Manager is the sole writer and persists

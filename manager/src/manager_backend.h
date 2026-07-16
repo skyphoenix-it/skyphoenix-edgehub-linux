@@ -4,6 +4,7 @@
 #include <QDateTime>
 #include <QDebug>
 #include <QDir>
+#include <QEventLoop>
 #include <QFile>
 #include <QFileInfo>
 #include <QFileSystemWatcher>
@@ -306,8 +307,22 @@ public:
     }
     Q_INVOKABLE bool setTargetDisplay(const QString& connector, const QString& model) {
         if (!m_config) return false;
+        // Keep our in-memory copy current either way so targetConnector()/targetModel()
+        // reflect the edit.
         xeneon_config_set_target_connector(m_config, connector.toUtf8().constData());
         xeneon_config_set_target_model(m_config, model.toUtf8().constData());
+        // Single-writer (B5), same rule saveUiState follows: when the hub is connected
+        // it OWNS config.toml. Writing the file here would be REVERTED by the hub's
+        // next save, because the hub's in-memory config would still hold the old
+        // target. Ask the hub to adopt + re-match + persist instead.
+        if (m_hubConnected) {
+            writeMsg(QJsonObject{{"type", "setTargetDisplay"},
+                                 {"connector", connector},
+                                 {"model", model}});
+            const bool ok = waitForAck(QStringLiteral("setTargetDisplay"));
+            if (!ok) emit saveError(QStringLiteral("Failed to save the display target"));
+            return ok;
+        }
         markSelfWrite();
         // Callers previously ignored this bool; a failed save was silent. Log + signal
         // so the failure is honest (and the return value stays truthful).
@@ -321,6 +336,16 @@ public:
     Q_INVOKABLE bool setAutostart(bool enabled) {
         if (!m_config) return false;
         xeneon_config_set_autostart(m_config, enabled ? 1 : 0);
+        // Single-writer (B5): see setTargetDisplay. The hub installs/removes the XDG
+        // entry AND persists the flag, so the .desktop and config.toml never disagree
+        // about who wrote them last. waitForAck is what lets the caller re-read
+        // isAutostart() on the very next line and see the hub's write.
+        if (m_hubConnected) {
+            writeMsg(QJsonObject{{"type", "setAutostart"}, {"enabled", enabled}});
+            const bool ok = waitForAck(QStringLiteral("setAutostart"));
+            if (!ok) emit saveError(QStringLiteral("Failed to update autostart"));
+            return ok;
+        }
         // Install/remove the XDG entry AND persist the flag — both must succeed for
         // the switch to be honest. Report the combined result.
         bool fileOk = applyAutostart(enabled);
@@ -466,8 +491,17 @@ private slots:
                         emit configChanged();
                     }
                 }
-            } else if (type == "error") {
-                qWarning() << "Manager: hub rejected update:" << o.value("message").toString();  // GCOVR_EXCL_LINE (hub-side reject log; no observable client effect)
+            } else if (type == "ok" || type == "error") {
+                if (type == "error")
+                    qWarning() << "Manager: hub rejected update:" << o.value("message").toString();
+                // Match the ack to the per-field setter that is blocking on it. The
+                // "for" tag is what keeps an untagged setUiState ack (fire-and-forget,
+                // possibly still in flight) from being mistaken for ours.
+                if (!m_awaitAckFor.isEmpty() && o.value("for").toString() == m_awaitAckFor) {
+                    m_ackSeen = true;
+                    m_ackOk = (type == "ok");
+                    if (m_ackLoop) m_ackLoop->quit();
+                }
             }
         }
         // Cap an unterminated flood: whatever remains is a partial line with no
@@ -502,6 +536,39 @@ private:
         m_sock->write(QJsonDocument(o).toJson(QJsonDocument::Compact));
         m_sock->write("\n");
         m_sock->flush();
+    }
+    // Block (briefly, bounded) until the hub acks the per-field setter `forType`.
+    // Returns false on a reject, a timeout, or a socket that dropped mid-request —
+    // never a silent optimistic "true".
+    //
+    // Blocking is deliberate and confined to the RARE display/startup writes: the QML
+    // calls these synchronously and re-reads the effective state on the next line
+    // (the autostart Switch does `setAutostart(c); c = isAutostart()`), and the state
+    // it reads is the .desktop entry the HUB writes. A fire-and-forget push would be
+    // read back before the hub had done anything. The hot saveUiState path is NOT
+    // acked this way — it stays fire-and-forget.
+    bool waitForAck(const QString& forType) {
+        m_awaitAckFor = forType;
+        m_ackSeen = false;
+        m_ackOk = false;
+
+        // A nested QEventLoop, NOT QLocalSocket::waitForReadyRead: the latter pumps
+        // only this socket, which deadlocks whenever the hub shares our event loop
+        // (the in-process regression tests) and stalls every other Manager timer even
+        // when it doesn't. ExcludeUserInputEvents keeps the reentrancy honest — the
+        // user cannot toggle the same control again while we are inside the wait.
+        QEventLoop loop;
+        m_ackLoop = &loop;
+        connect(m_sock, &QLocalSocket::disconnected, &loop, &QEventLoop::quit);
+        connect(m_sock, &QLocalSocket::errorOccurred, &loop, [&loop] { loop.quit(); });
+        QTimer::singleShot(kAckTimeoutMs, &loop, &QEventLoop::quit);
+        loop.exec(QEventLoop::ExcludeUserInputEvents);
+        m_ackLoop = nullptr;
+
+        m_awaitAckFor.clear();
+        if (!m_ackSeen)
+            qWarning() << "Manager: no ack from hub for" << forType;
+        return m_ackSeen && m_ackOk;
     }
     void pushLive(const QString& uiStateJson) {
         m_suppressAdoptUntilMs = m_nowMs() + 1500;
@@ -563,6 +630,10 @@ private:
     // Reject import sources larger than this so a huge/network file can't freeze
     // the GUI thread inside the synchronous QFile::copy (see importImage).
     static constexpr qint64 kMaxImportBytes = 25LL << 20;       // 25 MiB
+    // Upper bound on the per-field setter ack wait (see waitForAck). Generous for a
+    // local socket to a local process, but finite: a wedged hub must degrade to an
+    // honest "false", not a frozen Manager window.
+    static constexpr qint64 kAckTimeoutMs = 1000;
 
     ConfigHandle* m_config = nullptr;
     QLocalSocket* m_sock = nullptr;
@@ -570,7 +641,11 @@ private:
     QString m_configPath;
     QString m_pendingPush;          // edit buffered while the socket was down
     QString m_lastHubState;         // last UI state we know the hub held (for reconcile)
+    QString m_awaitAckFor;          // request type waitForAck is blocking on ("" = none)
+    QEventLoop* m_ackLoop = nullptr;// non-null only while inside waitForAck
     QByteArray m_rxBuf;
+    bool m_ackSeen = false;         // an ack for m_awaitAckFor arrived
+    bool m_ackOk = false;           // …and it was "ok" rather than "error"
     qint64 m_ignoreWatchUntilMs = 0;
     qint64 m_suppressAdoptUntilMs = 0;
     bool m_hubConnected = false;

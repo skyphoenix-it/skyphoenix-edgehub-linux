@@ -1,7 +1,8 @@
 # Session handoff — continue from here
 
-_Last updated: 2026-07-14 (E1 follow-up + branch cleanup after a mid-session crash). The
-alpha track is merged into `master`; `v1.0-alpha` stays alive for E4–E9._
+_Last updated: 2026-07-16 (B5 two-writer-race fix merged onto master — see the
+"Resolved: B5" entry below). The alpha track is merged into `master`; `v1.0-alpha`
+stays alive for E4–E9._
 
 ## v1.0 ALPHA — in progress (branch `v1.0-alpha`)
 
@@ -191,15 +192,20 @@ first): `pkill -f xeneon-edge; sudo pacman -U
 - New tests: `tst_config_panel_wiring`, `tst_all_widget_configs` (all 23 types render),
   `tst_store_validation`, `tst_single_instance` (C++), `tst_rx_cap` (C++).
 
-### Known follow-up (not yet fixed — needs a design decision)
-- **Manager `setTargetDisplay`/`setAutostart` write config.toml directly even when the
-  hub is connected** (two-writer race): the hub's in-memory config still holds the old
-  target/autostart, so the hub's next save reverts the Manager's change. `saveUiState`
-  already avoids this (IPC-only when connected), but display/startup have no IPC path —
-  fixing it needs a new hub control-socket command (e.g. `reloadConfig` or per-field
-  setters) so the hub adopts the change. Narrow window (these are set rarely) but real.
-  The single-instance guard + IPC-only ui_state cover the common churn; this is the
-  remaining edge. `manager/src/manager_backend.h:setTargetDisplay/setAutostart`.
+### Resolved: B5 two-writer race on display/autostart (was: needs a design decision)
+- **FIXED** (`d8338bb`, merged onto the socket-path/hermetic-guard master in `11911c2`):
+  the design decision went to **per-field control-socket setters**, not `reloadConfig` —
+  a reload of a file the hub is about to overwrite would only move the race. New
+  `setTargetDisplay`/`setAutostart` requests make the hub adopt the value into its LIVE
+  config, apply the side effect (strict display re-match + window migration; XDG
+  autostart `.desktop` entry), persist, and ack (`{"type":"ok"|"error","for":…}`).
+  While connected the Manager is IPC-only for these fields and blocks (bounded, 1 s)
+  on the ack because the QML re-reads effective state on the next line; offline it
+  remains the sole writer and persists directly, as before. Regression gates:
+  `tst_manager_backend_sync` (`targetDisplaySurvivesHubSave`/`autostartSurvivesHubSave`
+  drive the REAL `ControlServer` + `ConfigHandle`, plus honest-failure and bounded-
+  timeout cases) and `tst_control_server` (ack protocol, empty-target and non-bool
+  `enabled` rejection). Both regressions fail against the pre-fix Manager.
 
 ### Resolved: FocusWidget goal bonus now fires once
 - **FocusWidget goal bonus/celebration is now ONE-TIME.** Previously it re-fired every

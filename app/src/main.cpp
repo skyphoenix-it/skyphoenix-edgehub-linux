@@ -462,7 +462,8 @@ int main(int argc, char *argv[]) {
         qInfo() << "Hub: shutdown requested by Manager";
         QTimer::singleShot(80, qApp, &QCoreApplication::quit);
     });
-    controlServer->start();
+    // NOTE: start() is deferred until AFTER the display/autostart handlers are wired
+    // below, so the socket never accepts a request the hub can't yet apply.
 
     // Load main QML
     engine.load(QUrl(QStringLiteral("qrc:/qml/main.qml")));
@@ -614,6 +615,64 @@ int main(int argc, char *argv[]) {
     // isPrimary flags without an add/remove, so refresh on that too.
     QObject::connect(&app, &QGuiApplication::primaryScreenChanged, &engine,
                      [pushScreens](QScreen*) { pushScreens(); });
+
+    // B5 (two-writer race): while the hub runs it is the SINGLE writer of
+    // config.toml, so the Manager stops writing display/startup fields itself and
+    // asks us to apply them. Adopting into the live config is what makes that safe —
+    // a handler that only re-saved the file would still be overwritten by our own
+    // next save from an in-memory config that never saw the change.
+    //
+    // These are wired here (not next to the ControlServer construction above)
+    // because applying a target display LIVE needs the window + hotplug state that
+    // only exists past window placement. The event loop starts at app.exec(), so no
+    // request can arrive before this point.
+    QObject::connect(controlServer, &ControlServer::targetDisplayReceived, &engine,
+                     [&engine, config, &targetScreen, &mainWindow, windowedMode](
+                         const QString& connector, const QString& model, bool* ok) {
+        xeneon_config_set_target_connector(config, connector.toUtf8().constData());
+        xeneon_config_set_target_model(config, model.toUtf8().constData());
+        const bool saved = xeneon_config_save(config) == 0;
+        if (!saved)
+            qWarning() << "Hub: failed to persist target display" << connector << model;
+        if (ok) *ok = saved;
+
+        // Live-apply: re-run the SAME match + placement the hub does at boot, so the
+        // choice takes effect now instead of at the next start. STRICT (no primary
+        // fallback) — a target that isn't attached must not make the hub hijack
+        // whatever screen happens to be primary.
+        engine.rootContext()->setContextProperty("_targetConnector", connector);
+        engine.rootContext()->setContextProperty("_targetModel", model);
+        QScreen* s = findTargetScreenStrict(config);
+        if (s && mainWindow) {
+            qInfo() << "Hub: target display set to" << connector << model
+                    << "— migrating window to" << s->name();
+            targetScreen = s;
+            const QRect geo = s->geometry();
+            mainWindow->setScreen(s);
+            mainWindow->setPosition(geo.x(), geo.y());
+            mainWindow->resize(geo.width(), geo.height());
+            if (windowedMode) mainWindow->show();
+            else              mainWindow->showFullScreen();
+            mainWindow->setVisible(true);
+        } else {
+            qWarning() << "Hub: target display" << connector << model
+                       << "is not attached — saved, placement unchanged";
+        }
+    }, Qt::DirectConnection);   // see the uiStateReceived connection: `ok` is a stack pointer
+    QObject::connect(controlServer, &ControlServer::autostartReceived, &engine,
+                     [config](bool enabled, bool* ok) {
+        xeneon_config_set_autostart(config, enabled ? 1 : 0);
+        // The flag on its own does nothing at runtime — the EFFECTIVE state is the
+        // XDG autostart entry (the same one the first-run wizard installs), so write
+        // it here. Both halves must succeed for the ack to be honest: the client's
+        // "is autostart on?" readback reads the entry, not the flag.
+        const bool fileOk = applyAutostart(enabled);
+        const bool saved = xeneon_config_save(config) == 0;
+        if (!fileOk) qWarning() << "Hub: autostart .desktop write failed";
+        if (!saved)  qWarning() << "Hub: failed to persist autostart flag";
+        if (ok) *ok = fileOk && saved;
+    }, Qt::DirectConnection);
+    controlServer->start();
 
     // QA capture: XENEON_GRAB=<path> renders the window to a PNG and quits (mirrors
     // the Manager). Optional XENEON_GRAB_W / XENEON_GRAB_H resize the window first so
