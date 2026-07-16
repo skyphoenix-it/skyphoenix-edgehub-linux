@@ -449,6 +449,81 @@ Item {
         }
     }
 
+    // ── Per-sizeClass structure (W1 wave 2a) ────────────────────────────────
+    // Fixed-size hosts at real projected cell footprints.
+    Item { width: 344; height: 416
+        WidgetHarness { id: hMicro; anchors.fill: parent; widgetFile: "GpuWidget.qml"; expanded: false } }
+    Item { id: wideWrap; width: 696; height: 416
+        WidgetHarness { id: hWide; anchors.fill: parent; widgetFile: "GpuWidget.qml"; expanded: false } }
+    Item { width: 344; height: 840
+        WidgetHarness { id: hTall; anchors.fill: parent; widgetFile: "GpuWidget.qml"; expanded: false } }
+
+    TestCase {
+        name: "GpuSizes"
+        when: windowShown
+
+        function feedTo(host, u, t) {
+            host.metricsJson = JSON.stringify({ gpu_usage_percent: u, gpu_temp_celsius: t })
+        }
+        function gaugeIn(host) {
+            var found = null
+            eachItem(host.item, function (n) {
+                if (!found && n.big !== undefined && n.history !== undefined && n.ok !== undefined)
+                    found = n
+            })
+            return found
+        }
+
+        // 0.5x0.5 — headerless bare ring: the one number (or a dimmed N/A).
+        function test_micro_is_bare_ring() {
+            tryVerify(function () { return hMicro.ready }, 3000)
+            var w = hMicro.item
+            w.sizeClass = "compact"
+            feedTo(hMicro, 42, 60)
+            compare(w.micro, true, "a 344x416 compact box is the micro tile")
+            compare(w.showHeader, false, "micro hides the header")
+            var g = gaugeIn(hMicro)
+            compare(g.showSpark, false, "micro reserves no sparkline slot")
+            compare(g.sub, "", "micro shows only the one number")
+            verify(g.bigMax > 60, "the headerless number may fill its box")
+        }
+
+        // wide — ring beside the sparkline in both projections.
+        function test_wide_puts_spark_beside_ring() {
+            tryVerify(function () { return hWide.ready }, 3000)
+            var w = hWide.item
+            w.sizeClass = "wide"
+            w.hist = []
+            feedTo(hWide, 30, 60); feedTo(hWide, 60, 60)
+            var g = gaugeIn(hWide)
+            compare(g.horizontal, true, "wide lays ring and sparkline side by side")
+            compare(g.showSpark, true, "the sparkline is the point of going wide")
+            wideWrap.width = 840; wideWrap.height = 344
+            compare(g.horizontal, true, "the landscape projection stays side-by-side")
+            wideWrap.width = 696; wideWrap.height = 416
+        }
+
+        // tall — full-height sparkline + avg/peak caption inside the ring.
+        function test_tall_earns_height_and_avg_peak() {
+            tryVerify(function () { return hTall.ready }, 3000)
+            var w = hTall.item
+            w.sizeClass = "tall"
+            feedTo(hTall, 40, 60)
+            // Seed the retained history directly (accumulation itself is pinned
+            // elsewhere; GPU's handler reads its lazy bindings one frame stale).
+            w.hist = [0.2, 0.8]
+            var g = gaugeIn(hTall)
+            compare(g.sparkFills, true, "tall hands the sparkline all the height below the ring")
+            compare(w.histStats, "avg 50% · peak 80%", "avg/peak derive from the retained history")
+            compare(g.sub, "avg 50% · peak 80%", "and the ring captions itself with them")
+            // No GPU → no invented stats: the gauge dims to N/A with no caption.
+            hTall.metricsJson = "{}"
+            compare(g.sub, "", "an unavailable GPU earns no avg/peak caption")
+            w.sizeClass = "full"
+            compare(w.micro, false, "full is never micro")
+        }
+    }
+
     // ── Deliberate bug pins (intended behaviour that current code violates) ──
     TestCase {
         name: "GpuBugs"
