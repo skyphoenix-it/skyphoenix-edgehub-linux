@@ -1,5 +1,30 @@
 # Session handoff — continue from here
 
+## 2026-07-17 (overnight) — READ `docs/reports/overnight-report.md` FIRST
+
+Full report: `docs/reports/overnight-report.md`. Open items now live in one place:
+**`BACKLOG.md`** (they used to be split between BETA_PLAN and this log, so "what is
+left?" had no single answer).
+
+Wave 3 merged + pushed; W2/W3/W4 merged. Full suite green (17 suites, 9 runtime
+E2E, matrix 100%). Headline: **three tests had never executed** — QtTest reads
+`test_X_data()` as the data provider for `test_X()`, so a weather egress guard
+whose whole job was to fail on `&hourly=` was inert, and a stale preset pin had
+never run. `scripts/check_live_tests.sh` gates that class now; see
+[[test-integrity]] and the report for the general rule.
+
+Also fixed, none of it on any backlog: the vulnerability-reporting address pointed
+at an **unregistered domain** (squattable — anyone could have received private
+0-day reports); docs CI had been **red on master** over a link that was actually
+valid; `--reset` **destroyed the layout with no backup** while the tested
+`backup_config_of()` was called by nothing but a test; **202MB** of makepkg output
+was committed under `packaging/aur/`; the local dogfood build **versioned below
+the release**, so `yay -Syu` would have silently reverted Simon to alpha.2; and
+`tst_meds` **failed nightly between 00:00 and 00:10**.
+
+**Unverified:** CI on the final commit — GitHub's API went 503 mid-session. Local
+suite is green. Check before trusting the tree.
+
 _Last updated: 2026-07-16 (beta runway). `v1.0.0-alpha.2` is SIGNED and published;
 the AUR package is LIVE (`yay -S xeneon-edge-hub`, maintainer SKYPhoenix_IT,
 validpgpkeys-verified). Everything below the next section is historical log._
