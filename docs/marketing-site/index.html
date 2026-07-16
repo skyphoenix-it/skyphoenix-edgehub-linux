@@ -247,6 +247,30 @@
 
   /* themes gallery */
   .themes { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+
+  /* real-capture galleries (presets, theme strip, backdrops, landscape) */
+  .shots { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+  .shots.n7 { grid-template-columns: repeat(7, 1fr); }
+  .shots.n3 { grid-template-columns: repeat(3, 1fr); }
+  .shots figure { margin: 0; min-width: 0; }
+  .shots img {
+    display: block; width: 100%; height: auto; border-radius: 14px;
+    border: 1px solid var(--line-strong); box-shadow: var(--shadow);
+  }
+  .shots figcaption {
+    font-family: var(--font-mono); font-size: 12px; color: var(--ink-dim);
+    margin-top: 8px; text-align: center; letter-spacing: 0.02em;
+  }
+  .shot-wide { margin-top: 26px; }
+  .shot-wide img {
+    display: block; width: 100%; height: auto; border-radius: 16px;
+    border: 1px solid var(--line-strong); box-shadow: var(--shadow);
+  }
+  .shot-wide figure { margin: 0; }
+  .shot-wide figcaption {
+    font-family: var(--font-mono); font-size: 12px; color: var(--ink-dim);
+    margin-top: 8px; text-align: center; letter-spacing: 0.02em;
+  }
   .swatch { border-radius: 14px; height: 92px; border: 1px solid var(--line-strong); position: relative; overflow: hidden; box-shadow: 0 10px 30px -18px rgba(0,0,0,0.6); }
   .swatch span { position: absolute; left: 10px; bottom: 8px; font-family: var(--font-mono); font-size: 11px; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.6); letter-spacing: 0.03em; }
   .swatch i { position: absolute; right: 9px; top: 9px; width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 10px currentColor; }
@@ -341,6 +365,7 @@
     .hero .wrap, .gap .wrap { grid-template-columns: 1fr; }
     .device-stage { margin-top: 26px; }
     .grid, .themes { grid-template-columns: repeat(2, 1fr); }
+    .shots, .shots.n7 { grid-template-columns: repeat(4, 1fr); }
     .prices { grid-template-columns: 1fr; }
     .co-grid { grid-template-columns: 1fr; }
     .nav .links { display: none; }
@@ -348,6 +373,7 @@
   }
   @media (max-width: 560px) {
     .themes { grid-template-columns: repeat(3, 1fr); }
+    .shots, .shots.n7, .shots.n3 { grid-template-columns: repeat(2, 1fr); }
     .grid { grid-template-columns: 1fr; }
     .stats { grid-template-columns: 1fr; }
     .fb-1, .fb-2 { display: none; }
@@ -375,6 +401,7 @@
       <div class="links">
         <a href="#features">Features</a>
         <a href="#widgets">Widgets</a>
+        <a href="#presets">Presets</a>
         <a href="#themes">Themes</a>
         <a href="#pricing">Pricing</a>
       </div>
@@ -426,8 +453,8 @@
           <p>You spent real money on a gorgeous secondary touchscreen — then booted Linux and got nothing. No dashboard, no widgets, nothing native. EdgeHub is the missing native layer: it finds the display over EDID, goes fullscreen, remembers your layout across reboots, and never phones home. Open source at the core, a few euros for the prebuilt, auto-updating build.</p>
         </div>
         <div class="stats reveal">
-          <div class="stat"><div class="n"><b>22</b></div><div class="l">Widgets</div></div>
-          <div class="stat"><div class="n"><b>22</b></div><div class="l">Themes</div></div>
+          <div class="stat"><div class="n"><b>30</b></div><div class="l">Widgets</div></div>
+          <div class="stat"><div class="n"><b>29</b></div><div class="l">Themes</div></div>
           <div class="stat"><div class="n">~<b>3.5</b>%</div><div class="l">Peak CPU</div></div>
           <div class="stat"><div class="n"><b>0</b></div><div class="l">Trackers · accounts</div></div>
         </div>
@@ -450,8 +477,8 @@
           </div>
           <div class="card reveal">
             <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></div>
-            <h3>22 widgets, swipeable pages</h3>
-            <p>System gauges, clock &amp; calendar, weather &amp; moon, a Pomodoro focus timer, tasks, habits, hydration, now-playing media, countdowns and more — arranged your way.</p>
+            <h3>30 widgets, swipeable pages</h3>
+            <p>System gauges, clock &amp; calendar, weather &amp; moon, a Pomodoro focus timer, tasks, habits, hydration, now-playing media, countdowns — plus HTTP/JSON and KPI tiles that put <em>your</em> numbers on the glass.</p>
           </div>
           <div class="card reveal">
             <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 4v6c0 4-3 6.5-7 8-4-1.5-7-4-7-8V7z"/><path d="M9.5 12l1.8 1.8L15 10"/></svg></div>
@@ -460,8 +487,8 @@
           </div>
           <div class="card reveal">
             <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18M3.5 9h17M3.5 15h17"/></svg></div>
-            <h3>22 themes &amp; living backdrops</h3>
-            <p>Nord, Dracula, Gruvbox, Synthwave, Catppuccin and more, with frosted-glass cards over animated aurora, waves, starfield, mesh, or bokeh. 14 accents on top.</p>
+            <h3>29 themes &amp; living backdrops</h3>
+            <p>Nord, Dracula, Gruvbox, Synthwave, Catppuccin — and seven palettes that match your distro's mood. Frosted-glass cards over animated aurora, waves, starfield, mesh, bokeh, neon grid, or the new Arch Peaks, Fedora Loops and Aubergine Ribbons. 29 accents on top.</p>
           </div>
           <div class="card reveal">
             <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></div>
@@ -482,21 +509,49 @@
       <div class="wrap">
         <div class="sec-head reveal">
           <span class="eyebrow">The full set</span>
-          <h2>Twenty-two widgets. One glance.</h2>
+          <h2>Thirty widgets. One glance.</h2>
         </div>
         <div class="reveal">
           <div class="wgroup"><div class="gt">System</div><div class="row">
-            <span class="tag">CPU</span><span class="tag">GPU</span><span class="tag">RAM</span><span class="tag">Network</span><span class="tag">Disk</span><span class="tag">Sensors</span>
+            <span class="tag">CPU</span><span class="tag">GPU</span><span class="tag">RAM</span><span class="tag">Network</span><span class="tag">Disk</span><span class="tag">Sensors</span><span class="tag">Packages</span><span class="tag">System Age</span>
           </div></div>
           <div class="wgroup"><div class="gt">Time &amp; sky</div><div class="row">
-            <span class="tag">Clock</span><span class="tag">Analog Clock</span><span class="tag">Calendar</span><span class="tag">Weather</span><span class="tag">Moon Phase</span><span class="tag">Countdown</span><span class="tag">End of Day</span>
+            <span class="tag">Clock</span><span class="tag">Analog Clock</span><span class="tag">Calendar</span><span class="tag">Now / Next</span><span class="tag">Weather</span><span class="tag">Moon Phase</span><span class="tag">Countdown</span><span class="tag">End of Day</span>
           </div></div>
           <div class="wgroup"><div class="gt">Focus &amp; life</div><div class="row">
-            <span class="tag">Focus Timer</span><span class="tag">Tasks</span><span class="tag">Habit Tracker</span><span class="tag">Hydration</span><span class="tag">Break Reminder</span><span class="tag">Notes</span><span class="tag">Right Now</span><span class="tag">Quote</span>
+            <span class="tag">Focus Timer</span><span class="tag">Tasks</span><span class="tag">Habit Tracker</span><span class="tag">Hydration</span><span class="tag">Break Reminder</span><span class="tag">Meds</span><span class="tag">Routine</span><span class="tag">Notes</span><span class="tag">Braindump</span><span class="tag">Right Now</span><span class="tag">Quote</span>
+          </div></div>
+          <div class="wgroup"><div class="gt">Data — yours</div><div class="row">
+            <span class="tag">HTTP / JSON</span><span class="tag">KPI</span>
           </div></div>
           <div class="wgroup"><div class="gt">Media</div><div class="row">
             <span class="tag">Now Playing (MPRIS)</span>
           </div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PRESETS ============ -->
+    <section id="presets" style="padding-top:0">
+      <div class="wrap">
+        <div class="sec-head reveal">
+          <span class="eyebrow">Start from a screen, not a blank grid</span>
+          <h2>Fifteen ready-made screens.</h2>
+          <p>Tell EdgeHub what the screen is for — deep work, the homelab, the trading desk, your health — and it lays out a designed, never-overloaded set of pages. Data presets ship their HTTP/JSON and KPI tiles as labelled slots: nothing polls until <em>you</em> connect an endpoint.</p>
+        </div>
+        <div class="shots reveal">
+          <figure><img src="assets/hero-developer-arch.png" loading="lazy" alt="Developer preset on the Arch palette — a connected CI-status feed and an Open PRs KPI over the neon grid backdrop"><figcaption>Developer · Arch</figcaption></figure>
+          <figure><img src="assets/presets/homelab-cachyos.png" loading="lazy" alt="Homelab Ops preset on the CachyOS palette — service uptime and container feeds"><figcaption>Homelab Ops · CachyOS</figcaption></figure>
+          <figure><img src="assets/presets/trading-desk-fedora.png" loading="lazy" alt="Trading Desk preset on the Fedora palette — two time zones beside a P&amp;L KPI"><figcaption>Trading Desk · Fedora</figcaption></figure>
+          <figure><img src="assets/presets/calm-focus-catppuccin.png" loading="lazy" alt="Calm Focus preset on Catppuccin — a running Pomodoro beside the one thing that matters"><figcaption>Calm Focus · Catppuccin</figcaption></figure>
+          <figure><img src="assets/presets/health-aubergine.png" loading="lazy" alt="Health &amp; Routine preset on the Aubergine palette — hydration, break timer and a streak"><figcaption>Health · Aubergine</figcaption></figure>
+          <figure><img src="assets/presets/home-ambient-midnight.png" loading="lazy" alt="Home &amp; Ambient preset on Midnight — clock and weather over aurora orbs"><figcaption>Home &amp; Ambient · Midnight</figcaption></figure>
+        </div>
+        <div class="shot-wide reveal">
+          <figure>
+            <img src="assets/landscape-developer-arch.png" loading="lazy" alt="The same Developer preset reflowed side-by-side in landscape orientation">
+            <figcaption>Mount it either way — the layout genuinely reflows in landscape.</figcaption>
+          </figure>
         </div>
       </div>
     </section>
@@ -506,8 +561,8 @@
       <div class="wrap">
         <div class="sec-head reveal">
           <span class="eyebrow">Make it yours</span>
-          <h2>Twenty-two themes, or dial your own.</h2>
-          <p>Every theme restyles cards, accents, and the animated backdrop together. A taste:</p>
+          <h2>Twenty-nine themes, or dial your own.</h2>
+          <p>Every theme restyles cards, accents, and the animated backdrop together — including seven palettes that echo a familiar distro's mood (colour only, no logos). A taste:</p>
         </div>
         <div class="themes reveal">
           <div class="swatch" style="background:linear-gradient(150deg,#2E3440,#3B4252)"><i style="background:#88C0D0;color:#88C0D0"></i><span>Nord</span></div>
@@ -522,6 +577,27 @@
           <div class="swatch" style="background:linear-gradient(150deg,#1a1030,#3d1d63)"><i style="background:#A371F7;color:#A371F7"></i><span>Nebula</span></div>
           <div class="swatch" style="background:linear-gradient(150deg,#2b0f0f,#4a1717)"><i style="background:#FF7B72;color:#FF7B72"></i><span>Ember</span></div>
           <div class="swatch" style="background:linear-gradient(150deg,#07120b,#0f2417)"><i style="background:#3FB950;color:#3FB950"></i><span>Matrix</span></div>
+          <div class="swatch" style="background:linear-gradient(150deg,#1B2129,#14181D)"><i style="background:#1FA8DF;color:#1FA8DF"></i><span>Arch</span></div>
+          <div class="swatch" style="background:linear-gradient(150deg,#1C221A,#131611)"><i style="background:#3DD68C;color:#3DD68C"></i><span>CachyOS</span></div>
+          <div class="swatch" style="background:linear-gradient(150deg,#1F1922,#16121A)"><i style="background:#D70A53;color:#D70A53"></i><span>Debian</span></div>
+          <div class="swatch" style="background:linear-gradient(150deg,#152034,#0E1626)"><i style="background:#3C6EB4;color:#3C6EB4"></i><span>Fedora</span></div>
+          <div class="swatch" style="background:linear-gradient(150deg,#262322,#1E1C1B)"><i style="background:#48B9C7;color:#48B9C7"></i><span>Pop!_OS</span></div>
+          <div class="swatch" style="background:linear-gradient(150deg,#3A0F2A,#2C0A20)"><i style="background:#E8642A;color:#E8642A"></i><span>Aubergine</span></div>
+          <div class="swatch" style="background:linear-gradient(150deg,#16080B,#0B0507)"><i style="background:#DC3B33;color:#DC3B33"></i><span>Crimson</span></div>
+        </div>
+        <div class="shots n7 reveal" style="margin-top:26px">
+          <figure><img src="assets/themes/arch.png" loading="lazy" alt="System Monitor gauges under the Arch palette"><figcaption>Arch</figcaption></figure>
+          <figure><img src="assets/themes/cachyos.png" loading="lazy" alt="System Monitor gauges under the CachyOS palette"><figcaption>CachyOS</figcaption></figure>
+          <figure><img src="assets/themes/debian.png" loading="lazy" alt="System Monitor gauges under the Debian palette"><figcaption>Debian</figcaption></figure>
+          <figure><img src="assets/themes/fedora.png" loading="lazy" alt="System Monitor gauges under the Fedora palette"><figcaption>Fedora</figcaption></figure>
+          <figure><img src="assets/themes/popos.png" loading="lazy" alt="System Monitor gauges under the Pop!_OS palette"><figcaption>Pop!_OS</figcaption></figure>
+          <figure><img src="assets/themes/aubergine.png" loading="lazy" alt="System Monitor gauges under the Aubergine palette"><figcaption>Aubergine</figcaption></figure>
+          <figure><img src="assets/themes/crimson.png" loading="lazy" alt="System Monitor gauges under the Crimson palette"><figcaption>Crimson</figcaption></figure>
+        </div>
+        <div class="shots n3 reveal" style="margin-top:26px">
+          <figure><img src="assets/backgrounds/arch-peaks.png" loading="lazy" alt="Arch Peaks — layered angular ridgelines drifting behind a lone clock"><figcaption>Arch Peaks</figcaption></figure>
+          <figure><img src="assets/backgrounds/fedora-loops.png" loading="lazy" alt="Fedora Loops — soft concentric rings on deep navy behind a lone clock"><figcaption>Fedora Loops</figcaption></figure>
+          <figure><img src="assets/backgrounds/aubergine-ribbons.png" loading="lazy" alt="Aubergine Ribbons — warm blurred ribbons over deep purple behind a lone clock"><figcaption>Aubergine Ribbons</figcaption></figure>
         </div>
       </div>
     </section>
@@ -556,7 +632,7 @@
             <div class="amt"><span class="big">€0</span></div>
             <div class="note">Build it yourself</div>
             <ul>
-              <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4L19 6"/></svg>The complete app, all 22 widgets</li>
+              <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4L19 6"/></svg>The complete app, all 30 widgets</li>
               <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4L19 6"/></svg>MIT / Apache-2.0 source on GitHub</li>
               <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l4 4L19 6"/></svg>Community support</li>
             </ul>
