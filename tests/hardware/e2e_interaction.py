@@ -3,9 +3,17 @@
 
 Coordinates are for the fixed layout seeded in `run()` (Focus h1 top, Hydration
 h1, Tasks h2) at the Edge's native 720x2560 — verified pixel-accurate.
+
+SAFETY: this suite emits real input into the live session, so it is OPT-IN —
+without XENEON_HW_INPUT=1 it SKIPS loudly and completely. Even when opted in,
+the harness refuses to inject until the kill switch is connected, the owner is
+idle, the hub window is render-verified at the Edge rect, and an IPC landing
+probe passed (e2e_harness.ensure_injection_ready). Any real user input mid-run
+aborts injection for good.
 """
 import os
-from e2e_harness import doc, page, tile
+import uinput_touch as u
+from e2e_harness import doc, page, tile, InjectionRefused, UserActivityAbort
 
 
 def _seed_controls(h):
@@ -24,6 +32,27 @@ def _seed_controls(h):
 
 
 def run(h):
+    # ── opt-in gate + safety preconditions (skip loudly, never inject) ────
+    if not h.input_allowed:
+        h.skip("interaction_suite",
+               "synthetic input is OPT-IN: set XENEON_HW_INPUT=1 to enable "
+               "(kill switch + window verification still apply)")
+        return
+    try:
+        kind = h.ensure_injection_ready()
+        print("  injector ready: %s (window verified, kill switch armed)" % kind, flush=True)
+    except (u.InputGateError, InjectionRefused, UserActivityAbort) as e:
+        h.skip("interaction_suite", "injection refused: %s" % e)
+        return
+    try:
+        _run_gestures(h)
+    except UserActivityAbort as e:
+        # First-class kill switch: the owner touched a real input device.
+        h.skip("interaction_suite_remainder",
+               "KILL SWITCH aborted injection: %s" % e)
+
+
+def _run_gestures(h):
     # ── compact controls (touch) ──────────────────────────────────────────
     _seed_controls(h)
     st = h.settings()

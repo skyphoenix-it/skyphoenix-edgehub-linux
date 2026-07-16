@@ -30,8 +30,26 @@ The fix, per spawned hub:
     path that removes the user's socket, even on a crashed or half-torn-down
     run.
 
-Geometry is auto-detected via tests/hardware/uinput_touch.detect_edge()
-(kscreen-doctor), overridable with XENEON_EDGE_GEOM / XENEON_CANVAS.
+Geometry is auto-detected via tests/hardware/uinput_touch.detect_edge_ex()
+(kscreen-doctor); XENEON_EDGE_GEOM / XENEON_CANVAS overrides are cross-checked
+against the live layout and rejected when stale.
+
+## Synthetic-input safety (see README "Synthetic-input safety")
+
+Injection is OPT-IN (XENEON_HW_INPUT=1). h.tap()/h.swipe() only work after
+ensure_injection_ready() has, in this order:
+  1. connected the user-activity kill switch (input_guard.ActivityGuard;
+     no activity signal -> no injection) and waited for the owner to be
+     hands-off for XENEON_HW_IDLE_SECONDS (default 3);
+  2. render-probe VERIFIED the hub actually occupies the Edge rect (two
+     distinct wallpaper states must show up in grabs of that exact rect);
+  3. built a confined injector and IPC-verified a landing probe:
+     preferred VTouch — an ABS_MT touchscreen physically bound to the Edge
+     output via KWin's InputDevice.outputName DBus property (readback-
+     verified, axis transform probed); fallback VPointer — arithmetically
+     clamped to the Edge rect at the emit layer.
+Any REAL input-device event afterwards raises UserActivityAbort and
+permanently disables injection for the rest of the run (input_aborted).
 """
 import os, sys, time, json, socket, subprocess, shutil, datetime, tempfile
 
@@ -39,6 +57,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, HERE)
 import uinput_touch as u  # noqa: E402
+import input_guard  # noqa: E402
+from input_guard import UserActivityAbort  # noqa: E402  (re-exported for suites)
+
+
+class InjectionRefused(RuntimeError):
+    """A safety precondition failed — suites must skip loudly, not inject."""
 
 HUB = os.path.join(REPO, "build", "xeneon-edge-hub")
 MANAGER = os.path.join(REPO, "build", "xeneon-edge-manager")
@@ -82,10 +106,17 @@ class E2E:
         self.sock = os.path.join(self.run_dir, SOCK_NAME)
         self.proc = None
         self.results = []           # (name, ok, detail)
-        g = u.detect_edge()
-        self.ex, self.ey, self.ew, self.eh, self.cw, self.ch = g
-        self.vp = None
+        g = u.detect_edge_ex()
+        self.edge_name = g[0]
+        self.ex, self.ey, self.ew, self.eh, self.cw, self.ch = g[1:]
         self.today = datetime.date.today().strftime("%Y-%m-%d")
+        # -- synthetic-input safety state --
+        self.input_allowed = os.environ.get(u.GATE_ENV) == "1"
+        self.input_aborted = False
+        self.guard = None
+        self._injector = None       # ("touch", VTouch) | ("pointer", VPointer)
+        self.window_verified = False
+        self.skips = []             # (name, reason)
 
     # ── pass/fail ──────────────────────────────────────────────────────────
     def check(self, name, ok, detail=""):
@@ -93,12 +124,19 @@ class E2E:
         print(("  PASS " if ok else "  FAIL ") + name + (" -> " + str(detail) if detail else ""), flush=True)
         return ok
 
+    def skip(self, name, reason):
+        """Loud, first-class skip — visible in output AND in the summary."""
+        self.skips.append((name, reason))
+        print("  SKIP " + name + " -> " + reason, flush=True)
+
     def summary(self):
         p = sum(1 for _, ok, _ in self.results if ok)
-        print("\n==== %d / %d checks passed ====" % (p, len(self.results)), flush=True)
+        print("\n==== %d / %d checks passed, %d skipped ====" % (p, len(self.results), len(self.skips)), flush=True)
         for n, ok, d in self.results:
             if not ok:
                 print("   FAILED:", n, "->", d, flush=True)
+        for n, r in self.skips:
+            print("   SKIPPED:", n, "->", r, flush=True)
         return p, len(self.results)
 
     # ── config seeding + launch ────────────────────────────────────────────
@@ -162,6 +200,10 @@ class E2E:
 
     def cleanup(self):
         """Remove the private runtime dir (call after the final stop_hub)."""
+        self.close_injector()
+        if self.guard is not None:
+            self.guard.close()
+            self.guard = None
         self.stop_hub()
         shutil.rmtree(self.run_dir, ignore_errors=True)
 
@@ -193,19 +235,151 @@ class E2E:
         return self.get_state().get("settings", {})
 
     # ── synthetic touch (Edge-local pixels 0..ew, 0..eh) ───────────────────
-    def _pointer(self):
-        if self.vp is None:
-            self.vp = u.VPointer(self.cw, self.ch)
-            time.sleep(1.0)   # let the compositor bind the virtual pointer
-        return self.vp
+    #
+    # SAFETY PIPELINE — no injection happens before every step here passed.
+    # See the module docstring; each step is structural, not a convention.
+
+    def verify_target_window(self):
+        """Render-probe: prove OUR hub's pixels occupy the Edge rect before
+        any event is emitted. Two visually opposite states must both show up
+        in grabs cropped to exactly the target rect; a hub that landed on
+        another output (KWin placement, stale geometry, wrong screen) fails
+        this and injection is refused."""
+        if self.window_verified:
+            return True
+        probes = [("dark", {"mode": "dark", "themeMode": "midnight", "accent": "#58A6FF",
+                            "bgStyle": "none", "animatedBg": False, "glass": 0.0,
+                            "glow": False, "gridCols": 1},
+                   "qrc:/wallpapers/midnight.png"),
+                  ("light", {"mode": "light", "themeMode": "light", "accent": "#58A6FF",
+                             "bgStyle": "none", "animatedBg": False, "glass": 0.0,
+                             "glow": False, "gridCols": 1},
+                   "qrc:/wallpapers/sunset.png")]
+        shots = []
+        for tag, app, wp in probes:
+            self.set_state(doc([{"name": "V", "bg": {"wallpaper": wp},
+                                 "tiles": [tile("moon-v", "moon")]}], appearance=app))
+            time.sleep(0.4)
+            p = os.path.join(self.work, "verify_%s.png" % tag)
+            if not self.grab(p):
+                print("  VERIFY-WINDOW failed: no grab", flush=True)
+                return False
+            shots.append(p)
+        try:
+            from PIL import Image
+            avg = [Image.open(s).convert("RGB").resize((1, 1)).getpixel((0, 0)) for s in shots]
+            dist = sum((a - b) ** 2 for a, b in zip(*avg)) ** 0.5
+        except Exception as e:
+            print("  VERIFY-WINDOW failed:", e, flush=True)
+            return False
+        self.window_verified = dist > 25
+        print("  VERIFY-WINDOW %s: state-A/B colour distance %.0f (need >25) at rect %d,%d %dx%d"
+              % ("OK" if self.window_verified else "FAILED", dist,
+                 self.ex, self.ey, self.ew, self.eh), flush=True)
+        return self.window_verified
+
+    def _seed_probe_layout(self):
+        """The pixel-verified control layout (same as e2e_interaction's) with
+        a hydration counter at Edge-local (394, 955) used as landing probe."""
+        self.set_state(doc([page("Probe", [
+            tile("focus-pr", "focus", 1, 1),
+            tile("hydration-pr", "hydration", 1, 1),
+            tile("tasks-pr", "tasks", 1, 2),
+        ])], settings={"hydration-pr": {"count": 0, "goal": 8, "day": self.today}}))
+
+    def _probe_landing(self, tap_fn, label):
+        """IPC-verified landing probe: tap the hydration '+' and require the
+        counter to move. Proves events reach OUR hub at the expected pixels."""
+        self._seed_probe_layout()
+        tap_fn(394, 955)
+        time.sleep(0.4)
+        got = self.settings().get("hydration-pr", {}).get("count")
+        print("  LANDING-PROBE %s: hydration count=%s (want 1)" % (label, got), flush=True)
+        return got == 1
+
+    def ensure_injection_ready(self):
+        """Build (once) the guarded, verified injector. Raises InjectionRefused
+        / InputGateError / UserActivityAbort — callers turn that into a loud
+        skip. NEVER emits anything before window verification passed."""
+        if self._injector is not None:
+            return self._injector[0]
+        if not self.input_allowed:
+            raise u.InputGateError(
+                "synthetic input is opt-in: run with %s=1" % u.GATE_ENV)
+        if self.input_aborted:
+            raise UserActivityAbort("injection disabled earlier in this run")
+        if not self.ping():
+            raise InjectionRefused("hub not reachable over IPC")
+        # 1. kill switch first — without an activity signal nothing may inject
+        if self.guard is None:
+            self.guard = input_guard.ActivityGuard.connect()
+        self.guard.require_user_idle()          # owner hands-off for >= N s
+        # 2. target-window verification (render probe), BEFORE the first event
+        if not self.verify_target_window():
+            raise InjectionRefused("hub window not verified at the Edge rect -> no injection")
+        self.guard.arm()                        # from here, any user event aborts
+        # 3a. preferred: ABS_MT touchscreen physically bound to the Edge output
+        try:
+            vt = u.VTouch((0, 0, self.ew, self.eh), guard=self.guard)
+            try:
+                vt.map_to_output(self.edge_name)   # KWin readback-verified
+                print("  VTouch bound to output %s (%s)" % (self.edge_name, vt.mapped_path), flush=True)
+                for tr in ("identity", "rot270", "rot90", "rot180"):
+                    vt.transform = tr
+                    if self._probe_landing(vt.tap, "touch/" + tr):
+                        self._injector = ("touch", vt)
+                        return "touch"
+                vt.close()
+                print("  VTouch landing probe failed for all transforms; falling back", flush=True)
+            except u.OutputMappingError as e:
+                vt.close()
+                print("  VTouch output mapping unavailable (%s); falling back" % e, flush=True)
+        except OSError as e:
+            print("  VTouch device creation failed (%s); falling back" % e, flush=True)
+        # 3b. fallback: whole-canvas pointer, arithmetically clamped to the rect
+        vp = u.VPointer(self.cw, self.ch, (self.ex, self.ey, self.ew, self.eh),
+                        guard=self.guard)
+        if self._probe_landing(lambda lx, ly: vp.tap(self.ex + lx, self.ey + ly),
+                               "pointer/clamped"):
+            self._injector = ("pointer", vp)
+            return "pointer"
+        vp.close()
+        raise InjectionRefused("no injector passed the IPC landing probe -> refusing to inject blind")
+
+    def _gesture(self, fn):
+        try:
+            fn()
+        except UserActivityAbort:
+            self.input_aborted = True           # kill switch: stay off for good
+            self.close_injector()
+            raise
 
     def tap(self, lx, ly, settle=0.6):
-        self._pointer().tap(self.ex + lx, self.ey + ly)
+        kind = self.ensure_injection_ready()
+        dev = self._injector[1]
+        if kind == "touch":
+            self._gesture(lambda: dev.tap(lx, ly))
+        else:
+            self._gesture(lambda: dev.tap(self.ex + lx, self.ey + ly))
         time.sleep(settle)
 
     def swipe(self, lx0, ly0, lx1, ly1, settle=0.7):
-        self._pointer().swipe(self.ex + lx0, self.ey + ly0, self.ex + lx1, self.ey + ly1)
+        kind = self.ensure_injection_ready()
+        dev = self._injector[1]
+        if kind == "touch":
+            self._gesture(lambda: dev.swipe(lx0, ly0, lx1, ly1))
+        else:
+            self._gesture(lambda: dev.swipe(self.ex + lx0, self.ey + ly0,
+                                            self.ex + lx1, self.ey + ly1))
         time.sleep(settle)
+
+    def close_injector(self):
+        if self._injector is not None:
+            try:
+                self._injector[1].close()
+            except Exception:
+                pass
+            self._injector = None
 
     # ── screenshots ────────────────────────────────────────────────────────
     def grab(self, path):

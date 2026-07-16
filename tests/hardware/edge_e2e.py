@@ -18,7 +18,7 @@ import os, sys, time, json, socket, subprocess, tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-from e2e_harness import E2E, MANAGER, doc, page, tile   # noqa: E402
+from e2e_harness import E2E, MANAGER, REPO, doc, page, tile, UserActivityAbort   # noqa: E402
 import e2e_interaction  # noqa: E402
 try:
     import e2e_widgets
@@ -114,8 +114,16 @@ def soak(h, seconds=120):
                                  "animatedBg": (n % 2 == 0), "glass": 0.4 + 0.4 * (n % 2),
                                  "glow": (n % 2 == 0), "gridCols": 1 + (n % 2)})
             h.set_state(st); h.get_state(); n += 1
-            if n % 40 == 0:   # occasional real touch input under load
-                h.swipe(600, 1280, 120, 1280, settle=0.2)
+            # Occasional real touch input under load — ONLY when synthetic
+            # input is opted in (XENEON_HW_INPUT=1) and not killed. The soak
+            # itself is IPC-driven and stays fully useful without it.
+            if n % 40 == 0 and h.input_allowed and not h.input_aborted:
+                try:
+                    h.swipe(600, 1280, 120, 1280, settle=0.2)
+                except UserActivityAbort as e:
+                    print("  KILL SWITCH during soak swipe (soak continues via IPC):", e, flush=True)
+                except Exception as e:
+                    print("  soak swipe skipped:", e, flush=True)
         except Exception as e:
             crashed = True; err = str(e); break
         time.sleep(0.03)
