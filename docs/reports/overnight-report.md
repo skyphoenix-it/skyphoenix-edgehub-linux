@@ -1,6 +1,6 @@
 # Overnight Execution Report
 
-_2026-07-16 → 2026-07-17. Baseline `3625dd5` → `6885b80` (master and `v1.0-alpha`
+_2026-07-16 → 2026-07-17. Baseline `3625dd5` → `7c3a01b`+ (master and `v1.0-alpha`
 in lockstep, both pushed). 17 non-merge commits._
 
 ## Summary
@@ -15,9 +15,10 @@ unregistered domain, 202 MB of committed build output, a nightly test flake, and
 an unrecoverable data-loss path in `--reset`.
 
 **Status: green.** Full suite `RESULT: SUCCESS` (17 suites incl. 9 runtime E2E
-scenarios), behavior matrix 100%, all four GitHub workflows green as of `80352d3`
-(the run for `6885b80` was still pending when GitHub's API began returning 503 —
-**unverified, see Blockers**).
+scenarios), behavior matrix 100%, all four GitHub workflows green as of `80352d3`.
+CI for the final commits is **unverified** — the local `gh` token went invalid
+mid-session, so I could not read the Actions API. That is a local auth problem,
+not a CI or tree problem (`git` over SSH kept working). See Blockers.
 
 ## Completed work
 
