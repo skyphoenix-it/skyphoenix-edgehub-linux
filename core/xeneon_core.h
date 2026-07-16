@@ -159,6 +159,30 @@ char* xeneon_distro_probe_json(const char* root);
 // key is embedded in core/src/license.rs.
 char* xeneon_license_verify_json(const char* key);
 
+// === Managed / org policy (E9) ===
+// Load the org policy (/etc/xeneon-edge-hub/policy.toml, or $XENEON_POLICY_PATH
+// — a TEST-ONLY seam; real deployments rely on /etc being root-owned) and
+// describe the EFFECTIVE result.
+//
+// Returns owned JSON — free with xeneon_string_free:
+//   { "active": true, "source": "policy",
+//     "reason": null, "forcePreset": null, "netOffline": false,
+//     "allowedHosts": ["api.internal.example"],
+//     "disableUserWidgets": false, "disabledWidgetTypes": [] }
+//
+//   active   false only when NO policy file exists (unmanaged: default
+//            behaviour, byte-for-byte).
+//   source   "absent" | "policy" | "fail-closed".
+//   reason   non-null only for "fail-closed"; names the failure mode, never
+//            file contents (allowedHosts may name internal infrastructure —
+//            same discipline: never log this object wholesale).
+//
+// FAILS CLOSED: a policy file that exists but is unusable (unreadable,
+// unparseable, unknown key, unsupported policy_version) yields active=true
+// with netOffline=true and disableUserWidgets=true — an org that wrote a
+// policy is never silently unmanaged. Never returns NULL, never panics.
+char* xeneon_policy_json(void);
+
 // === String Utilities ===
 void xeneon_string_free(char* s);
 

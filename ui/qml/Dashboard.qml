@@ -44,6 +44,36 @@ Item {
     property var host: StackView.view
     property bool _applyingAppearance: false
 
+    // ── Managed / org policy (E9) ────────────────────────────────────────────
+    // Read ONCE at creation: the policy file is root-owned and static for the
+    // life of the process (ConfigBridge caches it too). No bridge (QML test
+    // harness, Manager) or no policy file ⇒ inactive ⇒ behaviour is
+    // byte-for-byte the unmanaged default.
+    readonly property var orgPolicy: (typeof configBridge !== "undefined" && configBridge
+                                      && configBridge.policy)
+                                     ? configBridge.policy() : ({ "active": false })
+    readonly property bool managed: orgPolicy && orgPolicy.active === true
+
+    // False only when an ACTIVE policy disables this widget type. Consulted by
+    // the tile loaders (a disabled type renders the fallback card, never the
+    // widget), the expanded overlay, and the picker filter below.
+    function policyAllowsWidget(type) {
+        if (!dashboard.managed) return true
+        var dis = dashboard.orgPolicy.disabledWidgetTypes
+        return !(dis && dis.length && dis.indexOf(type) >= 0)
+    }
+    // The add-picker's model for one category, with policy-disabled types
+    // removed — "hidden from picker", not greyed out: an option the user can
+    // never have should not be advertised.
+    function policyFilteredWidgets(category) {
+        var all = catalog.inCategory(category)
+        if (!dashboard.managed) return all
+        var out = []
+        for (var i = 0; i < all.length; i++)
+            if (policyAllowsWidget(all[i].type)) out.push(all[i])
+        return out
+    }
+
     // Resolved background for the CURRENT page. A background is ONE coherent
     // choice — either a wallpaper image OR an animated style — resolved per page
     // then falling back to the global appearance. A per-page choice fully wins:
@@ -168,7 +198,23 @@ Item {
     // future global toggle / managed config); default off.
     NetHub {
         id: netHub
-        offline: { var _ = store.revision; return store.appearance().netOffline === true }
+        // POLICY PIN (E9): an active org policy with net_offline=true holds the
+        // kill switch ON no matter what the user's appearance flag says — this
+        // is what makes the no-egress attestation enforceable rather than
+        // advisory. Without a policy, the user's own flag governs, exactly as
+        // before.
+        offline: {
+            var _ = store.revision
+            if (dashboard.managed && dashboard.orgPolicy.netOffline === true) return true
+            return store.appearance().netOffline === true
+        }
+        // POLICY PIN (E9): allowHosts comes from the org policy and nowhere
+        // else — no user-config path assigns this property, so the binding IS
+        // the pin and user config cannot widen it. (NetHub.request()'s
+        // per-request opts.allow would take precedence over this list; no
+        // shipped widget passes it — see docs/security/managed-config.md.)
+        allowHosts: (dashboard.managed && dashboard.orgPolicy.allowedHosts)
+                    ? dashboard.orgPolicy.allowedHosts : []
         // E7: the hub's ConfigBridge resolves ${env:}/file: credential refs. The
         // Manager has no configBridge (and does no egress), and the QML test
         // harness has none either — NetHub fails a ref closed when it is absent
@@ -209,7 +255,13 @@ Item {
     }
 
     Component.onCompleted: {
-        store.load(typeof configBridge !== "undefined" && configBridge ? configBridge.starterLayout() : "")
+        // E9: an org-forced preset replaces the saved layout for this session
+        // (the store's lock also stops every disk write, so the user's own
+        // layout survives underneath and comes back if the policy is removed).
+        if (dashboard.managed && dashboard.orgPolicy.forcePreset)
+            store.lockToPreset(dashboard.orgPolicy.forcePreset)
+        else
+            store.load(typeof configBridge !== "undefined" && configBridge ? configBridge.starterLayout() : "")
         applyAppearance()
         // QA: auto-open a widget's expanded config view (XENEON_EXPAND=<type>).
         if (typeof _expandType !== "undefined" && _expandType) {
@@ -517,6 +569,7 @@ Item {
                                     property string wId: cell.modelData.id
                                     property string wType: cell.modelData.type
                                     active: wId !== "" && wType !== "" && catalog.source(wType) !== ""
+                                            && dashboard.policyAllowsWidget(wType)
                                     source: active ? catalog.source(wType) : ""
                                     onLoaded: {
                                         dashboard.injectWidget(item, wId, wType, false,
@@ -525,11 +578,14 @@ Item {
                                     }
                                 }
 
-                                // Error boundary: a tile whose type is unknown/removed
-                                // renders the fallback card instead of a blank, confusing tile.
+                                // Error boundary: a tile whose type is unknown/removed —
+                                // or disabled by org policy (E9) — renders the fallback
+                                // card instead of a blank, confusing tile.
                                 Loader {
                                     anchors.fill: parent
-                                    active: tileLd.wId !== "" && tileLd.wType !== "" && catalog.source(tileLd.wType) === ""
+                                    active: tileLd.wId !== "" && tileLd.wType !== ""
+                                            && (catalog.source(tileLd.wType) === ""
+                                                || !dashboard.policyAllowsWidget(tileLd.wType))
                                     sourceComponent: dashboard.fallbackTile
                                 }
 
@@ -711,6 +767,18 @@ Item {
                 elide: Text.ElideRight; verticalAlignment: Text.AlignVCenter
             }
 
+            // E9: ONE always-visible line saying the hub is under org
+            // management — in the bottom bar, not buried in a submenu.
+            Text {
+                visible: dashboard.managed
+                text: "Managed by your organization"
+                color: theme.textTertiary; font.pixelSize: theme.fontLabel
+                font.family: theme.fontDisplay
+                verticalAlignment: Text.AlignVCenter
+                elide: Text.ElideRight
+                Layout.maximumWidth: theme.touchSecondary * 4
+            }
+
             PageIndicator {
                 Layout.alignment: Qt.AlignCenter; Layout.fillWidth: true
                 count: swipeView.count; currentIndex: swipeView.currentIndex
@@ -890,6 +958,7 @@ Item {
                         anchors.fill: parent
                         anchors.margins: theme.spacingLg
                         active: dashboard.hasExpanded && catalog.source(dashboard.expandedType) !== ""
+                                && dashboard.policyAllowsWidget(dashboard.expandedType)
                         source: active ? catalog.source(dashboard.expandedType) : ""
                         onLoaded: {
                             // expanded=true → the widget shows its full, INTERACTIVE
@@ -996,12 +1065,16 @@ Item {
                             model: catalog.categories()
                             delegate: ColumnLayout {
                                 required property var modelData
+                                // E9: policy-disabled types are absent, not greyed out; a
+                                // category the policy empties disappears with them.
+                                property var allowedItems: dashboard.policyFilteredWidgets(modelData)
+                                visible: allowedItems.length > 0
                                 Layout.fillWidth: true; spacing: theme.spacingSm
                                 Text { text: modelData; font.pixelSize: 14; font.bold: true; color: theme.textSecondary }
                                 Flow {
                                     Layout.fillWidth: true; spacing: theme.spacingSm
                                     Repeater {
-                                        model: catalog.inCategory(modelData)
+                                        model: allowedItems
                                         delegate: Rectangle {
                                             required property var modelData
                                             width: 200; height: theme.touchPrimary; radius: theme.radiusMd

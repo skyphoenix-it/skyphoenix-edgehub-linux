@@ -1,6 +1,8 @@
 #pragma once
 
 #include <QDebug>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QObject>
 #include <QString>
 #include <QUrl>
@@ -234,10 +236,56 @@ public:
         return r;
     }
 
+    // --- Managed / org policy (E9) --------------------------------------------
+    // The effective org policy, as one QVariantMap (mirrors resolveSecret: the
+    // FFI answers, the bridge shapes it for QML). Keys — always all present:
+    //   active               bool   false only when NO policy file exists
+    //   source               string "absent" | "policy" | "fail-closed"
+    //   reason               string non-empty only for fail-closed
+    //   forcePreset          string layout locked to this preset ("" = none)
+    //   netOffline           bool   pins NetHub's kill switch on
+    //   allowedHosts         list   pins NetHub.allowHosts (empty = no pin)
+    //   disableUserWidgets   bool   pins the E3 user-widget loader flag off
+    //   disabledWidgetTypes  list   hidden from the picker, never rendered
+    //
+    // Deliberately INDEPENDENT of m_config (no detach guard): policy comes from
+    // /etc (or $XENEON_POLICY_PATH — a test-only seam), not from the user's
+    // config handle. Cached: the file is root-owned and static per launch, and
+    // QML bindings would otherwise re-read it on every evaluation.
+    //
+    // Never log the returned map wholesale — allowedHosts may name internal
+    // infrastructure (same discipline as core/src/secrets.rs).
+    Q_INVOKABLE QVariantMap policy() const {
+        if (m_policyLoaded) return m_policy;
+        XeneonString s(xeneon_policy_json());
+        const QJsonDocument doc = QJsonDocument::fromJson(s.qstring().toUtf8());
+        QVariantMap p = doc.object().toVariantMap();
+        if (!p.contains("active")) {
+            // The core guarantees a JSON object; an empty/broken answer means
+            // the FFI itself misbehaved. Same doctrine as the core: we cannot
+            // prove there is no policy, so fail CLOSED, not open.
+            qWarning() << "Policy FFI returned an unusable answer; failing closed";
+            p.clear();
+            p["active"] = true;
+            p["source"] = QStringLiteral("fail-closed");
+            p["reason"] = QStringLiteral("policy FFI returned an unusable answer");
+            p["forcePreset"] = QString();
+            p["netOffline"] = true;
+            p["allowedHosts"] = QVariantList();
+            p["disableUserWidgets"] = true;
+            p["disabledWidgetTypes"] = QVariantList();
+        }
+        m_policy = p;
+        m_policyLoaded = true;
+        return m_policy;
+    }
+
     // Detach from the Rust config handle before it is freed at shutdown, so any
     // late QML call becomes a guarded no-op instead of a use-after-free.
     void detach() { m_config = nullptr; }
 
 private:
     ConfigHandle* m_config;
+    mutable bool m_policyLoaded = false;
+    mutable QVariantMap m_policy;
 };

@@ -987,6 +987,36 @@ pub extern "C" fn xeneon_license_verify_json(key: *const c_char) -> *mut c_char 
     to_c_string(json.to_string())
 }
 
+// --- Managed / org policy (E9) ---
+
+/// Load the org policy and describe the EFFECTIVE result as JSON.
+///
+/// Reads `/etc/xeneon-edge-hub/policy.toml` (or `$XENEON_POLICY_PATH`, a
+/// test-only seam — a real deployment relies on `/etc` being root-owned).
+///
+/// Returns an owned JSON object (free with `xeneon_string_free`):
+/// ```json
+/// { "active": true, "source": "policy",
+///   "reason": null, "forcePreset": null, "netOffline": false,
+///   "allowedHosts": ["api.internal.example"],
+///   "disableUserWidgets": false, "disabledWidgetTypes": [] }
+/// ```
+/// `source` is `absent` | `policy` | `fail-closed`. No file → `absent`,
+/// `active: false`, every field at its permissive default — behaviour is then
+/// byte-for-byte the unmanaged default. A file that exists but is unusable
+/// (unreadable / unparseable / unknown key / unsupported `policy_version`)
+/// FAILS CLOSED: `active: true`, `netOffline: true`,
+/// `disableUserWidgets: true`, with `reason` naming the failure mode (never
+/// echoing file contents — `allowedHosts` may name internal infrastructure).
+///
+/// Never returns null and never panics: an unusable policy is a fail-closed
+/// answer, not an error.
+#[no_mangle]
+pub extern "C" fn xeneon_policy_json() -> *mut c_char {
+    let status = crate::policy::load_policy();
+    to_c_string(crate::policy::to_json(&status))
+}
+
 // --- String utilities ---
 
 /// Free a string returned by any xeneon_* function.
@@ -1219,6 +1249,70 @@ mod tests {
         assert_eq!(xeneon_secret_is_plaintext(r.as_ptr()), 0);
         assert_eq!(xeneon_secret_is_plaintext(empty.as_ptr()), 0);
         assert_eq!(xeneon_secret_is_plaintext(std::ptr::null()), 0);
+    }
+
+    // --- Managed / org policy (E9) ---
+    //
+    // The FFI contract only: parse/fail-closed behaviour is proven in
+    // policy.rs. These hold the crate env lock — XENEON_POLICY_PATH is
+    // process-global.
+
+    #[test]
+    fn policy_json_absent_is_inactive_and_never_null() {
+        let _g = crate::TEST_ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        std::env::set_var(
+            crate::policy::POLICY_PATH_ENV,
+            dir.path().join("no-such-policy.toml"),
+        );
+        let s = unsafe { take(xeneon_policy_json()) };
+        let v: serde_json::Value = serde_json::from_str(&s).unwrap();
+        assert_eq!(v["active"], false);
+        assert_eq!(v["source"], "absent");
+        assert_eq!(v["netOffline"], false);
+        std::env::remove_var(crate::policy::POLICY_PATH_ENV);
+    }
+
+    #[test]
+    fn policy_json_active_over_ffi() {
+        let _g = crate::TEST_ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path().join("policy.toml");
+        std::fs::write(
+            &p,
+            "policy_version = 1\nforce_preset = \"minimal\"\nallowed_hosts = [\"a.example\"]\n",
+        )
+        .unwrap();
+        std::env::set_var(crate::policy::POLICY_PATH_ENV, &p);
+        let s = unsafe { take(xeneon_policy_json()) };
+        let v: serde_json::Value = serde_json::from_str(&s).unwrap();
+        assert_eq!(v["active"], true);
+        assert_eq!(v["source"], "policy");
+        assert_eq!(v["forcePreset"], "minimal");
+        assert_eq!(v["allowedHosts"][0], "a.example");
+        std::env::remove_var(crate::policy::POLICY_PATH_ENV);
+    }
+
+    #[test]
+    fn policy_json_corrupt_fails_closed_over_ffi() {
+        let _g = crate::TEST_ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path().join("policy.toml");
+        std::fs::write(&p, "this = = is not toml").unwrap();
+        std::env::set_var(crate::policy::POLICY_PATH_ENV, &p);
+        let s = unsafe { take(xeneon_policy_json()) };
+        let v: serde_json::Value = serde_json::from_str(&s).unwrap();
+        assert_eq!(v["active"], true);
+        assert_eq!(v["source"], "fail-closed");
+        assert_eq!(v["netOffline"], true, "corrupt policy must pin egress OFF");
+        assert_eq!(v["disableUserWidgets"], true);
+        std::env::remove_var(crate::policy::POLICY_PATH_ENV);
     }
 
     #[test]

@@ -89,6 +89,11 @@ Item {
     }
 
     function _flush() {
+        // E9 forced-preset lock: never write. The in-memory document is the
+        // org's preset; persisting it would overwrite the user's OWN saved
+        // layout (which must come back intact if the policy is ever removed),
+        // and "user edits to layout don't persist" is the policy's contract.
+        if (policyLockedPreset !== "") return
         if (_hasBridge())
             configBridge.saveUiState(JSON.stringify(store._persistableData()))
     }
@@ -378,6 +383,32 @@ Item {
         flushNow()
     }
 
+    // ── Managed / org policy (E9): forced-preset lock ───────────────────
+    // When non-empty, the layout was seeded from this preset by org policy:
+    //   • NOTHING is persisted while the lock holds (see _flush) — session
+    //     edits to the forced layout evaporate on restart, and the user's own
+    //     saved layout in config.toml survives untouched underneath;
+    //   • a Manager push is refused (see applyExternal).
+    // Dashboard engages this INSTEAD of load() when configBridge.policy()
+    // carries a forcePreset.
+    property string policyLockedPreset: ""
+
+    function lockToPreset(presetId) {
+        // An unknown preset id falls through seed()'s own "productivity"
+        // fallback, but the lock still engages: a typo'd policy must degrade
+        // to a locked default layout, never to an unlocked one. An EMPTY id is
+        // refused without touching an already-engaged lock.
+        var id = String(presetId || "")
+        if (id === "") return false
+        policyLockedPreset = id
+        data = _normaliseDoc(seed(policyLockedPreset))
+        loaded = true
+        revision++
+        structureRevision++
+        changed()
+        return true
+    }
+
     // ── Load / seed ──────────────────────────────────────────────────────
     function load(seedLayout) {
         var raw = _hasBridge() ? configBridge.uiState() : ""
@@ -408,6 +439,9 @@ Item {
     // hub's control socket). Reassigns `data` and bumps reactivity so the live
     // dashboard rebuilds — WITHOUT persisting again (the hub already saved it).
     function applyExternal(json) {
+        // E9: a Manager push must not override an org-forced preset any more
+        // than a local edit may — IPC is just another editing surface.
+        if (policyLockedPreset !== "") return false
         var parsed = null
         try { parsed = JSON.parse(json) } catch (e) { parsed = null }
         if (!parsed || !parsed.pages) return false

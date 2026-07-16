@@ -94,6 +94,11 @@ add_qt_test(license)
 # ── Unit (event loop) ──
 # The Q_OBJECT header is listed as a source so AUTOMOC generates its moc.
 add_qt_test(config_bridge   SOURCES "${APP_SRC}/config_bridge.h" "${APP_SRC}/autostart.cpp")
+# E9 managed/org policy: ConfigBridge::policy() + the policy FFI, via the
+# XENEON_POLICY_PATH test seam (never the real /etc). Same TU set as
+# config_bridge: the header declares WizardBridge too, whose moc references
+# applyAutostart → autostart.cpp must be linked.
+add_qt_test(policy          SOURCES "${APP_SRC}/config_bridge.h" "${APP_SRC}/autostart.cpp")
 add_qt_test(metrics_worker  SOURCES "${APP_SRC}/metrics_worker.h" "${APP_SRC}/display_match.cpp" LINK Qt6::Gui)
 
 # ── Integration (real QLocalSocket) ──
