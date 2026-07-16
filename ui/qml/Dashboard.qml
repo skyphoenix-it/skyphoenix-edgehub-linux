@@ -1095,10 +1095,23 @@ Item {
             rowSpacing: theme.spacingMd; columnSpacing: theme.spacingMd
 
             // ── Live, interactive widget ──
+            // W5 BLOCKER (finding 2): in landscape both columns declared
+            // fillWidth, and a GridLayout hands the stretch out in proportion
+            // to preferred widths — the preview's 0.46×width against the
+            // config panel's implicit ~0 — so the FORM collapsed to a ~10px
+            // sliver and on-device configuration ("connect CI to a URL",
+            // per-widget backdrop…) was impossible on a landscape mount.
+            // The landscape split is now explicit: the preview takes a FIXED
+            // 38% (fillWidth off, width capped) and the form fills every
+            // remaining pixel, with a hard minimum of half the overlay so no
+            // future sibling can starve it again. Portrait is unchanged:
+            // preview stacked on top (≤46% height), form full-width below.
             ColumnLayout {
-                Layout.fillWidth: true
+                Layout.fillWidth: !overlay.ovlWide
                 Layout.fillHeight: overlay.ovlWide
-                Layout.preferredWidth: overlay.ovlWide ? overlay.width * 0.46 : -1
+                Layout.preferredWidth: overlay.ovlWide ? Math.round(overlay.width * 0.38) : -1
+                Layout.maximumWidth: overlay.ovlWide ? Math.round(overlay.width * 0.38)
+                                                     : Number.POSITIVE_INFINITY
                 Layout.preferredHeight: overlay.ovlWide ? -1 : Math.min(overlay.height * 0.46, 1080)
                 spacing: theme.spacingSm
 
@@ -1162,6 +1175,10 @@ Item {
             // ── Configuration panel ──
             WidgetConfigPanel {
                 Layout.fillWidth: true; Layout.fillHeight: true
+                // The form may never be starved below half the overlay in
+                // landscape — this panel is the only way to configure a
+                // widget on-device (W5 blocker 2).
+                Layout.minimumWidth: overlay.ovlWide ? Math.round(overlay.width * 0.5) : 0
                 // User widgets carry their form in the manifest; shipped ones
                 // in WidgetConfigSchema. Both compose the same General/About/
                 // Appearance sections.

@@ -647,6 +647,76 @@ Item {
                              "t" + j + " is still a third of the SCREEN on a 2-screen page")
         }
 
+        // ── W5 BLOCKER (finding 2): the expanded overlay in LANDSCAPE ─────────
+        // On the 2560x720 strip the config form used to collapse to a ~10px
+        // sliver (both overlay columns declared fillWidth; GridLayout stretches
+        // in proportion to preferred widths, and the panel's implicit width is
+        // ~0), so "connect CI to a URL" was impossible on-device. Assert the
+        // landscape split structurally: the form gets AT LEAST half the
+        // overlay, renders real scrollable content, and the preview keeps a
+        // sane share — and portrait still gives the form the full width.
+        function overlayOf() {
+            return root.findPred(ld.item, function (x) { return x && x.ovlWide !== undefined })
+        }
+        function configPanelOf() {
+            return root.findPred(ld.item, function (x) {
+                return x && x.schema !== undefined && x.st !== undefined
+                         && x.instanceId !== undefined && x.statusText !== undefined
+            })
+        }
+        function test_landscape_expanded_overlay_shows_a_usable_form() {
+            root.orient(false)                                  // 2560x720
+            var d = ld.item
+            d.applyExternalState(root.makeDoc([ { id: "ci", type: "httpjson" } ]))
+            tryVerify(function () { return root.laidOut(1, false) }, 4000, "tile laid out in landscape")
+            d.cfgStatus = ""; d.expandedId = "ci"; d.expandedType = "httpjson"
+            var ovl = overlayOf()
+            verify(ovl !== null, "found the expanded overlay")
+            tryCompare(ovl, "opacity", 1.0, 2000, "overlay shown")
+            verify(ovl.ovlWide, "2560x720 puts the overlay in its wide (landscape) layout")
+
+            var panel = configPanelOf()
+            verify(panel !== null, "found the WidgetConfigPanel")
+            tryVerify(function () { return panel.width >= ovl.width * 0.5 }, 4000,
+                      "the FORM gets at least half the overlay width (got " +
+                      panel.width + " of " + ovl.width + ") — the W5 sliver regression")
+            verify(panel.height > 200, "the form has real height (" + panel.height + "px)")
+            verify(panel.schema.sections.length > 0, "httpjson exposes a real config schema")
+
+            // The form renders actual fields: its scroller carries real content
+            // taller than a bare margin, i.e. the URL/token/poll controls exist.
+            var scroll = root.findPred(panel, function (x) { return x && x.objectName === "cfgScroll" })
+            verify(scroll !== null, "found the form's scroller")
+            tryVerify(function () { return scroll.contentHeight > 200 }, 4000,
+                      "the form laid out real fields (contentHeight " + scroll.contentHeight + ")")
+
+            // And the preview did not silently vanish either: it keeps a fixed,
+            // bounded share beside the form.
+            var preview = root.findPred(ld.item, function (x) {
+                return x && x.parent === panel.parent && x !== panel && x.width > 0
+            })
+            verify(preview !== null, "the widget preview column is present")
+            verify(preview.width <= ovl.width * 0.42 + 1,
+                   "the preview is capped (got " + preview.width + ") so it can never starve the form")
+            d.closeExpanded()
+        }
+
+        function test_portrait_expanded_overlay_keeps_the_full_width_form() {
+            root.orient(true)                                   // 720x2560
+            var d = ld.item
+            d.applyExternalState(root.makeDoc([ { id: "ci2", type: "httpjson" } ]))
+            tryVerify(function () { return root.laidOut(1, true) }, 4000, "tile laid out in portrait")
+            d.expandedId = "ci2"; d.expandedType = "httpjson"
+            var ovl = overlayOf()
+            tryCompare(ovl, "opacity", 1.0, 2000, "overlay shown")
+            verify(!ovl.ovlWide, "720x2560 keeps the stacked portrait layout")
+            var panel = configPanelOf()
+            verify(panel !== null, "found the WidgetConfigPanel")
+            tryVerify(function () { return panel.width >= ovl.width * 0.8 }, 4000,
+                      "portrait: the form still spans the width (" + panel.width + " of " + ovl.width + ")")
+            d.closeExpanded()
+        }
+
         // A page that fits must never become scrollable — an inert Flickable is what
         // keeps the page swipe usable (they share an axis in landscape).
         function test_a_page_that_fits_is_not_scrollable() {
