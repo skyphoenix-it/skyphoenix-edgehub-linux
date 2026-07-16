@@ -1,6 +1,6 @@
 # Maintainer: Simon Kreitmayer <simon.kreitmayer@skyphoenix-it.com>
 pkgname=xeneon-edge-hub
-pkgver=0.1.0
+pkgver=1.0.0alpha.2
 pkgrel=1
 pkgdesc="Native Linux widget dashboard for the Corsair Xeneon Edge and other secondary touchscreens (includes the companion Manager)"
 arch=('x86_64')
@@ -12,7 +12,10 @@ install="$pkgname.install"
 
 # Release tag. pacman's pkgver forbids '-', so a prerelease needs the two spelled
 # out separately (e.g. pkgver=1.0.0beta1 with _tag=v1.0.0-beta.1).
-_tag="v$pkgver"
+# NOT "v$pkgver": pacman orders 1.0.0_alpha.2 ABOVE 1.0.0 (verified with
+# vercmp), which would block the GA upgrade forever — so pkgver drops the
+# separator (1.0.0alpha.2 < 1.0.0) and the real tag is spelled out here.
+_tag="v1.0.0-alpha.2"
 _srcver="${_tag#v}"
 
 # Source is the maintainer-uploaded release asset, NOT GitHub's auto-generated
@@ -41,7 +44,7 @@ validpgpkeys=('2F0CAD36DC1D46F3347B7EF293CDC77EACF98990')
 # authenticates the tarball, and a checksum sitting next to it in the same file
 # adds no security an attacker who could edit this PKGBUILD couldn't also edit.
 # Run `updpkgsums` when bumping pkgver if you want the redundant integrity check.
-sha256sums=('SKIP'
+sha256sums=('77a4de6fa9833bc3527bf1757a92cd223b70f335392d35ad017fb9da08542777'
             'SKIP')
 
 # NOTE: pkgver 0.1.0 predates release signing — v0.1.0 has no signed assets, so
