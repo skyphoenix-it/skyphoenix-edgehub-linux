@@ -210,6 +210,12 @@ QtObject {
     property int motionEdit: effectiveReduceMotion ? 0 : 200
     property int motionFast: effectiveReduceMotion ? 0 : 150
     property int motionSlow: effectiveReduceMotion ? 0 : 500
+    // Continuous VALUE tracking (bar lengths, gauge sweeps, live readouts): long
+    // enough that a 2s metrics tick reads as one smooth glide instead of a cut,
+    // short enough that the display never lags the data by a readable amount.
+    // Every widget that eases a data value must use THIS token (not a literal),
+    // so reduce-motion collapses them all to an instant jump in one place.
+    property int motionValue: effectiveReduceMotion ? 0 : 400
 
     function applyAccent(name) {
         var p = accentPresets[name] || accentPresets["blue"]

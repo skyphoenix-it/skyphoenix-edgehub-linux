@@ -97,7 +97,7 @@ WidgetChrome {
             Rectangle { height: parent.height; radius: 3; color: w.effAccent
                 width: parent.width * Math.max(0, Math.min(1, w.avail ? media.position : 0))
                 // Honor reduce-motion: snap instead of a 400ms sweep.
-                Behavior on width { NumberAnimation { duration: theme.reduceMotion ? 0 : 400 } } }
+                Behavior on width { NumberAnimation { duration: theme.motionValue; easing.type: Easing.OutCubic } } }
         }
         RowLayout {
             Layout.alignment: Qt.AlignHCenter; spacing: theme.spacingXl

@@ -51,16 +51,32 @@ WidgetChrome {
         anchors.fill: parent
         spacing: w.expanded ? 12 : 5
         Repeater {
-            model: w.rows
+            // STABLE DELEGATES (owner-reported clunk). The model is a literal list
+            // of row labels, so it is evaluated ONCE and the six delegates live for
+            // the widget's whole life. Binding the Repeater to `w.rows` instead —
+            // a fresh JS array every metrics tick — destroyed and recreated every
+            // delegate ~2s, so nothing survived long enough to animate and the
+            // whole widget flickered through reconstruction. Now a tick only moves
+            // the bound VALUES below; the bar glides and the colour cross-fades.
+            model: ["CPU", "GPU", "RAM", "DISK", "CPU °", "GPU °"]
             delegate: RowLayout {
-                required property var modelData
+                id: sensorRow
+                required property string modelData
+                // Live lookup into the derived rows (re-evaluates on every metrics/
+                // config/accent change); null while this row is hidden.
+                readonly property var row: {
+                    var rs = w.rows
+                    for (var i = 0; i < rs.length; i++) if (rs[i].lbl === sensorRow.modelData) return rs[i]
+                    return null
+                }
+                visible: row !== null
                 // Compact tiles are height-starved (a 120px tile leaves ~64px of
                 // body): let every row share that height so all six stay fully
                 // visible instead of overflowing the clipped body (S12). Expanded
                 // tiles keep their natural, top-aligned rows.
                 Layout.fillWidth: true; Layout.fillHeight: !w.expanded
                 spacing: theme.spacingSm
-                Text { text: modelData.lbl; font.family: theme.fontMono; color: theme.textSecondary
+                Text { text: sensorRow.modelData; font.family: theme.fontMono; color: theme.textSecondary
                     font.pixelSize: w.expanded ? 16 : 12; Layout.preferredWidth: w.expanded ? 62 : 46
                     Layout.fillHeight: !w.expanded; verticalAlignment: Text.AlignVCenter
                     elide: Text.ElideRight; fontSizeMode: Text.VerticalFit; minimumPixelSize: 6 }
@@ -68,12 +84,20 @@ WidgetChrome {
                     Layout.fillWidth: true; Layout.preferredHeight: w.expanded ? 12 : 6
                     radius: height / 2; color: theme.cardBorder
                     Rectangle {
-                        height: parent.height; radius: height / 2; color: modelData.col
-                        width: parent.width * Math.min(modelData.val / modelData.max, 1)
-                        Behavior on width { NumberAnimation { duration: 400 } }
+                        height: parent.height; radius: height / 2
+                        color: sensorRow.row ? sensorRow.row.col : "transparent"
+                        width: sensorRow.row
+                               ? parent.width * Math.min(sensorRow.row.val / sensorRow.row.max, 1) : 0
+                        // A 1° temperature rise moves ONLY this bar, smoothly — the
+                        // token collapses both eases to an instant jump under
+                        // reduce-motion. Threshold colour (cool→warn→hot) cross-fades
+                        // instead of hard-cutting for the same reason.
+                        Behavior on width { NumberAnimation { duration: theme.motionValue; easing.type: Easing.OutCubic } }
+                        Behavior on color { ColorAnimation { duration: theme.motionValue } }
                     }
                 }
-                Text { text: modelData.val.toFixed(0) + modelData.unit; font.family: theme.fontMono
+                Text { text: sensorRow.row ? sensorRow.row.val.toFixed(0) + sensorRow.row.unit : ""
+                    font.family: theme.fontMono
                     color: theme.textPrimary; font.pixelSize: w.expanded ? 16 : 12
                     horizontalAlignment: Text.AlignRight; Layout.preferredWidth: w.expanded ? 64 : 50
                     Layout.fillHeight: !w.expanded; verticalAlignment: Text.AlignVCenter

@@ -62,6 +62,17 @@ Item {
     // this change exists to make impossible.
     readonly property bool big: sizeClass === "tall" || sizeClass === "large"
                                 || sizeClass === "full"
+
+    // Is this the MICRO footprint — a half-cell (`0.5x0.5`), as opposed to the
+    // baseline third (`1x1`)? Both project to sizeClass "compact" (they are the
+    // same SHAPE, just different areas), so the wave-1 widgets each re-derived
+    // this locally as `min(width,height) < 480`. Centralised here so later waves
+    // key off chrome instead of copy-pasting a magic number: the half-cell is
+    // ~348x409 portrait / ~423x306 landscape and the baseline is ~696x819 /
+    // ~846x612, so 480 cleanly separates the two on every orientation. DERIVED
+    // and readonly, like `big`.
+    readonly property bool micro: sizeClass === "compact"
+                                  && Math.min(width, height) < 480
     property bool showHeader: true
     property bool interactive: false     // retained for API compat; hover ring is a no-op on the touchscreen
     // When hosted inside the expanded overlay (which supplies its own card),
@@ -95,7 +106,9 @@ Item {
             visible: chrome.cardBackdrop !== "none" && chrome.cardBackdrop !== "" && theme.decorative
             style: chrome.cardBackdrop
             accent: chrome.effAccent
-            running: !theme.reduceMotion
+            // effectiveReduceMotion (not the raw persisted flag) so the OS
+            // reduce-motion signal / explicit preference stops card backdrops too.
+            running: !theme.effectiveReduceMotion
         }
 
         // Diagonal glass gradient

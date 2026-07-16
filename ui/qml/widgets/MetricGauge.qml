@@ -14,6 +14,11 @@ Item {
     property bool expanded: false
     property bool ok: true          // false → dim (e.g. GPU N/A)
 
+    // Threshold escalation (accent → warning → error) cross-fades the ring, the
+    // big number and the sparkline together instead of hard-cutting all three.
+    // Collapses to an instant cut under reduce-motion (motionValue token → 0).
+    Behavior on color { ColorAnimation { duration: theme.motionValue } }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: g.expanded ? theme.spacingMd : theme.spacingXs
@@ -29,6 +34,10 @@ Item {
                 width: Math.min(parent.width, parent.height) * 0.96
                 height: width
                 value: g.ok ? Math.max(0, Math.min(1, g.value)) : 0
+                // Metric samples land every ~2s; glide the sweep between them so
+                // a CPU/GPU/RAM tick reads as movement, not a redraw. (Instant
+                // under reduce-motion via the motionValue token.)
+                animateValue: true
                 thickness: Math.max(9, width * 0.10)
                 progressColor: g.color
                 progressColor2: g.color

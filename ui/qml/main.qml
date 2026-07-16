@@ -155,7 +155,9 @@ ApplicationWindow {
         Behavior on rotation {
             RotationAnimation {
                 direction: RotationAnimation.Shortest
-                duration: root.reduceMotion ? 0 : 560
+                // effectiveReduceMotion: the OS signal and the explicit on/off
+                // preference must also collapse the rotation to a cut.
+                duration: theme.effectiveReduceMotion ? 0 : 560
                 easing.type: Easing.InOutCubic
             }
         }
@@ -167,7 +169,7 @@ ApplicationWindow {
                 // Dismiss the on-screen keyboard before re-orienting so it can't
                 // flash while the container height swaps underneath it.
                 Qt.inputMethod.hide()
-                if (!root.reduceMotion) reorientFx.restart()
+                if (!theme.effectiveReduceMotion) reorientFx.restart()
             }
         }
         SequentialAnimation {

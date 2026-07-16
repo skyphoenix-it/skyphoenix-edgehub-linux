@@ -413,14 +413,17 @@ Item {
         }
 
         function test_value_is_clamped() {
+            // The metric ring eases between samples (W3), so assert the landed
+            // targets with tryCompare rather than sampling mid-glide.
             mg.ok = true
             mg.value = 1.5
             var ring = findRing(gaugeHost)
-            compare(ring.value, 1, "value >1 clamps to full")
+            tryCompare(ring, "value", 1, 2000, "value >1 clamps to full")
             mg.value = -0.5
-            compare(findRing(gaugeHost).value, 0, "value <0 clamps to empty")
+            tryCompare(findRing(gaugeHost), "value", 0, 2000, "value <0 clamps to empty")
             mg.value = 0.5
-            fuzzyCompare(findRing(gaugeHost).value, 0.5, 1e-9, "in-range value passes through")
+            tryVerify(function () { return Math.abs(findRing(gaugeHost).value - 0.5) < 1e-9 },
+                      2000, "in-range value passes through")
         }
     }
 

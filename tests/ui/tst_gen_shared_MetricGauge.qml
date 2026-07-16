@@ -443,22 +443,31 @@ Item {
             mg.history = []; mg.expanded = false; mg.color = root.theme.accent
         }
 
+        // NOTE (W3): the gauge ring now EASES between samples (animateValue via
+        // theme.motionValue), so target values are asserted with tryCompare —
+        // the ring lands on the same numbers, it just glides there.
         function test_value_clamped_into_ring() {
             mg.value = 1.5
             var ring = findRing(gaugeHost)
             verify(ring !== null, "ring present")
-            compare(ring.value, 1, "value>1 clamps the ring to full")
+            tryCompare(ring, "value", 1, 2000, "value>1 clamps the ring to full")
             mg.value = -0.5
-            compare(findRing(gaugeHost).value, 0, "value<0 clamps the ring to empty")
+            tryCompare(findRing(gaugeHost), "value", 0, 2000, "value<0 clamps the ring to empty")
             mg.value = 0.42
-            fuzzyCompare(findRing(gaugeHost).value, 0.42, 1e-9, "in-range value passes through")
+            tryVerify(function () { return Math.abs(findRing(gaugeHost).value - 0.42) < 1e-9 },
+                      2000, "in-range value passes through")
         }
 
-        function test_value_updates_ring_immediately() {
+        function test_value_updates_ring_smoothly() {
             mg.value = 0.1
-            compare(findRing(gaugeHost).value, 0.1, "ring tracks the source value")
+            tryCompare(findRing(gaugeHost), "value", 0.1, 2000, "ring tracks the source value")
+            // A fresh sample GLIDES: the very next read is en route, not landed —
+            // this is the W3 smoothness contract for the metric gauges.
             mg.value = 0.9
-            compare(findRing(gaugeHost).value, 0.9, "ring updates within the same binding pass")
+            var ring = findRing(gaugeHost)
+            verify(ring.animateValue, "metric gauges opt into value smoothing")
+            verify(ring.value < 0.9, "ring is easing toward the new sample, not hard-cutting")
+            tryCompare(ring, "value", 0.9, 2000, "…and lands on it")
         }
 
         function test_ok_false_dims_ring_and_hides_sparkline() {
@@ -466,7 +475,7 @@ Item {
             mg.value = 0.7
             mg.ok = false
             var ring = findRing(gaugeHost)
-            compare(ring.value, 0, "ok:false forces the ring empty")
+            tryCompare(ring, "value", 0, 2000, "ok:false forces the ring empty")
             var spark = findSpark(gaugeHost)
             verify(spark !== null, "sparkline present")
             verify(!spark.visible, "ok:false hides the history sparkline")
@@ -483,10 +492,14 @@ Item {
 
         function test_accent_passes_through_to_ring_and_value() {
             mg.ok = true; mg.big = "33%"; mg.color = "#12ab34"
+            // The gauge colour cross-fades (threshold escalation must not hard-cut),
+            // so wait for the fade to land before asserting the pass-through.
             var ring = findRing(gaugeHost)
-            verify(Qt.colorEqual(ring.progressColor, "#12ab34"), "gauge colour flows to ring.progressColor")
+            tryVerify(function () { return Qt.colorEqual(ring.progressColor, "#12ab34") }, 2000,
+                      "gauge colour flows to ring.progressColor")
             var t = findBig(gaugeHost, "33%")
-            verify(Qt.colorEqual(t.color, "#12ab34"), "gauge colour flows to the centre value text")
+            tryVerify(function () { return Qt.colorEqual(t.color, "#12ab34") }, 2000,
+                      "gauge colour flows to the centre value text")
         }
 
         function test_sparkline_visibility_gated_on_history_length() {

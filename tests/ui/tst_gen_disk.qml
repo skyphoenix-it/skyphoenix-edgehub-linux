@@ -294,8 +294,12 @@ Item {
             var g = findRing()
             verify(g !== null, "found the RingProgress")
             feed(50, 50 * gib, 100 * gib)
-            verify(Qt.colorEqual(g.progressColor, h.theme.accentPresets["purple"].a),
-                   "the ring itself paints with the new accent")
+            // W1 moved disk onto RingProgress directly (progressColor, no colour
+            // fade there today) — but assert via tryVerify anyway, so if W3's
+            // cross-fade ever extends to RingProgress this pins the LANDED tone
+            // instead of starting to flake.
+            tryVerify(function () { return Qt.colorEqual(g.progressColor, h.theme.accentPresets["purple"].a) },
+                      2000, "the ring itself paints with the new accent")
         }
 
         // Custom title from config is honoured by WidgetChrome.
@@ -336,7 +340,8 @@ Item {
             verify(g !== null, "found the RingProgress")
             verify(findText("100%") !== null, "centre label shows 100%")
             verify(Qt.colorEqual(w.col(w.v), h.theme.error), "a full disk is red")
-            verify(Qt.colorEqual(g.progressColor, h.theme.error), "the ring paints red")
+            tryVerify(function () { return Qt.colorEqual(g.progressColor, h.theme.error) }, 2000,
+                      "the ring paints red (landed tone, fade-safe)")
             compare(w.human(8 * tib), "8.00 TiB", "human() renders TiB for an 8 tib disk")
         }
 

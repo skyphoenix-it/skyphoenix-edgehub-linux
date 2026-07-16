@@ -269,14 +269,94 @@ Item {
             // children: [labelText, trackRect, valueText]
             var track = rowLayout.children[1]
             var fill = track.children[0]
+            // The bar now ANIMATES to its target (delegates survive ticks), so
+            // wait for the ease to land rather than sampling mid-flight.
+            tryVerify(function () { return fill.width >= track.width - 0.5 }, 2000,
+                      "at >100% the bar eases to fully filled")
             verify(fill.width <= track.width + 0.5, "fill never exceeds the track")
-            verify(fill.width >= track.width - 0.5, "at >100% the bar is fully filled")
         }
 
-        // ---- GPU hotplug reuses the delegate at index 1 (behaviour note) ----
-        // Documents bug #4: because rows is rebuilt as a fresh array and the
-        // Repeater diffs by index, inserting the GPU row shifts what index 1
-        // shows from RAM to GPU.
+        // ---- THE OWNER-REPORTED CLUNK: a tick must not rebuild the widget ----
+        // "If the CPU temp rises 1 degree, only the bar length should increase/
+        // decrease smoothly, not reload the entire bar." The Repeater's model was
+        // a fresh JS array per metrics tick, so every delegate was destroyed and
+        // recreated ~2s — nothing survived long enough to animate. The model is
+        // now a static label list: these assertions prove the SAME delegate
+        // objects live across ticks and only their bound values move.
+        function test_delegates_survive_metric_ticks() {
+            var w = h.item
+            feed({ cpu_usage_percent: 20, ram_usage_percent: 30, cpu_temp_celsius: 50 })
+            var cpuLabel = findText(w, "CPU")
+            verify(cpuLabel !== null, "CPU row rendered")
+            var track = cpuLabel.parent.children[1]
+            var fill = track.children[0]
+            // Two more ticks with changed values.
+            feed({ cpu_usage_percent: 45, ram_usage_percent: 35, cpu_temp_celsius: 51 })
+            feed({ cpu_usage_percent: 60, ram_usage_percent: 40, cpu_temp_celsius: 52 })
+            var cpuLabel2 = findText(w, "CPU")
+            var fill2 = cpuLabel2.parent.children[1].children[0]
+            // Object IDENTITY: a recreated delegate would be a different object.
+            verify(cpuLabel2 === cpuLabel, "the CPU label is the SAME object after two metric ticks")
+            verify(fill2 === fill, "the CPU fill bar is the SAME object after two metric ticks")
+            // …and the surviving bar's bound value tracked the data.
+            tryVerify(function () { return Math.abs(fill2.width - track.width * 0.60) < 2 }, 2000,
+                      "the surviving bar eased to the new 60% value")
+        }
+
+        // ---- bar length + threshold colour EASE between ticks ----
+        // Pins: the fill animates via theme.motionValue (Behavior on width /
+        // color), and both collapse to an instant jump under reduce-motion.
+        function test_bar_and_colour_ease_and_collapse_under_reduce_motion() {
+            var w = h.item
+            h.theme.reduceMotion = false
+            compare(h.theme.motionValue, 400, "precondition: value easing enabled")
+            feed({ cpu_usage_percent: 0, ram_usage_percent: 10, cpu_temp_celsius: 50 })
+            var cpuLabel = findText(w, "CPU")
+            var track = cpuLabel.parent.children[1]
+            var fill = track.children[0]
+            // Let the layout polish give the track real geometry first, and let
+            // the bar settle at its 0% start.
+            tryVerify(function () { return track.width > 50 }, 2000, "track laid out")
+            tryVerify(function () { return fill.width < 2 }, 2000, "bar settled at ~0%")
+
+            // A new sample GLIDES: immediately after the tick the bar is still
+            // en route, then lands on the target.
+            feed({ cpu_usage_percent: 100, ram_usage_percent: 10, cpu_temp_celsius: 50 })
+            verify(fill.width < track.width * 0.9,
+                   "mid-ease right after the tick (" + fill.width + " of " + track.width + ")")
+            tryVerify(function () { return fill.width >= track.width - 1 }, 2000,
+                      "…then eases to the full 100% width")
+
+            // Threshold colour cross-fades rather than hard-cutting: cool→hot.
+            var tempFill = findText(w, "CPU °").parent.children[1].children[0]
+            // The colour itself eases now, so wait for it to settle at the base
+            // tone before provoking the threshold change.
+            tryVerify(function () { return colEq(tempFill.color, h.theme.catSystem) }, 2000,
+                      "cool temp settles at the base colour")
+            feed({ cpu_usage_percent: 100, ram_usage_percent: 10, cpu_temp_celsius: 90 })
+            verify(!colEq(tempFill.color, h.theme.error),
+                   "immediately after the tick the colour is still fading, not hard-cut")
+            tryVerify(function () { return colEq(tempFill.color, h.theme.error) }, 2000,
+                      "…and lands on the error colour")
+
+            // REDUCE-MOTION IS SACRED: the same updates become instant jumps —
+            // asserted IMMEDIATELY after the tick, where the motion-on case above
+            // was still provably mid-ease.
+            h.theme.reduceMotion = true
+            compare(h.theme.motionValue, 0, "reduce-motion zeroes the value token")
+            feed({ cpu_usage_percent: 0, ram_usage_percent: 10, cpu_temp_celsius: 50 })
+            tryVerify(function () { return fill.width < 2 }, 50,
+                      "under reduce-motion the bar snaps (no 400ms glide)")
+            tryVerify(function () { return colEq(tempFill.color, h.theme.catSystem) }, 50,
+                      "under reduce-motion the colour snaps (no 400ms fade)")
+            h.theme.reduceMotion = false
+        }
+
+        // ---- GPU hotplug shifts the ROWS index (behaviour note) ----
+        // w.rows is still rebuilt as a fresh array, so inserting the GPU row
+        // shifts what rows[1] holds from RAM to GPU. The rendered DELEGATES no
+        // longer care (they are keyed by their own static label), but the
+        // derived-model semantics are pinned here so they don't drift silently.
         function test_gpu_insert_shifts_index() {
             var w = h.item
             feed({ cpu_usage_percent: 10, ram_usage_percent: 20,

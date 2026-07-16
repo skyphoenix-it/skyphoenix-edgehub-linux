@@ -107,7 +107,7 @@ WidgetChrome {
                 height: parent.height; radius: 3
                 width: parent.width * (w.items.length ? w.doneCount / w.items.length : 0)
                 color: w.effAccent
-                Behavior on width { NumberAnimation { duration: 300 } }
+                Behavior on width { NumberAnimation { duration: theme.motionValue; easing.type: Easing.OutCubic } }
             }
         }
 

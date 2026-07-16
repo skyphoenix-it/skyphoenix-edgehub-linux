@@ -27,14 +27,38 @@ Item {
     // Expanded overlay state (empty type = nothing expanded).
     property string expandedType: ""
     property string expandedId: ""
+    // RETAINED copies of the expanded type/id that hold the overlay's CONTENT
+    // through the close fade. closeExpanded() clears expandedType immediately
+    // (that is the state machine), but if the loader/header keyed off it, the
+    // widget, title and icon would vanish on frame 1 while the empty overlay
+    // card was still fading out — a visible pop. These clear only once the
+    // overlay is fully hidden (see the overlay's onVisibleChanged); under
+    // reduce-motion the fade is 0ms, so they clear in the same event.
+    property string shownType: ""
+    property string shownId: ""
+    onExpandedTypeChanged: {
+        if (expandedType === "") return
+        shownType = expandedType
+        shownId = expandedId
+        // Reopened while the previous overlay content was still fading (same
+        // type → the Loader never reloads, so onLoaded will not refire):
+        // re-inject so the live item is bound to the CURRENT instance id and
+        // re-registered as the overlay item.
+        if (ovlLoader.item) {
+            dashboard.injectWidget(ovlLoader.item, shownId, shownType, true)
+            dashboard.overlayLoaderItem = ovlLoader.item
+        }
+    }
     // Per-widget accent of the expanded tile (S7): resolve the instance's own
     // accent name to a colour, reactive to store.revision so an accent edit in
     // the config panel recolours the overlay live. Falls back to the theme
     // accent when the tile has no per-widget accent.
     property color  expandedColor: {
         store.revision
-        if (dashboard.expandedId === "") return theme.accent
-        var s = store.settingsFor(dashboard.expandedId)
+        // Keyed off the RETAINED id so the overlay's accent wash holds through
+        // the close fade instead of snapping back to the theme accent.
+        if (dashboard.shownId === "") return theme.accent
+        var s = store.settingsFor(dashboard.shownId)
         var name = (s && s.accent) ? s.accent : ""
         return (name !== "" && theme.accentPresets[name])
                ? theme.accentPresets[name].a : theme.accent
@@ -135,7 +159,9 @@ Item {
         visible: dashboard.wallpaperSource === "" && theme.decorative && dashboard.animatedBg
         style: dashboard.pageBg.style
         accent: theme.accent
-        running: !root.reduceMotion
+        // effectiveReduceMotion, not the raw persisted flag: the OS reduce-motion
+        // signal and the explicit on/off preference must stop the backdrop too.
+        running: !theme.effectiveReduceMotion
     }
     // Optional wallpaper image (uploaded + assigned via the Manager). Sits over
     // the gradient with a scrim so cards and text stay legible.
@@ -146,9 +172,17 @@ Item {
         visible: source != ""
         fillMode: Image.PreserveAspectCrop
         asynchronous: true; cache: true
+        // Async decode means the image lands a beat after the page shows —
+        // fade it over the gradient instead of letting it pop in fully formed.
+        // (Instant under reduce-motion; a cached source skips Loading entirely.)
+        opacity: status === Image.Ready ? 1.0 : 0.0
+        Behavior on opacity { NumberAnimation { duration: theme.motionSlow } }
     }
     Rectangle {
         anchors.fill: parent; visible: wallpaper.visible
+        // Ride the wallpaper's own fade so the scrim can't darken the plain
+        // gradient before the image has arrived.
+        opacity: wallpaper.opacity
         // Light scrim only — enough to keep out-of-card text legible without
         // washing the wallpaper out. Card legibility comes from the frosted glass.
         color: Qt.rgba(theme.backgroundColor.r, theme.backgroundColor.g, theme.backgroundColor.b, 0.28)
@@ -690,18 +724,26 @@ Item {
                                     anchors.right: parent.right; anchors.top: parent.top
                                     width: theme.touchSecondary; height: theme.touchSecondary
                                     z: 20
-                                    visible: !dashboard.editMode
+                                    // Fade with the edit-mode change instead of blinking
+                                    // out on the same frame the edit scrim appears.
+                                    opacity: dashboard.editMode ? 0.0 : 1.0
+                                    visible: opacity > 0.01
+                                    Behavior on opacity { NumberAnimation { duration: theme.motionEdit } }
                                     Rectangle {
                                         anchors.fill: parent; anchors.margins: theme.spacingXs
                                         radius: theme.radiusSm
-                                        color: cfgMA.containsMouse ? Qt.rgba(1, 1, 1, 0.10) : "transparent"
+                                        // `pressed`, not just hover: this is a touchscreen —
+                                        // a finger on the target must light it up.
+                                        color: cfgMA.pressed ? Qt.rgba(1, 1, 1, 0.16)
+                                             : cfgMA.containsMouse ? Qt.rgba(1, 1, 1, 0.10) : "transparent"
+                                        Behavior on color { ColorAnimation { duration: theme.motionFast } }
                                     }
                                     AppIcon {
                                         anchors.right: parent.right; anchors.top: parent.top
                                         anchors.margins: theme.spacingSm
                                         name: "ui-expand"; size: theme.iconSm
                                         color: theme.textTertiary
-                                        opacity: cfgMA.containsMouse ? 0.95 : 0.55
+                                        opacity: (cfgMA.pressed || cfgMA.containsMouse) ? 0.95 : 0.55
                                     }
                                     MouseArea {
                                         id: cfgMA
@@ -720,15 +762,22 @@ Item {
                                 // ── Edit-mode overlay: reorder + remove ──
                                 Rectangle {
                                     anchors.fill: parent
-                                    visible: dashboard.editMode
+                                    // Fade in/out with the mode switch — the scrim +
+                                    // controls used to appear on a hard cut, which is
+                                    // exactly the "abrupt property jump" class of clunk.
+                                    // motionEdit is already 0 under reduce-motion.
+                                    opacity: dashboard.editMode ? 1.0 : 0.0
+                                    visible: opacity > 0.01
+                                    Behavior on opacity { NumberAnimation { duration: theme.motionEdit } }
                                     radius: theme.radiusLg
                                     color: Qt.rgba(0, 0, 0, 0.35)
                                     border.width: 2; border.color: theme.accent
                                     z: 30
 
-                                    // wobble to signal editability
+                                    // wobble to signal editability (effectiveReduceMotion:
+                                    // the OS signal / explicit preference must stop it too)
                                     RotationAnimation on rotation {
-                                        running: dashboard.editMode && !root.reduceMotion
+                                        running: dashboard.editMode && !theme.effectiveReduceMotion
                                         loops: Animation.Infinite
                                         from: -0.4; to: 0.4; duration: 320
                                         easing.type: Easing.InOutSine
@@ -805,6 +854,12 @@ Item {
                                 radius: theme.radiusLg
                                 color: "transparent"
                                 border.width: 2; border.color: theme.cardBorder
+                                // Enter softly when edit mode opens (0ms under
+                                // reduce-motion via the token).
+                                NumberAnimation on opacity {
+                                    from: 0; to: 1
+                                    duration: theme.motionAdd; easing.type: Easing.OutCubic
+                                }
                                 Column {
                                     anchors.centerIn: parent; spacing: 6
                                     AppIcon { anchors.horizontalCenter: parent.horizontalCenter; name: "ui-plus"; size: 40; color: theme.accent }
@@ -951,8 +1006,10 @@ Item {
         visible: dashboard.hasExpanded || opacity > 0.01
         opacity: dashboard.hasExpanded ? 1.0 : 0.0
         scale: dashboard.hasExpanded ? 1.0 : 0.97
-        Behavior on opacity { NumberAnimation { duration: theme.motionFast } }
+        Behavior on opacity { NumberAnimation { duration: theme.motionFast; easing.type: Easing.OutCubic } }
         Behavior on scale { NumberAnimation { duration: theme.motionPage; easing.type: Easing.OutCubic } }
+        // The fade is over → NOW drop the retained content (see shownType above).
+        onVisibleChanged: if (!visible) { dashboard.shownType = ""; dashboard.shownId = "" }
 
         // Backdrop
         Rectangle {
@@ -1005,16 +1062,18 @@ Item {
                 spacing: 3
                 Row {
                     spacing: theme.spacingSm
+                    // shownType (not expandedType): the header must hold its
+                    // icon/title/description through the close fade.
                     AppIcon { anchors.verticalCenter: parent.verticalCenter
-                        readonly property var ic: catalog.iconFor(dashboard.expandedType)
+                        readonly property var ic: catalog.iconFor(dashboard.shownType)
                         name: ic.name; iconSource: ic.source
                         size: theme.fontTitle + 10; color: dashboard.expandedColor }
-                    Text { text: catalog.title(dashboard.expandedType); font.pixelSize: theme.fontTitle + 8
+                    Text { text: catalog.title(dashboard.shownType); font.pixelSize: theme.fontTitle + 8
                         font.bold: true; font.family: theme.fontDisplay; color: theme.textPrimary }
                 }
                 Text {
                     width: parent.width
-                    text: catalog.desc(dashboard.expandedType)
+                    text: catalog.desc(dashboard.shownType)
                     font.pixelSize: theme.fontLabel; color: theme.textSecondary
                     wrapMode: Text.WordWrap; visible: text.length > 0
                 }
@@ -1053,16 +1112,25 @@ Item {
                         id: ovlLoader
                         anchors.fill: parent
                         anchors.margins: theme.spacingLg
-                        active: dashboard.hasExpanded && catalog.source(dashboard.expandedType) !== ""
-                                && dashboard.policyAllowsWidget(dashboard.expandedType)
-                        source: active ? catalog.source(dashboard.expandedType) : ""
+                        // Keyed off the RETAINED type: the widget stays rendered
+                        // (frozen, inactive) through the close fade instead of
+                        // popping to an empty card on frame 1, and unloads only
+                        // once the overlay is fully hidden.
+                        active: dashboard.shownType !== "" && catalog.source(dashboard.shownType) !== ""
+                                && dashboard.policyAllowsWidget(dashboard.shownType)
+                        source: active ? catalog.source(dashboard.shownType) : ""
                         onLoaded: {
                             // expanded=true → the widget shows its full, INTERACTIVE
                             // layout (e.g. Focus's Start/preset controls), usable here.
-                            dashboard.injectWidget(item, dashboard.expandedId, dashboard.expandedType, true)
+                            dashboard.injectWidget(item, dashboard.shownId, dashboard.shownType, true)
                             dashboard.overlayLoaderItem = item
                             if (item) {
-                                item.active = true
+                                // Bound (not set once): the instant the overlay
+                                // starts closing this drops to false, so the
+                                // fading copy can never drive shared state in
+                                // parallel with the re-activated tile behind it
+                                // (the single-driver rule).
+                                item.active = Qt.binding(function () { return dashboard.hasExpanded })
                                 if (item.hasOwnProperty("chromeless")) item.chromeless = true
                                 // The overlay header already shows the title/icon.
                                 if (item.hasOwnProperty("showHeader")) item.showHeader = false
@@ -1084,7 +1152,7 @@ Item {
                         // Deep-clones the defaults (so array/object defaults aren't
                         // shared across widgets) + drops stale keys — see the store.
                         onClicked: {
-                            store.resetSettings(dashboard.expandedId, catalog.defaults(dashboard.expandedType))
+                            store.resetSettings(dashboard.shownId, catalog.defaults(dashboard.shownType))
                             dashboard.cfgStatus = ""
                         }
                     }
@@ -1097,11 +1165,11 @@ Item {
                 // User widgets carry their form in the manifest; shipped ones
                 // in WidgetConfigSchema. Both compose the same General/About/
                 // Appearance sections.
-                schema: userCatalog.isUser(dashboard.expandedType)
-                        ? userCatalog.schemaFor(dashboard.expandedType, cfgSchema)
-                        : cfgSchema.schemaFor(dashboard.expandedType)
+                schema: userCatalog.isUser(dashboard.shownType)
+                        ? userCatalog.schemaFor(dashboard.shownType, cfgSchema)
+                        : cfgSchema.schemaFor(dashboard.shownType)
                 st: store
-                instanceId: dashboard.expandedId
+                instanceId: dashboard.shownId
                 col: dashboard.cfgCol
                 statusText: dashboard.cfgStatus
                 onActionRequested: (a) => dashboard.cfgAction(a)
@@ -1144,6 +1212,10 @@ Item {
             anchors.centerIn: parent
             width: Math.min(parent.width * 0.9, 1100); height: Math.min(parent.height * 0.85, 620)
             radius: theme.radiusXl; color: theme.cardBackground; border.width: 1; border.color: theme.cardBorder
+            // Same entrance as the SettingsPanel sheet, so every modal in the hub
+            // arrives the same way (scale-up + fade, instant under reduce-motion).
+            scale: picker.shown ? 1.0 : 0.96
+            Behavior on scale { NumberAnimation { duration: theme.motionPage; easing.type: Easing.OutCubic } }
             MouseArea { anchors.fill: parent } // swallow clicks
 
             ColumnLayout {

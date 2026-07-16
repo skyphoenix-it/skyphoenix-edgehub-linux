@@ -149,6 +149,26 @@ Item {
             chrome.sizeClass = "compact"   // restore for the other cases
         }
 
+        // ── micro footprint ──────────────────────────────────────────────────
+        // `0.5x0.5` and `1x1` are the same SHAPE (both sizeClass "compact"), so
+        // wave-1 widgets each re-derived "am I the half-cell?" locally as
+        // min(width,height) < 480. That distinction now lives on the chrome —
+        // derived + readonly like `big` — so later waves key off `micro` instead
+        // of copy-pasting the constant.
+        function test_micro_derives_from_compact_footprint() {
+            chrome.sizeClass = "compact"
+            // 400x400 host ≈ the half-cell footprint → micro.
+            compare(chrome.micro, true, "a half-cell-sized compact tile is micro")
+            // The baseline third (~696x819 portrait) is compact but NOT micro.
+            root.width = 696; root.height = 819
+            compare(chrome.micro, false, "the baseline 1x1 is compact but not micro")
+            root.width = 400; root.height = 400
+            // micro is strictly a refinement of compact — never any other class.
+            chrome.sizeClass = "tall"
+            compare(chrome.micro, false, "a tall tile is never micro, whatever its pixels")
+            chrome.sizeClass = "compact"
+        }
+
         // `big` must not be re-tiable to `expanded` — that override is exactly what
         // this change removes, so the property is readonly by design.
         function test_big_cannot_be_overridden_by_a_widget() {

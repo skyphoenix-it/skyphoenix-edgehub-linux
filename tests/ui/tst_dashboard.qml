@@ -198,6 +198,69 @@ Item {
             compare(d.cfgStatus, "", "geocode with no overlay does nothing")
         }
 
+        // ── expanded overlay: content is retained through the close fade (W3) ──
+        // closeExpanded() clears the STATE immediately, but the overlay's widget,
+        // title and icon must keep rendering while the card fades out — keyed off
+        // the retained shownType/shownId — or the close pops to an empty card on
+        // frame 1. The retained pair clears only once the overlay is fully hidden.
+        function test_overlay_content_survives_the_close_fade() {
+            var d = ld.item
+            _theme.reduceMotion = false
+            d.applyExternalState(root.makeDoc([ { id: "ov1", type: "cpu" } ]))
+            d.expandedId = "ov1"; d.expandedType = "cpu"
+            compare(d.shownType, "cpu", "opening synced the retained type")
+            compare(d.shownId, "ov1", "opening synced the retained id")
+            // Let the overlay genuinely fade IN before closing — closing within
+            // the same event-loop turn would find opacity still at 0 (no frame
+            // has run), which is not a state a user can ever produce.
+            var ovl = root.findPred(ld.item, function (x) { return x && x.ovlWide !== undefined })
+            verify(ovl !== null, "found the expanded overlay")
+            tryCompare(ovl, "opacity", 1.0, 2000, "overlay fully shown")
+            d.closeExpanded()
+            verify(!d.hasExpanded, "the state machine closed immediately")
+            compare(d.shownType, "cpu", "…but the overlay CONTENT is retained for the fade")
+            compare(d.shownId, "ov1", "id retained with it")
+            tryCompare(d, "shownType", "", 2000, "retained type drops once the fade completes")
+            compare(d.shownId, "", "retained id drops with it")
+        }
+
+        function test_overlay_retained_state_clears_instantly_under_reduce_motion() {
+            var d = ld.item
+            _theme.reduceMotion = true
+            d.expandedId = "rm1"; d.expandedType = "cpu"
+            compare(d.shownType, "cpu", "opened")
+            d.closeExpanded()
+            // 100ms < the 150ms motion-on fade: only a genuinely collapsed
+            // transition can pass this window.
+            tryCompare(d, "shownType", "", 100, "reduce-motion: no fade, cleared at once")
+            _theme.reduceMotion = false
+        }
+
+        // ── edit mode: the tile scrim eases in/out instead of hard-cutting ─────
+        function test_edit_scrim_fades_in_and_out() {
+            var d = ld.item
+            _theme.reduceMotion = false
+            d.applyExternalState(root.makeDoc([ { id: "e1", type: "cpu" } ]))
+            tryVerify(function () { return root.tileCells().length === 1 }, 4000, "tile laid out")
+            var cell = root.tileCells()[0]
+            var scrim = null
+            for (var i = 0; i < cell.children.length; i++)
+                if (cell.children[i].z === 30) scrim = cell.children[i]
+            verify(scrim !== null, "found the per-tile edit scrim")
+            compare(scrim.visible, false, "hidden outside edit mode")
+
+            d.editMode = true
+            // Sampled synchronously on the mode flip: the ease has only just
+            // started, so anything < 1.0 proves it is a fade, not a hard cut.
+            verify(scrim.opacity < 1.0, "easing in, not a hard cut (opacity " + scrim.opacity + ")")
+            tryCompare(scrim, "opacity", 1.0, 2000, "…and settles fully shown")
+            verify(scrim.visible, "fully visible in edit mode")
+
+            d.editMode = false
+            verify(scrim.visible, "still rendering while it fades back out")
+            tryCompare(scrim, "visible", false, 2000, "gone once the fade completes")
+        }
+
         // ── closeExpanded ─────────────────────────────────────────────────────
         function test_closeExpanded_clears_and_is_idempotent() {
             var d = ld.item

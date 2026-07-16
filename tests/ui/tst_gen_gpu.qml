@@ -142,13 +142,14 @@ Item {
         when: windowShown
 
         function test_ring_clamps_value_to_unit_interval() {
+            // Eased since W3 — assert the landed targets.
             gauge.ok = true
             gauge.value = 1.5
             var ring = findRing(gauge)
             verify(ring !== null, "found the RingProgress")
-            compare(ring.value, 1, "ring clamps an over-100% value to 1.0")
+            tryCompare(ring, "value", 1, 2000, "ring clamps an over-100% value to 1.0")
             gauge.value = -0.4
-            compare(ring.value, 0, "ring clamps a negative value to 0")
+            tryCompare(ring, "value", 0, 2000, "ring clamps a negative value to 0")
         }
         function test_not_ok_dims_ring_to_zero() {
             var ring = findRing(gauge)
@@ -302,7 +303,10 @@ Item {
         function test_gauge_colour_matches_col() {
             var w = h.item
             feed(95)
-            compare(String(findGauge().color), String(w.col(w.v)), "gauge paints with col(v)")
+            // The gauge colour cross-fades to the threshold tone (W3) — wait for
+            // it to land, then confirm it matches col(v) exactly.
+            tryVerify(function () { return String(findGauge().color) === String(w.col(w.v)) },
+                      2000, "gauge paints with col(v)")
         }
     }
 

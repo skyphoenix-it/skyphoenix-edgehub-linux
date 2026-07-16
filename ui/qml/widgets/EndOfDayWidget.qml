@@ -136,7 +136,7 @@ WidgetChrome {
             Layout.fillWidth: true; Layout.preferredHeight: w.expanded ? 14 : 8
             radius: height / 2; color: theme.cardBorder
             Rectangle { height: parent.height; radius: height / 2; width: parent.width * w.frac; color: w.effAccent
-                Behavior on width { NumberAnimation { duration: 500 } } }
+                Behavior on width { NumberAnimation { duration: theme.motionValue; easing.type: Easing.OutCubic } } }
         }
         Text {
             visible: w.showPercent && !(w.expanded && w.progressStyle === "ring")

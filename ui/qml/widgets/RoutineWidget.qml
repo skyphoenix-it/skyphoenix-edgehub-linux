@@ -122,7 +122,7 @@ WidgetChrome {
                 // A width tween on an explicit tap is the one motion here: it is
                 // interaction-triggered (WCAG 2.3.3 territory, AAA) and single-shot,
                 // so it is nowhere near a flash — and it still respects reduceMotion.
-                Behavior on width { NumberAnimation { duration: theme.reduceMotion ? 0 : 250 } }
+                Behavior on width { NumberAnimation { duration: theme.motionValue; easing.type: Easing.OutCubic } }
             }
         }
 

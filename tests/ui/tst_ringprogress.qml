@@ -97,5 +97,40 @@ Item {
         function test_glow_follows_theme() {
             compare(ring.glow, _theme.glow, "glow mirrors theme.glow by default")
         }
+
+        // ── Opt-in value smoothing (W3) ──────────────────────────────────────
+        // Data-driven rings (MetricGauge) ease between samples; timer rings keep
+        // their honest 1Hz step because animateValue defaults to FALSE. The ease
+        // rides theme.motionValue, so reduce-motion collapses it to a jump.
+        function test_animate_value_defaults_off_and_is_instant() {
+            compare(ring.animateValue, false, "smoothing is opt-in (timers keep stepping)")
+            ring.value = 0.7
+            fuzzyCompare(ring.value, 0.7, 1e-9, "default assignment lands instantly")
+            ring.value = 0
+        }
+
+        function test_animate_value_eases_then_lands() {
+            _theme.reduceMotion = false
+            ring.value = 0
+            ring.animateValue = true
+            ring.value = 1.0
+            verify(ring.value < 0.9, "right after the sample the sweep is still en route ("
+                   + ring.value + ")")
+            tryVerify(function () { return ring.value >= 0.999 }, 2000, "…then lands on the target")
+            ring.animateValue = false
+            ring.value = 0
+        }
+
+        function test_animate_value_collapses_under_reduce_motion() {
+            ring.animateValue = true
+            _theme.reduceMotion = true
+            compare(_theme.motionValue, 0, "token zeroed")
+            ring.value = 0.8
+            tryVerify(function () { return Math.abs(ring.value - 0.8) < 1e-6 }, 50,
+                      "reduce-motion: the sweep snaps instead of gliding")
+            _theme.reduceMotion = false
+            ring.animateValue = false
+            ring.value = 0
+        }
     }
 }

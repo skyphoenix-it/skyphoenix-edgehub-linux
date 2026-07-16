@@ -81,6 +81,7 @@ Item {
             compare(fresh.systemReduceMotion, false, "no OS signal by default")
             compare(fresh.effectiveReduceMotion, false, "motion stays on by default")
             compare(fresh.motionPage, 250, "motionPage default unchanged")
+            compare(fresh.motionValue, 400, "motionValue (data-value easing) defaults to 400ms")
             fresh.destroy()
         }
 
@@ -277,7 +278,11 @@ Item {
             compare(theme.motionPage, 0, "motionPage zeroed")
             compare(theme.motionAdd, 0, "motionAdd zeroed")
             compare(theme.motionFast, 0, "motionFast zeroed")
+            // The value-tracking token every bar/gauge Behavior rides on: this
+            // zero is what collapses ALL of them to an instant jump at once.
+            compare(theme.motionValue, 0, "motionValue zeroed")
             theme.reduceMotion = false
+            compare(theme.motionValue, 400, "motionValue restored with motion on")
         }
 
         // ── Reduce-motion precedence: explicit > OS > legacy flag ────────────
