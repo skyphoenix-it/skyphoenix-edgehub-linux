@@ -41,6 +41,7 @@ Item {
             property var store: null
             property bool expanded: true
             property bool active: false
+            property string sizeClass: "unset"
             property var metrics: ({})
             property string titleOverride: "unset"
             property string accentName: "unset"
@@ -132,6 +133,30 @@ Item {
             compare(w.metrics.q, 9, "metrics binding tracks clone.metricsObj")
             c.tick = 13
             compare(w.tick, 13, "tick binding tracks clone.tick")
+            w.destroy()
+        }
+
+        // COVERS: fn:EdgeClone.sizeClassFor
+        // The preview must render the SAME size class the hub would — before this,
+        // the clone fell back to the chrome's height heuristic and a 1x1 disk
+        // previewed as the tall layout. Bound live so a resize PREVIEW reflows.
+        function test_injectInto_binds_the_real_size_class() {
+            var c = ld.item
+            compare(c.sizeClassFor("1x1"), "compact", "1x1 is the baseline class")
+            compare(c.sizeClassFor("1x1.5"), "tall", "1x1.5 has vertical room")
+            compare(c.sizeClassFor("1x2"), "large", ">=2/3 of the screen is large — same as the hub")
+            compare(c.sizeClassFor("1x0.5"), "wide", "a full-width sliver is wide")
+            compare(c.sizeClassFor("1x3"), "large", "full screen is large")
+            compare(c.sizeClassFor("bogus"), "compact", "unknown size assumes least room")
+
+            var w = fakeWidget.createObject(root)
+            var sz = "1x1.5"
+            c.injectInto(w, "e2", "cpu", function () { return c.sizeClassFor(sz) })
+            compare(w.sizeClass, "tall", "the loaded widget gets the real class")
+            sz = "1x1"
+            // Re-evaluate: the binding must track, as a live resize preview does.
+            c.tick++   // nudge — bindings on plain closures re-evaluate on access
+            compare(c.sizeClassFor(sz), "compact", "derivation follows the new size")
             w.destroy()
         }
 

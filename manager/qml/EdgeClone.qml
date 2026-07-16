@@ -93,12 +93,29 @@ Item {
         var s = catalog.source(type)
         return s ? s.replace("qrc:/qml/", "qrc:/manager/") : ""
     }
-    function injectInto(item, id, type) {
+    // Same derivation as Dashboard.sizeClassFor, portrait projection — the clone
+    // is a portrait mirror of the panel. Without this the preview fell back to
+    // WidgetChrome's height heuristic, so a 1x1 disk showed the TALL layout in
+    // the Manager but the compact one on the hub: the preview lied.
+    function sizeClassFor(size) {
+        var u = sizes.halfUnits(size, false)
+        if (!u) return "compact"
+        if (u.w * u.h >= 8) return "large"
+        if (u.w > u.h) return "wide"
+        if (u.h > u.w) return "tall"
+        return "compact"
+    }
+
+    function injectInto(item, id, type, sizeFn) {
         if (!item) return
         store.ensureSettings(id, catalog.defaults(type))
         item.instanceId = id
         item.store = store
         item.expanded = false
+        // Bound, not read once: a resize PREVIEW (pvSize) must reflow the widget
+        // live, exactly as committing the size would on the hub.
+        if (item.hasOwnProperty("sizeClass") && sizeFn)
+            item.sizeClass = Qt.binding(sizeFn)
         if (item.hasOwnProperty("active")) item.active = true
         item.metrics = Qt.binding(function () { return clone.metricsObj })
         if (item.hasOwnProperty("titleOverride"))
@@ -241,7 +258,8 @@ Item {
                                 id: wl
                                 anchors.fill: parent
                                 source: clone.wsrc(tile.modelData.type)
-                                onLoaded: clone.injectInto(item, tile.modelData.id, tile.modelData.type)
+                                onLoaded: clone.injectInto(item, tile.modelData.id, tile.modelData.type,
+                                                           function () { return clone.sizeClassFor(tile.effSize) })
                             }
 
                             // Drop-target highlight.

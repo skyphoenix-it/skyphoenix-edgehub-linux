@@ -43,7 +43,7 @@ QtObject {
         // lone static ring — it has strictly less to show than the tiles above and
         // earns nothing past the baseline.
         { type: "disk",    title: "Disk",     category: "System", source: "qrc:/qml/DiskWidget.qml",    defaults: {},
-          sizes: ["0.5x0.5", "0.5x1", "1x0.5", "1x1"], dflt: "1x1" },
+          sizes: ["0.5x0.5", "0.5x1", "1x0.5", "1x1", "1x1.5"], dflt: "1x1" },
         // At most 6 rows (CPU/GPU/RAM/DISK + 2 temps) — they share the height, so it
         // survives a 1/12 tile but runs out of rows past half the screen.
         { type: "sensors", title: "Sensors",  category: "System", source: "qrc:/qml/SensorsWidget.qml", defaults: {},
