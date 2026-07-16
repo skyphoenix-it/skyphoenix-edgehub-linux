@@ -23,6 +23,17 @@ import QtQuick.Layouts
 // MORE request of the URL you already gave it, not a new destination: a tile
 // cannot see another tile's parsed model, and wiring a shared agenda cache into
 // Dashboard is a bigger change than this widget's remit.
+//
+// Sizing (W1 wave 2b): there are exactly TWO blocks, ever, so this widget cannot
+// earn a size with more rows — it earns it with LEGIBILITY. The type was a flat
+// 17px on every tile and 44px in the overlay, so a 696x819 baseline tile rendered
+// the same cramped pair as a 348x819 sliver.
+//   • wide  — NOW and NEXT side by side. A 846x306 banner stacked into two blocks
+//             leaves each ~120px; beside each other they get the full height.
+//   • every other shape — stacked, with the type scaled to the box.
+//   • full (overlay) — as before, plus the URL editor (genuinely modal, so that
+//             one stays keyed off `expanded`).
+// (No 0.5x0.5 is declared, so `micro` is never true here — see WidgetCatalog.)
 // ─────────────────────────────────────────────────────────────────────────
 WidgetChrome {
     id: w
@@ -95,6 +106,23 @@ WidgetChrome {
 
     status: w.expanded ? "" : (w.nowEvent ? "now" : (w.nextEvent ? "next" : ""))
 
+    // ── Per-size layout (sizeClass injected by Dashboard) ────────────────────
+    // Two blocks side by side once the box is genuinely wider than it is tall.
+    readonly property bool horiz: sizeClass === "wide"
+    // Both blocks show together, so each gets half the height when stacked.
+    readonly property int _blocks: (w.nowEvent !== null ? 1 : 0) + (w.nextEvent !== null ? 1 : 0)
+    readonly property real _colW: w.horiz ? width * 0.5 : width
+    readonly property real _blockH: w.horiz ? height : height / Math.max(1, w._blocks)
+    // The event title is the thing you read from across the room.
+    readonly property real titlePx: w.expanded ? 44
+        : Math.max(15, Math.min(w._colW * 0.075, w._blockH * 0.22, 40))
+    readonly property real nextTitlePx: w.expanded ? 32
+        : Math.max(14, Math.round(w.titlePx * (w.nowEvent ? 0.78 : 1.0)))
+    readonly property real labelPx: w.expanded ? 15
+        : Math.max(10, Math.min(w.titlePx * 0.36, 16))
+    readonly property real metaPx: w.expanded ? 18
+        : Math.max(11, Math.min(w.titlePx * 0.44, 20))
+
     // Whole minutes, rounded UP: "in 1 min" must not appear as "in 0 min" for the
     // 59 seconds before the thing starts.
     function minutesUntil(d) { return Math.ceil((d.getTime() - Date.now()) / 60000) }
@@ -138,75 +166,87 @@ WidgetChrome {
     }
 
     // ── The two blocks ─────────────────────────────────────────────────────
-    ColumnLayout {
+    // `columns` flips for a wide box: NOW and NEXT sit side by side rather than
+    // splitting a 306px-tall banner between them. Only a reshape.
+    GridLayout {
         anchors.fill: parent
         anchors.margins: w.expanded ? theme.spacingMd : 0
         // Keep clear of the expanded URL editor, which is anchored to the bottom.
         anchors.bottomMargin: w.expanded ? theme.touchSecondary + theme.spacingXl : 0
         visible: w.url.length > 0 && (w.nowEvent !== null || w.nextEvent !== null)
-        spacing: w.expanded ? theme.spacingXl : theme.spacingSm
-
-        Item { Layout.fillHeight: true; visible: w.expanded }
+        columns: w.horiz ? 3 : 1        // NOW | hairline | NEXT
+        rowSpacing: w.expanded ? theme.spacingXl : theme.spacingSm
+        columnSpacing: theme.spacingLg
 
         // NOW — the accent block. It is the answer to "am I meant to be somewhere".
         ColumnLayout {
             Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.alignment: Qt.AlignVCenter
             visible: w.nowEvent !== null
             spacing: 2
+            Item { Layout.fillHeight: true }
             Text {
                 text: "NOW"; color: w.effAccent; font.bold: true
-                font.pixelSize: w.expanded ? 15 : 10; font.letterSpacing: 1.5
+                font.pixelSize: Math.round(w.labelPx); font.letterSpacing: 1.5
             }
             Text {
                 Layout.fillWidth: true
                 text: w.nowEvent ? (w.nowEvent.title || "(busy)") : ""
                 color: theme.textPrimary; font.family: theme.fontDisplay
-                font.pixelSize: w.expanded ? 44 : 17; font.bold: true
+                font.pixelSize: Math.round(w.titlePx); font.bold: true
                 elide: Text.ElideRight; maximumLineCount: 1
             }
             Text {
                 Layout.fillWidth: true
                 text: w.nowEvent ? w.untilText(w.nowEvent)
                                    + (w.nowEvent.location ? "  ·  " + w.nowEvent.location : "") : ""
-                color: theme.textSecondary; font.pixelSize: w.expanded ? 18 : 11
+                color: theme.textSecondary; font.pixelSize: Math.round(w.metaPx)
                 elide: Text.ElideRight
             }
+            Item { Layout.fillHeight: true }
         }
 
-        // A hairline between the blocks, only when both are showing.
+        // A hairline between the blocks, only when both are showing. It runs
+        // across a stacked pair and DOWN a side-by-side one.
         Rectangle {
-            Layout.fillWidth: true; Layout.preferredHeight: 1
             visible: w.nowEvent !== null && w.nextEvent !== null
+            Layout.fillWidth: !w.horiz
+            Layout.fillHeight: w.horiz
+            Layout.preferredWidth: w.horiz ? 1 : -1
+            Layout.preferredHeight: w.horiz ? -1 : 1
             color: theme.cardBorder
         }
 
         // NEXT — deliberately quieter than NOW.
         ColumnLayout {
             Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.alignment: Qt.AlignVCenter
             visible: w.nextEvent !== null
             spacing: 2
+            Item { Layout.fillHeight: true }
             Text {
                 text: "NEXT"; color: theme.textTertiary; font.bold: true
-                font.pixelSize: w.expanded ? 15 : 10; font.letterSpacing: 1.5
+                font.pixelSize: Math.round(w.labelPx); font.letterSpacing: 1.5
             }
             Text {
                 Layout.fillWidth: true
                 text: w.nextEvent ? (w.nextEvent.title || "(busy)") : ""
                 color: w.nowEvent ? theme.textSecondary : theme.textPrimary
                 font.family: theme.fontDisplay
-                font.pixelSize: w.expanded ? 32 : 15; font.bold: !w.nowEvent
+                font.pixelSize: Math.round(w.nextTitlePx); font.bold: !w.nowEvent
                 elide: Text.ElideRight; maximumLineCount: 1
             }
             Text {
                 Layout.fillWidth: true
                 text: w.nextEvent ? w.whenText(w.nextEvent)
                                     + (w.nextEvent.location ? "  ·  " + w.nextEvent.location : "") : ""
-                color: theme.textSecondary; font.pixelSize: w.expanded ? 18 : 11
+                color: theme.textSecondary; font.pixelSize: Math.round(w.metaPx)
                 elide: Text.ElideRight
             }
+            Item { Layout.fillHeight: true }
         }
-
-        Item { Layout.fillHeight: true }
     }
 
     // ── Expanded: the URL field, mirroring Calendar's own editor ────────────

@@ -274,4 +274,87 @@ Item {
             h.active = false
         }
     }
+
+    // ── Per-sizeClass structure (W1 wave 2b) ────────────────────────────────
+    // Fixed-size hosts at the real projected cell footprints. nownext declares no
+    // 0.5x0.5 and no 1x2+, so there is no micro and no large case.
+    Item { width: 348; height: 819
+        WidgetHarness { id: nTall; anchors.fill: parent; widgetFile: "NowNextWidget.qml"; expanded: false } }
+    Item { width: 696; height: 819
+        WidgetHarness { id: nBase; anchors.fill: parent; widgetFile: "NowNextWidget.qml"; expanded: false } }
+    Item { id: nWideWrap; width: 846; height: 306
+        WidgetHarness { id: nWide; anchors.fill: parent; widgetFile: "NowNextWidget.qml"; expanded: false } }
+
+    TestCase {
+        name: "NowNextSizes"
+        when: windowShown
+
+        function agendaOf(host) {
+            var kids = root.findAll(host.item, function (n) { return n.hasOwnProperty("parseICS") }, [])
+            return kids.length ? kids[0] : null
+        }
+        function seed(host) {
+            host.storeCtl.patchSettings(host.instanceId, { url: "https://example.invalid/a.ics" })
+            agendaOf(host).events = [ root.ev("Standup", -10, 30), root.ev("Design review", 55, 60) ]
+        }
+        // The content GridLayout: the "NOW" label's grandparent.
+        function layOf(host) {
+            var t = root.findAll(host.item, function (n) {
+                return n.hasOwnProperty("text") && String(n.text) === "NOW" }, [])[0]
+            return t ? t.parent.parent : null
+        }
+
+        // The type is sized off the BOX, not off `expanded` — the wave-2b bug.
+        function test_the_type_scales_with_the_tile() {
+            tryVerify(function () { return nBase.ready }, 3000)
+            tryVerify(function () { return nTall.ready }, 3000)
+            nTall.item.sizeClass = "tall"; seed(nTall)
+            var n = nBase.item
+            n.sizeClass = "compact"
+            seed(nBase)
+            wait(32)
+            verify(n.titlePx > 17,
+                   "a 696x819 tile reads past the old flat 17px (" + n.titlePx.toFixed(0) + ")")
+            verify(n.titlePx > nTall.item.titlePx,
+                   "…and bigger than a 348x819 sliver's (" + n.titlePx.toFixed(0)
+                   + " vs " + nTall.item.titlePx.toFixed(0) + ")")
+            verify(n.nextTitlePx < n.titlePx, "NEXT stays quieter than NOW")
+        }
+
+        // wide — the two blocks sit side by side rather than splitting 306px.
+        function test_wide_puts_now_beside_next() {
+            tryVerify(function () { return nWide.ready }, 3000)
+            var n = nWide.item
+            n.sizeClass = "tall"
+            seed(nWide)
+            wait(32)
+            var lay = layOf(nWide)
+            compare(lay.columns, 1, "a tall box stacks the two blocks")
+            n.sizeClass = "wide"
+            wait(32)
+            compare(n.horiz, true, "wide is the horizontal shape")
+            compare(lay.columns, 3, "wide is NOW | hairline | NEXT")
+            // Side by side, each block gets the whole height rather than half.
+            verify(n._blockH > 200, "each block gets the banner's full height ("
+                   + n._blockH.toFixed(0) + ")")
+            n.sizeClass = "tall"
+        }
+
+        // Only NOW showing must not leave the hairline or a phantom column.
+        function test_a_lone_block_hides_the_hairline() {
+            tryVerify(function () { return nBase.ready }, 3000)
+            var n = nBase.item
+            n.sizeClass = "compact"
+            nBase.storeCtl.patchSettings(nBase.instanceId, { url: "https://example.invalid/a.ics" })
+            agendaOf(nBase).events = [ root.ev("Standup", -10, 30) ]
+            wait(32)
+            verify(n.nowEvent !== null, "NOW is showing")
+            compare(n.nextEvent, null, "NEXT is not")
+            var hair = root.findAll(n, function (x) {
+                return x.hasOwnProperty("color") && x.hasOwnProperty("border")
+                       && x.height === 1 }, [])
+            for (var i = 0; i < hair.length; i++)
+                compare(hair[i].visible, false, "the hairline is hidden with only one block")
+        }
+    }
 }
