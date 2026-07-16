@@ -41,6 +41,17 @@ Item {
         widgetFile: "WeatherWidget.qml"; expanded: true; instanceId: "other-instance"
     }
 
+    // Resizable host for the per-sizeClass structure tests (W1 wave 3) — the
+    // REAL projected footprints of weather's five declared sizes:
+    //   0.5x0.5 → 348x409 portrait · 423x306 landscape   (compact, micro)
+    //   0.5x1   → 348x819 portrait (tall) · 846x306 landscape (wide)
+    //   1x0.5   → 696x409 portrait (wide) · 423x612 landscape (tall)
+    //   1x1     → 696x819 portrait · 846x612 landscape   (compact)
+    //   1x1.5   → 696x1228 portrait (tall) · 1269x612 landscape (wide)
+    Item { id: sizeWrap; x: 0; y: 1200; width: 696; height: 819
+        WidgetHarness { id: hS; anchors.fill: parent
+            widgetFile: "WeatherWidget.qml"; expanded: false; active: false } }
+
     // Shared-area component instantiated directly (schema ↔ widget key sync).
     App.WidgetConfigSchema { id: sc }
 
@@ -71,6 +82,13 @@ Item {
         for (var i = 0; i < t.length; i++)
             if (t[i].text.indexOf(" / ") >= 0) out.push(t[i])
         return out
+    }
+    function findAllNodes(node, pred, acc) {
+        if (!node) return acc
+        if (pred(node)) acc.push(node)
+        var kids = node.children
+        for (var i = 0; kids && i < kids.length; i++) findAllNodes(kids[i], pred, acc)
+        return acc
     }
     function descendants(node, out) {
         if (!node || !node.children) return
@@ -427,6 +445,137 @@ Item {
             var vals = f.options.map(function (o) { return o.value })
             verify(vals.indexOf("celsius") >= 0 && vals.indexOf("fahrenheit") >= 0,
                    "offers both °C and °F")
+        }
+    }
+
+    // ── Per-sizeClass structure (W1 wave 3) ──────────────────────────────────
+    TestCase {
+        name: "WeatherSizes"
+        when: windowShown
+
+        function initTestCase() { tryVerify(function () { return hS.ready }, 3000) }
+
+        function days(n) {
+            var names = ["Today", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+            var out = []
+            for (var i = 0; i <= n; i++)
+                out.push({ day: names[i], code: i % 2 ? 3 : 0, max: 20 + i, min: 8 + i })
+            return out
+        }
+        function shape(width, height, cls, futureDays) {
+            sizeWrap.width = width; sizeWrap.height = height
+            hS.item.sizeClass = cls
+            seedLoaded(hS.item, days(futureDays === undefined ? 4 : futureDays))
+            wait(32)
+            return hS.item
+        }
+
+        // THE HONESTY CONSTRAINT. The forecast request asks for `current` +
+        // `daily` and never `hourly`, so no size may grow an hourly chart — the
+        // data to draw one does not exist, and adding it would be new egress.
+        // This test guards the URL, which is what bounds every layout below.
+        function test_the_request_never_asks_for_hourly_data() {
+            var w = hS.item
+            var seen = ""
+            var realHub = w.netHub
+            w.netHub = { request: function (o) { seen = o.url; return null } }
+            w.refresh()
+            w.netHub = realHub
+            verify(seen.indexOf("&current=") >= 0, "the reading comes from `current`")
+            verify(seen.indexOf("&daily=") >= 0, "the forecast comes from `daily`")
+            compare(seen.indexOf("hourly"), -1,
+                    "NO hourly series is requested — so no tile may draw one: " + seen)
+        }
+
+        // 0.5x0.5 — glyph + temperature + place. Nothing it cannot back.
+        function test_micro_is_the_reading_only() {
+            var w = shape(423, 306, "compact")
+            compare(w.micro, true, "a 423x306 compact box is the half-cell")
+            compare(w.showHeader, false, "micro drops the header")
+            compare(w.rich, false)
+            compare(w.shownDays, 0, "the half-cell shows no forecast rows")
+            verify(w.glyphPx > 34, "the glyph scales with the box (" + w.glyphPx + "px)")
+        }
+
+        // 1x1 — the baseline earns "feels like" + the daily rows that fit.
+        function test_baseline_earns_feels_and_daily_rows() {
+            var w = shape(696, 819, "compact", 4)
+            compare(w.rich, true, "the baseline shows 'feels like'")
+            compare(w.horiz, false, "stacked")
+            compare(w.shownDays, 4, "all four fetched days fit a 819px box")
+            verify(w.tempPx > 28, "the temperature scales with the box (" + w.tempPx + "px)")
+        }
+
+        // wide — the forecast goes BESIDE the reading, as columns: 0.5x1
+        // landscape is 306px tall and daily ROWS would not fit.
+        function test_wide_lays_the_forecast_beside_the_reading() {
+            var cases = [[696, 409], [846, 306]]
+            for (var i = 0; i < cases.length; i++) {
+                var w = shape(cases[i][0], cases[i][1], "wide", 4)
+                compare(w.horiz, true, cases[i][0] + "x" + cases[i][1] + " is horizontal")
+                verify(w.shownDays > 0, "and it still shows the forecast (" + w.shownDays + " days)")
+                verify(w.shownDays <= w.futureDays, "never more days than were fetched")
+            }
+        }
+
+        // tall — the daily list is what a tall weather tile grows.
+        function test_tall_grows_the_daily_list() {
+            var w = shape(696, 1228, "tall", 7)
+            compare(w.tallish, true)
+            compare(w.shownDays, 7, "a 1228px box fits all seven fetched days")
+        }
+
+        // THE SIZE-vs-SETTING RULE: forecastDays is what to FETCH (a maximum);
+        // the box decides how many are shown. Never more than the user asked
+        // for, never more than fits.
+        function test_size_never_shows_more_days_than_were_fetched() {
+            var w = shape(696, 1228, "tall", 3)
+            compare(w.futureDays, 3, "the user asked for three days")
+            compare(w.shownDays, 3, "a huge box does NOT invent a fourth")
+        }
+        // Where the cap actually bites: the wide projections lay the forecast out
+        // as columns across a bounded width, so a 7-day fetch does not fit and
+        // the tile shows the ones that do rather than overflowing the card.
+        // (Every stacked size has the height for all 7 — measured, not assumed.)
+        function test_a_narrow_box_drops_days_rather_than_overflowing() {
+            var wide = shape(696, 409, "wide", 7)
+            compare(wide.futureDays, 7, "seven days were fetched")
+            verify(wide.shownDays < 7,
+                   "a 696px-wide row cannot fit seven day columns, so it shows fewer ("
+                   + wide.shownDays + ")")
+            verify(wide.shownDays > 0, "but it still shows the ones that do fit")
+        }
+        function test_every_stacked_size_fits_the_whole_seven_day_fetch() {
+            var cases = [[696, 819, "compact"], [348, 819, "tall"],
+                         [423, 612, "tall"], [696, 1228, "tall"]]
+            for (var i = 0; i < cases.length; i++) {
+                var w = shape(cases[i][0], cases[i][1], cases[i][2], 7)
+                compare(w.shownDays, 7,
+                        cases[i][0] + "x" + cases[i][1] + " has the height for all seven")
+            }
+        }
+
+        // Nothing is rendered from a day we do not hold.
+        function test_no_forecast_before_data_loads() {
+            sizeWrap.width = 696; sizeWrap.height = 819
+            hS.item.sizeClass = "compact"
+            hS.item.loaded = false; hS.item.days = []
+            wait(32)
+            compare(hS.item.shownDays, 0, "no rows without a reading")
+        }
+
+        // The refresh control is a real touch target and lives in its own cell,
+        // so it cannot sit on top of the forecast it used to have no room beside.
+        function test_refresh_is_touch_sized_and_clear_of_the_forecast() {
+            var w = shape(696, 819, "compact", 4)
+            var mas = []
+            findAllNodes(w, function (n) {
+                return n.hasOwnProperty("pressed") && n.hasOwnProperty("containsMouse")
+            }, mas)
+            verify(mas.length >= 1, "the refresh control is on the tile")
+            var btn = mas[0].parent
+            verify(btn.height >= hS.theme.touchTertiary,
+                   "refresh is " + btn.height + "px >= " + hS.theme.touchTertiary)
         }
     }
 }
