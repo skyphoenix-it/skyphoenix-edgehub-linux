@@ -47,6 +47,75 @@ Item {
     // runs past the screen, so hiding it here would defeat the tool.
     property int longExtent: Math.max(sizes.longHalves, packer.longExtent(clone.placements))
 
+    // ── The tile Repeater's model ────────────────────────────────────────────
+    // `placements` is a fresh JS array every time it re-packs, and a Repeater handed
+    // a new array resets its whole delegate model: every tile was destroyed and
+    // rebuilt for a single reorder, so there was nothing left alive to animate and
+    // the replacement was simply already at the destination. That is the teleport.
+    //
+    // This ListModel is SYNCED to `placements` by id instead: a tile that still
+    // exists keeps its row, so it keeps its delegate, so it keeps its loaded widget
+    // — and its new slot arrives as a property change it can EASE to (see animS/animL
+    // on the cell). Dragging a tile is exactly where a teleport reads worst, which is
+    // why the clone needs this at least as much as the hub does.
+    //
+    // Row order carries no meaning: a cell is positioned absolutely from its own
+    // (s, l) and the packer never overlaps two tiles, so rows are patched in place
+    // rather than moved — the minimum churn that still expresses the edit. Nothing
+    // downstream may assume row order IS tile order; see `targetAt`.
+    ListModel { id: placementModel }
+
+    // One packer placement → one model row. The string roles are coerced because a
+    // ListModel FIXES each role's type on the first append: a tile reaching the clone
+    // without a `type` would otherwise seed the role as `undefined`, and "" is the
+    // value `wsrc`/`catalog.title`/`catalog.sizesFor` already treat as "no such type".
+    //
+    // The extent (the packer's es/el) is deliberately NOT a role: the cell derives its
+    // extent from `effSize`, which the resize drag previews live, so a role here would
+    // be a second and staler copy of `semiUnits(size)` — the identical fact.
+    function _row(p) {
+        return ({ tileId: p.id || "", tileType: p.type || "", tileSize: p.size || "",
+                  tileIdx: p.idx, ps: p.s, pl: p.l })
+    }
+    // Reconciles the model to the current packing. Returns the row count — one per
+    // PLACED tile — so the caller and the tests can check the sync against it.
+    function _syncPlacements() {
+        var ps = clone.placements || []
+        var byId = Object.create(null)
+        for (var i = 0; i < ps.length; i++) byId[ps[i].id] = ps[i]
+
+        // Gone → drop the row (backwards: remove() shifts the tail).
+        for (var r = placementModel.count - 1; r >= 0; r--)
+            if (byId[placementModel.get(r).tileId] === undefined)
+                placementModel.remove(r)
+
+        // Survivors → patch in place. THIS is the move: same row, same delegate
+        // object, new slot. set() only touches rows that actually differ, so an
+        // unmoved tile is not even notified.
+        var seen = Object.create(null)
+        for (var r2 = 0; r2 < placementModel.count; r2++) {
+            var row = placementModel.get(r2)
+            var p = byId[row.tileId]
+            seen[row.tileId] = true
+            if (row.ps !== p.s || row.pl !== p.l || row.tileIdx !== p.idx
+                || row.tileSize !== p.size || row.tileType !== p.type)
+                placementModel.set(r2, clone._row(p))
+        }
+
+        // Genuinely new tiles → append. A new delegate is born at its final slot (a
+        // Behavior does not fire on initial binding), so an add slides its NEIGHBOURS
+        // and never itself.
+        for (var k = 0; k < ps.length; k++)
+            if (seen[ps[k].id] === undefined)
+                placementModel.append(clone._row(ps[k]))
+
+        return placementModel.count
+    }
+    // onPlacementsChanged alone is not enough: a property change signal is not
+    // guaranteed for the binding's FIRST evaluation. Both paths are idempotent.
+    onPlacementsChanged: clone._syncPlacements()
+    Component.onCompleted: clone._syncPlacements()
+
     // ── Page background (mirrors Dashboard.qml so the clone is truly WYSIWYG:
     //    animated style OR wallpaper, per-page override → global default) ──
     property var pageBg: {
@@ -135,21 +204,27 @@ Item {
     }
 
     // ── Drag-move state ──
-    property int dragIndex: -1
-    property int targetIndex: -1
+    // These are indices into the STORE's tile array (the placement's `idx`) — the
+    // thing moveTile addresses and the thing `tiles` is indexed by. They are NOT
+    // Repeater row numbers: rows are patched in place by _syncPlacements, so after
+    // one reorder row order is no longer tile order, and the two would silently
+    // disagree. Naming them `Idx` matches the `idx` the packer and store already use.
+    property int dragIdx: -1
+    property int targetIdx: -1
     property real dragX: 0
     property real dragY: 0
 
-    // Which delegate is under (gx, gy), in the tile container's coordinates.
-    // Iterates `placements` — the Repeater's ACTUAL model. `tiles` is one per stored
-    // tile, and an unplaceable one has no delegate, so counting tiles here would walk
-    // past the end of the Repeater.
+    // The STORE tile index of the delegate under (gx, gy), in the tile container's
+    // coordinates; -1 for a miss. Iterates the Repeater's own rows — the delegates
+    // that actually exist — and reads each one's `tileIdx`, rather than assuming a
+    // row number is a tile number. (`tiles` is one per stored tile and an unplaceable
+    // one has no delegate, so counting tiles here would walk past the end.)
     function targetAt(gx, gy) {
-        for (var i = 0; i < placements.length; i++) {
-            var it = rep.itemAt(i)
+        for (var r = 0; r < rep.count; r++) {
+            var it = rep.itemAt(r)
             if (!it) continue
             if (gx >= it.x && gx <= it.x + it.width && gy >= it.y && gy <= it.y + it.height)
-                return i
+                return it.tileIdx
         }
         return -1
     }
@@ -219,28 +294,76 @@ Item {
 
                     Repeater {
                         id: rep
-                        model: clone.placements
+                        model: placementModel
                         delegate: Item {
                             id: tile
-                            required property int index
-                            required property var modelData   // a WidgetPacker placement
+                            // The placement's roles. `tileIdx` — NOT the Repeater's row
+                            // number — is what every store call here addresses.
+                            required property string tileId
+                            required property string tileType
+                            required property string tileSize
+                            required property int tileIdx
+                            required property int ps
+                            required property int pl
                             // Live preview during a resize drag: the size the drag has
                             // snapped to, "" when not dragging. Only the dragged tile's
                             // own box previews — the page re-packs on commit, because a
                             // repack per mouse-move would shuffle the neighbours under
                             // the cursor the drag is aimed at.
                             property string pvSize: ""
-                            readonly property string effSize: tile.pvSize !== "" ? tile.pvSize : tile.modelData.size
-                            // The packed slot, re-extended to whatever the drag is
-                            // previewing. The ORIGIN stays put (only a commit re-packs),
-                            // so this is the placement with a swapped extent.
+                            readonly property string effSize: tile.pvSize !== "" ? tile.pvSize : tile.tileSize
+
+                            // ── The move ──────────────────────────────────────
+                            // The eased mirror of the semantic ORIGIN. Easing the SLOT
+                            // rather than x/y keeps the ease attached to the one thing
+                            // that means "this tile moved", so a structure edit glides
+                            // and nothing else has to opt out. No flag, no settling
+                            // timer — the distinction is structural, so it cannot drift.
+                            //
+                            // The hub eases the EXTENT here too, and separates the ease
+                            // from ROTATION that way (a turn re-projects the slot, so it
+                            // stays instant). Neither half of that carries over:
+                            //   • the clone is always upright (`landscape: false`) and
+                            //     the cell grid is a CONSTANT — the frame is a fixed 420
+                            //     wide and fits to view by scaling as a whole, so
+                            //     cellShort/cellLong never change. There is no
+                            //     projection change to keep instant.
+                            //   • the thing that must stay instant here is the resize
+                            //     PREVIEW. A reorder never changes an extent; only a
+                            //     resize does, and here a resize is a live corner DRAG
+                            //     (on the hub it is a discrete button). The previewed box
+                            //     has to sit under the cursor, so easing the extent would
+                            //     put the tile 250ms behind the hand sizing it.
+                            // So the extent stays direct, and no animation can fight a
+                            // drag: a move drag re-packs nothing until the drop (by which
+                            // point dragIdx is already cleared, so the tile glides home at
+                            // full opacity), and a resize drag never moves an origin.
+                            //
+                            // REDUCE MOTION: the duration token does the real work —
+                            // motionPage is 0, and a 0ms Behavior lands its end value
+                            // synchronously on write. The `enabled` gate is the explicit
+                            // statement of intent, and skips building an animation per
+                            // tile per edit for a value that cannot move — it is not the
+                            // mechanism. Smooth is not more motion.
+                            property real animS: tile.ps
+                            property real animL: tile.pl
+                            Behavior on animS { enabled: theme.motionPage > 0
+                                NumberAnimation { duration: theme.motionPage; easing.type: Easing.OutCubic } }
+                            Behavior on animL { enabled: theme.motionPage > 0
+                                NumberAnimation { duration: theme.motionPage; easing.type: Easing.OutCubic } }
+
+                            // The (eased) origin, re-extended to whatever the drag is
+                            // previewing. The ORIGIN stays put during a preview (only a
+                            // commit re-packs), so this is the placement with a swapped
+                            // extent. `semiUnits(size)` IS the packer's (es, el) — the
+                            // same derivation, evaluated on the previewed size.
                             readonly property var _u: sizes.semiUnits(tile.effSize)
                             readonly property var _r: packer.rect(
-                                { s: modelData.s, l: modelData.l, es: _u.s, el: _u.l },
+                                { s: tile.animS, l: tile.animL, es: _u.s, el: _u.l },
                                 clone.landscape, screen.cellShort, screen.cellLong, 10)
                             x: _r.x; y: _r.y
                             width: _r.width; height: _r.height
-                            opacity: clone.dragIndex === tile.index ? 0.3 : 1.0
+                            opacity: clone.dragIdx === tile.tileIdx ? 0.3 : 1.0
 
                             Rectangle {   // placeholder / loading
                                 anchors.fill: parent; radius: theme.radiusLg
@@ -249,16 +372,17 @@ Item {
                                 Column {
                                     anchors.centerIn: parent; spacing: 6
                                     AppIcon { anchors.horizontalCenter: parent.horizontalCenter
-                                        name: tile.modelData.type; size: 28; color: theme.textSecondary }
+                                        name: tile.tileType; size: 28; color: theme.textSecondary }
                                     Text { anchors.horizontalCenter: parent.horizontalCenter
-                                        text: catalog.title(tile.modelData.type); color: theme.textSecondary; font.pixelSize: 12 }
+                                        text: catalog.title(tile.tileType); color: theme.textSecondary; font.pixelSize: 12 }
                                 }
                             }
                             Loader {
                                 id: wl
                                 anchors.fill: parent
-                                source: clone.wsrc(tile.modelData.type)
-                                onLoaded: clone.injectInto(item, tile.modelData.id, tile.modelData.type,
+                                property string wId: tile.tileId
+                                source: clone.wsrc(tile.tileType)
+                                onLoaded: clone.injectInto(item, tile.tileId, tile.tileType,
                                                            function () { return clone.sizeClassFor(tile.effSize) })
                             }
 
@@ -266,8 +390,8 @@ Item {
                             Rectangle {
                                 anchors.fill: parent; radius: theme.radiusLg
                                 color: "transparent"; border.width: 3; border.color: theme.accent
-                                visible: clone.dragIndex >= 0 && clone.targetIndex === tile.index
-                                         && clone.dragIndex !== tile.index
+                                visible: clone.dragIdx >= 0 && clone.targetIdx === tile.tileIdx
+                                         && clone.dragIdx !== tile.tileIdx
                             }
 
                             // Drag / select overlay.
@@ -276,41 +400,46 @@ Item {
                                 visible: clone.editable
                                 anchors.fill: parent
                                 anchors.rightMargin: 26; anchors.bottomMargin: 26   // leave the corner handle
-                                cursorShape: clone.dragIndex === tile.index ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                                cursorShape: clone.dragIdx === tile.tileIdx ? Qt.ClosedHandCursor : Qt.OpenHandCursor
                                 preventStealing: true
                                 property real sx: 0; property real sy: 0
                                 property bool dragging: false
                                 onPressed: (mouse) => { ma.sx = mouse.x; ma.sy = mouse.y; ma.dragging = false }
                                 onPositionChanged: (mouse) => {
                                     if (!ma.dragging && (Math.abs(mouse.x - ma.sx) > 8 || Math.abs(mouse.y - ma.sy) > 8)) {
-                                        ma.dragging = true; clone.dragIndex = tile.index
+                                        ma.dragging = true; clone.dragIdx = tile.tileIdx
                                     }
                                     if (ma.dragging) {
                                         var g = tile.mapToItem(grid, mouse.x, mouse.y)
                                         var c = tile.mapToItem(clone, mouse.x, mouse.y)
                                         clone.dragX = c.x; clone.dragY = c.y
-                                        clone.targetIndex = clone.targetAt(g.x, g.y)
+                                        clone.targetIdx = clone.targetAt(g.x, g.y)
                                     }
                                 }
                                 onReleased: {
                                     if (ma.dragging) {
-                                        var to = clone.targetIndex
-                                        var from = tile.index
+                                        // Both are STORE tile indices — targetAt reports the
+                                        // hit delegate's own `tileIdx` — so they address
+                                        // moveTile directly. There is no longer a placement
+                                        // array to index through, which is what kept this
+                                        // correct only for as long as row order happened to
+                                        // equal tile order.
+                                        var to = clone.targetIdx
+                                        var from = tile.tileIdx
                                         // Clear the drag state (which hides the floating
-                                        // name-tag) BEFORE moveTile: moveTile reorders the
-                                        // model and can destroy THIS delegate — and its
-                                        // running handler — so a reset placed after it may
-                                        // never execute, leaving the name-tag stuck in air.
+                                        // name-tag) BEFORE moveTile: a reset placed after it
+                                        // may never execute if this handler's delegate dies,
+                                        // leaving the name-tag stuck in air. The delegate now
+                                        // SURVIVES a reorder, so this is belt-and-braces —
+                                        // but it is also what lets the dragged tile glide
+                                        // home at full opacity instead of being animated
+                                        // while still visibly held.
                                         ma.dragging = false
-                                        clone.dragIndex = -1; clone.targetIndex = -1
-                                        // Delegate indices count PLACEMENTS; moveTile
-                                        // addresses the store's tile array. `idx` is the
-                                        // bridge — they coincide only by luck.
+                                        clone.dragIdx = -1; clone.targetIdx = -1
                                         if (to >= 0 && to !== from)
-                                            store.moveTile(clone.pageIndex, clone.placements[from].idx,
-                                                           clone.placements[to].idx)
+                                            store.moveTile(clone.pageIndex, from, to)
                                     } else {
-                                        clone.configRequested(tile.modelData.id, tile.modelData.type)
+                                        clone.configRequested(tile.tileId, tile.tileType)
                                     }
                                 }
                             }
@@ -324,14 +453,14 @@ Item {
                                     width: 32; height: 32; radius: 16; color: Qt.rgba(0, 0, 0, 0.55)
                                     AppIcon { anchors.centerIn: parent; name: "ui-settings"; color: "#fff"; size: 16 }
                                     MouseArea { anchors.fill: parent
-                                        onClicked: clone.configRequested(tile.modelData.id, tile.modelData.type) }
+                                        onClicked: clone.configRequested(tile.tileId, tile.tileType) }
                                 }
                                 Rectangle {
                                     width: 32; height: 32; radius: 16
                                     color: Qt.rgba(theme.error.r, theme.error.g, theme.error.b, 0.7)
                                     AppIcon { anchors.centerIn: parent; name: "ui-close"; color: "#fff"; size: 15 }
                                     MouseArea { anchors.fill: parent
-                                        onClicked: store.removeTile(clone.pageIndex, tile.modelData.id) }
+                                        onClicked: store.removeTile(clone.pageIndex, tile.tileId) }
                                 }
                             }
 
@@ -345,7 +474,7 @@ Item {
                             Rectangle {
                                 anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.margins: 5
                                 width: 24; height: 24; radius: 7; z: 6
-                                visible: clone.editable && catalog.sizesFor(tile.modelData.type).length > 1
+                                visible: clone.editable && catalog.sizesFor(tile.tileType).length > 1
                                 color: Qt.rgba(theme.accent.r, theme.accent.g, theme.accent.b, 0.75)
                                 AppIcon { anchors.centerIn: parent; name: "ui-resize"; color: "#0D1117"; size: 15 }
                                 MouseArea {
@@ -359,7 +488,7 @@ Item {
                                     onPressed: (mp) => {
                                         var c = mapToItem(screen, mp.x, mp.y)
                                         sx = c.x; sy = c.y
-                                        tile.pvSize = tile.modelData.size
+                                        tile.pvSize = tile.tileSize
                                     }
                                     onPositionChanged: (mp) => {
                                         var c = mapToItem(screen, mp.x, mp.y)
@@ -369,7 +498,7 @@ Item {
                                         var pxW = tile.width + (c.x - sx), pxH = tile.height + (c.y - sy)
                                         var pxShort = clone.landscape ? pxH : pxW
                                         var pxLong = clone.landscape ? pxW : pxH
-                                        var snapped = packer.snap(catalog.sizesFor(tile.modelData.type),
+                                        var snapped = packer.snap(catalog.sizesFor(tile.tileType),
                                                                   pxShort, pxLong,
                                                                   screen.cellShort, screen.cellLong)
                                         if (snapped !== "") tile.pvSize = snapped
@@ -380,7 +509,7 @@ Item {
                                         // setTileSize is the gate, not this handler: `snap`
                                         // only ever proposes a supported size, and the store
                                         // still refuses anything else.
-                                        if (next !== "") store.setTileSize(clone.pageIndex, tile.modelData.id, next)
+                                        if (next !== "") store.setTileSize(clone.pageIndex, tile.tileId, next)
                                     }
                                 }
                             }
@@ -399,9 +528,13 @@ Item {
     }
 
     // Floating drag ghost — tracks the cursor (both axes) and stays on-screen.
+    // `dragIdx` indexes `tiles` directly and correctly: it is the store tile index,
+    // which is exactly what `tiles` is ordered by. (It used to be a placement/row
+    // number that indexed `tiles` anyway, and agreed only while no tile was ever
+    // skipped by the packer.)
     Rectangle {
         id: dragGhost
-        visible: clone.dragIndex >= 0 && clone.dragIndex < clone.tiles.length
+        visible: clone.dragIdx >= 0 && clone.dragIdx < clone.tiles.length
         width: 210; height: 46; radius: 12; z: 100
         x: Math.max(6, Math.min(clone.width - width - 6, clone.dragX + 18))
         y: Math.max(6, Math.min(clone.height - height - 6, clone.dragY - height / 2))
@@ -409,10 +542,10 @@ Item {
         Row {
             anchors.centerIn: parent; spacing: 10
             AppIcon { anchors.verticalCenter: parent.verticalCenter; size: 22; color: theme.textPrimary
-                name: clone.dragIndex >= 0 && clone.dragIndex < clone.tiles.length
-                      ? clone.tiles[clone.dragIndex].type : "" }
-            Text { text: clone.dragIndex >= 0 && clone.dragIndex < clone.tiles.length
-                ? catalog.title(clone.tiles[clone.dragIndex].type) : ""
+                name: clone.dragIdx >= 0 && clone.dragIdx < clone.tiles.length
+                      ? clone.tiles[clone.dragIdx].type : "" }
+            Text { text: clone.dragIdx >= 0 && clone.dragIdx < clone.tiles.length
+                ? catalog.title(clone.tiles[clone.dragIdx].type) : ""
                 color: theme.textPrimary; font.pixelSize: 15 }
         }
     }

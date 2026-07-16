@@ -115,9 +115,11 @@ Item {
                 return x && x.accentPresets !== undefined && typeof x.applyAccent === "function" })
             _nav = findPred(win, function (x) {
                 return x && x.currentIndex !== undefined && x.count === 5 && x.count !== undefined })
-            _images = findPred(win, function (x) {
-                return x && x.count !== undefined && typeof x.append === "function"
-                       && typeof x.clear === "function" && typeof x.get === "function" })
+            // By objectName, NOT by duck-typing a ListModel: EdgeClone carries its own
+            // placement ListModel, and it comes first in the tree, so "has append/clear/
+            // get" silently resolved to the wrong model and every images assertion below
+            // measured a model nothing here ever writes to.
+            _images = findPred(win, function (x) { return x && x.objectName === "imagesModel" })
             _confirm = findPred(win, function (x) {
                 return x && x.message !== undefined && ("onConfirm" in x) && typeof x.open === "function" })
             verify(_store, "found store")

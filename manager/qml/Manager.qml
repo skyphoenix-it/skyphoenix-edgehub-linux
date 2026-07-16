@@ -1358,7 +1358,9 @@ ApplicationWindow {
         confirmDialog.open()
     }
 
-    ListModel { id: imagesModel }
+    // objectName is a test seam: EdgeClone owns a ListModel too (its placement
+    // model), so "the ListModel in the Manager tree" no longer identifies this one.
+    ListModel { id: imagesModel; objectName: "imagesModel" }
     function refreshImages() {
         imagesModel.clear()
         var list = backend.listImages()
