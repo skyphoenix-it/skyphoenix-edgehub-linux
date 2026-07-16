@@ -150,6 +150,9 @@ Dialog {
         contentItem: Text {
             text: "Reset " + catalog.title(dlg.wType) + " to its default settings? This can't be undone."
             color: m.textPrimary; wrapMode: Text.WordWrap; padding: 14; font.pixelSize: 14
+            // Same cap as Manager's confirmDialog: an uncapped Text keeps widening
+            // the dialog that sizes it (implicitWidth binding loop).
+            width: Math.min(implicitWidth, 360)
         }
         onAccepted: store.resetSettings(dlg.wId, catalog.defaults(dlg.wType))
     }
@@ -164,6 +167,17 @@ Dialog {
                 Text { text: catalog.title(dlg.wType) + " — Configure"; color: m.textPrimary; font.pixelSize: 20; font.bold: true }
                 Text { text: catalog.desc(dlg.wType); color: m.textSecondary; font.pixelSize: 12
                     elide: Text.ElideRight; Layout.fillWidth: true }
+            }
+            // Scope pill: these settings touch ONE tile, not the widget type —
+            // the owner's "which setting changes which behavior" complaint.
+            Rectangle {
+                objectName: "scopeTag"
+                Layout.alignment: Qt.AlignVCenter
+                implicitWidth: scopeLbl.implicitWidth + 18; implicitHeight: 24; radius: 12
+                color: "transparent"; border.width: 1; border.color: m.accent
+                property alias text: scopeLbl.text
+                Text { id: scopeLbl; anchors.centerIn: parent; text: "This widget only"
+                    color: m.accent; font.pixelSize: 11; font.bold: true }
             }
         }
     }
@@ -225,7 +239,11 @@ Dialog {
             }
             Text {
                 Layout.fillWidth: true; wrapMode: Text.WordWrap
-                text: "Live & interactive — changes apply instantly to the Edge."
+                // Honest about the commit path: "instantly on the Edge" was shown
+                // even while the sidebar said "Hub offline (saved)".
+                text: backend.hubConnected
+                      ? "Live & interactive — changes apply instantly to the Edge."
+                      : "Live preview — changes are saved and appear when the hub starts."
                 color: m.textSecondary; font.pixelSize: 12
             }
             // Token-styled (mirrors Manager's MButton) so it matches the dark app

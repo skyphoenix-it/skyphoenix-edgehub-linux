@@ -264,5 +264,40 @@ Item {
                       "cpu declares several sizes, so it gets a handle")
             verify(catalog.sizesFor("cpu").length > 1, "precondition: cpu really has more than one")
         }
+
+        // Preview mode (Appearance tab): editable=false renders the same WYSIWYG
+        // clone but hides every edit affordance — drag/select overlay, ⚙/✕
+        // controls, resize handle — so the preview can't become a second,
+        // competing layout editor.
+        function test_editable_false_hides_every_edit_affordance() {
+            root.seed([ { type: "cpu" } ])
+            tryVerify(function () {
+                var t = tileAtIndex(0)
+                return t && t.width > 0 && resizeHandles().length === 1
+            }, 3000, "an editable tile with its handle is ready")
+            var c = ld.item
+            verify(c.editable, "clone starts editable (Layout-tab default)")
+
+            c.editable = false
+            // The drag/select overlay (the MouseArea carrying `dragging`).
+            var overlays = findAll(ld.item, function (x) {
+                return x && x.dragging !== undefined && typeof x.pressed === "boolean"
+            })
+            verify(overlays.length > 0, "found the drag/select overlay")
+            for (var i = 0; i < overlays.length; i++)
+                verify(!overlays[i].visible, "drag/select overlay hidden in preview mode")
+            // The ⚙/✕ controls row (the z:5 Row on each tile).
+            var rows = findAll(ld.item, function (x) {
+                return x && x.z === 5 && x.spacing !== undefined
+            })
+            verify(rows.length > 0, "found the tile controls row")
+            for (var r = 0; r < rows.length; r++)
+                verify(!rows[r].visible, "⚙/✕ controls hidden in preview mode")
+            // The resize handle (its parent Rectangle owns the visible flag).
+            verify(!resizeHandles()[0].parent.visible, "resize handle hidden in preview mode")
+
+            c.editable = true   // restore the shared Loader for the other tests
+            verify(resizeHandles()[0].parent.visible, "handle returns when editable again")
+        }
     }
 }

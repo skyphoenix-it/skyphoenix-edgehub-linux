@@ -13,6 +13,11 @@ import QtQuick
 Item {
     id: clone
     property int pageIndex: 0
+    // false = pure live preview (Appearance tab): the same WYSIWYG render with
+    // every edit affordance (drag, resize, ⚙, ✕) hidden, so "what does this
+    // setting change?" can be answered next to the setting without also
+    // offering a second, competing place to edit the layout.
+    property bool editable: true
     signal configRequested(string tileId, string tileType)
 
     WidgetSizes { id: sizes }
@@ -69,7 +74,9 @@ Item {
         var a = store.appearance() || ({})
         return a.animatedBg === undefined ? true : a.animatedBg
     }
-    property bool reduceMotion: { store.revision; return store.appearance().reduceMotion || false }
+    // effectiveReduceMotion (not the raw store flag): the theme folds in the OS
+    // reduce-motion probe, so the preview stills exactly when the hub would.
+    property bool reduceMotion: theme.effectiveReduceMotion
 
     property int tick: 0
     property var metricsObj: ({})
@@ -248,6 +255,7 @@ Item {
                             // Drag / select overlay.
                             MouseArea {
                                 id: ma
+                                visible: clone.editable
                                 anchors.fill: parent
                                 anchors.rightMargin: 26; anchors.bottomMargin: 26   // leave the corner handle
                                 cursorShape: clone.dragIndex === tile.index ? Qt.ClosedHandCursor : Qt.OpenHandCursor
@@ -291,6 +299,7 @@ Item {
 
                             // Top-right controls.
                             Row {
+                                visible: clone.editable
                                 anchors.top: parent.top; anchors.right: parent.right; anchors.margins: 8
                                 spacing: 6; z: 5
                                 Rectangle {
@@ -318,7 +327,7 @@ Item {
                             Rectangle {
                                 anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.margins: 5
                                 width: 24; height: 24; radius: 7; z: 6
-                                visible: catalog.sizesFor(tile.modelData.type).length > 1
+                                visible: clone.editable && catalog.sizesFor(tile.modelData.type).length > 1
                                 color: Qt.rgba(theme.accent.r, theme.accent.g, theme.accent.b, 0.75)
                                 AppIcon { anchors.centerIn: parent; name: "ui-resize"; color: "#0D1117"; size: 15 }
                                 MouseArea {

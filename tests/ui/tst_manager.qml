@@ -3,6 +3,7 @@ import QtTest
 
 // COVERS: fn:Manager.confirmDeleteImage, fn:Manager.currentPageName, fn:Manager.onChanged, fn:Manager.onConfigChanged, fn:Manager.onHubConnectedChanged, fn:Manager.onImagesChanged
 // COVERS: fn:Manager.onScreensChanged, fn:Manager.pageTiles, fn:Manager.refreshImages, fn:Manager.syncTheme
+// COVERS: fn:Manager.previewTheme, fn:Manager.previewAccent, fn:Manager.endThemePreview, fn:Manager.confirmRemovePage
 //
 // manager/qml/Manager.qml (hosted with a STUBBED `backend`) —
 //   • the 5-tab StackLayout (Layout/Appearance/Images/Display/About) switches
@@ -319,6 +320,98 @@ Item {
             compare(backend.startHubCalled, true, "click invoked backend.startHub()")
             compare(win.hubStarting, true, "entered the 'starting…' state")
             verify(!btn.enabled, "button disables itself while starting")
+        }
+
+        // ── hover previews: show, then commit ─────────────────────────────────
+        // previewTheme paints the Manager's theme instance WITHOUT touching the
+        // store; endThemePreview restores the stored appearance (it must void the
+        // signature guard, or syncTheme would skip the "unchanged" payload).
+        function test_previewTheme_is_transient() {
+            // toString(): a bare `var x = theme.backgroundColor` holds a live
+            // value-type reference that re-reads the property, so the "before"
+            // snapshot would always equal the "after" value.
+            var storedBg = _theme.backgroundColor.toString()
+            win.previewTheme("light")
+            verify(!Qt.colorEqual(_theme.backgroundColor, storedBg), "previewTheme repainted the theme instance")
+            verify(_store.appearance().themeMode === undefined, "previewTheme did NOT write the store")
+            win.endThemePreview()
+            verify(Qt.colorEqual(_theme.backgroundColor, storedBg), "endThemePreview restored the stored theme")
+        }
+
+        function test_previewAccent_is_transient_and_restorable() {
+            _store.setAppearance("accent", "blue")           // a committed baseline
+            var storedAccent = _theme.accent.toString()      // snapshot, not a live reference
+            win.previewAccent("green")
+            verify(Qt.colorEqual(_theme.accent, _theme.accentPresets["green"].a), "previewAccent painted the hovered accent")
+            compare(_store.appearance().accent, "blue", "previewAccent left the stored accent untouched")
+            win.endThemePreview()
+            verify(Qt.colorEqual(_theme.accent, storedAccent), "endThemePreview restored the committed accent")
+        }
+
+        // previewTheme must re-apply the COMMITTED accent (applyTheme resets it),
+        // or hovering a theme swatch would also appear to change the accent.
+        function test_previewTheme_keeps_the_committed_accent() {
+            _store.setAppearance("accent", "purple")
+            win.previewTheme("midnight")
+            verify(Qt.colorEqual(_theme.accent, _theme.accentPresets["purple"].a), "previewTheme keeps the committed accent")
+            win.endThemePreview()
+        }
+
+        // ── confirmRemovePage: destructive → armed confirm, not instant ───────
+        function test_confirmRemovePage_confirms_then_removes() {
+            _store.addPage("Doomed")
+            win.currentPageIndex = 1
+            _store.addTile(1, "cpu")
+            win.confirmRemovePage()
+            verify(_confirm.message.indexOf("Doomed") >= 0, "confirmRemovePage names the page")
+            verify(_confirm.message.indexOf("1 widget") >= 0, "confirmRemovePage counts its widgets")
+            _confirm.reject()                                // user says No
+            compare(_store.pageCount(), 2, "rejecting the confirm removes nothing")
+            win.confirmRemovePage()
+            _confirm.onConfirm()                             // user says Yes
+            compare(_store.pageCount(), 1, "confirming removes the page")
+            compare(win.currentPageIndex, 0, "selection clamped back into range")
+        }
+
+        // ── Appearance tab hosts a live, read-only Edge preview ───────────────
+        function test_appearance_tab_has_readonly_edge_preview() {
+            // Dedupe: eachItem walks both `children` and `data`, so deep nodes are
+            // visited (and collected) many times over.
+            var seen = []
+            findAll(win, function (x) {
+                if (x && typeof x.injectInto === "function" && x.editable !== undefined
+                        && seen.indexOf(x) < 0) seen.push(x)
+                return false
+            })
+            var clones = seen
+            compare(clones.length, 2, "two EdgeClones: the Layout editor + the Appearance preview")
+            var editorCount = 0, previewCount = 0
+            for (var i = 0; i < clones.length; i++)
+                clones[i].editable ? editorCount++ : previewCount++
+            compare(editorCount, 1, "exactly one editable clone (Layout tab)")
+            compare(previewCount, 1, "exactly one read-only preview clone (Appearance tab)")
+        }
+
+        // ── liveNote: the one phrase for "does an edit reach the panel now?" ──
+        function test_liveNote_follows_hub_connection() {
+            backend.hubConnected = false
+            verify(win.liveNote.indexOf("offline") >= 0, "offline wording while disconnected")
+            backend.hubConnected = true
+            verify(win.liveNote.indexOf("immediately") >= 0, "live wording while connected")
+            backend.hubConnected = false
+        }
+
+        // ── per-widget config dialog declares its scope ───────────────────────
+        function test_config_dialog_carries_widget_scope_tag() {
+            _store.addTile(0, "clock")
+            var tileId = _store.pages()[0].tiles[0].id
+            var dlg = findPred(win, function (x) { return x && typeof x.openFor === "function" })
+            verify(dlg, "found the WidgetConfigDialog")
+            dlg.openFor(tileId, "clock")
+            var tag = findPred(win, function (x) { return x && x.objectName === "scopeTag" })
+            verify(tag, "the dialog header carries a scope tag")
+            compare(tag.text, "This widget only", "…that says the settings touch one tile")
+            dlg.close()
         }
 
         // ── inline MSwitch (Widget glow) ──────────────────────────────────────

@@ -164,8 +164,34 @@ ApplicationWindow {
 
     // Full design-system theme + a media stub, so the WYSIWYG clone renders the
     // REAL widgets exactly like the Edge. Driven from the store's appearance.
-    Theme { id: theme }
+    // systemReduceMotion mirrors the hub's main.qml: the OS reduce-motion probe
+    // (XDG portal, injected as `systemSettings`) must reach the Manager's theme
+    // too, or the previews keep animating while the real Edge stands still.
+    // typeof-guard: the QML test harness hosts Manager.qml without the probe.
+    Theme {
+        id: theme
+        systemReduceMotion: (typeof systemSettings !== "undefined" && systemSettings)
+            ? systemSettings.reduceMotion : false
+    }
     MockMedia { id: media }
+
+    // One phrase for "does an edit reach the panel right now?" — reused by the
+    // Layout hint card and the Appearance preview so they can never disagree
+    // with the sidebar's connection dot again.
+    readonly property string liveNote: backend.hubConnected
+        ? "Hub connected — changes appear on the Edge immediately."
+        : "Hub offline — changes are saved and appear when the hub starts."
+
+    // Scope pill ("Whole Edge" / "This page only" / …): the audit's core finding
+    // was that no control said what it would affect, so scope becomes a visible,
+    // uniform part of every section header rather than prose.
+    component ScopeTag: Rectangle {
+        property string label: ""
+        implicitWidth: stLbl.implicitWidth + 18; implicitHeight: 22; radius: 11
+        color: "transparent"; border.width: 1; border.color: m.accent
+        Text { id: stLbl; anchors.centerIn: parent; text: parent.label
+            color: m.accent; font.pixelSize: 11; font.bold: true }
+    }
 
     property int currentPageIndex: 0
     // Transient "Starting hub…" feedback: set when the user hits Start, cleared
@@ -198,6 +224,36 @@ ApplicationWindow {
         theme.reduceMotion = a.reduceMotion || false
     }
     Connections { target: store; function onChanged() { win.syncTheme() } }
+
+    // ── Hover previews (show, then commit) ──
+    // Hovering a theme/accent swatch applies it to the Manager's theme instance
+    // ONLY — the live preview pane repaints, the store (and hence the Edge and
+    // disk) is untouched until the user clicks. endThemePreview() restores the
+    // stored appearance; it must void the signature guard first or syncTheme()
+    // would skip the "unchanged" payload and strand the hover colours.
+    function previewTheme(mode) {
+        theme.applyTheme(mode)
+        var a = store.appearance() || ({})
+        if (a.accent) theme.applyAccent(a.accent)   // applyTheme resets the accent
+    }
+    function previewAccent(name) { theme.applyAccent(name) }
+    function endThemePreview() { _appearanceSig = ""; syncTheme() }
+
+    // Removing a page discards its widgets and their settings — the only
+    // destructive click in the Manager that skipped the confirm dialog.
+    function confirmRemovePage() {
+        var idx = currentPageIndex
+        var n = pageTiles().length
+        confirmDialog.message = "Remove page “" + currentPageName() + "”"
+            + (n > 0 ? " and its " + n + " widget" + (n === 1 ? "" : "s") : "")
+            + "? This can't be undone."
+        confirmDialog.onConfirm = function () {
+            store.removePage(idx)
+            // Stay on the page that slid into this slot (clamped).
+            win.currentPageIndex = Math.min(idx, store.pageCount() - 1)
+        }
+        confirmDialog.open()
+    }
 
     Component.onCompleted: { store.load(backend.starterLayout()); syncTheme(); refreshImages() }
 
@@ -294,13 +350,20 @@ ApplicationWindow {
 
                 Item { Layout.fillHeight: true }
 
-                // Manager chrome theme switch (Dark / Light / Default).
+                // Manager chrome theme switch (Dark / Light / Default). Named and
+                // captioned to separate it from Appearance → "Edge theme": the
+                // audit's top confusion was two unlabelled "theme" controls.
                 ColumnLayout {
                     Layout.fillWidth: true; Layout.bottomMargin: 6; spacing: 6
                     Text {
-                        text: "MANAGER THEME"; color: m.textSecondary
+                        text: "MANAGER WINDOW STYLE"; color: m.textSecondary
                         font.pixelSize: 10; font.family: theme.fontMono
                         opacity: 0.85; Layout.leftMargin: 2
+                    }
+                    Text {
+                        text: "This window only — your Edge's theme is set in Appearance."
+                        color: m.textSecondary; font.pixelSize: 10; opacity: 0.85
+                        Layout.fillWidth: true; Layout.leftMargin: 2; wrapMode: Text.WordWrap
                     }
                     RowLayout {
                         Layout.fillWidth: true; spacing: 6
@@ -435,29 +498,12 @@ ApplicationWindow {
                         Item { Layout.fillWidth: true }
                         MButton { text: "Remove page"; iconName: "ui-trash"
                             enabled: (store.revision, store.pageCount() > 1)
-                            onClicked: {
-                                var removed = win.currentPageIndex
-                                store.removePage(removed)
-                                // Stay on the page that slid into this slot (clamped).
-                                win.currentPageIndex = Math.min(removed, store.pageCount() - 1)
-                            } }
+                            onClicked: win.confirmRemovePage() }
                     }
 
-                    // This page's background — one control, overrides the global
-                    // default for THIS page ("Use global" drops the override).
-                    Text { text: "This page's background"; color: m.textPrimary; font.pixelSize: 14; font.bold: true
-                        Layout.topMargin: 4 }
-                    Text { text: "Overrides the global default (set in Appearance) for the current page only."
-                        color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
-                    BackgroundPicker {
-                        Layout.fillWidth: true
-                        store: store; pageIndex: win.currentPageIndex; col: win.mCol
-                        bgCatalog: bgCatalog; wpCatalog: bundledWallpapers; uploadedImages: win.uploadedWallpapers
-                    }
-
-                    // A per-page "Columns" picker stood here. Tile size is now chosen
-                    // per tile — drag a tile's corner in the clone below, which snaps
-                    // to the sizes that tile's TYPE declares.
+                    // The page background override moved into the helper column
+                    // beside the clone: it is a per-page appearance choice, and in
+                    // the audit it dominated the tab and buried the layout tool.
 
                     // Tiles on the current page
                     RowLayout {
@@ -473,40 +519,80 @@ ApplicationWindow {
                             onConfigRequested: (tileId, tileType) => cfgDialog.openFor(tileId, tileType)
                         }
 
-                        // Helper column.
-                        ColumnLayout {
-                            Layout.fillWidth: true; Layout.alignment: Qt.AlignTop; spacing: 12
-                            MButton { text: "Add widget"; iconName: "ui-plus"; primary: true
-                                Layout.fillWidth: true; Layout.preferredHeight: m.touch
-                                onClicked: addPicker.open() }
-                            Rectangle {
-                                Layout.fillWidth: true; Layout.preferredHeight: hintCol.implicitHeight + 24
-                                radius: m.radius; color: m.panel; border.width: 1; border.color: m.border
-                                ColumnLayout {
-                                    id: hintCol; anchors.fill: parent; anchors.margins: 12; spacing: 6
-                                    Text { text: "This is your Edge"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
-                                    Text { Layout.fillWidth: true; wrapMode: Text.WordWrap; color: m.textSecondary; font.pixelSize: 13
-                                        text: "• Tap a tile (or ⚙) to configure it\n• Drag a tile onto another to reorder\n• Drag the ⤡ corner to resize (width & height)\n• Switch 1 / 2 columns above\n• ✕ removes a tile\nChanges apply live to the display." }
+                        // Helper column: add + how-to + this page's background.
+                        ScrollView {
+                            id: helperScroll
+                            Layout.fillWidth: true; Layout.fillHeight: true; clip: true
+                            contentWidth: availableWidth
+                            ColumnLayout {
+                                width: helperScroll.availableWidth
+                                spacing: 12
+                                MButton { text: "Add widget"; iconName: "ui-plus"; primary: true
+                                    Layout.fillWidth: true; Layout.preferredHeight: m.touch
+                                    onClicked: addPicker.open() }
+                                Rectangle {
+                                    Layout.fillWidth: true; Layout.preferredHeight: hintCol.implicitHeight + 24
+                                    radius: m.radius; color: m.panel; border.width: 1; border.color: m.border
+                                    ColumnLayout {
+                                        id: hintCol; anchors.fill: parent; anchors.margins: 12; spacing: 6
+                                        Text { text: "This is your Edge"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
+                                        Text { Layout.fillWidth: true; wrapMode: Text.WordWrap; color: m.textSecondary; font.pixelSize: 13
+                                            text: "• Click a tile (or ⚙) to configure that widget\n• Drag a tile onto another to reorder\n• Drag the ⤡ corner to resize\n• ✕ removes the widget from this page" }
+                                        Text { Layout.fillWidth: true; wrapMode: Text.WordWrap; font.pixelSize: 12
+                                            text: win.liveNote
+                                            color: backend.hubConnected ? m.success : m.textSecondary }
+                                    }
                                 }
+                                RowLayout {
+                                    Layout.topMargin: 6; spacing: 8
+                                    Text { text: "This page's background"; color: m.textPrimary
+                                        font.pixelSize: 15; font.bold: true }
+                                    ScopeTag { label: "This page only" }
+                                }
+                                Text { text: "Overrides the Edge-wide background from Appearance, for this page alone. “Use global” returns to the shared one."
+                                    color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
+                                BackgroundPicker {
+                                    Layout.fillWidth: true
+                                    store: store; pageIndex: win.currentPageIndex; col: win.mCol
+                                    bgCatalog: bgCatalog; wpCatalog: bundledWallpapers; uploadedImages: win.uploadedWallpapers
+                                }
+                                Item { Layout.preferredHeight: 8 }
                             }
-                            Item { Layout.fillHeight: true }
                         }
                     }
                 }
             }
 
             // ═══ 2. APPEARANCE ═══
+            // Two panes: controls left, a live Edge preview right. The audit's
+            // second-biggest finding: every control here changes the Edge, but the
+            // only rendering of the Edge lived on the Layout tab — so theme/accent/
+            // glass picks gave zero visible feedback. Now they repaint the preview
+            // as you hover, before anything is committed.
             Item {
-              ScrollView {
+              RowLayout {
+                anchors.fill: parent
+                anchors.margins: 24
+                spacing: 20
+
+               ScrollView {
                 id: apScroll
-                anchors.fill: parent; clip: true
+                Layout.fillWidth: true; Layout.fillHeight: true; clip: true
                 contentWidth: availableWidth
                 ColumnLayout {
-                    width: apScroll.availableWidth - 48
-                    x: 24; y: 24; spacing: 18
+                    width: apScroll.availableWidth
+                    spacing: 18
                     Text { text: "Appearance"; color: m.textPrimary; font.pixelSize: 24; font.bold: true }
+                    Text { text: "How your Edge looks. Hover a swatch to try it in the preview — nothing is applied until you click."
+                        color: m.textSecondary; font.pixelSize: 14; Layout.fillWidth: true; wrapMode: Text.WordWrap }
 
-                    Text { text: "Theme"; color: m.textSecondary; font.pixelSize: 14 }
+                    RowLayout {
+                        Layout.topMargin: 4; spacing: 8
+                        Text { text: "Edge theme"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
+                        ScopeTag { label: "Whole Edge" }
+                    }
+                    Text { text: "The colour palette for every page and widget. (The Manager window's own style is separate — bottom of the sidebar.)"
+                        color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
                     Flow {
                         Layout.fillWidth: true; spacing: 10
                         Repeater {
@@ -559,12 +645,21 @@ ApplicationWindow {
                                     AppIcon { anchors.centerIn: parent; name: "ui-check"; size: 13; color: m.textOnAccent } }
                                 MouseArea { id: swMA; anchors.fill: parent; hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
+                                    // Hover = transient try-on in the preview; click commits.
+                                    onContainsMouseChanged: containsMouse
+                                        ? win.previewTheme(modelData.k) : win.endThemePreview()
                                     onClicked: store.setAppearance("themeMode", modelData.k) }
                             }
                         }
                     }
 
-                    Text { text: "Accent"; color: m.textSecondary; font.pixelSize: 14 }
+                    RowLayout {
+                        Layout.topMargin: 4; spacing: 8
+                        Text { text: "Accent colour"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
+                        ScopeTag { label: "Whole Edge" }
+                    }
+                    Text { text: "The highlight colour for rings, buttons and charts. A widget can override it just for itself (⚙ → Widget appearance)."
+                        color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
                     Flow {
                         Layout.fillWidth: true; spacing: 10
                         Repeater {
@@ -577,16 +672,25 @@ ApplicationWindow {
                                 border.color: m.textPrimary
                                 AppIcon { visible: parent.sel; anchors.centerIn: parent
                                     name: "ui-check"; size: 20; color: "#FFFFFF" }
+                                // The circles carried no names — hover says which is which.
+                                ToolTip.visible: accMA.containsMouse
+                                ToolTip.delay: 350
+                                ToolTip.text: modelData.name
                                 MouseArea { id: accMA; anchors.fill: parent; hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
+                                    onContainsMouseChanged: containsMouse
+                                        ? win.previewAccent(modelData.name) : win.endThemePreview()
                                     onClicked: store.setAppearance("accent", modelData.name) }
                             }
                         }
                     }
 
-                    Text { text: "Background (global default)"; color: m.textPrimary; font.pixelSize: 15; font.bold: true
-                        Layout.topMargin: 4 }
-                    Text { text: "Pick an animated style OR a wallpaper — this is the default for every page. A page can override it in the Layout tab."
+                    RowLayout {
+                        Layout.topMargin: 4; spacing: 8
+                        Text { text: "Background"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
+                        ScopeTag { label: "All pages" }
+                    }
+                    Text { text: "Pick an animated style OR a wallpaper — the default every page starts from. One page can go its own way in Layout → “This page's background”."
                         color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
                     RowLayout { visible: !theme.decorative; Layout.fillWidth: true; spacing: 6
                         AppIcon { name: "ui-warning"; size: 14; color: m.danger; Layout.alignment: Qt.AlignTop }
@@ -603,6 +707,11 @@ ApplicationWindow {
                     // is fixed at WidgetSizes.shortHalves across the short axis, so
                     // `1x1` means one third of the screen on every page.
 
+                    RowLayout {
+                        Layout.topMargin: 4; spacing: 8
+                        Text { text: "Effects"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
+                        ScopeTag { label: "Whole Edge" }
+                    }
                     RowLayout {
                         Layout.fillWidth: true; spacing: 12
                         Text { text: "Glassiness"; color: m.textSecondary; font.pixelSize: 14; Layout.preferredWidth: 120 }
@@ -646,37 +755,98 @@ ApplicationWindow {
                             Layout.preferredWidth: 44; horizontalAlignment: Text.AlignRight }
                     }
 
-                    RowLayout {
-                        spacing: 20
+                    Text { text: "How see-through widget cards are: 0% solid, 100% pure glass."
+                        color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
+
+                    ColumnLayout {
+                        spacing: 12
                         // A Switch severs its `checked:` binding on first toggle, so
                         // without re-asserting it here a later store/hub push could
                         // never move the control again [S2]. Re-bind after each write.
-                        MSwitch {
-                            text: "Widget glow"
-                            checked: { store.revision; var g = store.appearance().glow; return g === undefined ? true : g }
-                            onToggled: {
-                                store.setAppearance("glow", checked)
-                                checked = Qt.binding(function() { store.revision; var g = store.appearance().glow; return g === undefined ? true : g })
+                        // One-line consequence note under each switch: their labels
+                        // alone did not say what would visibly change, or that
+                        // "Reduce motion" beats the other two.
+                        ColumnLayout {
+                            spacing: 2
+                            MSwitch {
+                                text: "Widget glow"
+                                checked: { store.revision; var g = store.appearance().glow; return g === undefined ? true : g }
+                                onToggled: {
+                                    store.setAppearance("glow", checked)
+                                    checked = Qt.binding(function() { store.revision; var g = store.appearance().glow; return g === undefined ? true : g })
+                                }
                             }
+                            Text { text: "A soft coloured halo behind each widget card."
+                                color: m.textSecondary; font.pixelSize: 12; Layout.leftMargin: 56
+                                Layout.fillWidth: true; wrapMode: Text.WordWrap }
                         }
-                        MSwitch {
-                            text: "Animated background"
-                            checked: { store.revision; var g = store.appearance().animatedBg; return g === undefined ? true : g }
-                            onToggled: {
-                                store.setAppearance("animatedBg", checked)
-                                checked = Qt.binding(function() { store.revision; var g = store.appearance().animatedBg; return g === undefined ? true : g })
+                        ColumnLayout {
+                            spacing: 2
+                            MSwitch {
+                                text: "Animated background"
+                                checked: { store.revision; var g = store.appearance().animatedBg; return g === undefined ? true : g }
+                                onToggled: {
+                                    store.setAppearance("animatedBg", checked)
+                                    checked = Qt.binding(function() { store.revision; var g = store.appearance().animatedBg; return g === undefined ? true : g })
+                                }
                             }
+                            Text { text: "Lets the background style above move. Off = it stands still. Not used while a wallpaper is set."
+                                color: m.textSecondary; font.pixelSize: 12; Layout.leftMargin: 56
+                                Layout.fillWidth: true; wrapMode: Text.WordWrap }
                         }
-                        MSwitch {
-                            text: "Reduce motion"
-                            checked: (store.revision, store.appearance().reduceMotion || false)
-                            onToggled: {
-                                store.setAppearance("reduceMotion", checked)
-                                checked = Qt.binding(function() { store.revision; return store.appearance().reduceMotion || false })
+                        ColumnLayout {
+                            spacing: 2
+                            MSwitch {
+                                text: "Reduce motion"
+                                checked: (store.revision, store.appearance().reduceMotion || false)
+                                onToggled: {
+                                    store.setAppearance("reduceMotion", checked)
+                                    checked = Qt.binding(function() { store.revision; return store.appearance().reduceMotion || false })
+                                }
                             }
+                            Text { text: "Calms the whole Edge: stills backgrounds and widget animations. Wins over the two switches above."
+                                color: m.textSecondary; font.pixelSize: 12; Layout.leftMargin: 56
+                                Layout.fillWidth: true; wrapMode: Text.WordWrap }
                         }
                     }
                     Item { Layout.preferredHeight: 12 }   // bottom padding
+                }
+               }
+
+                // ── Live preview pane (the same WYSIWYG clone as Layout, read-only) ──
+                ColumnLayout {
+                    Layout.preferredWidth: 400; Layout.maximumWidth: 400; Layout.fillHeight: true
+                    spacing: 8
+                    Text { text: "Live preview"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
+                    // Page chips so "which page am I looking at?" has an answer —
+                    // and per-page overrides can be checked without leaving the tab.
+                    Flow {
+                        Layout.fillWidth: true; spacing: 6
+                        Repeater {
+                            model: (store.structureRevision, store.pages())
+                            delegate: Rectangle {
+                                required property int index
+                                required property var modelData
+                                width: apPgLbl.implicitWidth + 24; height: m.touch; radius: 8
+                                color: win.currentPageIndex === index ? m.accent
+                                       : (apPgMA.containsMouse ? m.panelAlt : m.panel)
+                                border.width: 1; border.color: m.border
+                                Text { id: apPgLbl; anchors.centerIn: parent; text: modelData.name
+                                    color: win.currentPageIndex === index ? m.textOnAccent : m.textSecondary
+                                    font.pixelSize: 12; font.bold: win.currentPageIndex === index }
+                                MouseArea { id: apPgMA; anchors.fill: parent; hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: win.currentPageIndex = index }
+                            }
+                        }
+                    }
+                    EdgeClone {
+                        editable: false
+                        Layout.fillWidth: true; Layout.fillHeight: true
+                        pageIndex: win.currentPageIndex
+                    }
+                    Text { text: win.liveNote; color: backend.hubConnected ? m.success : m.textSecondary
+                        font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
                 }
               }
             }
@@ -699,11 +869,14 @@ ApplicationWindow {
                     Text { text: "Your images"; color: m.textSecondary; font.pixelSize: 14; font.bold: true }
                     Text { text: "Click an image to use it as the wallpaper."
                         color: m.textSecondary; font.pixelSize: 12; visible: imagesModel.count > 0 }
-                    // Empty state.
+                    // Empty state. The trailing filler keeps the column top-packed while the
+                    // grid is hidden — without it the few remaining rows spread out
+                    // over the full tab height (audit finding F8).
                     Text { visible: imagesModel.count === 0; Layout.fillWidth: true; Layout.topMargin: 24
                         horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
                         text: "No images yet — use “Import image…” to add one."
                         color: m.textSecondary; font.pixelSize: 14 }
+                    Item { visible: imagesModel.count === 0; Layout.fillHeight: true }
                     GridView {
                         id: imgGrid
                         visible: imagesModel.count > 0
@@ -799,7 +972,11 @@ ApplicationWindow {
                         }
                     }
 
-                    Text { text: "Orientation"; color: m.textSecondary; font.pixelSize: 14; Layout.topMargin: 8 }
+                    RowLayout {
+                        Layout.topMargin: 8; spacing: 8
+                        Text { text: "Orientation"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
+                        ScopeTag { label: "Whole Edge" }
+                    }
                     Text { text: "Pick a fixed mode to rotate the dashboard for a wall/arm mount. Auto follows the system only when an orientation sensor is present."
                         color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
                     Flow {
