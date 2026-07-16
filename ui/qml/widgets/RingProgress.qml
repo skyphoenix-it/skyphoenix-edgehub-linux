@@ -17,7 +17,12 @@ Item {
     property bool animateValue: false
     Behavior on value {
         enabled: ring.animateValue
-        NumberAnimation { duration: theme.motionValue; easing.type: Easing.OutCubic }
+        // motionFast, NOT motionValue: any running animation holds the render
+        // loop awake, and a Canvas ring is the most expensive thing on screen to
+        // re-render. 150ms reads as a crisp settle on a ~2s sample cadence;
+        // the 400ms glide measured over 3x the CPU on the real panel. Still 0
+        // (instant) under reduce-motion.
+        NumberAnimation { duration: theme.motionFast; easing.type: Easing.OutCubic }
     }
 
     Canvas {
@@ -84,7 +89,27 @@ Item {
         }
     }
 
-    onValueChanged: cv.requestPaint()
+    // Repaint coalescing for the EASED path only. A Canvas repaint is a full
+    // CPU re-rasterization of the ring; letting the 400ms glide repaint at the
+    // display's 60Hz measured ~1.8% CPU per gauge on the real panel — most of
+    // the whole app's budget. ~22fps during the glide is visually
+    // indistinguishable for a sweep this slow and costs a third as much. The
+    // timer only ever runs while a glide is delivering value changes, so an
+    // idle ring stays completely quiet; the final frame is never dropped
+    // (a pending repaint is always flushed on the next trigger). Timer/stepped
+    // consumers (animateValue: false) keep the direct 1:1 repaint.
+    property bool _repaintPending: false
+    Timer {
+        id: paintThrottle
+        interval: 45
+        onTriggered: if (ring._repaintPending) { ring._repaintPending = false; cv.requestPaint(); restart() }
+    }
+    onValueChanged: {
+        if (!animateValue) { cv.requestPaint(); return }
+        if (paintThrottle.running) { ring._repaintPending = true; return }
+        cv.requestPaint()
+        paintThrottle.start()
+    }
     onWidthChanged: cv.requestPaint()
     onHeightChanged: cv.requestPaint()
     onThicknessChanged: cv.requestPaint()
