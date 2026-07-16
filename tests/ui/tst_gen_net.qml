@@ -263,4 +263,94 @@ Item {
                    "accent preset recolours effAccent")
         }
     }
+
+    // ── Per-sizeClass structure (W1 wave 2a) ────────────────────────────────
+    // Fixed-size hosts at real projected cell footprints.
+    Item { width: 344; height: 416
+        WidgetHarness { id: hMicro; anchors.fill: parent; widgetFile: "NetWidget.qml"; expanded: false } }
+    Item { id: wideWrap; width: 696; height: 416
+        WidgetHarness { id: hWide; anchors.fill: parent; widgetFile: "NetWidget.qml"; expanded: false } }
+    Item { width: 344; height: 840
+        WidgetHarness { id: hTall; anchors.fill: parent; widgetFile: "NetWidget.qml"; expanded: false } }
+    Item { width: 696; height: 840
+        WidgetHarness { id: hBase; anchors.fill: parent; widgetFile: "NetWidget.qml"; expanded: false } }
+
+    TestCase {
+        name: "NetSizes"
+        when: windowShown
+
+        function findCanvas(host) {
+            var found = null
+            eachItem(host.item, function (n) {
+                if (!found && n.canvasSize !== undefined && n.requestPaint !== undefined)
+                    found = n
+            })
+            return found
+        }
+        function feedTo(host, r, t) {
+            host.metricsJson = JSON.stringify({ net_rx_bytes_per_sec: r, net_tx_bytes_per_sec: t })
+        }
+
+        // 0.5x0.5 — headerless; the two rates, big and centred; no graph, no peaks.
+        function test_micro_is_the_two_rates() {
+            tryVerify(function () { return hMicro.ready }, 3000)
+            var w = hMicro.item
+            w.sizeClass = "compact"
+            feedTo(hMicro, 2048, 1024)
+            compare(w.micro, true, "a 344x416 compact box is the micro tile")
+            compare(w.showHeader, false, "micro hides the header")
+            compare(w.showPeaks, false, "no peaks readout at micro")
+            var cv = findCanvas(hMicro)
+            verify(cv !== null, "the sparkline canvas exists")
+            compare(cv.visible, false, "but micro does not draw it")
+            verify(w.rateFont > 19, "the two rates are the tile — they scale up")
+        }
+
+        // wide — rates + peaks beside a full-width sparkline, in both projections.
+        function test_wide_puts_graph_beside_rates() {
+            tryVerify(function () { return hWide.ready }, 3000)
+            var w = hWide.item
+            w.sizeClass = "wide"
+            feedTo(hWide, 2048, 1024)
+            compare(w.horiz, true, "wide goes side-by-side")
+            compare(w.showPeaks, true, "wide earns the session-peaks readout")
+            compare(findCanvas(hWide).visible, true, "the sparkline is drawn")
+            wideWrap.width = 840; wideWrap.height = 344
+            compare(w.horiz, true, "the landscape projection stays side-by-side")
+            wideWrap.width = 696; wideWrap.height = 416
+        }
+
+        // tall — rates + peaks above a sparkline that takes the height.
+        function test_tall_earns_peaks_and_graph_height() {
+            tryVerify(function () { return hTall.ready }, 3000)
+            var w = hTall.item
+            w.sizeClass = "tall"
+            feedTo(hTall, 2048, 1024)
+            compare(w.horiz, false, "tall stacks vertically")
+            compare(w.showPeaks, true, "tall earns the session-peaks readout")
+            compare(findCanvas(hTall).visible, true, "the sparkline is drawn")
+            // showHistory=false must drop the graph, not leave a void.
+            hTall.storeCtl.setSetting("test-instance", "showHistory", false)
+            compare(findCanvas(hTall).visible, false, "showHistory=false drops the graph")
+            hTall.storeCtl.setSetting("test-instance", "showHistory", true)
+        }
+
+        // baseline 1x1 keeps the classic quiet tile: no peaks readout.
+        function test_baseline_has_no_peaks() {
+            tryVerify(function () { return hBase.ready }, 3000)
+            var w = hBase.item
+            w.sizeClass = "compact"
+            feedTo(hBase, 2048, 1024)
+            compare(w.micro, false, "a 696x840 compact box is the baseline, not micro")
+            compare(w.showHeader, true, "the baseline keeps the header")
+            compare(w.showPeaks, false, "the 1x1 baseline stays quiet (no peaks)")
+            compare(findCanvas(hBase).visible, true, "the classic sparkline strip stays")
+            // The overlay keeps its peaks readout.
+            w.sizeClass = "full"
+            hBase.expanded = true
+            compare(w.showPeaks, true, "the overlay keeps its peaks readout")
+            hBase.expanded = false
+            w.sizeClass = "compact"
+        }
+    }
 }

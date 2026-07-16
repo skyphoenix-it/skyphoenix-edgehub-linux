@@ -3,6 +3,12 @@ import QtQuick.Layouts
 
 // GPU utilization + temperature — real data (amdgpu sysfs via the Rust core).
 // Shows "N/A" gracefully when no discrete GPU is discoverable.
+//
+// Sizing (W1 wave 2a): layout keys off the injected `sizeClass` (see CpuWidget
+// for the pattern). micro = headerless bare ring + the one number; baseline =
+// the classic ring + sparkline strip; wide = ring beside a full-width
+// sparkline; tall = squared ring + full-height sparkline + an avg/peak caption
+// inside the ring; full = the expanded gauge.
 WidgetChrome {
     id: w
     property var metrics: ({})
@@ -12,6 +18,7 @@ WidgetChrome {
     property string instanceId: ""
 
     title: "GPU"; iconName: "gpu"; accentColor: theme.catGaming
+    showHeader: !micro
 
     // Live per-instance config (see WidgetConfigSchema "gpu").
     readonly property var cfg: {
@@ -64,15 +71,33 @@ WidgetChrome {
         if (w.store && w.instanceId) w.store.setSetting(w.instanceId, "hist", h)
     }
 
+    // avg/peak over the retained history — the extra line a tall tile earns.
+    readonly property string histStats: {
+        if (!w.showHistory || !w.hist || w.hist.length < 2) return ""
+        var sum = 0, peak = 0
+        for (var i = 0; i < w.hist.length; i++) {
+            sum += w.hist[i]
+            if (w.hist[i] > peak) peak = w.hist[i]
+        }
+        return "avg " + Math.round(sum / w.hist.length * 100) + "% · peak "
+               + Math.round(peak * 100) + "%"
+    }
+
     MetricGauge {
         anchors.fill: parent
         ok: w.avail
         value: Math.min(w.v / 100, 1)
         big: w.avail ? w.v.toFixed(0) + "%" : "N/A"
-        // Temp shows in the header — don't repeat it in the sub-line.
-        sub: ""
+        // Temp shows in the header — don't repeat it in the sub-line. Tall
+        // tiles use the line for avg/peak (genuinely more information).
+        sub: (!w.expanded && w.avail && w.big) ? w.histStats : ""
         color: w.col(w.v)
-        history: w.showHistory ? w.hist : []
+        history: w.showHistory && !w.micro ? w.hist : []
         expanded: w.expanded
+        // Per-size layout (sizeClass injected by Dashboard; micro derived by chrome).
+        showSpark: w.showHistory && !w.micro
+        horizontal: w.sizeClass === "wide"
+        sparkFills: (w.sizeClass === "tall" || w.sizeClass === "large") && !w.expanded
+        bigMax: w.micro ? 72 : 60
     }
 }

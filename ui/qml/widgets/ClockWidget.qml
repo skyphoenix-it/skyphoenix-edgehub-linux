@@ -2,6 +2,19 @@ import QtQuick
 import QtQuick.Layouts
 
 // Digital clock — driven by the shared dashboard tick (no per-widget timer).
+//
+// Sizing (W1 wave 2a): layout keys off the injected `sizeClass`. The time is
+// itself a wide element, so every size keeps the centred time-led column and
+// earns content around it instead of splitting the box:
+//   • 0.5x0.5 (micro) — headerless; the time alone (seconds dropped even when
+//     configured — they crowd a twelfth of the screen). A custom zone KEEPS its
+//     chip: foreign time must never read as a wrong local clock.
+//   • 1x1 (baseline)  — header + zone chip + time + date, type scaled up.
+//   • wide            — the time grows into the width; date under it.
+//   • tall            — full weekday/month date + a week/day-of-year line
+//     (plus the UTC-offset chip for world clocks): calendar context the
+//     smaller sizes have no room for.
+//   • full (overlay)  — unchanged.
 WidgetChrome {
     id: w
     property var metrics: ({})
@@ -12,6 +25,7 @@ WidgetChrome {
     property int tick: 0
 
     title: "Clock"; iconName: "clock"; accentColor: theme.catSystem
+    showHeader: !micro
     // Header weekday only when it ISN'T already shown elsewhere: hidden when the
     // date row is off (showDate=false hides ALL date info) and when the full date
     // row already spells out the weekday (avoid duplicating it). Short style
@@ -115,9 +129,29 @@ WidgetChrome {
         if (!w.format24) base += " AP"
         return base
     }
+    // ── Per-size layout (sizeClass injected by Dashboard) ────────────────────
+    readonly property bool tallish: sizeClass === "tall" || sizeClass === "large"
+    // What the tile RENDERS: micro drops the seconds even when configured —
+    // they crowd the half-cell (timeFmt itself stays as configured).
+    readonly property string effTimeFmt: (w.micro && w.showSeconds)
+        ? (w.format24 ? "HH:mm" : "h:mm AP") : w.timeFmt
+    // Tall tiles have room for the spelled-out date too.
     readonly property string dateFmt: w.dateStyle === "short"
         ? "dd/MM"
-        : (w.expanded ? "dddd, MMMM d yyyy" : "ddd, d MMM")
+        : ((w.expanded || w.tallish) ? "dddd, MMMM d yyyy" : "ddd, d MMM")
+
+    // Calendar context for the tall info line (zone-adjusted).
+    function isoWeek(d) {
+        var t = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+        t.setDate(t.getDate() + 3 - ((t.getDay() + 6) % 7))   // this week's Thursday
+        var firstThu = new Date(t.getFullYear(), 0, 4)
+        firstThu.setDate(firstThu.getDate() + 3 - ((firstThu.getDay() + 6) % 7))
+        return 1 + Math.round((t - firstThu) / 604800000)
+    }
+    function dayOfYear(d) {
+        return Math.floor((new Date(d.getFullYear(), d.getMonth(), d.getDate())
+                           - new Date(d.getFullYear(), 0, 0)) / 86400000)
+    }
     // Reads the offset in force at `at` (default now), so a DST zone's chip tracks
     // the season (New York reads UTC-5 in January, UTC-4 in July).
     function offsetLabel(at) {
@@ -145,26 +179,52 @@ WidgetChrome {
             visible: w.customZone
             text: (w.tick, w.zoneLabel.length ? w.zoneLabel
                                               : (w.zoneCity().length ? w.zoneCity() : w.offsetLabel()))
-            font.pixelSize: w.expanded ? 22 : 12; font.bold: true
+            font.pixelSize: w.expanded ? 22 : Math.max(12, Math.min(w.width * 0.035, 20))
+            font.bold: true
             font.family: theme.fontDisplay; color: w.effAccent
             elide: Text.ElideRight; Layout.maximumWidth: col.width * 0.95
         }
         Text {
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignHCenter
-            text: (w.tick, w.formatAt(w.timeFmt))
-            font.pixelSize: w.expanded ? 168 : Math.max(30, Math.min(w.width * 0.24, 74))
+            text: (w.tick, w.formatAt(w.effTimeFmt))
+            // The type scales with the box: wide grows into its width, tall
+            // stays width-bound, micro is the whole (small) tile.
+            font.pixelSize: w.expanded ? 168
+                          : Math.max(30, Math.min(w.width * 0.24, w.height * 0.42,
+                                                  w.sizeClass === "wide" ? 132
+                                                : w.tallish ? 120
+                                                : w.micro ? 88 : 104))
             fontSizeMode: Text.HorizontalFit; minimumPixelSize: 12
             elide: Text.ElideRight
             font.bold: true; font.family: theme.fontMono; color: theme.textPrimary
         }
         Text {
-            Layout.fillWidth: true; visible: w.showDate
+            Layout.fillWidth: true; visible: w.showDate && !w.micro
             horizontalAlignment: Text.AlignHCenter
             text: (w.tick, w.formatAt(w.dateFmt))
-            font.pixelSize: w.expanded ? 26 : 13; color: theme.textSecondary
+            font.pixelSize: w.expanded ? 26 : Math.max(13, Math.min(w.width * 0.035, 22))
+            color: theme.textSecondary
             fontSizeMode: Text.HorizontalFit; minimumPixelSize: 9
             elide: Text.ElideRight
+        }
+        // Calendar context — earned by tall tiles only (week + day-of-year,
+        // plus the precise UTC offset for world clocks).
+        Text {
+            Layout.fillWidth: true
+            visible: w.tallish && !w.expanded
+            horizontalAlignment: Text.AlignHCenter
+            text: {
+                w.tick
+                var n = w.zonedNow()
+                var s = "Week " + w.isoWeek(n) + " · Day " + w.dayOfYear(n)
+                return w.customZone ? (w.offsetLabel() + " · " + s) : s
+            }
+            font.pixelSize: Math.max(12, Math.min(w.width * 0.032, 16))
+            font.family: theme.fontMono; color: theme.textTertiary
+            fontSizeMode: Text.HorizontalFit; minimumPixelSize: 9
+            elide: Text.ElideRight
+            Layout.topMargin: 2
         }
     }
 }

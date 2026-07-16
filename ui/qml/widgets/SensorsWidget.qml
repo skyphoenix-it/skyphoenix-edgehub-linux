@@ -3,6 +3,16 @@ import QtQuick.Layouts
 
 // Sensor cluster — CPU / GPU / RAM utilization + temperatures in one glance.
 // All values are real (from the Rust core); rows without data are hidden.
+//
+// Sizing (W1 wave 2a): the Repeater's STATIC label model and its long-lived
+// delegates are load-bearing (identity-pinned: values ease, delegates never
+// rebuild). Per-size layout therefore only RESHAPES the same rows:
+//   • 0.5x0.5 (micro) — headerless; the six slim rows ARE the tile.
+//   • 1x1 (baseline)  — header + rows with type/bars scaled up to the box.
+//   • wide            — the SAME delegates flow into two columns (GridLayout
+//                       `columns` flips; no delegate is recreated).
+//   • tall            — single column, thicker bars + larger type.
+//   • full (overlay)  — unchanged.
 WidgetChrome {
     id: w
     property var metrics: ({})
@@ -12,6 +22,7 @@ WidgetChrome {
     property string instanceId: ""
 
     title: "Sensors"; iconName: "sensors"; accentColor: theme.catSystem
+    showHeader: !micro
 
     // Live per-instance config (see WidgetConfigSchema "sensors").
     readonly property var cfg: {
@@ -47,9 +58,27 @@ WidgetChrome {
         return out
     }
 
-    ColumnLayout {
+    // ── Per-size metrics (the rows scale; their structure never changes) ────
+    readonly property bool horiz: sizeClass === "wide"
+    // Column width the row type is sized against (wide splits the box in two).
+    readonly property real colW: horiz ? width / 2 : width
+    readonly property real rowFont: expanded ? 16
+        : Math.max(12, Math.min(colW * 0.045, height * 0.035, 22))
+    readonly property real barH: expanded ? 12
+        : Math.max(6, Math.min(height * 0.022, 14))
+    readonly property real labelW: expanded ? 62
+        : Math.max(46, Math.min(colW * 0.16, 96))
+    readonly property real valueW: expanded ? 64
+        : Math.max(50, Math.min(colW * 0.17, 100))
+
+    GridLayout {
         anchors.fill: parent
-        spacing: w.expanded ? 12 : 5
+        // Wide reflows the SAME six delegates into two columns; flipping
+        // `columns` only re-lays-out — it does not recreate delegates, so the
+        // eased bars and colour cross-fades survive a resize too.
+        columns: w.horiz ? 2 : 1
+        rowSpacing: w.expanded ? 12 : 5
+        columnSpacing: theme.spacingLg
         Repeater {
             // STABLE DELEGATES (owner-reported clunk). The model is a literal list
             // of row labels, so it is evaluated ONCE and the six delegates live for
@@ -77,11 +106,11 @@ WidgetChrome {
                 Layout.fillWidth: true; Layout.fillHeight: !w.expanded
                 spacing: theme.spacingSm
                 Text { text: sensorRow.modelData; font.family: theme.fontMono; color: theme.textSecondary
-                    font.pixelSize: w.expanded ? 16 : 12; Layout.preferredWidth: w.expanded ? 62 : 46
+                    font.pixelSize: w.rowFont; Layout.preferredWidth: Math.round(w.labelW)
                     Layout.fillHeight: !w.expanded; verticalAlignment: Text.AlignVCenter
                     elide: Text.ElideRight; fontSizeMode: Text.VerticalFit; minimumPixelSize: 6 }
                 Rectangle {
-                    Layout.fillWidth: true; Layout.preferredHeight: w.expanded ? 12 : 6
+                    Layout.fillWidth: true; Layout.preferredHeight: Math.round(w.barH)
                     radius: height / 2; color: theme.cardBorder
                     Rectangle {
                         height: parent.height; radius: height / 2
@@ -98,8 +127,8 @@ WidgetChrome {
                 }
                 Text { text: sensorRow.row ? sensorRow.row.val.toFixed(0) + sensorRow.row.unit : ""
                     font.family: theme.fontMono
-                    color: theme.textPrimary; font.pixelSize: w.expanded ? 16 : 12
-                    horizontalAlignment: Text.AlignRight; Layout.preferredWidth: w.expanded ? 64 : 50
+                    color: theme.textPrimary; font.pixelSize: w.rowFont
+                    horizontalAlignment: Text.AlignRight; Layout.preferredWidth: Math.round(w.valueW)
                     Layout.fillHeight: !w.expanded; verticalAlignment: Text.AlignVCenter
                     fontSizeMode: Text.VerticalFit; minimumPixelSize: 6 }
             }

@@ -634,6 +634,97 @@ Item {
         }
     }
 
+    // ── Per-sizeClass structure (W1 wave 2a) ────────────────────────────────
+    // Fixed-size hosts at real projected cell footprints.
+    Item { width: 344; height: 416
+        WidgetHarness { id: hMicro; anchors.fill: parent; widgetFile: "EndOfDayWidget.qml"; expanded: false } }
+    Item { id: wideWrap; width: 696; height: 416
+        WidgetHarness { id: hWide; anchors.fill: parent; widgetFile: "EndOfDayWidget.qml"; expanded: false } }
+    Item { width: 344; height: 840
+        WidgetHarness { id: hTall; anchors.fill: parent; widgetFile: "EndOfDayWidget.qml"; expanded: false } }
+
+    TestCase {
+        name: "EodSizes"
+        when: windowShown
+
+        function prep(h) {
+            var s = h.storeCtl.settingsFor("test-instance")
+            for (var k in s) delete s[k]
+            h.storeCtl._touchSettings()
+            h.storeCtl.patchSettings("test-instance",
+                { startHour: 9, endHour: 17, progressStyle: "bar", showPercent: true })
+        }
+
+        // 0.5x0.5 — headerless: the remaining time + a slim bar, no caption.
+        function test_micro_is_time_plus_bar() {
+            tryVerify(function () { return hMicro.ready }, 3000)
+            prep(hMicro)
+            var w = hMicro.item
+            w.sizeClass = "compact"
+            compare(w.micro, true, "a 344x416 compact box is the micro tile")
+            compare(w.showHeader, false, "micro hides the header")
+            verify(visibleTextEq(w, w.remaining) !== null, "the remaining time is the tile")
+            verify(visibleTextContains(w, "% of ") === null, "micro drops the caption")
+            verify(visibleTextEq(w, "Started") === null, "micro has no detail column")
+        }
+
+        // wide — remaining/caption beside the progress; the ring style is
+        // honoured outside the overlay.
+        function test_wide_honours_ring_style() {
+            tryVerify(function () { return hWide.ready }, 3000)
+            prep(hWide)
+            var w = hWide.item
+            w.sizeClass = "wide"
+            compare(w.horiz, true, "wide goes side-by-side")
+            verify(visibleRing(w) === null, "bar style: no ring")
+            verify(visibleTextContains(w, "% of ") !== null, "wide keeps the caption")
+            hWide.storeCtl.setSetting("test-instance", "progressStyle", "ring")
+            compare(w.useRing, true, "ring style is honoured on a wide TILE")
+            verify(visibleRing(w) !== null, "the ring renders")
+            verify(visibleTextEq(w, w.remaining) !== null,
+                   "wide keeps the remaining time beside the ring (percent lives in the ring)")
+            wideWrap.width = 840; wideWrap.height = 344
+            compare(w.horiz, true, "the landscape projection stays side-by-side")
+            wideWrap.width = 696; wideWrap.height = 416
+        }
+
+        // tall — the detail column spells the workday out and replaces the caption.
+        function test_tall_earns_detail_column() {
+            tryVerify(function () { return hTall.ready }, 3000)
+            prep(hTall)
+            var w = hTall.item
+            w.sizeClass = "tall"
+            compare(w.tallish, true, "tall is the roomy class")
+            verify(visibleTextEq(w, "Started") !== null, "Started row rendered")
+            verify(visibleTextEq(w, "Ends") !== null, "Ends row rendered")
+            verify(visibleTextEq(w, "Elapsed") !== null, "Elapsed row rendered")
+            verify(visibleTextEq(w, "09:00") !== null, "start hour spelled out, editor-padded")
+            verify(visibleTextContains(w, "% of ") === null, "the detail column replaces the caption")
+            // Done row honours showPercent.
+            verify(visibleTextEq(w, "Done") !== null, "Done row rendered while showPercent on")
+            hTall.storeCtl.setSetting("test-instance", "showPercent", false)
+            verify(visibleTextEq(w, "Done") === null, "Done row honours showPercent=false")
+            hTall.storeCtl.setSetting("test-instance", "showPercent", true)
+            // Ring style on tall: the remaining time moves INTO the ring.
+            hTall.storeCtl.setSetting("test-instance", "progressStyle", "ring")
+            compare(w.timeInRing, true, "tall ring carries the time in its centre")
+            verify(visibleRing(w) !== null, "the ring renders")
+            w.sizeClass = "full"
+            compare(w.micro, false, "full is never micro")
+        }
+
+        // invalid hours — the detail column must not render a bogus workday.
+        function test_tall_detail_hidden_when_invalid() {
+            tryVerify(function () { return hTall.ready }, 3000)
+            prep(hTall)
+            var w = hTall.item
+            w.sizeClass = "tall"
+            hTall.storeCtl.patchSettings("test-instance", { startHour: 17, endHour: 9 })
+            compare(w.remaining, "Set hours", "invalid window shows the hint")
+            verify(visibleTextEq(w, "Started") === null, "no detail rows for an invalid window")
+        }
+    }
+
     // ── ConfigField hour rendering (shared component, instantiated directly) ─
     TestCase {
         name: "EodConfigField"

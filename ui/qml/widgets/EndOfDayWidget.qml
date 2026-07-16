@@ -3,6 +3,15 @@ import QtQuick.Layouts
 
 // End of Day — progress through the workday + time remaining. Real (system
 // clock). Start/end hours are configurable and persisted.
+//
+// Sizing (W1 wave 2a): layout keys off the injected `sizeClass`.
+//   • 0.5x0.5 (micro) — headerless: the remaining time + a slim bar.
+//   • 1x1 (baseline)  — remaining + bar + "% of window" caption (the classic).
+//   • wide            — remaining/caption beside the progress (bar or ring —
+//                       progressStyle is finally honoured outside the overlay).
+//   • tall            — progress hero (ring or bar) + a Started/Ends/Elapsed
+//                       detail column: the workday spelled out.
+//   • full (overlay)  — unchanged: optional ring + the Start/End pills.
 WidgetChrome {
     id: w
     property var metrics: ({})
@@ -13,6 +22,7 @@ WidgetChrome {
     property int tick: 0
 
     title: "End of Day"; iconName: "eod"; accentColor: theme.catInfo
+    showHeader: !micro
 
     readonly property var cfg: {
         var _ = store ? store.revision : 0
@@ -98,14 +108,41 @@ WidgetChrome {
         if (store) store.patchSettings(instanceId, { "startHour": s, "endHour": e })
     }
 
-    ColumnLayout {
-        anchors.centerIn: parent; width: parent.width * 0.88; spacing: w.expanded ? 14 : 6
+    // ── Per-size layout (sizeClass injected by Dashboard) ────────────────────
+    readonly property bool horiz: sizeClass === "wide"
+    readonly property bool tallish: sizeClass === "tall" || sizeClass === "large"
+    // The ring style is honoured wherever a ring has room — the overlay (as
+    // before) and now tall/wide tiles. micro/baseline keep the quiet bar.
+    readonly property bool useRing: progressStyle === "ring" && (expanded || tallish || horiz)
+    // The remaining time lives INSIDE the ring in vertical ring layouts; wide
+    // keeps it beside the ring (the ring centre carries the percent instead).
+    readonly property bool timeInRing: useRing && !horiz
+    // Elapsed time inside the current window (for the tall detail column).
+    readonly property string elapsedStr: {
+        w.tick
+        var n = nowDate()
+        var wb = windowBounds(n)
+        if (wb[1] <= wb[0] || n < wb[0]) return "0h 0m"
+        return fmtDur((Math.min(n, wb[1]) - wb[0]) / 1000)
+    }
 
-        // Optional circular progress (expanded only) with the time in the centre.
+    GridLayout {
+        id: lay
+        anchors.centerIn: parent
+        width: parent.width * 0.88
+        columns: w.horiz ? 2 : 1
+        columnSpacing: theme.spacingLg
+        rowSpacing: w.expanded ? 14 : 6
+
+        // Circular progress — the overlay's ring, now also earned by tall/wide
+        // ring-style tiles.
         Item {
-            visible: w.expanded && w.progressStyle === "ring"
-            Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: Math.min(w.width * 0.7, w.height * 0.55, 320)
+            id: ringBox
+            visible: w.useRing
+            Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
+            Layout.preferredWidth: Math.round(w.expanded ? Math.min(w.width * 0.7, w.height * 0.55, 320)
+                                            : w.horiz ? Math.min(w.height * 0.58, w.width * 0.34, 280)
+                                                      : Math.min(w.width * 0.62, w.height * 0.42, 300))
             Layout.preferredHeight: Layout.preferredWidth
             RingProgress {
                 anchors.fill: parent
@@ -114,45 +151,91 @@ WidgetChrome {
             }
             ColumnLayout {
                 anchors.centerIn: parent; spacing: 2
-                Text { Layout.alignment: Qt.AlignHCenter; text: w.remaining
-                    font.pixelSize: Math.min(parent.parent.width * 0.22, 56)
+                width: Math.max(24, ringBox.width * 0.72)
+                Text { Layout.fillWidth: true
+                    horizontalAlignment: Text.AlignHCenter
+                    text: w.timeInRing ? w.remaining : Math.round(w.frac * 100) + "%"
+                    elide: Text.ElideRight; fontSizeMode: Text.HorizontalFit; minimumPixelSize: 10
+                    font.pixelSize: Math.min(ringBox.width * 0.22, 56)
                     font.bold: true; font.family: theme.fontMono; color: w.effAccent }
-                Text { Layout.alignment: Qt.AlignHCenter; visible: w.showPercent
+                Text { Layout.fillWidth: true
+                    horizontalAlignment: Text.AlignHCenter
+                    visible: w.timeInRing && w.showPercent
                     text: Math.round(w.frac * 100) + "%"; font.pixelSize: 18; color: theme.textSecondary }
             }
         }
 
-        Text {
-            visible: !(w.expanded && w.progressStyle === "ring")
-            Layout.fillWidth: true; Layout.maximumWidth: parent.width
-            Layout.alignment: Qt.AlignHCenter; text: w.remaining
-            horizontalAlignment: Text.AlignHCenter
-            elide: Text.ElideRight; fontSizeMode: Text.HorizontalFit
-            font.pixelSize: w.expanded ? 80 : Math.max(24, Math.min(w.width * 0.24, 44))
-            font.bold: true; font.family: theme.fontMono; color: w.effAccent
-        }
-        Rectangle {
-            visible: !(w.expanded && w.progressStyle === "ring")
-            Layout.fillWidth: true; Layout.preferredHeight: w.expanded ? 14 : 8
-            radius: height / 2; color: theme.cardBorder
-            Rectangle { height: parent.height; radius: height / 2; width: parent.width * w.frac; color: w.effAccent
-                Behavior on width { NumberAnimation { duration: theme.motionValue; easing.type: Easing.OutCubic } } }
-        }
-        Text {
-            visible: w.showPercent && !(w.expanded && w.progressStyle === "ring")
-            Layout.fillWidth: true; Layout.maximumWidth: parent.width
-            Layout.alignment: Qt.AlignHCenter
-            horizontalAlignment: Text.AlignHCenter
-            elide: Text.ElideRight; fontSizeMode: Text.HorizontalFit
-            text: Math.round(w.frac * 100) + "% of " + w.fmtHour(w.startHour) + "–" + w.fmtHour(w.endHour)
-            font.pixelSize: w.expanded ? 15 : 12; color: theme.textSecondary
-        }
-        RowLayout {
-            Layout.alignment: Qt.AlignHCenter; visible: w.expanded; spacing: theme.spacingMd
-            PillButton { label: "Start −"; onClicked: w.setHours(w.startHour - 1, w.endHour) }
-            PillButton { label: "Start +"; onClicked: w.setHours(w.startHour + 1, w.endHour) }
-            PillButton { label: "End −"; onClicked: w.setHours(w.startHour, w.endHour - 1) }
-            PillButton { label: "End +"; onClicked: w.setHours(w.startHour, w.endHour + 1) }
+        // Text + bar column (everything that is not the ring).
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignVCenter
+            spacing: w.expanded ? 14 : 6
+
+            Text {
+                visible: !w.timeInRing
+                Layout.fillWidth: true
+                horizontalAlignment: Text.AlignHCenter; text: w.remaining
+                elide: Text.ElideRight; fontSizeMode: Text.HorizontalFit
+                font.pixelSize: w.expanded ? 80
+                              : Math.max(24, Math.min(w.width * 0.24, w.micro ? 64 : 52))
+                font.bold: true; font.family: theme.fontMono; color: w.effAccent
+            }
+            Rectangle {
+                visible: !w.useRing
+                Layout.fillWidth: true; Layout.preferredHeight: w.expanded ? 14 : w.micro ? 8 : 10
+                radius: height / 2; color: theme.cardBorder
+                Rectangle { height: parent.height; radius: height / 2; width: parent.width * w.frac; color: w.effAccent
+                    Behavior on width { NumberAnimation { duration: theme.motionValue; easing.type: Easing.OutCubic } } }
+            }
+            // The percent-of-window caption. micro is the one number + bar; a
+            // tall TILE's detail column below spells the window out instead
+            // (tall && expanded keeps it — only the rendered detail column may
+            // replace it).
+            Text {
+                visible: w.showPercent && !w.timeInRing && !w.micro
+                         && !(w.tallish && !w.expanded && w.validHours)
+                Layout.fillWidth: true
+                horizontalAlignment: Text.AlignHCenter
+                elide: Text.ElideRight; fontSizeMode: Text.HorizontalFit
+                text: Math.round(w.frac * 100) + "% of " + w.fmtHour(w.startHour) + "–" + w.fmtHour(w.endHour)
+                font.pixelSize: w.expanded ? 15 : 12; color: theme.textSecondary
+            }
+            // Tall tiles spell the workday out — genuinely more information.
+            ColumnLayout {
+                visible: w.tallish && !w.expanded && w.validHours
+                Layout.fillWidth: true
+                Layout.topMargin: theme.spacingSm
+                spacing: theme.spacingXs
+                Repeater {
+                    model: [
+                        { k: "Started", val: w.fmtHour(w.startHour) },
+                        { k: "Ends",    val: w.fmtHour(w.endHour) },
+                        { k: "Elapsed", val: w.elapsedStr },
+                        { k: "Done",    val: Math.round(w.frac * 100) + "%" }
+                    ]
+                    delegate: RowLayout {
+                        Layout.fillWidth: true
+                        spacing: theme.spacingMd
+                        // The Done row duplicates the caption's percent — it
+                        // honours the same showPercent switch.
+                        visible: modelData.k !== "Done" || w.showPercent
+                        Text { text: modelData.k
+                            font.pixelSize: Math.max(13, Math.min(w.width * 0.045, 17))
+                            color: theme.textSecondary }
+                        Item { Layout.fillWidth: true }
+                        Text { text: modelData.val
+                            font.pixelSize: Math.max(13, Math.min(w.width * 0.05, 19))
+                            font.family: theme.fontMono; color: theme.textPrimary }
+                    }
+                }
+            }
+            RowLayout {
+                Layout.alignment: Qt.AlignHCenter; visible: w.expanded; spacing: theme.spacingMd
+                PillButton { label: "Start −"; onClicked: w.setHours(w.startHour - 1, w.endHour) }
+                PillButton { label: "Start +"; onClicked: w.setHours(w.startHour + 1, w.endHour) }
+                PillButton { label: "End −"; onClicked: w.setHours(w.startHour, w.endHour - 1) }
+                PillButton { label: "End +"; onClicked: w.setHours(w.startHour, w.endHour + 1) }
+            }
         }
     }
 }

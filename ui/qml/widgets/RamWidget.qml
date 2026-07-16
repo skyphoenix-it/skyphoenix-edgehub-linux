@@ -2,6 +2,12 @@ import QtQuick
 import QtQuick.Layouts
 
 // Memory usage — real data from the Rust core.
+//
+// Sizing (W1 wave 2a): layout keys off the injected `sizeClass` (see CpuWidget
+// for the pattern). micro = headerless bare ring + the one number; baseline =
+// the classic ring + used/total + sparkline strip; wide = ring beside a
+// full-width sparkline; tall = squared ring up top, sparkline earns all the
+// height below; full = the expanded gauge.
 WidgetChrome {
     id: w
     property var metrics: ({})
@@ -11,6 +17,7 @@ WidgetChrome {
     property string instanceId: ""
 
     title: "Memory"; iconName: "ram"; accentColor: theme.catProductivity
+    showHeader: !micro
 
     // Live per-instance config (see WidgetConfigSchema "ram").
     readonly property var cfg: {
@@ -68,11 +75,18 @@ WidgetChrome {
                              : w.v.toFixed(0) + "%"
         // gb mode already shows the used figure in the centre, so the sub-line
         // reports the percent instead of repeating it. No bytes yet → placeholder.
-        sub: !w.haveBytes ? "—"
+        // micro drops the line entirely: the one number IS the tile.
+        sub: w.micro ? ""
+           : !w.haveBytes ? "—"
            : w.unit === "gb" ? w.v.toFixed(0) + "%"
                              : w.gb(w.usedBytes) + " / " + w.gb(w.totalBytes) + " GB"
         color: w.col(w.v)
-        history: w.showHistory ? w.hist : []
+        history: w.showHistory && !w.micro ? w.hist : []
         expanded: w.expanded
+        // Per-size layout (sizeClass injected by Dashboard; micro derived by chrome).
+        showSpark: w.showHistory && !w.micro
+        horizontal: w.sizeClass === "wide"
+        sparkFills: (w.sizeClass === "tall" || w.sizeClass === "large") && !w.expanded
+        bigMax: w.micro ? 72 : 60
     }
 }

@@ -408,6 +408,80 @@ Item {
     }
 
     // ── geometry: compact tile clips the bottom rows (real bug #1) ───────────
+    // ── Per-sizeClass structure (W1 wave 2a) ────────────────────────────────
+    // Fixed-size hosts at real projected cell footprints.
+    Item { width: 344; height: 416
+        WidgetHarness { id: hMicro; anchors.fill: parent; widgetFile: "SensorsWidget.qml"; expanded: false } }
+    Item { id: wideWrap; width: 696; height: 416
+        WidgetHarness { id: hWide; anchors.fill: parent; widgetFile: "SensorsWidget.qml"; expanded: false } }
+    Item { width: 344; height: 840
+        WidgetHarness { id: hTall; anchors.fill: parent; widgetFile: "SensorsWidget.qml"; expanded: false } }
+
+    TestCase {
+        name: "SensorsSizes"
+        when: windowShown
+
+        function feedTo(host) {
+            host.metricsJson = JSON.stringify({ cpu_usage_percent: 20, gpu_usage_percent: 30,
+                ram_usage_percent: 40, disk_usage_percent: 50, disk_total_bytes: 1e12,
+                cpu_temp_celsius: 55, gpu_temp_celsius: 45 })
+        }
+        function gridOf(host) {
+            var cpu = findText(host.item, "CPU")
+            return cpu ? cpu.parent.parent : null   // delegate RowLayout → the Grid/ColumnLayout
+        }
+
+        // 0.5x0.5 — headerless; the six slim rows are the tile.
+        function test_micro_headerless_rows() {
+            tryVerify(function () { return hMicro.ready }, 3000)
+            var w = hMicro.item
+            w.sizeClass = "compact"
+            feedTo(hMicro)
+            compare(w.micro, true, "a 344x416 compact box is the micro tile")
+            compare(w.showHeader, false, "micro hides the header — the rows are the tile")
+            compare(gridOf(hMicro).columns, 1, "micro keeps a single column")
+            verify(w.rowFont >= 12, "row type stays legible")
+        }
+
+        // wide — the SAME delegates reflow into two columns; identity survives
+        // the class flip (the whole point of the static model).
+        function test_wide_two_columns_same_delegates() {
+            tryVerify(function () { return hWide.ready }, 3000)
+            var w = hWide.item
+            w.sizeClass = "compact"
+            feedTo(hWide)
+            var cpuBefore = findText(w, "CPU")
+            var fillBefore = cpuBefore.parent.children[1].children[0]
+            compare(gridOf(hWide).columns, 1, "compact: one column")
+            w.sizeClass = "wide"
+            compare(gridOf(hWide).columns, 2, "wide: the rows flow into two columns")
+            var cpuAfter = findText(w, "CPU")
+            verify(cpuAfter === cpuBefore, "the CPU label is the SAME object across the class flip")
+            verify(cpuAfter.parent.children[1].children[0] === fillBefore,
+                   "…and so is its fill bar (no delegate rebuild on resize)")
+            wideWrap.width = 840; wideWrap.height = 344
+            compare(gridOf(hWide).columns, 2, "the landscape projection keeps two columns")
+            wideWrap.width = 696; wideWrap.height = 416
+            w.sizeClass = "compact"
+        }
+
+        // tall — single column, thicker bars + larger type than micro.
+        function test_tall_scales_rows_up() {
+            tryVerify(function () { return hTall.ready }, 3000)
+            tryVerify(function () { return hMicro.ready }, 3000)
+            var w = hTall.item
+            w.sizeClass = "tall"
+            feedTo(hTall)
+            hMicro.item.sizeClass = "compact"
+            feedTo(hMicro)
+            compare(gridOf(hTall).columns, 1, "tall keeps a single column")
+            verify(w.barH > hMicro.item.barH, "tall bars are thicker than micro bars ("
+                   + w.barH.toFixed(1) + " vs " + hMicro.item.barH.toFixed(1) + ")")
+            w.sizeClass = "full"
+            compare(w.micro, false, "full is never micro")
+        }
+    }
+
     TestCase {
         name: "SensorsOverflow"
         when: windowShown

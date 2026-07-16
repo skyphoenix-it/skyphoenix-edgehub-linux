@@ -43,6 +43,17 @@ Item {
         expanded: true
     }
 
+    // Fixed-size hosts for the per-sizeClass structure tests (W1 wave 2a) —
+    // real projected cell footprints (half-cell ≈ 344x416, full cell ≈ 696x840).
+    Item { id: microWrap; width: 344; height: 416
+        WidgetHarness { id: hMicro; anchors.fill: parent; widgetFile: "CpuWidget.qml"; expanded: false } }
+    Item { id: baseWrap; width: 696; height: 840
+        WidgetHarness { id: hBase; anchors.fill: parent; widgetFile: "CpuWidget.qml"; expanded: false } }
+    Item { id: wideWrap; width: 696; height: 416
+        WidgetHarness { id: hWide; anchors.fill: parent; widgetFile: "CpuWidget.qml"; expanded: false } }
+    Item { id: tallWrap; width: 344; height: 840
+        WidgetHarness { id: hTall; anchors.fill: parent; widgetFile: "CpuWidget.qml"; expanded: false } }
+
     // Directly-instantiated shared MetricGauge (resolves `theme` from root).
     Item {
         id: gaugeHost
@@ -395,6 +406,112 @@ Item {
             for (var i = 0; i < w.hist.length; i++) mx = Math.max(mx, w.hist[i])
             verify(mx <= 1.0,
                    "an out-of-range usage should be clamped before entering the sparkline (max sample " + mx + ")")
+        }
+    }
+
+    // ── Per-sizeClass structure (W1 wave 2a) ─────────────────────────────────
+    // Dashboard injects sizeClass; the widget must key layout off it and must
+    // not collapse the sizes back into one stretched layout.
+    TestCase {
+        name: "CpuSizes"
+        when: windowShown
+
+        function feedTo(host, obj) { host.metricsJson = JSON.stringify(obj) }
+
+        // 0.5x0.5 — headerless bare ring: the one number, nothing else.
+        function test_micro_is_bare_ring() {
+            tryVerify(function () { return hMicro.ready }, 3000)
+            var w = hMicro.item
+            w.sizeClass = "compact"
+            feedTo(hMicro, { cpu_usage_percent: 42, cpu_temp_celsius: 55 })
+            compare(w.micro, true, "a 344x416 compact box is the micro tile")
+            compare(w.showHeader, false, "micro hides the header — nothing competes with the number")
+            var g = findGauge(w)
+            verify(g !== null, "the gauge is there")
+            compare(g.showSpark, false, "micro reserves no sparkline slot")
+            compare(g.history.length, 0, "micro feeds the sparkline nothing")
+            compare(g.sub, "", "micro shows only the one number")
+            verify(g.bigMax > 60, "the headerless number is allowed to fill its box")
+        }
+
+        // 1x1 baseline — header + ring + the classic sparkline strip.
+        function test_baseline_keeps_header_and_spark_strip() {
+            tryVerify(function () { return hBase.ready }, 3000)
+            var w = hBase.item
+            w.sizeClass = "compact"
+            w.hist = []
+            feedTo(hBase, { cpu_usage_percent: 30 })
+            feedTo(hBase, { cpu_usage_percent: 40 })
+            compare(w.micro, false, "a 696x840 compact box is the baseline, not micro")
+            compare(w.showHeader, true, "the baseline keeps the header")
+            var g = findGauge(w)
+            compare(g.showSpark, true, "the baseline keeps the sparkline")
+            compare(g.horizontal, false, "stacked, not side-by-side")
+            compare(g.sparkFills, false, "classic sparkline strip at the baseline")
+            compare(g.sub, "", "no avg/peak line at the baseline (no room to earn it)")
+        }
+
+        // wide — ring beside the sparkline in BOTH projections of the class
+        // (1x0.5 portrait 696x416, 0.5x1 landscape 840x344).
+        function test_wide_puts_spark_beside_ring_in_both_orientations() {
+            tryVerify(function () { return hWide.ready }, 3000)
+            var w = hWide.item
+            w.sizeClass = "wide"
+            w.hist = []
+            feedTo(hWide, { cpu_usage_percent: 30 })
+            feedTo(hWide, { cpu_usage_percent: 60 })
+            var g = findGauge(w)
+            compare(g.horizontal, true, "wide lays ring and sparkline side by side")
+            compare(g.showSpark, true, "the sparkline is the point of going wide")
+            verify(g.history.length >= 2, "and it gets the real history")
+            // The other projection of the same class.
+            wideWrap.width = 840; wideWrap.height = 344
+            compare(g.horizontal, true, "the landscape projection stays side-by-side")
+            wideWrap.width = 696; wideWrap.height = 416
+        }
+
+        // tall — the sparkline earns real height and the ring captions itself
+        // with avg/peak (genuinely more information).
+        function test_tall_earns_spark_height_and_avg_peak() {
+            tryVerify(function () { return hTall.ready }, 3000)
+            var w = hTall.item
+            w.sizeClass = "tall"
+            w.hist = []
+            feedTo(hTall, { cpu_usage_percent: 20 })
+            feedTo(hTall, { cpu_usage_percent: 80 })
+            var g = findGauge(w)
+            compare(g.sparkFills, true, "tall hands the sparkline all the height below the ring")
+            compare(w.histStats, "avg 50% · peak 80%", "avg/peak derive from the retained history")
+            compare(g.sub, "avg 50% · peak 80%", "and the ring captions itself with them")
+            // One sample has no average story to tell.
+            w.hist = []
+            feedTo(hTall, { cpu_usage_percent: 20 })
+            compare(w.histStats, "", "a single sample earns no avg/peak line")
+        }
+
+        // showHistory=false must also silence the tall tile's avg/peak line —
+        // the option means "no history anywhere", not "no graph".
+        function test_tall_avg_peak_respects_showHistory() {
+            tryVerify(function () { return hTall.ready }, 3000)
+            var w = hTall.item
+            w.sizeClass = "tall"
+            w.hist = []
+            feedTo(hTall, { cpu_usage_percent: 20 })
+            feedTo(hTall, { cpu_usage_percent: 80 })
+            hTall.storeCtl.setSetting("test-instance", "showHistory", false)
+            compare(w.histStats, "", "showHistory=false silences avg/peak too")
+            hTall.storeCtl.setSetting("test-instance", "showHistory", true)
+        }
+
+        // full (the overlay) — never micro; the expanded gauge keeps its
+        // core-count sub-line (asserted in the Cpu case above).
+        function test_full_is_never_micro() {
+            tryVerify(function () { return h.ready }, 3000)
+            var w = h.item
+            w.sizeClass = "full"
+            compare(w.micro, false, "full is never micro")
+            compare(w.showHeader, true, "the overlay keeps the header")
+            compare(findGauge(w).showSpark, true, "the overlay keeps the sparkline")
         }
     }
 

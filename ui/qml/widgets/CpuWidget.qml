@@ -2,6 +2,15 @@ import QtQuick
 import QtQuick.Layouts
 
 // CPU utilization + temperature — real data from the Rust core (metricsJson).
+//
+// Sizing (W1 wave 2a): layout keys off the injected `sizeClass`, never off
+// `expanded`. The shared MetricGauge carries the ring; each size earns its box:
+//   • 0.5x0.5 (micro) — headerless bare ring + the one number. No sparkline.
+//   • 1x1 (baseline)  — header + ring + the classic sparkline strip.
+//   • wide            — ring beside the sparkline, which finally gets real width.
+//   • tall            — bigger sparkline share + an avg/peak line inside the
+//                       ring: genuinely more information, not a stretched void.
+//   • full (overlay)  — the expanded gauge (core count sub-line).
 WidgetChrome {
     id: w
     property var metrics: ({})
@@ -11,6 +20,7 @@ WidgetChrome {
     property string instanceId: ""
 
     title: "CPU"; iconName: "cpu"; accentColor: theme.catSystem
+    showHeader: !micro
 
     // Live per-instance config (see WidgetConfigSchema "cpu").
     readonly property var cfg: {
@@ -71,18 +81,40 @@ WidgetChrome {
         if (w.store && w.instanceId) w.store.setSetting(w.instanceId, "hist", h)
     }
 
+    // avg/peak over the retained history — the extra line a tall tile earns.
+    // Needs ≥2 samples (one reading has no "average" story to tell).
+    readonly property string histStats: {
+        if (!w.showHistory || !w.hist || w.hist.length < 2) return ""
+        var sum = 0, peak = 0
+        for (var i = 0; i < w.hist.length; i++) {
+            sum += w.hist[i]
+            if (w.hist[i] > peak) peak = w.hist[i]
+        }
+        return "avg " + Math.round(sum / w.hist.length * 100) + "% · peak "
+               + Math.round(peak * 100) + "%"
+    }
+
     MetricGauge {
         anchors.fill: parent
         ok: w.avail
         value: Math.min(w.v / 100, 1)
         big: w.avail ? w.v.toFixed(0) + "%" : "N/A"
         // Temp lives in the header (top-right) — the sub-line only adds core count
-        // in expanded, so the reading isn't printed twice. Hide it when the count
-        // is absent/0 rather than printing a misleading "0 cores".
-        sub: (w.expanded && (metrics.cpu_core_count || 0) > 0)
-             ? (metrics.cpu_core_count + " cores") : ""
+        // in the overlay, so the reading isn't printed twice. Hide it when the
+        // count is absent/0 rather than printing a misleading "0 cores". Tall
+        // tiles (room, but not the overlay) use the line for avg/peak instead.
+        sub: w.expanded
+             ? ((metrics.cpu_core_count || 0) > 0 ? (metrics.cpu_core_count + " cores") : "")
+             : (w.avail && w.big ? w.histStats : "")
         color: w.col(w.v)
-        history: w.showHistory ? w.hist : []
+        history: w.showHistory && !w.micro ? w.hist : []
         expanded: w.expanded
+        // Per-size layout (sizeClass injected by Dashboard; micro derived by chrome).
+        showSpark: w.showHistory && !w.micro
+        horizontal: w.sizeClass === "wide"
+        // Tall TILES hand the sparkline all the height below a squared ring;
+        // the overlay keeps the classic expanded gauge.
+        sparkFills: (w.sizeClass === "tall" || w.sizeClass === "large") && !w.expanded
+        bigMax: w.micro ? 72 : 60
     }
 }

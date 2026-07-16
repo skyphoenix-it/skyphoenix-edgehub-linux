@@ -394,6 +394,77 @@ Item {
         }
     }
 
+    // ── Per-sizeClass structure (W1 wave 2a) ────────────────────────────────
+    // Fixed-size hosts at real projected cell footprints.
+    Item { width: 344; height: 416
+        WidgetHarness { id: hMicro; anchors.fill: parent; widgetFile: "ClockWidget.qml"; expanded: false } }
+    Item { width: 344; height: 840
+        WidgetHarness { id: hTallSz; anchors.fill: parent; widgetFile: "ClockWidget.qml"; expanded: false } }
+
+    TestCase {
+        name: "ClockSizes"
+        when: windowShown
+
+        function reset(hh) {
+            var s = hh.storeCtl.settingsFor("test-instance")
+            for (var k in s) delete s[k]
+            hh.storeCtl._touchSettings()
+        }
+
+        // 0.5x0.5 — headerless; time only, seconds dropped, zone chip kept.
+        function test_micro_time_only_but_zone_chip_survives() {
+            tryVerify(function () { return hMicro.ready }, 3000)
+            reset(hMicro)
+            var w = hMicro.item
+            w.sizeClass = "compact"
+            compare(w.micro, true, "a 344x416 compact box is the micro tile")
+            compare(w.showHeader, false, "micro hides the header")
+            hMicro.storeCtl.patchSettings("test-instance", { showSeconds: true, showDate: true })
+            verify(w.timeFmt.indexOf("ss") >= 0, "the CONFIG keeps its seconds")
+            verify(w.effTimeFmt.indexOf("ss") < 0, "but micro renders without them")
+            var dateNode = textEquals(hMicro, w.formatAt(w.dateFmt))
+            verify(dateNode === null || !dateNode.visible, "micro drops the date row")
+            // The world-clock indicator must survive even here.
+            hMicro.storeCtl.patchSettings("test-instance", { customZone: true, zoneLabel: "", utcOffset: 9 })
+            var chip = textEquals(hMicro, w.offsetLabel())
+            verify(chip !== null && chip.visible, "micro still flags non-local time")
+        }
+
+        // tall — spelled-out date + the week/day-of-year calendar line.
+        function test_tall_earns_full_date_and_calendar_line() {
+            tryVerify(function () { return hTallSz.ready }, 3000)
+            reset(hTallSz)
+            var w = hTallSz.item
+            w.sizeClass = "tall"
+            compare(w.tallish, true, "tall is the roomy class")
+            hTallSz.storeCtl.patchSettings("test-instance", { showDate: true, dateStyle: "full" })
+            verify(w.dateFmt.indexOf("dddd") >= 0, "a tall TILE spells the weekday out")
+            verify(w.dateFmt.indexOf("MMMM") >= 0, "…and the month")
+            var n = w.zonedNow()
+            var expect = "Week " + w.isoWeek(n) + " · Day " + w.dayOfYear(n)
+            var line = textEquals(hTallSz, expect)
+            verify(line !== null && line.visible, "the calendar line renders (" + expect + ")")
+            // World clock adds the precise offset to the same line.
+            hTallSz.storeCtl.patchSettings("test-instance", { customZone: true, utcOffset: 5.5 })
+            var line2 = textEquals(hTallSz, w.offsetLabel() + " · Week " + w.isoWeek(w.zonedNow())
+                                            + " · Day " + w.dayOfYear(w.zonedNow()))
+            verify(line2 !== null && line2.visible, "world clocks prefix the UTC offset")
+            // Away from tall the date drops back to the short form.
+            w.sizeClass = "compact"
+            verify(w.dateFmt.indexOf("dddd") < 0, "away from tall the short date returns")
+        }
+
+        // ISO week self-checks on fixed dates (no wall-clock dependence).
+        function test_isoweek_known_dates() {
+            var w = hTallSz.item
+            compare(w.isoWeek(new Date(2026, 0, 1)), 1, "2026-01-01 is ISO week 1")
+            compare(w.isoWeek(new Date(2026, 6, 16)), 29, "2026-07-16 is ISO week 29")
+            compare(w.isoWeek(new Date(2021, 0, 1)), 53, "2021-01-01 belongs to ISO week 53 of 2020")
+            compare(w.dayOfYear(new Date(2026, 0, 1)), 1, "Jan 1 is day 1")
+            compare(w.dayOfYear(new Date(2026, 11, 31)), 365, "2026 has 365 days")
+        }
+    }
+
     // ── schema ↔ widget key sync (shared config-schema area) ─────────────────
     TestCase {
         name: "ClockSchema"

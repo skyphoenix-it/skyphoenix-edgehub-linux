@@ -307,6 +307,75 @@ Item {
         }
     }
 
+    // ── Per-sizeClass structure (W1 wave 2a) ────────────────────────────────
+    // Fixed-size hosts at real projected cell footprints.
+    Item { width: 344; height: 416
+        WidgetHarness { id: hMicro; anchors.fill: parent; widgetFile: "MoonWidget.qml"; expanded: false } }
+    Item { id: wideWrap; width: 696; height: 416
+        WidgetHarness { id: hWide; anchors.fill: parent; widgetFile: "MoonWidget.qml"; expanded: false } }
+    Item { width: 344; height: 840
+        WidgetHarness { id: hTall; anchors.fill: parent; widgetFile: "MoonWidget.qml"; expanded: false } }
+    Item { width: 696; height: 840
+        WidgetHarness { id: hBase; anchors.fill: parent; widgetFile: "MoonWidget.qml"; expanded: false } }
+
+    TestCase {
+        name: "MoonSizes"
+        when: windowShown
+
+        // 0.5x0.5 — the glyph alone, scaled to the box.
+        function test_micro_is_glyph_only() {
+            tryVerify(function () { return hMicro.ready }, 3000)
+            var w = hMicro.item
+            w.sizeClass = "compact"
+            compare(w.micro, true, "a 344x416 compact box is the micro tile")
+            compare(w.showHeader, false, "micro stays headerless")
+            var name = findByText(w, w.names[w.idx])
+            verify(name === null || !name.visible, "micro drops the phase name — the glyph IS the tile")
+            var glyph = findByText(w, w.phases[w.idx])
+            verify(glyph !== null && glyph.visible, "the glyph is there")
+            verify(w.glyphPx > 58, "and it scales past the old 58px cap")
+        }
+
+        // 1x1 — glyph + name + illumination, still headerless.
+        function test_baseline_earns_name_and_illumination() {
+            tryVerify(function () { return hBase.ready }, 3000)
+            var w = hBase.item
+            w.sizeClass = "compact"
+            compare(w.micro, false, "a 696x840 compact box is the baseline")
+            var name = findByText(w, w.names[w.idx])
+            verify(name !== null && name.visible, "the phase name is shown")
+            verify(w.illumLine.indexOf("% illuminated") > 0, "the baseline adds the illumination line")
+            verify(w.illumLine.indexOf("days old") < 0, "but not the age (that needs more room)")
+            var next = findByText(w, "🌑 New")
+            verify(next === null || !next.visible, "next new/full stays behind tall/overlay")
+        }
+
+        // wide — glyph beside the name/illumination/age column (both projections).
+        function test_wide_is_side_by_side_with_age() {
+            tryVerify(function () { return hWide.ready }, 3000)
+            var w = hWide.item
+            w.sizeClass = "wide"
+            compare(w.horiz, true, "wide lays glyph and details side by side")
+            verify(w.illumLine.indexOf("days old") > 0, "wide earns the lunar age")
+            wideWrap.width = 840; wideWrap.height = 344
+            compare(w.horiz, true, "the landscape projection stays side-by-side")
+            wideWrap.width = 696; wideWrap.height = 416
+        }
+
+        // tall — the next new/full dates come out from behind the overlay.
+        function test_tall_earns_next_dates() {
+            tryVerify(function () { return hTall.ready }, 3000)
+            var w = hTall.item
+            w.sizeClass = "tall"
+            compare(w.tallish, true, "tall is the roomy class")
+            var next = findByText(w, "🌑 New")
+            verify(next !== null && next.visible, "tall shows the next new/full dates")
+            verify(w.illumLine.indexOf("days old") > 0, "tall earns the lunar age too")
+            w.sizeClass = "full"
+            compare(w.micro, false, "full is never micro")
+        }
+    }
+
     // ── The "moon" config schema drives the honoured options ───────────────
     TestCase {
         name: "MoonSchema"
