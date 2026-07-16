@@ -45,6 +45,15 @@ egress observer: per-request JSON log incl. the Authorization header),
   guard, the liveness gate in all of them). This is what makes the scenarios
   falsifiable — each has been demonstrated to FAIL when its guarantee is
   deliberately broken.
+- **REBUILD BEFORE YOU BELIEVE A SABOTAGE.** These scenarios run the real
+  `build/xeneon-edge-hub`, and the QML is baked into it through `qml.qrc` — so
+  editing `ui/qml/*.qml` and re-running changes NOTHING until `cmake --build
+  build`. This bites in the most misleading possible direction: your sabotage
+  "passes", and you conclude the scenario is inert and go delete a guard that
+  was working. (Verifying scenario 08 on 2026-07-16 hit exactly this: dedup
+  disabled → still SUCCESS. After a rebuild the same scenario failed loudly
+  with `got ['Page 5', 'Page 5', 'Page 5']`.) A sabotage that does not change
+  the binary has tested the old binary.
 - **The save trigger.** The hub only writes `config.toml` when something
   schedules a store save. The proven trigger is a Focus tile seeded RUNNING
   with an already-expired `endEpoch`: the 1 s tick fires a natural completion
