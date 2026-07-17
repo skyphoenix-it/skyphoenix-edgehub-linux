@@ -93,6 +93,36 @@ def component_name(path):
     return os.path.splitext(os.path.basename(path))[0]
 
 
+def verify_sources():
+    """Every declared source must exist, or the matrix lies.
+
+    `read()` swallows OSError and returns "" — so a renamed, moved or typo'd path
+    silently drops that file's behaviors from the matrix. It does not show up as a
+    coverage DROP either: the file's UNCOVERED behaviors disappear from the
+    denominator right along with its covered ones, so the ratio can happily stay
+    100%.
+
+    Measured 2026-07-17: pointing FUNCTION_SOURCES[0] at a typo'd path removed 24
+    behaviors from the matrix and nothing complained. This is the same born-inert
+    shape as coverage.sh's C++ gate (which skipped itself for years) and the
+    QtTest `_data` trap (three tests that never ran).
+    """
+    declared = list(FUNCTION_SOURCES) + [
+        SCHEMA_SOURCE, WIDGET_CATALOG, BACKGROUND_CATALOG, WALLPAPER_CATALOG,
+    ]
+    missing = [p for p in declared if not os.path.isfile(os.path.join(REPO, p))]
+    if missing:
+        print("FAIL: declared behavior source(s) missing — the matrix would silently")
+        print("      shrink and still report a high ratio:")
+        for p in missing:
+            print("        %s" % p)
+        return False
+    if not os.path.isdir(os.path.join(REPO, TESTS_DIR)):
+        print("FAIL: tests dir missing: %s" % TESTS_DIR)
+        return False
+    return True
+
+
 def enumerate_behaviors():
     """Return an ordered list of unique behavior ids the source exposes."""
     behaviors = []
@@ -277,12 +307,20 @@ def selftest():
 
 
 def main():
+    if not verify_sources():
+        return 1
     behaviors = enumerate_behaviors()
     valid = set(behaviors)
     total = len(behaviors)
     covered, rejected = enumerate_covered(valid)
     covered_count = len(covered)
-    ratio = (100.0 * covered_count / total) if total else 100.0
+    # An empty matrix is a broken matrix, never a perfect one. This used to read
+    # `if total else 100.0`, i.e. "found nothing -> 100% -> PASS".
+    if total == 0:
+        print("FAIL: the behavior matrix enumerated ZERO behaviors.")
+        print("      That is a broken scan, not perfect coverage.")
+        return 1
+    ratio = 100.0 * covered_count / total
 
     uncovered = [b for b in behaviors if b not in covered]
 
