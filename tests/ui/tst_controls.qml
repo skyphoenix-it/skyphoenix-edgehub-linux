@@ -50,6 +50,14 @@ Item {
         }
     }
 
+    // A pill carrying a caller's "this is a hero action" floor, as the Hydration
+    // overlay's Remove/Add buttons do.
+    Wg.PillButton {
+        id: floored
+        x: 0; y: 180
+        label: "Remove"; glyph: "−"; minWidth: 170
+    }
+
     Column {
         anchors.fill: parent
         Wg.PillButton {
@@ -286,6 +294,71 @@ Item {
                    "the LABEL is what gives way under the squeeze (" + r.label.width
                    + " < " + r.label.implicitWidth + ")")
             verify(r.label.elide === Text.ElideRight, "…by eliding")
+        }
+
+        // minWidth is a caller's FLOOR, not a fixed box — the distinction the
+        // Hydration overlay's `implicitWidth: 170` got wrong. Two halves, and the
+        // second is the one that bites: the floor holding is also true of a pill
+        // pinned to exactly 170, so it proves nothing on its own.
+        function test_min_width_is_a_floor_not_a_fixed_box() {
+            var scales = [0.8, 1.0, 1.3, 1.6]
+            for (var i = 0; i < scales.length; i++) {
+                _theme.textScale = scales[i]
+                settle()
+                // The RENDERED width, not the implicit hint that feeds it.
+                verify(floored.width >= floored.minWidth,
+                       "the hero floor holds at textScale " + scales[i]
+                       + " (w=" + floored.width + " floor=" + floored.minWidth + ")")
+                var row = floored.children[0]
+                verify(row.x + row.width <= floored.width + 0.51 && row.x >= 0,
+                       "…and the content still sits inside it at textScale "
+                       + scales[i] + " (row " + row.x.toFixed(1) + "→"
+                       + (row.x + row.width).toFixed(1) + " in " + floored.width + ")")
+            }
+
+            // As with the touch floor above, the loop CANNOT tell a floor from a
+            // fixed 170: textScale is clamped at 1.6, where "Remove" only wants
+            // ~141px — under the floor at every reachable setting, so an
+            // `implicitWidth: 170` passes it too. Drive the label token past the
+            // floor directly to actually pin the binding down.
+            _theme.textScale = 1.0
+            _theme.fontLabel = 80
+            settle()
+            var big = floored.children[0]
+            verify(big.implicitWidth > floored.minWidth,
+                   "content genuinely exceeds the hero floor now (content="
+                   + big.implicitWidth.toFixed(1) + " floor=" + floored.minWidth + ")")
+            verify(floored.width >= big.implicitWidth,
+                   "the pill GROWS to contain content wider than its floor — the "
+                   + "width is derived, not a fixed " + floored.minWidth
+                   + " (w=" + floored.width.toFixed(1) + " content="
+                   + big.implicitWidth.toFixed(1) + ")")
+            // …and because it grew, nothing had to give way: the label is not
+            // eliding inside a button that had no reason to be narrow.
+            var r = runs(floored)
+            verify(r.label.width >= r.label.implicitWidth - 0.51,
+                   "…so the label keeps its full width rather than eliding ("
+                   + r.label.width.toFixed(1) + " vs "
+                   + r.label.implicitWidth.toFixed(1) + ")")
+
+            _theme.fontLabel = Qt.binding(function () {
+                return Math.round(15 * _theme.textScaleEff)
+            })
+            settle()
+            compare(_theme.fontLabel, 15, "the fontLabel binding is restored")
+        }
+
+        // A pill with no floor declared must be exactly its content — the floor is
+        // opt-in, so the default cannot have quietly become 170-wide for everyone.
+        function test_min_width_defaults_to_no_floor() {
+            _theme.textScale = 1.0
+            settle()
+            compare(pill.minWidth, 0, "no floor by default")
+            var row = pill.children[0]
+            compare(pill.implicitWidth,
+                    Math.max(_theme.touchSecondary,
+                             Math.ceil(row.implicitWidth) + 2 * pill._padH),
+                    "an unfloored pill is exactly content + padding over the touch floor")
         }
 
         // The mechanism behind the assertion above, pinned separately because the

@@ -255,11 +255,23 @@ WidgetChrome {
             }
         }
 
+        // The overlay's hero actions. These are deliberately LARGE — far wider
+        // than their text needs (measured: "Remove" wants 99px at textScale 1.0
+        // and 141 at the 1.6 maximum; "Add a glass" 133 and 193) — because this
+        // is the full-screen view of a widget whose entire job is one tap. That
+        // generosity was written as `implicitWidth: 170` / `240`, which states it
+        // as the BOX rather than as a MINIMUM: the pill was pinned to exactly
+        // that width and could never grow past it, so a longer label (a
+        // translation, a relabel) would elide inside a button with no reason to
+        // be narrow. `minWidth` says the same thing as a floor — identical
+        // rendering today at every reachable textScale, and content wins if it
+        // ever exceeds it. They are NOT a matched pair and never were: 170 != 240,
+        // and nothing in the column aligns to either number.
         RowLayout {
             Layout.alignment: Qt.AlignHCenter; Layout.topMargin: theme.spacingMd; spacing: theme.spacingLg
-            PillButton { label: "Remove"; glyph: "−"; implicitWidth: 170; onClicked: w.set(w.count - 1) }
+            PillButton { label: "Remove"; glyph: "−"; minWidth: 170; onClicked: w.set(w.count - 1) }
             PillButton { label: "Add a glass"; glyph: "💧"; primary: true; tint: w.effAccent
-                implicitWidth: 240; onClicked: w.set(w.count + 1) }
+                minWidth: 240; onClicked: w.set(w.count + 1) }
         }
         RowLayout {
             Layout.alignment: Qt.AlignHCenter; spacing: theme.spacingMd

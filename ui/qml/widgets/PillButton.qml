@@ -26,6 +26,16 @@ Rectangle {
     property bool primary: false      // filled vs. outline
     property bool danger: false
     property bool enabledState: true
+    // A caller's floor for a HERO action — "this one is large, do not shrink-wrap
+    // it to its text". A FLOOR, exactly like theme.touchSecondary below: content
+    // wins whenever it is wider, so a longer label can never be capped by it.
+    //
+    // This is what `implicitWidth: <n>` at a call site was reaching for and got
+    // wrong in KIND, not in value. An assigned implicitWidth is the box, full
+    // stop: it silently CAPS the content it was meant to be generous to, and the
+    // pill has nothing left to give — the row is bounded by btn.width (below), so
+    // the label just elides inside a button that had no reason to be that narrow.
+    property int minWidth: 0
     signal clicked()
 
     // The glyph is a font-sized SIBLING of the label, not a fixed 18px. The label
@@ -47,7 +57,7 @@ Rectangle {
     // taller; touchSecondary still guarantees the tap area.
     implicitHeight: Math.max(theme.touchSecondary,
                              Math.ceil(contentRow.implicitHeight) + 2 * theme.spacingSm)
-    implicitWidth: Math.max(theme.touchSecondary,
+    implicitWidth: Math.max(theme.touchSecondary, btn.minWidth,
                             Math.ceil(contentRow.implicitWidth) + 2 * _padH)
     radius: height / 2
     opacity: enabledState ? 1.0 : 0.4
