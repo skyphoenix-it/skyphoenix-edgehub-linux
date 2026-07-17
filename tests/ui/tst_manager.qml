@@ -600,5 +600,44 @@ Item {
             backend.clearLicenseKey()
             tryVerify(function () { return win.isPro === false }, 2000)
         }
+
+        function _themeSwatch(key) {
+            return findPred(win, function (x) {
+                return x && x.hasOwnProperty("locked") && x.modelData
+                       && x.modelData.k === key })
+        }
+
+        function test_a_premium_theme_is_locked_for_free_and_applies_for_pro() {
+            backend.storedKey = ""; backend.licenseChanged()
+            _nav.currentIndex = 1                       // Appearance tab
+            _store.setAppearance("themeMode", "dark")   // known starting point
+
+            var sw = _themeSwatch("synthwave")          // a premium-pack theme
+            verify(sw, "the Synthwave swatch is present")
+            verify(sw.locked, "it is LOCKED on the free tier")
+
+            // Clicking a locked theme must NOT apply it (it opens the dialog).
+            var ma = findPred(sw, function (x) {
+                return x && typeof x.clicked === "function" && x.hasOwnProperty("hoverEnabled") })
+            verify(ma, "found the swatch's click area")
+            ma.clicked(null)
+            compare(_store.appearance().themeMode, "dark",
+                    "a locked premium theme is not applied for a free user")
+
+            // Unlock Pro → the same theme is no longer locked and now applies.
+            backend.setLicenseKey("XE1.valid.pro")
+            tryVerify(function () { return win.isPro === true }, 2000)
+            tryVerify(function () { return _themeSwatch("synthwave").locked === false }, 2000)
+            _themeSwatch("synthwave").children  // force delegate refresh
+            var sw2 = _themeSwatch("synthwave")
+            var ma2 = findPred(sw2, function (x) {
+                return x && typeof x.clicked === "function" && x.hasOwnProperty("hoverEnabled") })
+            ma2.clicked(null)
+            compare(_store.appearance().themeMode, "synthwave",
+                    "with Pro, the premium theme applies")
+
+            backend.clearLicenseKey()
+            _store.setAppearance("themeMode", "dark")
+        }
     }
 }

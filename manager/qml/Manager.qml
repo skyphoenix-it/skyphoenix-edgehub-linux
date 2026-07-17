@@ -695,25 +695,25 @@ ApplicationWindow {
                                 { k: "aurora",        n: "Aurora",    c1: "#0C2E3A", c2: "#111C40" },
                                 { k: "sunset",        n: "Sunset",    c1: "#3A1230", c2: "#40161C" },
                                 { k: "nebula",        n: "Nebula",    c1: "#2A1048", c2: "#120A2E" },
-                                { k: "synthwave",     n: "Synthwave", c1: "#2D0B45", c2: "#0F0524" },
-                                { k: "cyberpunk",     n: "Cyberpunk", c1: "#0A2A26", c2: "#020A08" },
+                                { k: "synthwave",     n: "Synthwave", c1: "#2D0B45", c2: "#0F0524", pro: true },
+                                { k: "cyberpunk",     n: "Cyberpunk", c1: "#0A2A26", c2: "#020A08", pro: true },
                                 { k: "deep_forest",   n: "Forest",    c1: "#143021", c2: "#06120A" },
                                 { k: "deep_ocean",    n: "Ocean",     c1: "#0A2A3F", c2: "#020A14" },
                                 { k: "ember",         n: "Ember",     c1: "#3A1509", c2: "#0F0705" },
-                                { k: "vaporwave",     n: "Vaporwave", c1: "#3A1A52", c2: "#140A20" },
+                                { k: "vaporwave",     n: "Vaporwave", c1: "#3A1A52", c2: "#140A20", pro: true },
                                 { k: "rose_gold",     n: "Rose Gold", c1: "#3A1E2C", c2: "#170C12" },
-                                { k: "matrix",        n: "Matrix",    c1: "#0A160A", c2: "#000000" },
+                                { k: "matrix",        n: "Matrix",    c1: "#0A160A", c2: "#000000", pro: true },
                                 { k: "nord",          n: "Nord",      c1: "#3B4252", c2: "#272B35" },
                                 { k: "dracula",       n: "Dracula",   c1: "#343746", c2: "#21222C" },
                                 { k: "solarized",     n: "Solarized", c1: "#073642", c2: "#00212B" },
                                 { k: "gruvbox",       n: "Gruvbox",   c1: "#32302F", c2: "#1D2021" },
                                 { k: "catppuccin",    n: "Catppuccin",c1: "#181825", c2: "#11111B" },
                                 { k: "tokyonight",    n: "Tokyo Night",c1: "#24283B", c2: "#16161E" },
-                                { k: "arch", n: "Arch", c1: "#1B2129", c2: "#14181D" },
-                                { k: "cachyos", n: "CachyOS", c1: "#1C221A", c2: "#131611" },
-                                { k: "debian", n: "Debian", c1: "#1F1922", c2: "#16121A" },
-                                { k: "fedora", n: "Fedora", c1: "#152034", c2: "#0E1626" },
-                                { k: "popos", n: "Pop!_OS", c1: "#262322", c2: "#1E1C1B" },
+                                { k: "arch", n: "Arch", c1: "#1B2129", c2: "#14181D", pro: true },
+                                { k: "cachyos", n: "CachyOS", c1: "#1C221A", c2: "#131611", pro: true },
+                                { k: "debian", n: "Debian", c1: "#1F1922", c2: "#16121A", pro: true },
+                                { k: "fedora", n: "Fedora", c1: "#152034", c2: "#0E1626", pro: true },
+                                { k: "popos", n: "Pop!_OS", c1: "#262322", c2: "#1E1C1B", pro: true },
                                 { k: "aubergine", n: "Aubergine", c1: "#3A0F2A", c2: "#2C0A20" },
                                 { k: "crimson", n: "Crimson", c1: "#16080B", c2: "#0B0507" },
                                 { k: "oled",          n: "OLED",      c1: "#0A0A0A", c2: "#000000" },
@@ -722,6 +722,10 @@ ApplicationWindow {
                             ]
                             delegate: Rectangle {
                                 required property var modelData
+                                // A premium-pack theme the user hasn't unlocked. Free
+                                // users can still HOVER to taste it in the preview —
+                                // that sells it — but committing needs Pro.
+                                readonly property bool locked: (modelData.pro === true) && !win.isPro
                                 width: 150; height: 80; radius: m.radius; clip: true
                                 property bool sel: (store.revision, store.appearance().themeMode || "dark") === modelData.k
                                 border.width: sel ? 3 : 1
@@ -736,12 +740,31 @@ ApplicationWindow {
                                 Rectangle { visible: parent.sel; anchors.top: parent.top; anchors.right: parent.right
                                     anchors.margins: 6; width: 22; height: 22; radius: 11; color: m.accent
                                     AppIcon { anchors.centerIn: parent; name: "ui-check"; size: 13; color: m.textOnAccent } }
+                                // PRO badge on a locked theme.
+                                Rectangle {
+                                    visible: parent.locked
+                                    anchors.top: parent.top; anchors.right: parent.right; anchors.margins: 6
+                                    width: proLbl.implicitWidth + 14; height: 18; radius: 9
+                                    color: Qt.rgba(0, 0, 0, 0.55)
+                                    RowLayout {
+                                        anchors.centerIn: parent; spacing: 3
+                                        AppIcon { name: "ui-settings"; size: 10; color: "#FFFFFF" }
+                                        Text { id: proLbl; text: "PRO"; color: "#FFFFFF"
+                                            font.pixelSize: 10; font.bold: true; font.letterSpacing: 0.5 }
+                                    }
+                                }
                                 MouseArea { id: swMA; anchors.fill: parent; hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
-                                    // Hover = transient try-on in the preview; click commits.
+                                    // Hover = transient try-on in the preview; click commits —
+                                    // unless it's a locked Pro theme, where the click opens the
+                                    // activate dialog instead of applying it.
                                     onContainsMouseChanged: containsMouse
                                         ? win.previewTheme(modelData.k) : win.endThemePreview()
-                                    onClicked: store.setAppearance("themeMode", modelData.k) }
+                                    onClicked: {
+                                        if (parent.locked) { win.endThemePreview(); licenseDialog.open() }
+                                        else store.setAppearance("themeMode", modelData.k)
+                                    }
+                                }
                             }
                         }
                     }
