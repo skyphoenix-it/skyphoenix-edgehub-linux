@@ -159,6 +159,21 @@ char* xeneon_distro_probe_json(const char* root);
 // key is embedded in core/src/license.rs.
 char* xeneon_license_verify_json(const char* key);
 
+// Get the stored licence key (signed token, not a secret), or NULL if none.
+// Caller frees with xeneon_string_free.
+char* xeneon_config_get_license_key(ConfigHandle* handle);
+
+// Store (or clear) the licence key so the tier survives a restart. NULL or an
+// empty/whitespace string clears it (reverts to free). Does NOT verify — pair
+// with xeneon_license_verify_json. Returns 0 on success, -1 on a null handle.
+int xeneon_config_set_license_key(ConfigHandle* handle, const char* key);
+
+// Verify the STORED key and describe the effective entitlement, in the SAME JSON
+// shape as xeneon_license_verify_json. No key (or a bad one) => free tier. This
+// is what the UI asks at startup: "given what is persisted, am I Pro?" Caller
+// frees with xeneon_string_free.
+char* xeneon_config_license_status_json(ConfigHandle* handle);
+
 // === Managed / org policy (E9) ===
 // Load the org policy (/etc/xeneon-edge-hub/policy.toml, or $XENEON_POLICY_PATH
 // — a TEST-ONLY seam; real deployments rely on /etc being root-owned) and

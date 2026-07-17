@@ -344,6 +344,59 @@ pub extern "C" fn xeneon_config_set_autostart(handle: *mut ConfigHandle, enabled
     0
 }
 
+/// Get the stored licence key, or NULL if none is set. Caller must free with
+/// `xeneon_string_free`. The key is a signed token, not a secret.
+#[no_mangle]
+pub extern "C" fn xeneon_config_get_license_key(handle: *const ConfigHandle) -> *mut c_char {
+    if handle.is_null() {
+        return std::ptr::null_mut();
+    }
+    match &unsafe { &*handle }.config.license_key {
+        Some(k) => to_c_string(k.as_str()),
+        None => std::ptr::null_mut(),
+    }
+}
+
+/// Set (or clear) the stored licence key. Pass NULL or an empty string to clear
+/// it (revert to the free tier). Does NOT verify — the caller verifies via
+/// `xeneon_license_verify_json`; this only persists what the user entered so the
+/// tier survives a restart. Returns 0 on success, -1 on a null handle.
+#[no_mangle]
+pub extern "C" fn xeneon_config_set_license_key(
+    handle: *mut ConfigHandle,
+    key: *const c_char,
+) -> i32 {
+    if handle.is_null() {
+        return -1;
+    }
+    let h = unsafe { &mut *handle };
+    if key.is_null() {
+        h.config.license_key = None;
+        return 0;
+    }
+    let s = unsafe { CStr::from_ptr(key) }.to_string_lossy().to_string();
+    h.config.license_key = if s.trim().is_empty() { None } else { Some(s) };
+    0
+}
+
+/// Verify the STORED licence key and describe the effective entitlement, as the
+/// same JSON shape as `xeneon_license_verify_json` (state/tier/issuedTo/id/
+/// expires). With no stored key — or any bad key — this is the free tier. This
+/// is the convenience the UI uses at startup: "given what is persisted, am I
+/// Pro?" Caller must free with `xeneon_string_free`.
+#[no_mangle]
+pub extern "C" fn xeneon_config_license_status_json(handle: *const ConfigHandle) -> *mut c_char {
+    let key = if handle.is_null() {
+        None
+    } else {
+        unsafe { &*handle }.config.license_key.clone()
+    };
+    // Reuse the exact verification path the pasted-key FFI uses, so stored and
+    // freshly-entered keys can never disagree.
+    let status = crate::license::verify(key.as_deref().unwrap_or(""));
+    to_c_string(status.to_json())
+}
+
 /// Set reconnect-on-hotplug preference.
 #[no_mangle]
 pub extern "C" fn xeneon_config_set_reconnect(handle: *mut ConfigHandle, enabled: i32) -> i32 {
@@ -967,24 +1020,10 @@ pub extern "C" fn xeneon_license_verify_json(key: *const c_char) -> *mut c_char 
     } else {
         unsafe { CStr::from_ptr(key) }.to_str().unwrap_or("")
     };
-    let status = crate::license::verify(key_str);
-    let license = match &status {
-        crate::license::Status::Licensed(l) | crate::license::Status::Expired(l) => Some(l),
-        crate::license::Status::Unlicensed(_) => None,
-    };
-    let reason = match &status {
-        crate::license::Status::Unlicensed(e) => Some(e.to_string()),
-        _ => None,
-    };
-    let json = serde_json::json!({
-        "state": status.state(),
-        "tier": status.tier().as_str(),
-        "reason": reason,
-        "issuedTo": license.map(|l| l.issued_to.clone()),
-        "id": license.map(|l| l.id.clone()),
-        "expires": license.and_then(|l| l.expires),
-    });
-    to_c_string(json.to_string())
+    // Status::to_json() owns the shape now, so the stored-key convenience
+    // (xeneon_config_license_status_json) and this pasted-key path can never
+    // disagree.
+    to_c_string(crate::license::verify(key_str).to_json())
 }
 
 // --- Managed / org policy (E9) ---
@@ -2032,6 +2071,97 @@ mod tests {
         assert!(!h3.is_null());
         assert_eq!(xeneon_config_is_first_run(h3), 1);
         xeneon_config_free(h3);
+
+        std::env::remove_var("XDG_CONFIG_HOME");
+    }
+
+    #[test]
+    fn license_key_ffi_roundtrips_persists_and_clears() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        std::env::set_var("XDG_CONFIG_HOME", dir.path());
+
+        let h = xeneon_config_load();
+        assert!(!h.is_null());
+
+        // No key by default.
+        assert!(
+            xeneon_config_get_license_key(h).is_null(),
+            "fresh config has no key"
+        );
+
+        // Set + read back, and it survives a save/reload.
+        let key = cstr("XE1.abc.def");
+        assert_eq!(xeneon_config_set_license_key(h, key.as_ptr()), 0);
+        assert_eq!(
+            unsafe { take(xeneon_config_get_license_key(h)) },
+            "XE1.abc.def"
+        );
+        assert_eq!(xeneon_config_save(h as *const ConfigHandle), 0);
+        xeneon_config_free(h);
+
+        let h2 = xeneon_config_load();
+        assert_eq!(
+            unsafe { take(xeneon_config_get_license_key(h2)) },
+            "XE1.abc.def"
+        );
+
+        // Whitespace-only clears (reverts to free), and so does NULL.
+        let blank = cstr("   ");
+        assert_eq!(xeneon_config_set_license_key(h2, blank.as_ptr()), 0);
+        assert!(
+            xeneon_config_get_license_key(h2).is_null(),
+            "whitespace clears the key"
+        );
+        let key2 = cstr("XE1.x.y");
+        assert_eq!(xeneon_config_set_license_key(h2, key2.as_ptr()), 0);
+        assert_eq!(xeneon_config_set_license_key(h2, std::ptr::null()), 0);
+        assert!(
+            xeneon_config_get_license_key(h2).is_null(),
+            "NULL clears the key"
+        );
+        xeneon_config_free(h2);
+
+        // Null handle is handled, not a crash.
+        assert!(xeneon_config_get_license_key(std::ptr::null()).is_null());
+        assert_eq!(
+            xeneon_config_set_license_key(std::ptr::null_mut(), std::ptr::null()),
+            -1
+        );
+
+        std::env::remove_var("XDG_CONFIG_HOME");
+    }
+
+    #[test]
+    fn stored_license_status_agrees_with_pasted_verify() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        std::env::set_var("XDG_CONFIG_HOME", dir.path());
+
+        let h = xeneon_config_load();
+        // With the placeholder (all-zero) issuer key, EVERY key resolves to free —
+        // so the stored-key convenience and the pasted-key path must return the
+        // SAME free-tier JSON. When a real issuer key is embedded, this same test
+        // continues to assert they never diverge.
+        let garbage = "XE1.not.real";
+        let key = cstr(garbage);
+        assert_eq!(xeneon_config_set_license_key(h, key.as_ptr()), 0);
+
+        let stored = unsafe { take(xeneon_config_license_status_json(h)) };
+        let pasted = unsafe { take(xeneon_license_verify_json(key.as_ptr())) };
+        assert_eq!(
+            stored, pasted,
+            "stored-key status must match pasted-key verify"
+        );
+        assert!(
+            stored.contains("\"tier\":\"free\""),
+            "placeholder issuer => free: {stored}"
+        );
+
+        // A null handle is the free tier too, never a crash.
+        let none = unsafe { take(xeneon_config_license_status_json(std::ptr::null())) };
+        assert!(none.contains("\"tier\":\"free\""));
+        xeneon_config_free(h);
 
         std::env::remove_var("XDG_CONFIG_HOME");
     }

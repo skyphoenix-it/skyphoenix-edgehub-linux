@@ -23,6 +23,12 @@ pub struct AppConfig {
     pub startup: StartupConfig,
     /// Widget configurations.
     pub widgets: WidgetsConfig,
+    /// The user's Pro licence key, if they have entered one. This is a SIGNED
+    /// token (`XE1.<payload>.<sig>`), not a secret: it is safe to store in plain
+    /// config, it grants nothing on its own, and verification is offline against
+    /// the compiled-in issuer key (see `license.rs`). `None` = the free tier.
+    #[serde(default)]
+    pub license_key: Option<String>,
     /// Opaque UI-state document (JSON) owned by the QML layer: the full dashboard
     /// layout (pages → slots → widget instances), per-widget settings/state, and
     /// runtime appearance overrides. Kept opaque so the UI schema can evolve
@@ -148,6 +154,7 @@ impl Default for AppConfig {
                 version: 1,
                 instances: Vec::new(),
             },
+            license_key: None,
             ui_state: None,
         }
     }

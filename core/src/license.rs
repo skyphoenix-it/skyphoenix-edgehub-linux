@@ -187,6 +187,31 @@ impl Status {
             Status::Unlicensed(_) => "unlicensed",
         }
     }
+
+    /// The single JSON shape the FFI hands to the UI: `{ state, tier, reason,
+    /// issuedTo, id, expires }`. Kept here, on the type that owns the meaning, so
+    /// every FFI path (a freshly pasted key and the stored-key convenience) emits
+    /// byte-identical output and can never drift apart. `issuedTo` is display-only
+    /// holder data; `reason` names a failure mode but NEVER echoes the key.
+    pub fn to_json(&self) -> String {
+        let license = match self {
+            Status::Licensed(l) | Status::Expired(l) => Some(l),
+            Status::Unlicensed(_) => None,
+        };
+        let reason = match self {
+            Status::Unlicensed(e) => Some(e.to_string()),
+            _ => None,
+        };
+        serde_json::json!({
+            "state": self.state(),
+            "tier": self.tier().as_str(),
+            "reason": reason,
+            "issuedTo": license.map(|l| l.issued_to.clone()),
+            "id": license.map(|l| l.id.clone()),
+            "expires": license.and_then(|l| l.expires),
+        })
+        .to_string()
+    }
 }
 
 /// The issuer key, or `None` while the placeholder is unissued.
