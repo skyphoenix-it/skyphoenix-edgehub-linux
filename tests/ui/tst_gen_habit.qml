@@ -522,6 +522,16 @@ Item {
     Item { width: 1269; height: 612
         WidgetHarness { id: bRoomyL; anchors.fill: parent; widgetFile: "HabitWidget.qml"; expanded: false } }
 
+    // The OVERLAY, at the two boxes Dashboard actually gives it. `expanded: true`
+    // and sizeClass "full" — the real pairing — because a mode-keyed literal can
+    // only be caught with the mode switched ON. These are the live-preview pane
+    // beside the config form (Dashboard: 38% of the width in landscape, a <=46%-
+    // tall band stacked in portrait), NOT a 2560x720 screen.
+    Item { width: 941; height: 456
+        WidgetHarness { id: bOvlL; anchors.fill: parent; widgetFile: "HabitWidget.qml"; expanded: true } }
+    Item { width: 656; height: 980
+        WidgetHarness { id: bOvlP; anchors.fill: parent; widgetFile: "HabitWidget.qml"; expanded: true } }
+
     TestCase {
         name: "HabitSizes"
         when: windowShown
@@ -786,6 +796,155 @@ Item {
             for (var i = 0; i < 21; i++)
                 compare(b.daysAgoFor(i) - b.daysAgoFor(i + 7), 7,
                         "column " + (i % 7) + " keeps one weekday down the weeks")
+        }
+
+        // ── size, not mode ──────────────────────────────────────────────────
+        // The record line was fixed in the previous pass; streakPx, heatCell, the
+        // two spacings and the celebration banner were still keyed off `expanded`.
+        // The test that catches that class has to hold `expanded` FIXED and move
+        // only the room: anything that changes is genuinely sized by its box, and
+        // anything that does not is still reading the mode.
+        //
+        // Every host below is expanded:false, so a surviving `w.expanded ? …`
+        // branch is pinned to its else-value and cannot follow the box at all.
+        function test_sizing_follows_the_room_while_the_mode_is_held_fixed() {
+            var base = bBase.item;    base.sizeClass = "compact"
+            var roomy = bRoomyP.item; roomy.sizeClass = "tall"
+            seed(bBase); seed(bRoomyP)
+            wait(0)
+            compare(base.expanded, false, "precondition: neither host is the overlay")
+            compare(roomy.expanded, false, "…including the roomy one")
+
+            verify(roomy.streakPx > base.streakPx,
+                   "the streak number follows the room (" + roomy.streakPx.toFixed(0)
+                   + " on a half screen vs " + base.streakPx.toFixed(0)
+                   + " on the baseline third)")
+            // (The celebration banner is NOT asserted here: both these boxes are
+            // wide enough to reach its 34px ceiling, so the comparison would be
+            // 34 > 34 dressed up as a guard. It gets its own test below, against
+            // two boxes that genuinely differ.)
+
+            // The spacings, read off the LIVE layout items rather than off the
+            // properties that feed them: a GridLayout that ignored the binding and
+            // kept a literal would sail through a property-only check.
+            var g = heat(bRoomyP)
+            var outerRoomy = g.parent
+            var outerBase = heat(bBase).parent
+            verify(outerRoomy.rowSpacing > outerBase.rowSpacing,
+                   "the rendered grid gives a half screen more air between the map "
+                   + "and the streak (" + outerRoomy.rowSpacing + " vs "
+                   + outerBase.rowSpacing + ")")
+
+            // The streak column's own spacing, likewise from the rendered item.
+            function streakColOf(host) {
+                var line = bestLine(host) || root.findPill(host.item)
+                return line ? line.parent : null
+            }
+            var colRoomy = streakColOf(bRoomyP)
+            var colBase = streakColOf(bBase)
+            verify(colRoomy && colBase, "both streak columns resolve")
+            verify(colRoomy.spacing > colBase.spacing,
+                   "…and the column stacks its readouts with more air too ("
+                   + colRoomy.spacing + " vs " + colBase.spacing + ")")
+        }
+
+        // The overlay is a size class like any other, and its box is the one it is
+        // actually given. This is the test that catches a mode-keyed literal, and
+        // the ONLY shape that can: the sibling test above holds the mode fixed at
+        // false, where a surviving `w.expanded ? 40 : <derived>` never fires its
+        // literal at all and the derived branch keeps the assertion green. (That
+        // is not hypothetical — this test was written second, after restoring the
+        // literal left the room test passing.)
+        //
+        // Both hosts are expanded AND "full"; only the BOX differs. A literal
+        // returns one number for both, so any assertion that the two differ is
+        // exactly the mode/size conflation, caught.
+        function test_overlay_is_sized_by_its_pane_not_by_a_mode_literal() {
+            tryVerify(function () { return bOvlL.ready && bOvlP.ready }, 3000)
+            var land = bOvlL.item; land.sizeClass = "full"
+            var port = bOvlP.item; port.sizeClass = "full"
+            seed(bOvlL); seed(bOvlP)
+            // A real event-loop turn, not wait(0). These hosts default to
+            // sizeClass "tall" (height > 240) and only become "full" on the line
+            // above; wait(0) returns BEFORE the layout re-polishes, so a rendered
+            // read then still reports the tall map's 69px cells against the
+            // freshly-recomputed heatCell of 58.8 — a failure that says nothing
+            // about the widget. Caught here as a genuine flake: the same
+            // assertion passed and failed on consecutive runs.
+            // waitForRendering is not the tool — offscreen never swaps a frame.
+            wait(16)
+            compare(land.expanded, true, "precondition: this IS the overlay")
+            compare(port.expanded, true, "…and so is this one")
+            compare(land.roomy, true, "…and 'full' is roomy")
+
+            verify(land.streakPx !== port.streakPx,
+                   "the overlay's streak number is sized by the pane it is given, "
+                   + "not by one literal for 'the overlay' (941x456 -> "
+                   + land.streakPx.toFixed(1) + ", 656x980 -> "
+                   + port.streakPx.toFixed(1) + ")")
+            verify(land.heatCell !== port.heatCell,
+                   "…and so is the heatmap cell (941x456 -> "
+                   + land.heatCell.toFixed(1) + ", 656x980 -> "
+                   + port.heatCell.toFixed(1) + ")")
+            // The taller pane is the roomier one for both readouts — direction,
+            // not just difference, so a scrambled binding cannot pass.
+            verify(port.streakPx > land.streakPx,
+                   "the 980-tall pane earns the bigger number ("
+                   + port.streakPx.toFixed(1) + " > " + land.streakPx.toFixed(1) + ")")
+            verify(port.heatCell > land.heatCell,
+                   "…and the bigger cells (" + port.heatCell.toFixed(1) + " > "
+                   + land.heatCell.toFixed(1) + ")")
+
+            // Rendered, not just derived: the cell Rectangles actually carry it.
+            var cell = root.findAll(port, function (n) {
+                return n.hasOwnProperty("dk") && n.hasOwnProperty("on") }, [])[0]
+            verify(cell, "a day cell resolves in the portrait pane")
+            // The cell's RENDERED width — not its Layout.preferredWidth, which is
+            // merely the hint that feeds it and would stay green if the grid
+            // ignored it.
+            compare(cell.width, Math.round(port.heatCell),
+                    "the rendered cell is actually the derived size, not a re-frozen literal")
+
+            // And it still fits the pane it was sized for.
+            var g = heat(bOvlP)
+            verify(g.width <= port.width + 0.51 && g.height <= port.height + 0.51,
+                   "the map stays inside the portrait pane (" + g.width.toFixed(0)
+                   + "x" + g.height.toFixed(0) + " in " + port.width + "x" + port.height + ")")
+            var gl = heat(bOvlL)
+            verify(gl.width <= land.width + 0.51 && gl.height <= land.height + 0.51,
+                   "…and inside the landscape one (" + gl.width.toFixed(0)
+                   + "x" + gl.height.toFixed(0) + " in " + land.width + "x" + land.height + ")")
+        }
+
+        // The celebration banner is sized by the CARD. Asserted on the rendered
+        // Text's own font.pixelSize, not on w.celebratePx: checking the property
+        // only proves the arithmetic, and a Text that ignored it and re-froze a
+        // literal would pass that untouched.
+        function test_celebration_banner_is_sized_by_the_card_not_the_mode() {
+            var base = bBase.item;   base.sizeClass = "compact"
+            var micro = bMicro.item; micro.sizeClass = "compact"
+            wait(0)
+            function banner(host) {
+                return root.findAll(host.item, function (n) {
+                    return n.hasOwnProperty("maximumLineCount") && n.maximumLineCount === 2
+                           && n.hasOwnProperty("font")
+                }, [])[0]
+            }
+            var bBanner = banner(bBase)
+            var mBanner = banner(bMicro)
+            verify(bBanner && mBanner, "both banners resolve")
+            compare(bBanner.font.pixelSize, Math.round(base.celebratePx),
+                    "the rendered banner actually uses the derived size on a 1x1 tile")
+            compare(mBanner.font.pixelSize, Math.round(micro.celebratePx),
+                    "…and on a micro tile")
+            verify(bBanner.font.pixelSize > mBanner.font.pixelSize,
+                   "a 696x819 tile pops bigger than a 348x409 one — the banner reads "
+                   + "the card, not the mode (" + bBanner.font.pixelSize + " vs "
+                   + mBanner.font.pixelSize + ")")
+            // It still has to FIT: it wraps to at most 2 lines inside the card.
+            verify(bBanner.width <= base.width + 0.51,
+                   "the banner stays inside the card (" + bBanner.width.toFixed(1)
+                   + " in " + base.width + ")")
         }
 
         // The interaction survives the new size, at both projections.

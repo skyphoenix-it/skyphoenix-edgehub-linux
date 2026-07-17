@@ -455,4 +455,123 @@ Item {
             return g ? g.parent : null
         }
     }
+
+    // ── The overlay's hero actions ──────────────────────────────────────────
+    // Remove / Add a glass are deliberately far wider than their text — this is
+    // the full-screen view of a one-tap widget. That was written as
+    // `implicitWidth: 170` / `240`, i.e. as the BOX rather than as a MINIMUM, so
+    // the pill could never grow past it and a longer label would elide inside a
+    // button with no reason to be narrow. They are floors now; these assertions
+    // pin down BOTH halves of that, because the generosity alone is equally true
+    // of the literal it replaced.
+    TestCase {
+        name: "HydrationOverlayActions"
+        when: windowShown
+
+        function initTestCase() { tryVerify(function () { return h.ready }, 3000) }
+        function init() { h.theme.textScale = 1.0; settle() }
+        // Restore in cleanup(), not inline at the end of the test: a failing
+        // verify() aborts the function on the spot, so an inline restore is
+        // skipped exactly when it is needed and the relabelled pill leaks into
+        // the next test as a second, bogus failure. cleanup() always runs.
+        function cleanup() {
+            h.theme.textScale = 1.0
+            var p = findAll(h.item, function (n) {
+                return n.hasOwnProperty("minWidth") && n.hasOwnProperty("glyph")
+                       && n.visible && n.minWidth === 170
+            }, [])[0]
+            if (p) p.label = "Remove"
+            settle()
+        }
+        // A real event-loop turn: a textScale change re-polishes the layout, and
+        // wait(0) returns before the new geometry lands. waitForRendering is the
+        // wrong tool offscreen — no frame is ever swapped, so it just burns its
+        // timeout.
+        function settle() { wait(16) }
+
+        function findAll(node, pred, acc) {
+            if (!node) return acc
+            if (pred(node)) acc.push(node)
+            var kids = node.children
+            for (var i = 0; kids && i < kids.length; i++) findAll(kids[i], pred, acc)
+            return acc
+        }
+        // The VISIBLE pill carrying a given label — the tile layout's own pills
+        // exist alongside these but are hidden while expanded.
+        function pillNamed(label) {
+            return findAll(h.item, function (n) {
+                return n.hasOwnProperty("minWidth") && n.hasOwnProperty("glyph")
+                       && n.visible && String(n.label) === label
+            }, [])[0] || null
+        }
+        function labelRun(p) {
+            return findAll(p, function (n) {
+                return n.hasOwnProperty("elide") && n.hasOwnProperty("baselineOffset")
+                       && String(n.text) === String(p.label)
+            }, [])[0] || null
+        }
+
+        // Half one: the generosity is intact — the pills are still much larger
+        // than their text at every reachable text size.
+        function test_hero_actions_keep_their_generous_floor() {
+            var cases = [ { l: "Remove", w: 170 }, { l: "Add a glass", w: 240 } ]
+            var scales = [0.8, 1.0, 1.3, 1.6]
+            for (var s = 0; s < scales.length; s++) {
+                h.theme.textScale = scales[s]
+                settle()
+                for (var i = 0; i < cases.length; i++) {
+                    var p = pillNamed(cases[i].l)
+                    verify(p !== null, cases[i].l + " is present in the overlay")
+                    compare(p.minWidth, cases[i].w,
+                            cases[i].l + " declares its designed floor")
+                    // The RENDERED width, not the implicit hint behind it.
+                    verify(p.width >= cases[i].w,
+                           cases[i].l + " renders at least its floor at textScale "
+                           + scales[s] + " (w=" + p.width.toFixed(1) + ")")
+                }
+            }
+        }
+
+        // Half two, and the half that actually distinguishes the fix: a floor
+        // YIELDS to bigger content; `implicitWidth: 170` cannot. The reachable
+        // textScale range can never show this — at 1.6 "Remove" wants ~141px and
+        // "Add a glass" ~193px, both still under their floors, which is exactly
+        // why the literal survived this long. Give the pill a genuinely longer
+        // label (what a translation or a relabel does) and the difference is the
+        // whole widget.
+        function test_hero_actions_grow_for_a_longer_label_instead_of_eliding() {
+            h.theme.textScale = 1.6
+            settle()
+            var p = pillNamed("Remove")
+            verify(p !== null, "precondition: the Remove pill")
+            // Deliberately NOT "p.width <= minWidth" — that would assert that
+            // "Remove" measures under 170px, which is a claim about the font. It
+            // holds locally (~141px at textScale 1.6) and almost certainly on CI's
+            // DejaVu, but it is exactly the kind of assertion that means two
+            // different things on the two machines. The floor holding is
+            // font-independent and is all this precondition needs to establish.
+            verify(p.width >= p.minWidth,
+                   "precondition: the floor is intact at the pill's own label (w="
+                   + p.width.toFixed(1) + " floor=" + p.minWidth + ")")
+
+            // A label no reachable textScale can produce from "Remove".
+            p.label = "Ein Glas Wasser entfernen"
+            settle()
+            var row = p.children[0]
+            verify(row.implicitWidth + 2 * p._padH > p.minWidth,
+                   "precondition: the longer label genuinely outgrows the floor ("
+                   + (row.implicitWidth + 2 * p._padH).toFixed(1) + " > " + p.minWidth + ")")
+            verify(p.width >= row.implicitWidth + 2 * p._padH - 0.51,
+                   "the pill GROWS past its floor to hold the label — the floor is a "
+                   + "minimum, not the box (w=" + p.width.toFixed(1) + " content+pad="
+                   + (row.implicitWidth + 2 * p._padH).toFixed(1) + ")")
+            var lr = labelRun(p)
+            verify(lr !== null, "the label run resolves")
+            verify(lr.width >= lr.implicitWidth - 0.51,
+                   "…so the label renders in full rather than eliding inside a "
+                   + "button pinned narrower than its own text (" + lr.width.toFixed(1)
+                   + " vs " + lr.implicitWidth.toFixed(1) + ")")
+            // (the label is restored by cleanup(), which runs even on failure)
+        }
+    }
 }
