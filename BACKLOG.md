@@ -83,9 +83,28 @@ after the fix shipped). If an entry here disagrees with the code, the code wins.
   by `scripts/check_ui_links.sh`. Note the lint's first version was itself inert
   (it grepped `openUrlExternally("` and the call was line-wrapped); the negative
   control is the only reason that surfaced.
-- **`HydrationWidget.qml:260` hard-codes `PillButton { implicitWidth: 170 }`**,
-  overriding the content-derived sizing PillButton just gained; it will clip at
-  textScale 1.6 with a longer label. Verified 2026-07-17.
+- ~~`HydrationWidget.qml:260` hard-codes `PillButton { implicitWidth: 170 }`~~ —
+  **FIXED** (`b7ef100`), and my framing of it was wrong: the claimed "clips at
+  textScale 1.6" does NOT reproduce with today's labels (measured: "Remove" is
+  141px at 1.6 vs the 170 literal), which is exactly why the literal survived. The
+  bug was latent, awaiting a translation or relabel. 170 was right in VALUE and
+  wrong in KIND — the requirement was generosity, not a matched pair — so it is
+  now a `PillButton.minWidth` FLOOR: identical rendering today, content wins when
+  wider.
+- **The `expanded`-vs-size conflation still exists in 7 more widgets**:
+  `EndOfDayWidget`, `FocusWidget`, `MoonWidget`, `RightNowWidget`, `NetWidget`,
+  `TasksWidget`, and Hydration's own `celebrateLabel` (line 130, `expanded ? 40 :
+  20`, with no `wrapMode`/`elide`). `expanded` is the modal overlay, not a size.
+  Habit's was fixed in `b7ef100`; these were left to keep that task bounded.
+  Worth knowing before touching them: **`full` is not a full screen** — the
+  Dashboard hosts the config preview in a pane (~941×456 landscape / ~656×980
+  portrait), and the old literals both ignored that box and never noticed when W5
+  shrank the pane to 38%.
+- **`RamGbOverflow::test_gb_centre_text_fits_ring_interior` fails under a
+  DejaVu-only fontconfig** (no emoji fonts). Reproduced on a clean tree, so it is
+  pre-existing and not a regression. CI installs `fonts-dejavu-core` and no emoji
+  font, so this is close to CI's environment — worth understanding before it
+  surfaces there.
 - **Wallpaper/theme name collision — it is FIVE names, not three.** Measured
   2026-07-17: the overlap between `Theme.qml`'s modes and `WallpaperCatalog.qml`'s
   items is **aurora, ember, midnight, nebula, sunset**. The W2 audit reported
