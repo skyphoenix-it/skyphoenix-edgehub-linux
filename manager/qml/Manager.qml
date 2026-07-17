@@ -1217,7 +1217,13 @@ ApplicationWindow {
                         }
                         MButton {
                             text: "GitHub"; iconName: "ui-settings"
-                            onClicked: Qt.openUrlExternally("#")
+                            // The same URL the PKGBUILD, the metainfo and SECURITY.md
+                            // already ship. It was "#" — a button that silently did
+                            // nothing, which is worse than no button: the user clicks
+                            // it, gets no browser and no error, and concludes the app
+                            // is broken rather than the link.
+                            onClicked: Qt.openUrlExternally(
+                                "https://github.com/skyphoenix-it/XeneonEdge_Linux")
                         }
                         Item { Layout.fillWidth: true }
                     }
