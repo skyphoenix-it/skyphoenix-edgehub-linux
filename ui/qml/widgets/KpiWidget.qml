@@ -294,6 +294,11 @@ WidgetChrome {
                     font.family: theme.fontDisplay
                     // Backstop only — valuePx above is already sized to fit.
                     fontSizeMode: Text.HorizontalFit; minimumPixelSize: 14; elide: Text.ElideRight
+                    // preferredWidth pairs the cap so HorizontalFit/elide actually
+                    // bind — maximumWidth alone is ignored once implicitWidth
+                    // exceeds it (see MetricGauge). KPI shows arbitrary values
+                    // ("128ms", "1.2M"), so this is the real-content case.
+                    Layout.preferredWidth: w._boxW
                     Layout.maximumWidth: w._boxW
                 }
                 Text {

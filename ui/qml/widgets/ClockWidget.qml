@@ -182,7 +182,11 @@ WidgetChrome {
             font.pixelSize: w.expanded ? 22 : Math.max(12, Math.min(w.width * 0.035, 20))
             font.bold: true
             font.family: theme.fontDisplay; color: w.effAccent
-            elide: Text.ElideRight; Layout.maximumWidth: col.width * 0.95
+            // preferredWidth pairs the cap so elide binds; a long zone label
+            // ("America/Argentina/Buenos_Aires") would otherwise overrun.
+            elide: Text.ElideRight
+            Layout.preferredWidth: col.width * 0.95
+            Layout.maximumWidth: col.width * 0.95
         }
         Text {
             Layout.fillWidth: true

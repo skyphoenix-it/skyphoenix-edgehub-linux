@@ -256,6 +256,16 @@ Item {
             return findFirst(node, function (n) {
                 return n.hasOwnProperty("text") && String(n.text) === s })
         }
+        // NOTE: no guard for the value-text `preferredWidth` pairing (added to
+        // KpiWidget alongside MetricGauge's). It is deliberately absent, not
+        // forgotten. `valuePx` is pre-computed from the character count, so the
+        // reading already fits under a MONOSPACE font no matter what the Layout
+        // does; the pairing only matters when `theme.fontMono` falls back to a
+        // proportional face (missing/wider mono). The headless suite ships
+        // DejaVu Sans Mono, so a guard here passes with OR without the fix — it
+        // would be inert. Writing an inert guard is the exact anti-pattern this
+        // codebase has been purging; the fix is verified manually under a
+        // no-mono fontconfig and the blind spot is recorded in BACKLOG.md.
         function findFirst(node, pred) {
             if (!node) return null
             if (pred(node)) return node

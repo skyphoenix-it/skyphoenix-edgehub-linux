@@ -280,6 +280,8 @@ WidgetChrome {
         }
         Text {
             Layout.alignment: Qt.AlignHCenter; visible: w.due && w.showSuggestion
+            // preferredWidth pairs the cap so elide binds on a long suggestion.
+            Layout.preferredWidth: w.width * 0.9
             Layout.maximumWidth: w.width * 0.9; horizontalAlignment: Text.AlignHCenter
             text: "Try: " + w.breakIdeas[w.breaksToday % w.breakIdeas.length]
             font.pixelSize: 16; font.italic: true; color: theme.textTertiary
