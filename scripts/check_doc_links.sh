@@ -31,8 +31,15 @@ slugify() {
         | sed -E 's/[^a-z0-9 _-]//g; s/ +/-/g'
 }
 
+# ANTI-VACUITY: a lint that scans nothing passes everything. `check_no_raw_xhr.sh`
+# guards this ("the gate must still own exactly one construction site"); this did
+# not — pointed at a tree with no markdown it reported OK. Count the subjects and
+# the links, and fail if there is nothing to judge.
 fail=0
+files=0
+links=0
 while IFS= read -r f; do
+    files=$((files + 1))
     dir="$(dirname "$f")"
     # Capture the link target of every []() whose target is not http(s) or a
     # bare in-page #anchor.
@@ -41,6 +48,7 @@ while IFS= read -r f; do
         case "$target" in
             http://*|https://*|mailto:*|'#'*) continue ;;
         esac
+        links=$((links + 1))
         path="${target%%#*}"        # strip the anchor for the file test
         anchor="${target#*#}"
         [ "$anchor" = "$target" ] && anchor=""
@@ -69,9 +77,15 @@ while IFS= read -r f; do
     done < <(grep -oE '\]\([^)]+\)' "$f" | sed -E 's/^\]\(//; s/\)$//' | sed -E 's/ +".*"$//')
 done < <(git ls-files '*.md')
 
+if [ "$files" -eq 0 ] || [ "$links" -eq 0 ]; then
+    echo "FAIL: scanned $files markdown file(s) and found $links relative link(s)."
+    echo "      With nothing to judge this lint would pass on any tree — refusing to."
+    exit 1
+fi
+
 if [ "$fail" -ne 0 ]; then
     echo
     echo "FAIL: the links above do not resolve."
     exit 1
 fi
-echo "OK: every relative markdown link resolves (file + anchor)."
+echo "OK: $links relative link(s) across $files markdown file(s) resolve (file + anchor)."

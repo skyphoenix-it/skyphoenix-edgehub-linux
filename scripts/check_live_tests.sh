@@ -21,8 +21,15 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
+# ANTI-VACUITY: a lint that scans nothing passes everything. `check_no_raw_xhr.sh`
+# gets this right ("the gate must still own exactly one construction site") and
+# this did not — pointed at an empty tree it happily reported OK. That is the same
+# shape as coverage.sh's C++ gate, which skipped itself for years. So: count the
+# subjects, and fail if there are none to judge.
+files=0
 fail=0
 while IFS= read -r file; do
+    files=$((files + 1))
     while IFS= read -r fn; do
         base="${fn%_data}"
         if ! grep -qE "function[[:space:]]+${base}[[:space:]]*\(" "$file"; then
@@ -35,9 +42,14 @@ while IFS= read -r file; do
              | grep -oE "test_[A-Za-z0-9_]*_data")
 done < <(find tests -name 'tst_*.qml' -type f | sort)
 
+if [ "$files" -eq 0 ]; then
+    echo "FAIL: found no tst_*.qml to check — this lint would pass on an empty tree."
+    exit 1
+fi
+
 if [ "$fail" -ne 0 ]; then
     echo
     echo "FAIL: the tests above are defined but never execute (QtTest '_data' suffix)."
     exit 1
 fi
-echo "OK: no test_*_data() without a matching test_*() — every test can run."
+echo "OK: $files test file(s) scanned; no test_*_data() without a matching test_*()."
