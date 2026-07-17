@@ -64,6 +64,19 @@ export ARCH=x86_64
 # exact name a real run produces without needing Qt or a build.
 export OUTPUT="xeneon-edge-hub-${VERSION}-${ARCH}.AppImage"
 
+# Self-update discovery. Embedded in the binary as `X-AppImage-UpdateInformation`
+# so AppImageUpdate/appimaged can find and delta-patch to the newest release
+# WITHOUT the user knowing any URL. `latest` = always the newest GitHub release;
+# the wildcard matches the versioned artifact name (the version is part of it, by
+# design — see the pkgver trap). This is the DISCOVERY half; the .zsync that this
+# points at carries the versioned target URL for the actual byte delta (release.sh
+# builds it with zsyncmake -u against the versioned download). Both halves are
+# required and are checked together by scripts/check_appimage_update_contract.sh.
+# LDAI_* is what linuxdeploy's appimage plugin reads; UPDATE_INFORMATION is the
+# older appimagetool name — set both so it works regardless of tool vintage.
+export LDAI_UPDATE_INFORMATION="gh-releases-zsync|skyphoenix-it|XeneonEdge_Linux|latest|xeneon-edge-hub-*-${ARCH}.AppImage.zsync"
+export UPDATE_INFORMATION="$LDAI_UPDATE_INFORMATION"
+
 if [ "${1:-}" = "--print-name" ]; then
   printf '%s\n' "$OUTPUT"
   exit 0

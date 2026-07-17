@@ -10,7 +10,7 @@ QtObject {
     id: t
 
     property real glassOpacity: 0.6
-    property bool showWidgetGlow: true
+    property bool showWidgetGlow: false
     property bool reduceMotion: false
     property string accentName: "blue"
 
@@ -184,7 +184,7 @@ QtObject {
     // every widget follows for free; fontMono stays mono on purpose (tabular
     // data readouts need fixed-pitch digits). Unknown values fall through to
     // system, so a config from a newer build degrades safely.
-    property string fontChoice: "system"
+    property string fontChoice: "hyperlegible"
     readonly property string _fontDisplaySystem: "Inter, Segoe UI, Roboto, sans-serif"
     property string fontDisplay:
         fontChoice === "hyperlegible" ? fontFamilyHyperlegible

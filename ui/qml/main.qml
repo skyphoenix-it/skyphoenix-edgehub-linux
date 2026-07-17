@@ -64,7 +64,9 @@ ApplicationWindow {
     property alias accentName: _theme.accentName
     property alias glassOpacity: _theme.glassOpacity
     property alias showWidgetGlow: _theme.showWidgetGlow
-    property bool animatedBackground: true   // subtle drifting orbs behind the grid
+    property bool animatedBackground: false  // Calm-by-default (beta): no drifting
+                                             // orbs on a fresh install; opt in via
+                                             // Appearance. Motion transitions stay on.
 
     // Shared design-system tokens (single source of truth; see ui/qml/Theme.qml).
     // Its runtime knobs (accent/glass/glow/reduceMotion) are aliased onto root above.

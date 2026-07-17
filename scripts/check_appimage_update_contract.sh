@@ -164,6 +164,29 @@ else
     fail "release.sh no longer preflights zsyncmake — an AppImage could publish without its .zsync"
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 7. The AppImage must EMBED update-information (X-AppImage-UpdateInformation via
+#    linuxdeploy's LDAI_UPDATE_INFORMATION). Without it AppImageUpdate/appimaged
+#    cannot find the next release AT ALL — there is no discovery path from an
+#    installed AppImage to the next .zsync, and the whole self-update story is
+#    dead on arrival no matter how correct the .zsync is. Must be gh-releases-zsync
+#    against the right repo, and `latest` (a versioned channel would pin the
+#    AppImage to one release forever).
+# ─────────────────────────────────────────────────────────────────────────────
+ui_line="$(printf '%s' "$folded_build" | grep -o 'LDAI_UPDATE_INFORMATION="[^"]*"' | head -1)"
+if [ -z "$ui_line" ]; then
+    fail "build-appimage.sh sets no LDAI_UPDATE_INFORMATION — the AppImage cannot discover updates"
+else
+    case "$ui_line" in
+        *"gh-releases-zsync|skyphoenix-it|XeneonEdge_Linux|latest|"*".AppImage.zsync"*)
+            pass "AppImage embeds gh-releases-zsync update-information for $SLUG (latest)" ;;
+        *"|latest|"*)
+            fail "update-information targets the wrong repo/pattern: $ui_line" ;;
+        *)
+            fail "update-information is not the 'latest' channel (would pin to one release): $ui_line" ;;
+    esac
+fi
+
 echo
 if [ "$fails" -ne 0 ]; then
     printf 'RESULT: FAILURE (%d check(s) failed)\n' "$fails"

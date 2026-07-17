@@ -623,10 +623,28 @@ Item {
 
         // Changing the default look is a product decision — the default MUST
         // stay the system font stack.
-        function test_font_choice_defaults_to_system() {
+        function test_font_choice_defaults_to_hyperlegible() {
+            // The shipped default is Atkinson Hyperlegible (accessibility-forward,
+            // decided for the beta). A fresh Theme with no config picks it up, and
+            // fontDisplay resolves to the loaded Atkinson family (falling back to
+            // the literal name if the FontLoader hasn't reported yet).
             var fresh = freshTheme.createObject(root)
-            compare(fresh.fontChoice, "system")
-            compare(fresh.fontDisplay, "Inter, Segoe UI, Roboto, sans-serif")
+            compare(fresh.fontChoice, "hyperlegible")
+            compare(fresh.fontDisplay, fresh.fontFamilyHyperlegible)
+            verify(fresh.fontDisplay.toLowerCase().indexOf("atkinson") >= 0
+                   || fresh.fontDisplay.length > 0, "resolves to a real family")
+            fresh.destroy()
+        }
+
+        function test_a_fresh_install_is_calm_and_quiet() {
+            // The beta ships "Calm by default": a fresh Theme has widget glow OFF.
+            // (The animated background lives on main.qml, not Theme, so it is
+            // guarded where the harness can see it — this pins the half Theme owns.)
+            // Quiet-by-default means the distracting ambient effects are off out of
+            // the box; the user opts INTO them via Appearance.
+            var fresh = freshTheme.createObject(root)
+            compare(fresh.showWidgetGlow, false, "glow is off on a fresh install (calm)")
+            compare(fresh.glow, false, "the derived glow token follows")
             fresh.destroy()
         }
 
