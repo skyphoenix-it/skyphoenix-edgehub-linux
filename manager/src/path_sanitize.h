@@ -20,7 +20,16 @@ inline std::optional<QString> sanitizeImageName(const QString& name,
         return std::nullopt;
     const QString dirPath = QDir::cleanPath(QDir(imagesDir).absolutePath());
     const QString target = QDir::cleanPath(dirPath + QLatin1Char('/') + base);
+    // Defense in depth. `base` is already a bare leaf (fileName() above strips
+    // every directory component and we reject ""/"."/".."), so `target` ALWAYS
+    // lies inside `dirPath` and this branch cannot be reached through the public
+    // function — tst_path_sanitize.cpp throws ../, absolute paths and deep
+    // traversals at it and every one is contained, never rejected here. It is
+    // kept, and GCOVR-excluded rather than faked with an unreachable test,
+    // BECAUSE it must survive `fileName()` normalization ever being weakened: if
+    // that changes, this becomes the primary escape guard and the exclusion
+    // marker is the signal to add a real reject test then.
     if (target != dirPath && !target.startsWith(dirPath + QLatin1Char('/')))
-        return std::nullopt;
+        return std::nullopt;  // GCOVR_EXCL_LINE
     return target;
 }
