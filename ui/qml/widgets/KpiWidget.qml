@@ -292,13 +292,14 @@ WidgetChrome {
                     text: w.errText.length ? "—" : (w.valText.length ? w.valText : "…")
                     font.pixelSize: Math.round(w.valuePx); font.bold: true; color: w.valColor
                     font.family: theme.fontDisplay
-                    // Backstop only — valuePx above is already sized to fit.
+                    // valuePx (char-count based) is the real fit; HorizontalFit +
+                    // maximumWidth are the backstop. NOT preferredWidth: this value
+                    // sits in a [value][unit] row, and forcing the value to the full
+                    // box width shoved the unit out and left-aligned the number
+                    // off-centre. maximumWidth alone caps without forcing a wide box,
+                    // so the row stays centred and a stray-long value still can't
+                    // overrun the tile.
                     fontSizeMode: Text.HorizontalFit; minimumPixelSize: 14; elide: Text.ElideRight
-                    // preferredWidth pairs the cap so HorizontalFit/elide actually
-                    // bind — maximumWidth alone is ignored once implicitWidth
-                    // exceeds it (see MetricGauge). KPI shows arbitrary values
-                    // ("128ms", "1.2M"), so this is the real-content case.
-                    Layout.preferredWidth: w._boxW
                     Layout.maximumWidth: w._boxW
                 }
                 Text {

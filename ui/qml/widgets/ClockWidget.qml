@@ -187,6 +187,8 @@ WidgetChrome {
             elide: Text.ElideRight
             Layout.preferredWidth: col.width * 0.95
             Layout.maximumWidth: col.width * 0.95
+            // Centre the label WITHIN that wide box, or it left-aligns off-centre.
+            horizontalAlignment: Text.AlignHCenter
         }
         Text {
             Layout.fillWidth: true

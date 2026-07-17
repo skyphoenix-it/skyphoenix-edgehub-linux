@@ -96,6 +96,10 @@ Item {
                     // Same fix as CountdownWidget's overflowing number.
                     Layout.preferredWidth: Math.max(24, g._ringW - 2 * ring.thickness - 8)
                     Layout.maximumWidth: Math.max(24, g._ringW - 2 * ring.thickness - 8)
+                    // The box above spans the ring's inner width so the value can
+                    // shrink-to-fit; the TEXT must centre WITHIN that box, or it
+                    // left-aligns inside a wide box and sits off-centre in the ring.
+                    horizontalAlignment: Text.AlignHCenter
                     font.pixelSize: Math.min(g._ringW * 0.34, g.expanded ? 108 : g.bigMax)
                     fontSizeMode: Text.HorizontalFit
                     minimumPixelSize: 10
@@ -112,6 +116,7 @@ Item {
                     // HorizontalFit and elide down with it.
                     Layout.preferredWidth: Math.max(24, g._ringW - 2 * ring.thickness - 8)
                     Layout.maximumWidth: Math.max(24, g._ringW - 2 * ring.thickness - 8)
+                    horizontalAlignment: Text.AlignHCenter   // centre within the wide box
                     // Scale gently with the ring so a big tall-tile ring doesn't
                     // caption itself in 14px dust.
                     font.pixelSize: g.expanded ? 20 : Math.max(12, Math.min(g._ringW * 0.075, 18))

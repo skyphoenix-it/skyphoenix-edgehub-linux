@@ -345,6 +345,33 @@ Item {
                    "centre text (" + bigText.width.toFixed(0) + "px) must fit inside the ring interior ("
                    + interior.toFixed(0) + "px)")
         }
+
+        // The value's box spans the ring's inner width (so it can shrink-to-fit),
+        // and the box is itself centred in the ring. So a SHORT value ("4%") only
+        // looks centred if the TEXT is centre-aligned WITHIN that box — otherwise
+        // it left-aligns and sits visibly off-centre. That exact regression (the
+        // overflow fix's wide box + a missing horizontalAlignment) is what the
+        // marketing screenshots caught. The offset lives in the text's content
+        // position, which can only be read via ink metrics (unreliable headless),
+        // so pin the alignment PROPERTY — it is the fix, and Text renders directly
+        // from it — plus prove the box really is wider than the value, so the
+        // alignment is load-bearing rather than moot.
+        function test_gauge_value_is_centred_in_the_ring() {
+            var w = hSmall.item
+            hSmall.storeCtl.setSetting("test-instance", "unit", "percent")
+            w.metrics = { ram_usage_percent: 4, ram_used_bytes: 2000000000,
+                          ram_total_bytes: 34359738368 }   // → a short "4%"
+            var g = gaugeOf(w)
+            var ring = findOne(g, isRing)
+            tryVerify(function () { return ring && ring.width > 0 }, 2000)
+            var bigText = findOne(g, function (o) { return isText(o) && o.text === g.big })
+            verify(bigText, "found the centre text \"" + g.big + "\"")
+            compare(bigText.horizontalAlignment, Text.AlignHCenter,
+                    "the value must be centre-aligned in its box, not left")
+            verify(bigText.width > bigText.contentWidth + 2,
+                   "the box is wider than the value (" + bigText.width.toFixed(0) + " > "
+                   + bigText.contentWidth.toFixed(0) + "), so the alignment is what centres it")
+        }
     }
 
     // ── Per-sizeClass structure (W1 wave 2a) ────────────────────────────────
