@@ -100,11 +100,23 @@ after the fix shipped). If an entry here disagrees with the code, the code wins.
   Dashboard hosts the config preview in a pane (~941×456 landscape / ~656×980
   portrait), and the old literals both ignored that box and never noticed when W5
   shrank the pane to 38%.
-- **`RamGbOverflow::test_gb_centre_text_fits_ring_interior` fails under a
-  DejaVu-only fontconfig** (no emoji fonts). Reproduced on a clean tree, so it is
-  pre-existing and not a regression. CI installs `fonts-dejavu-core` and no emoji
-  font, so this is close to CI's environment — worth understanding before it
-  surfaces there.
+- ~~`RamGbOverflow::test_gb_centre_text_fits_ring_interior` fails under a
+  DejaVu-only fontconfig~~ — **FIXED** (`18c927f`). It was the real bug, not an
+  env quirk: with `theme.fontMono` falling back to a proportional face the ring's
+  centre reading rendered 265px into a 227px interior. `Layout.maximumWidth` alone
+  is inert once implicitWidth exceeds it (and takes HorizontalFit + elide with it);
+  paired with `preferredWidth` it binds. Both gauge texts fixed.
+- **The identical inert-cap shape is still latent at BreakWidget.qml:267,281,
+  ClockWidget.qml:177 and KpiWidget.qml:290** — `Layout.maximumWidth` + a
+  fit/elide that depends on it, with no paired `preferredWidth`. Found by sweep
+  2026-07-17; none is covered by a test, so each is a silent overflow waiting for
+  a wide or missing font. Left unfixed to keep the gauge fix bounded.
+- **CI has a font blind spot for this class.** CI installs `fonts-dejavu-core`,
+  which INCLUDES DejaVu Sans Mono, so a `theme.fontMono`-fallback overflow (the
+  gauge bug above) does NOT reproduce in CI — only on a machine whose mono font is
+  absent or wider. A width-fit test that is honest across fonts would need to
+  either force a fallback or assert the structural cap directly rather than glyph
+  width. Worth a decision.
 - **Wallpaper/theme name collision — it is FIVE names, not three.** Measured
   2026-07-17: the overlap between `Theme.qml`'s modes and `WallpaperCatalog.qml`'s
   items is **aurora, ember, midnight, nebula, sunset**. The W2 audit reported
