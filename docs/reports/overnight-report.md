@@ -14,11 +14,12 @@ fixed a red CI job nobody had noticed, a vulnerability-reporting address at an
 unregistered domain, 202 MB of committed build output, a nightly test flake, and
 an unrecoverable data-loss path in `--reset`.
 
-**Status: green.** Full suite `RESULT: SUCCESS` (17 suites incl. 9 runtime E2E
-scenarios), behavior matrix 100%, all four GitHub workflows green as of `80352d3`.
-CI for the final commits is **unverified** — the local `gh` token went invalid
-mid-session, so I could not read the Actions API. That is a local auth problem,
-not a CI or tree problem (`git` over SSH kept working). See Blockers.
+**Status: green, and now verified.** Full suite `RESULT: SUCCESS` (17 suites incl.
+9 runtime E2E scenarios), behavior matrix 100%. CI on the final tree (`ff13cad` /
+`5ddbf49`) is **green on every job**: Rust (fmt+clippy+test), Build, QML +
+behavior matrix, C++ + coverage, the Rust+C++ ≥95% coverage gate, SBOM,
+cargo-deny, the no-egress attestation (with its three negative controls), and
+Docs. The `gh` outage that blocked this for part of the night cleared.
 
 ## Completed work
 
@@ -104,20 +105,13 @@ had no single answer.
 
 ## Issues and blockers
 
-- **CI for the final HEAD is unverified — and the cause is your local `gh`, not CI.**
-  All four workflows were green on `80352d3` (Docs, CI, Supply Chain incl. the
-  no-egress attestation with its three negative controls, Distro). After that the
-  Actions API began returning 503 for every call. It is **not** a GitHub outage:
-  githubstatus reports Actions operational, `git` over SSH works fine (the pushes
-  all landed), but `gh auth status` says:
-
-      X Failed to log in to github.com account SimonKreitmayer (keyring)
-        The token in keyring is invalid.
-
-  Earlier `gh run list` calls in this same session succeeded, so the token was
-  valid and was invalidated partway through (a locked keyring is the likely
-  culprit). **Re-auth with `gh auth login` and check the runs for `b098727`.** The
-  full local suite is green; the tree itself is not implicated.
+- ~~CI for the final HEAD is unverified~~ — **RESOLVED before hand-off.** For part
+  of the night every Actions API call returned 503 while githubstatus reported
+  Actions operational and `git` over SSH kept working; `gh auth status` said the
+  keyring token was invalid, though earlier `gh` calls in the same session had
+  succeeded. It cleared on its own. Every job is green on the final tree (listed
+  in Summary). Worth knowing the failure mode: **a broken local token presents as
+  a GitHub outage**, and the honest read is "I cannot see CI", not "CI is fine".
 - **Secret scanning + push protection could not be enabled** — the repo-settings API
   call was blocked by the permission classifier, correctly. Both are free on public
   repos and currently **disabled**; enabling push protection is a one-click item and
@@ -143,9 +137,7 @@ single-writer rule, the AppImage update path, and CI on the final commit.
 1. **Install the build** (below) and confirm the reorder animation + Manager clarity
    on the real Edge — W3/W2 are verified offscreen; the harness cannot instantiate
    `qrc:` widgets, so widget-instance survival is asserted via the Loader only.
-2. **`gh auth login`**, then verify CI on `b098727` — the Actions API has been
-   unreachable since mid-session because the local token went invalid, not because
-   anything is wrong with the tree.
+2. ~~Verify CI~~ — done, all jobs green on `ff13cad`/`5ddbf49`. Nothing needed.
 3. **Enable secret scanning + push protection** (Settings → Code security). Both
    are free on public repos and currently off; the API call to enable them was
    blocked by the permission classifier, correctly — it is yours to click.
