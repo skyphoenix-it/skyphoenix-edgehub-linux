@@ -11,7 +11,18 @@ import QtQuick.Layouts
 //                       progressStyle is finally honoured outside the overlay).
 //   • tall            — progress hero (ring or bar) + a Started/Ends/Elapsed
 //                       detail column: the workday spelled out.
-//   • full (overlay)  — unchanged: optional ring + the Start/End pills.
+//   • full (overlay)  — optional ring + the Start/End pills, sized by the pane it
+//                       is actually given (see ringPx / remainingPx). It is NOT a
+//                       full screen: Dashboard hosts it in a live-preview pane
+//                       beside the config form — ~941x456 landscape, ~656x980
+//                       portrait — so "full" is a class like any other and reads
+//                       its own box rather than a set of literals.
+//
+// The Start/End pill row is the one thing here still keyed off the MODE, and that
+// is correct: it is the config EDITOR, and the overlay is where this widget is
+// edited (Dashboard puts the config form right beside it). It is an affordance
+// question, not a dimension — a tall tile has the room for the pills and still
+// should not become an editor.
 WidgetChrome {
     id: w
     property var metrics: ({})
@@ -111,9 +122,17 @@ WidgetChrome {
     // ── Per-size layout (sizeClass injected by Dashboard) ────────────────────
     readonly property bool horiz: sizeClass === "wide"
     readonly property bool tallish: sizeClass === "tall" || sizeClass === "large"
+    // Has this instance got room to spare? The overlay is a size CLASS ("full",
+    // injected by Dashboard alongside expanded), not a mode — so it belongs here
+    // rather than in a `w.expanded ?` branch repeated down the file. `large` is
+    // unreachable for this type's declared sizes (1x2/1x3 are not offered); kept
+    // so a forced class degrades sanely.
+    readonly property bool roomy: tallish || sizeClass === "full"
     // The ring style is honoured wherever a ring has room — the overlay (as
-    // before) and now tall/wide tiles. micro/baseline keep the quiet bar.
-    readonly property bool useRing: progressStyle === "ring" && (expanded || tallish || horiz)
+    // before) and tall/wide tiles. micro/baseline keep the quiet bar.
+    // (`expanded ||` dropped: `roomy` covers sizeClass "full", so it was a
+    // synonym for the class, not an extra condition.)
+    readonly property bool useRing: progressStyle === "ring" && (roomy || horiz)
     // The remaining time lives INSIDE the ring in vertical ring layouts; wide
     // keeps it beside the ring (the ring centre carries the percent instead).
     readonly property bool timeInRing: useRing && !horiz
@@ -126,13 +145,35 @@ WidgetChrome {
         return fmtDur((Math.min(n, wb[1]) - wb[0]) / 1000)
     }
 
+    // ── Sizes, derived from the BOX ─────────────────────────────────────────
+    // The ring diameter. The `w.expanded ?` branch this used to lead with picked
+    // a whole different FORMULA for the overlay (w*0.7, h*0.55, cap 320); the
+    // overlay is just the roomiest class, so it now shares the general non-wide
+    // TILE term unchanged — every already-shipped tile keeps its exact ring, and
+    // the overlay is sized by the pane it is actually given instead of by a
+    // formula that assumed a 2560x720 screen:
+    //   overlay 941x456 -> 191.5   ·  overlay 656x980 -> 300 (the two 38%-preview
+    //   panes, which the old single formula rendered at 250.8 and 320).
+    readonly property real ringPx: w.horiz
+        ? Math.min(w.height * 0.58, w.width * 0.34, 280)
+        : Math.min(w.width * 0.62, w.height * 0.42, 300)
+    // The hero "time remaining". `expanded ? 80` ignored its pane and outranked
+    // the box on every tile; the two-axis term below sizes both overlay panes
+    // (63.8 landscape, 96 portrait) and lets a tall TILE stop rendering the
+    // baseline's 52 in twice the room. micro keeps its own single-axis branch, so
+    // its 64 is untouched; the 52 ceiling still binds on compact/wide, so every
+    // already-shipped non-roomy tile is byte-identical.
+    readonly property real remainingPx: w.micro
+        ? Math.max(24, Math.min(w.width * 0.24, 64))
+        : Math.max(24, Math.min(w.width * 0.18, w.height * 0.14, w.roomy ? 96 : 52))
+
     GridLayout {
         id: lay
         anchors.centerIn: parent
         width: parent.width * 0.88
         columns: w.horiz ? 2 : 1
         columnSpacing: theme.spacingLg
-        rowSpacing: w.expanded ? 14 : 6
+        rowSpacing: w.roomy ? 14 : 6     // air is room, not mode
 
         // Circular progress — the overlay's ring, now also earned by tall/wide
         // ring-style tiles.
@@ -140,9 +181,7 @@ WidgetChrome {
             id: ringBox
             visible: w.useRing
             Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
-            Layout.preferredWidth: Math.round(w.expanded ? Math.min(w.width * 0.7, w.height * 0.55, 320)
-                                            : w.horiz ? Math.min(w.height * 0.58, w.width * 0.34, 280)
-                                                      : Math.min(w.width * 0.62, w.height * 0.42, 300))
+            Layout.preferredWidth: Math.round(w.ringPx)
             Layout.preferredHeight: Layout.preferredWidth
             RingProgress {
                 anchors.fill: parent
@@ -169,40 +208,52 @@ WidgetChrome {
         ColumnLayout {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignVCenter
-            spacing: w.expanded ? 14 : 6
+            spacing: w.roomy ? 14 : 6        // room, not mode — see rowSpacing above
 
             Text {
                 visible: !w.timeInRing
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignHCenter; text: w.remaining
                 elide: Text.ElideRight; fontSizeMode: Text.HorizontalFit
-                font.pixelSize: w.expanded ? 80
-                              : Math.max(24, Math.min(w.width * 0.24, w.micro ? 64 : 52))
+                font.pixelSize: Math.round(w.remainingPx)
                 font.bold: true; font.family: theme.fontMono; color: w.effAccent
             }
             Rectangle {
                 visible: !w.useRing
-                Layout.fillWidth: true; Layout.preferredHeight: w.expanded ? 14 : w.micro ? 8 : 10
+                // The bar's weight follows the room too (14 was "the overlay").
+                Layout.fillWidth: true
+                Layout.preferredHeight: w.micro ? 8 : w.roomy ? 14 : 10
                 radius: height / 2; color: theme.cardBorder
                 Rectangle { height: parent.height; radius: height / 2; width: parent.width * w.frac; color: w.effAccent
                     Behavior on width { NumberAnimation { duration: theme.motionValue; easing.type: Easing.OutCubic } } }
             }
             // The percent-of-window caption. micro is the one number + bar; a
-            // tall TILE's detail column below spells the window out instead
-            // (tall && expanded keeps it — only the rendered detail column may
-            // replace it).
+            // tall TILE's detail column below spells the window out instead.
+            //
+            // The `&& !w.expanded` that used to sit in both this condition and the
+            // detail column's was DEAD: `tallish` is "tall" or "large", and the
+            // overlay is injected as "full", so `w.tallish` is already false
+            // whenever `w.expanded` is true. It only ever did anything in a test
+            // host that set expanded:true without the "full" that Dashboard always
+            // pairs with it — i.e. it encoded the harness, not the product.
             Text {
                 visible: w.showPercent && !w.timeInRing && !w.micro
-                         && !(w.tallish && !w.expanded && w.validHours)
+                         && !(w.tallish && w.validHours)
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight; fontSizeMode: Text.HorizontalFit
                 text: Math.round(w.frac * 100) + "% of " + w.fmtHour(w.startHour) + "–" + w.fmtHour(w.endHour)
-                font.pixelSize: w.expanded ? 15 : 12; color: theme.textSecondary
+                // Tied to the hero it annotates rather than to the mode: the
+                // caption only ever renders when the remaining time is shown
+                // (!timeInRing), so it always has a hero to scale against. The
+                // `expanded ? 15` it replaces gave both overlay panes one number;
+                // 12 is still exactly what every non-roomy tile gets.
+                font.pixelSize: Math.round(Math.max(12, Math.min(w.remainingPx * 0.20, 15)))
+                color: theme.textSecondary
             }
             // Tall tiles spell the workday out — genuinely more information.
             ColumnLayout {
-                visible: w.tallish && !w.expanded && w.validHours
+                visible: w.tallish && w.validHours
                 Layout.fillWidth: true
                 Layout.topMargin: theme.spacingSm
                 spacing: theme.spacingXs

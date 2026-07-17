@@ -48,6 +48,15 @@ Item {
     Item { id: sizeWrap; width: 696; height: 819
         WidgetHarness { id: hSize; anchors.fill: parent
             widgetFile: "FocusWidget.qml"; expanded: false; active: false } }
+    // The OVERLAY host, resized between the two boxes Dashboard actually gives it:
+    // the live-preview pane beside the config form, ~941x456 landscape and
+    // ~656x980 portrait. `expanded: true` AND sizeClass "full" — the real pairing
+    // Dashboard produces — because a mode-keyed literal can only be caught with
+    // the mode switched ON. One host, resized, rather than two: this widget's
+    // per-second Canvas ring is exactly the state the header warns about.
+    Item { id: ovlWrap; width: 941; height: 456
+        WidgetHarness { id: hOvl; anchors.fill: parent
+            widgetFile: "FocusWidget.qml"; expanded: true; active: false } }
 
     function findAll(node, pred, acc) {
         if (!node) return acc
@@ -133,6 +142,64 @@ Item {
             verify(clock[0].font.pixelSize > 34,
                    "the clock scales with the ring (" + clock[0].font.pixelSize
                    + "px), it does not cap at the old 34px")
+        }
+
+        // ── size, not mode ──────────────────────────────────────────────────
+        // The celebration banner was `expanded ? 34 : 18`. It spans the whole
+        // CARD, so the card is what sizes it.
+        //
+        // This widget gets ONLY the overlay-pane test, not the usual "hold the
+        // mode fixed and move the room" sibling, and that is a real gap rather
+        // than an oversight: focus declares 1x1 and 1x1.5, whose four projections
+        // (696x819, 846x612, 696x1228, 1269x612) ALL reach the 34px ceiling, so a
+        // tile-vs-tile comparison would be 34 > 34 dressed up as a guard. The
+        // panes below are the boxes where the term genuinely binds.
+        //
+        // Both reads are expanded AND "full"; only the BOX differs — the real
+        // live-preview panes beside the config form, NOT a 2560x720 screen. A
+        // literal returns one number for both, so asserting the two differ is
+        // exactly the mode/size conflation, caught. (Holding the mode at false
+        // instead would NOT catch it: a surviving `w.expanded ? 34 : 18` never
+        // fires its literal there and the else-branch keeps the assertion green.)
+        function test_overlay_banner_is_sized_by_its_pane_not_by_a_mode_literal() {
+            tryVerify(function () { return hOvl.ready }, 3000)
+            var w = hOvl.item
+            w.sizeClass = "full"
+            w.celebrateMsg = "🎉 Session done!"
+            function banner() {
+                return root.findAll(w, function (n) {
+                    return n.hasOwnProperty("font") && String(n.text) === w.celebrateMsg
+                           && n.z === 20 }, [])[0]
+            }
+            // A real event-loop turn, not wait(0): this host defaults to "tall"
+            // (height > 240) and only becomes "full" above, and a wait(0) read
+            // reports pre-change geometry. waitForRendering is not the tool —
+            // offscreen never swaps a frame.
+            ovlWrap.width = 941; ovlWrap.height = 456
+            wait(16)
+            compare(w.expanded, true, "precondition: this IS the overlay")
+            var landPx = w.celebratePx
+            var landRendered = banner().font.pixelSize
+            // RENDERED, not merely derived: a Text that ignored celebratePx and
+            // re-froze a literal would pass a property-only check untouched.
+            compare(landRendered, Math.round(landPx),
+                    "the rendered landscape banner is the derived size, not a literal")
+
+            ovlWrap.width = 656; ovlWrap.height = 980
+            wait(16)
+            var portPx = w.celebratePx
+            var portRendered = banner().font.pixelSize
+            compare(portRendered, Math.round(portPx),
+                    "…and so is the portrait one")
+
+            verify(landPx !== portPx,
+                   "the overlay's banner is sized by the pane it is given, not by one "
+                   + "literal for 'the overlay' (941x456 -> " + landPx.toFixed(1)
+                   + ", 656x980 -> " + portPx.toFixed(1) + ")")
+            verify(portRendered > landRendered,
+                   "the 980-tall pane earns the bigger pop (" + portRendered
+                   + " vs " + landRendered + ")")
+            ovlWrap.width = 941; ovlWrap.height = 456
         }
 
         // The audit's collision: the ring must stop ABOVE the control row rather

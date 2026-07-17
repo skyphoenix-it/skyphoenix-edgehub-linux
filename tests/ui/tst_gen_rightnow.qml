@@ -33,6 +33,14 @@ Item {
         WidgetHarness { id: hRWide; anchors.fill: parent; widgetFile: "RightNowWidget.qml"; expanded: false } }
     Item { id: rTallWrap; width: 344; height: 840
         WidgetHarness { id: hRTall; anchors.fill: parent; widgetFile: "RightNowWidget.qml"; expanded: false } }
+    // The OVERLAY, at the two boxes Dashboard actually gives it: the live-preview
+    // pane beside the config form, ~941x456 landscape and ~656x980 portrait.
+    // `expanded: true` AND sizeClass "full" — the real pairing — because a
+    // mode-keyed literal can only be caught with the mode switched ON.
+    Item { width: 941; height: 456
+        WidgetHarness { id: hOvlL; anchors.fill: parent; widgetFile: "RightNowWidget.qml"; expanded: true } }
+    Item { width: 656; height: 980
+        WidgetHarness { id: hOvlP; anchors.fill: parent; widgetFile: "RightNowWidget.qml"; expanded: true } }
 
     // ── traversal helpers (mirrors tst_touch_targets / tst_clicks) ──────────
     function findAll(node, pred, acc) {
@@ -418,6 +426,75 @@ Item {
             var hero = textWith(w, "Ship it")
             verify(hero !== null && hero.visible, "the hero is rendered")
             compare(hero.maximumLineCount, 5, "tall earns the most hero lines")
+        }
+
+        // ── size, not mode ──────────────────────────────────────────────────
+        // The celebration banner was `expanded ? 40 : 22`. It spans the whole
+        // CARD, so the card is what sizes it. Asserted on the rendered Text's own
+        // font.pixelSize, not on w.celebratePx: checking the property only proves
+        // the arithmetic, and a Text that ignored it and re-froze a literal would
+        // pass that untouched.
+        function banner(host) {
+            return findAll(host.item, function (n) {
+                return n.hasOwnProperty("text") && n.hasOwnProperty("font")
+                       && n.text === host.item.celebrateMsg
+                       && n.hasOwnProperty("opacity") && n.z === 20 }, [])[0]
+        }
+
+        // The mode held FIXED at false while only the room moves: a surviving
+        // `w.expanded ? 40 : 22` is pinned to 22 on BOTH hosts and cannot follow
+        // the box at all.
+        function test_celebration_banner_is_sized_by_the_card_not_the_mode() {
+            tryVerify(function () { return hRBase.ready && hRMicro.ready }, 3000)
+            var base = hRBase.item;   base.sizeClass = "compact"
+            var micro = hRMicro.item; micro.sizeClass = "compact"
+            base.celebrateNow("🎉 Done!"); micro.celebrateNow("🎉 Done!")
+            wait(16)
+            compare(base.expanded, false, "precondition: neither host is the overlay")
+            compare(micro.expanded, false, "…including the roomy one")
+
+            var bB = banner(hRBase), bM = banner(hRMicro)
+            verify(bB && bM, "both banners resolve")
+            compare(bB.font.pixelSize, Math.round(base.celebratePx),
+                    "the rendered banner actually uses the derived size on a 1x1 tile")
+            compare(bM.font.pixelSize, Math.round(micro.celebratePx),
+                    "…and on a micro tile")
+            verify(bB.font.pixelSize > bM.font.pixelSize,
+                   "a 696x840 tile pops bigger than a 344x416 one — the banner reads "
+                   + "the card, not the mode (" + bB.font.pixelSize + " vs "
+                   + bM.font.pixelSize + ")")
+        }
+
+        // The overlay is a size class like any other, and its box is the one it is
+        // actually given. This is the shape that catches a mode-keyed literal: the
+        // test above holds the mode fixed at false, where a surviving
+        // `w.expanded ? 40 : <derived>` never fires its literal at all.
+        // Both hosts are expanded AND "full"; only the BOX differs — the real
+        // live-preview panes beside the config form, NOT a 2560x720 screen.
+        function test_overlay_banner_is_sized_by_its_pane_not_by_a_mode_literal() {
+            tryVerify(function () { return hOvlL.ready && hOvlP.ready }, 3000)
+            var land = hOvlL.item; land.sizeClass = "full"
+            var port = hOvlP.item; port.sizeClass = "full"
+            land.celebrateNow("🎉 Done!"); port.celebrateNow("🎉 Done!")
+            // A real event-loop turn, not wait(0) — these hosts default to "tall"
+            // (height > 240) and only become "full" on the lines above, and a
+            // wait(0) read reports pre-change geometry. waitForRendering is not
+            // the tool: offscreen never swaps a frame.
+            wait(16)
+            compare(land.expanded, true, "precondition: this IS the overlay")
+            compare(port.expanded, true, "…and so is this one")
+
+            verify(land.celebratePx !== port.celebratePx,
+                   "the overlay's banner is sized by the pane it is given, not by one "
+                   + "literal for 'the overlay' (941x456 -> " + land.celebratePx.toFixed(1)
+                   + ", 656x980 -> " + port.celebratePx.toFixed(1) + ")")
+            var bL = banner(hOvlL), bP = banner(hOvlP)
+            verify(bL && bP, "both overlay banners resolve")
+            compare(bL.font.pixelSize, Math.round(land.celebratePx),
+                    "the rendered landscape banner is the derived size, not a literal")
+            verify(bP.font.pixelSize > bL.font.pixelSize,
+                   "the 980-tall pane earns the bigger pop (" + bP.font.pixelSize
+                   + " vs " + bL.font.pixelSize + ")")
         }
     }
 }

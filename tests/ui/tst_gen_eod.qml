@@ -29,6 +29,14 @@ Item {
     width: 520; height: 900
 
     // Expanded harness for the bulk of the logic + layout tests.
+    //
+    // `expanded` and sizeClass "full" are pinned TOGETHER (see clear()), because
+    // that is the only pairing Dashboard ever produces: injectWidget sets
+    // sizeClass "full" for the overlay and a span-derived class otherwise. Left
+    // to WidgetChrome's geometric default this 760-tall host reported "tall"
+    // WHILE expanded — a combination the product cannot reach — and the widget
+    // carried a `&& !w.expanded` term whose only job was to paper over it. Pinning
+    // the real pairing let that dead term go.
     WidgetHarness {
         id: hEod
         x: 0; y: 0; width: 480; height: 760
@@ -128,6 +136,8 @@ Item {
         var s = h.storeCtl.settingsFor("test-instance")
         for (var k in s) delete s[k]
         h.storeCtl._touchSettings()
+        // Restore the real pairing: an expanded host IS sizeClass "full".
+        if (h.item && h.expanded) h.item.sizeClass = "full"
     }
 
     // ── frac / remaining time math (real wall clock) ─────────────────────────
@@ -642,6 +652,16 @@ Item {
         WidgetHarness { id: hWide; anchors.fill: parent; widgetFile: "EndOfDayWidget.qml"; expanded: false } }
     Item { width: 344; height: 840
         WidgetHarness { id: hTall; anchors.fill: parent; widgetFile: "EndOfDayWidget.qml"; expanded: false } }
+    Item { width: 696; height: 819
+        WidgetHarness { id: hBase; anchors.fill: parent; widgetFile: "EndOfDayWidget.qml"; expanded: false } }
+    // The OVERLAY, at the two boxes Dashboard actually gives it: the live-preview
+    // pane beside the config form, ~941x456 landscape and ~656x980 portrait.
+    // `expanded: true` AND sizeClass "full" — the real pairing — because a
+    // mode-keyed literal can only be caught with the mode switched ON.
+    Item { width: 941; height: 456
+        WidgetHarness { id: hOvlL; anchors.fill: parent; widgetFile: "EndOfDayWidget.qml"; expanded: true } }
+    Item { width: 656; height: 980
+        WidgetHarness { id: hOvlP; anchors.fill: parent; widgetFile: "EndOfDayWidget.qml"; expanded: true } }
 
     TestCase {
         name: "EodSizes"
@@ -711,6 +731,117 @@ Item {
             verify(visibleRing(w) !== null, "the ring renders")
             w.sizeClass = "full"
             compare(w.micro, false, "full is never micro")
+        }
+
+        // ── size, not mode ──────────────────────────────────────────────────
+        // rowSpacing, the bar's height, the ring, the hero time and the caption
+        // were all keyed off `expanded`. Catching that class needs the mode held
+        // FIXED while only the room moves: anything that changes is genuinely
+        // sized by its box, anything that does not is still reading the mode.
+        //
+        // The two hosts are a 344x819 TALL tile and a 696x819 BASELINE — both
+        // expanded:false, both non-micro. That pairing is deliberate: the old
+        // literals had a micro-aware ELSE branch (`micro ? 64 : 52`,
+        // `micro ? 8 : 10`), so a tall-vs-micro comparison passes even against
+        // the buggy code — the two boxes differ only in the micro flag, which the
+        // else branch reads too. tall-vs-baseline strips that out: with the mode
+        // literal restored both collapse to the same non-micro else value (hero
+        // 52, rowSpacing 6), so the assertions below go red exactly when the bug
+        // is present. (Verified by restoring `w.expanded ? 80` and
+        // `rowSpacing: w.expanded ? 14 : 6` — this test failed, the overlay test
+        // stayed green; see the report.)
+        function test_sizing_follows_the_room_while_the_mode_is_held_fixed() {
+            tryVerify(function () { return hTall.ready && hBase.ready }, 3000)
+            prep(hTall); prep(hBase)
+            var tall = hTall.item; tall.sizeClass = "tall"
+            var base = hBase.item; base.sizeClass = "compact"
+            wait(16)
+            compare(tall.expanded, false, "precondition: neither host is the overlay")
+            compare(base.expanded, false, "…including the roomy one")
+            compare(tall.roomy, true, "…and 'tall' is the roomy class")
+            compare(base.roomy, false, "…while the baseline third is not")
+            compare(base.micro, false, "…and the baseline is NOT micro (so the old "
+                    + "literal's micro-aware else branch cannot rescue it)")
+
+            // The RENDERED hero time, not the property that feeds it: a Text that
+            // ignored the binding and re-froze a literal would sail through a
+            // property-only check. Both boxes are non-micro, so the old
+            // `micro ? 64 : 52` else branch gives BOTH 52 — only the box-derived
+            // term separates them.
+            var th = visibleTextEq(tall, tall.remaining)
+            var bh = visibleTextEq(base, base.remaining)
+            verify(th && bh, "both hero times resolve")
+            verify(th.font.pixelSize > bh.font.pixelSize,
+                   "the hero time follows the room (" + th.font.pixelSize
+                   + " on a tall tile vs " + bh.font.pixelSize + " on the baseline)")
+
+            // The rendered GridLayout's own spacing (mode literal → 6 for both).
+            var tg = root.collect(tall, []).filter(function (n) {
+                return n.hasOwnProperty("rowSpacing") && n.hasOwnProperty("columnSpacing") })[0]
+            var bg = root.collect(base, []).filter(function (n) {
+                return n.hasOwnProperty("rowSpacing") && n.hasOwnProperty("columnSpacing") })[0]
+            verify(tg.rowSpacing > bg.rowSpacing,
+                   "a tall tile gets more air between its rows (" + tg.rowSpacing
+                   + " vs " + bg.rowSpacing + ")")
+        }
+
+        // The overlay is a size class like any other, and its box is the one it is
+        // actually given. This is the test that catches a mode-keyed literal, and
+        // the ONLY shape that can: the sibling test above holds the mode fixed at
+        // false, where a surviving `w.expanded ? 80 : <derived>` never fires its
+        // literal at all and the derived branch keeps the assertion green.
+        //
+        // Both hosts are expanded AND "full"; only the BOX differs — the real
+        // live-preview panes beside the config form (Dashboard: 38% of the width
+        // in landscape, a stacked band in portrait), NOT a 2560x720 screen. A
+        // literal returns one number for both, so asserting the two differ is
+        // exactly the mode/size conflation, caught.
+        function test_overlay_is_sized_by_its_pane_not_by_a_mode_literal() {
+            tryVerify(function () { return hOvlL.ready && hOvlP.ready }, 3000)
+            prep(hOvlL); prep(hOvlP)
+            var land = hOvlL.item; land.sizeClass = "full"
+            var port = hOvlP.item; port.sizeClass = "full"
+            // A real event-loop turn, not wait(0): these hosts default to "tall"
+            // (height > 240) and only become "full" on the lines above; wait(0)
+            // returns BEFORE the layout re-polishes and a rendered read then
+            // reports pre-change geometry. waitForRendering is not the tool —
+            // offscreen never swaps a frame.
+            wait(16)
+            compare(land.expanded, true, "precondition: this IS the overlay")
+            compare(port.expanded, true, "…and so is this one")
+            compare(land.roomy, true, "…and 'full' is roomy")
+
+            verify(land.remainingPx !== port.remainingPx,
+                   "the overlay's hero time is sized by the pane it is given, not by "
+                   + "one literal for 'the overlay' (941x456 -> "
+                   + land.remainingPx.toFixed(1) + ", 656x980 -> "
+                   + port.remainingPx.toFixed(1) + ")")
+            verify(port.remainingPx > land.remainingPx,
+                   "the 980-tall pane earns the bigger number ("
+                   + port.remainingPx.toFixed(1) + " > " + land.remainingPx.toFixed(1) + ")")
+            verify(port.ringPx > land.ringPx,
+                   "…and the bigger ring (" + port.ringPx.toFixed(1) + " > "
+                   + land.ringPx.toFixed(1) + ")")
+
+            // RENDERED, not merely derived: the Text actually carries it.
+            var t = visibleTextEq(land, land.remaining)
+            verify(t !== null, "the landscape pane's remaining time resolves")
+            compare(t.font.pixelSize, Math.round(land.remainingPx),
+                    "the rendered hero is the derived size, not a re-frozen literal")
+
+            // And the caption follows the hero it annotates rather than the mode.
+            var capL = visibleTextContains(land, "% of ")
+            var capP = visibleTextContains(port, "% of ")
+            verify(capL && capP, "both panes render the caption")
+            verify(capP.font.pixelSize > capL.font.pixelSize,
+                   "the caption is sized by the pane too (" + capP.font.pixelSize
+                   + " vs " + capL.font.pixelSize + ")")
+
+            // The hero still FITS the pane it was sized for — the structural
+            // guarantee, not glyph ink (headless font metrics are meaningless).
+            verify(t.width <= land.width + 0.51,
+                   "the hero stays inside the landscape pane (" + t.width.toFixed(0)
+                   + " in " + land.width + ")")
         }
 
         // invalid hours — the detail column must not render a bogus workday.
