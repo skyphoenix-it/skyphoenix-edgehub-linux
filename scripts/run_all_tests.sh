@@ -69,6 +69,12 @@ run_suite "Doc links (files + anchors)" bash "$PROJECT_DIR/scripts/check_doc_lin
 #     QML suite can't see missing assets: it runs source-tree, with no qrc).
 run_suite "Icon lint (widget types)" bash "$PROJECT_DIR/scripts/check_widget_icons.sh"
 
+# 4d. AppImage update contract — the cross-file invariants of the zsync delta-update
+#     path (artifact name ↔ binary appVersion ↔ zsync -u URL ↔ UpdateChecker's repo).
+#     No single suite spans those four files, and every one of them was independently
+#     broken while the rest of the tests stayed green.
+run_suite "AppImage update contract" bash "$PROJECT_DIR/scripts/check_appimage_update_contract.sh"
+
 # 5. Runtime E2E battery — drives the real hub binary through one scenario
 #    script per guarantee (see tests/runtime/README.md). Exit 77 = SKIP (no
 #    binary built or installed); anything else is PASS/FAIL as usual.

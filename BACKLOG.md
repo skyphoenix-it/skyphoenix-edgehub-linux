@@ -51,10 +51,33 @@ Status baseline verified 2026-07-16 against the tree, not against the docs.
   interaction and exposes no headless save hook; adding one would be product code
   written to pass a test. This is the one real gap left in the B5 story.
 - `mpris_bridge.cpp` D-Bus fan-out is uncovered — needs a session bus.
-- AppImage zsync update path has never been exercised end-to-end. It is an
-  **RC exit criterion**, so it cannot stay untested forever.
-  `packaging/appimage/build-appimage.sh` deliberately emits no `.zsync`;
-  `scripts/release.sh` does it via `zsyncmake`.
+- **AppImage zsync update path: audited 2026-07-17. It does not work today, and
+  never has.** Still an **RC exit criterion**. What the audit established:
+  - **No release has ever shipped an AppImage or a `.zsync`.** alpha.1 and
+    alpha.2 assets confirm it (`gh release view`). The `zsyncmake` branch in
+    `scripts/release.sh` has therefore never executed. CI builds an AppImage but
+    only uploads it as an expiring workflow artifact; attaching it is a manual
+    `--extra` step nobody has done. **Nothing about this path has ever run.**
+  - FIXED: the artifact was named from `project(... VERSION 0.1.0)`, which
+    CMakeLists.txt freezes across commits — every release would have published an
+    identically-named `xeneon-edge-hub-0.1.0-x86_64.AppImage`. `release.sh`
+    documents this exact trap for cpack and overrides it; build-appimage.sh had
+    the same bug and did not.
+  - FIXED: build-appimage.sh never passed `-DXENEON_VERSION_OVERRIDE`, so the
+    binary's `appVersion()` came from `git describe` — and `actions/checkout@v4`
+    fetches no tags at depth 1, so `--always` degraded it to a bare sha.
+    `UpdateChecker.qml` cannot SemVer-order a sha, so it reports "no comparable
+    version": **the AppImage could never tell a user an update existed** — in the
+    one install kind pointed at the zsync path. Job now pins `fetch-depth: 0`.
+  - OPEN (needs a product decision): the AppImage embeds no
+    `X-AppImage-UpdateInformation`, so `AppImageUpdate`/`appimaged` cannot update
+    it at all and there is no discovery path from an installed AppImage to the
+    next `.zsync`. See docs/DISTRIBUTION.md "AppImage + zsync".
+  - OPEN: a true download-and-patch test remains unrun. It needs `zsync` + a real
+    AppImage; the AppImage build fails on modern-toolchain hosts (linuxdeploy's
+    bundled `strip` cannot read `.relr.dyn`), so it can only live in the CI
+    `appimage-smoke` job. `scripts/check_appimage_update_contract.sh` guards the
+    cross-file invariants offline; it is not a substitute for the round trip.
 - First-run wizard welcome still reads "Xeneon Edge Linux Hub" (nominative line
   kept per the rebrand decision — revisit only if a cleaner descriptor is wanted).
 - E7 Phase B (keyring) parked by owner decision; branch kept.

@@ -117,6 +117,16 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          # NOT optional, and not a caching nicety. build-appimage.sh names the
+          # artifact — and stamps the binary's appVersion() — from `git describe
+          # --tags`. checkout's default fetch-depth: 1 fetches NO tags, and
+          # `--always` then degrades to a bare commit sha rather than failing.
+          # UpdateChecker.qml cannot SemVer-order a sha against a release tag, so
+          # it reports "no comparable version" and never surfaces an update — in
+          # the one install kind that is actually pointed at the .zsync path.
+          # Guarded by scripts/check_appimage_update_contract.sh.
+          fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
 
       # Deliberately NOT 24.04's apt Qt (6.4.2 — too old for QtQuick.Effects).

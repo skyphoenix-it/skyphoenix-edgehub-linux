@@ -86,6 +86,12 @@ temp/
 build-dir/
 repo/
 
+# AppImage build tree (packaging/appimage/build-appimage.sh). The *.AppImage
+# output above was already ignored, but the ~1GB AppDir + downloaded linuxdeploy
+# tools it builds in were not — running the documented build script dirtied the
+# tree with untracked build output.
+build-appimage/
+
 # Python bytecode cache
 __pycache__/
 *.pyc
