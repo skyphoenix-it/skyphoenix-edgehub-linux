@@ -274,6 +274,24 @@ Item {
         WidgetHarness { id: hTall; anchors.fill: parent; widgetFile: "NetWidget.qml"; expanded: false } }
     Item { width: 696; height: 840
         WidgetHarness { id: hBase; anchors.fill: parent; widgetFile: "NetWidget.qml"; expanded: false } }
+    // 1x1.5 portrait — the same "tall" class as hTall (344x840), but with genuine
+    // half-screen room. The pair exists to move the BOX while holding the class.
+    Item { width: 696; height: 1229
+        WidgetHarness { id: hRoomy; anchors.fill: parent; widgetFile: "NetWidget.qml"; expanded: false } }
+
+    // The OVERLAY, at the two boxes Dashboard actually gives it. `expanded: true`
+    // AND sizeClass "full" — the real pairing — because a mode-keyed literal can
+    // only be caught with the mode switched ON. These are the live-preview pane
+    // beside the config form (Dashboard: 38% of the width in landscape, a <=46%-
+    // tall band stacked in portrait), NOT a 2560x720 screen.
+    Item { width: 941; height: 456
+        WidgetHarness { id: hOvlL; anchors.fill: parent; widgetFile: "NetWidget.qml"; expanded: true } }
+    Item { width: 656; height: 980
+        WidgetHarness { id: hOvlP; anchors.fill: parent; widgetFile: "NetWidget.qml"; expanded: true } }
+    // A dedicated host for the mode-independence probe below, so a failure there
+    // cannot leak `expanded: true` into another test's host.
+    Item { width: 696; height: 840
+        WidgetHarness { id: hProbe; anchors.fill: parent; widgetFile: "NetWidget.qml"; expanded: false } }
 
     TestCase {
         name: "NetSizes"
@@ -351,6 +369,142 @@ Item {
             compare(w.showPeaks, true, "the overlay keeps its peaks readout")
             hBase.expanded = false
             w.sizeClass = "compact"
+        }
+
+        // ── size, not mode ──────────────────────────────────────────────────
+        function findIn(host, pred) {
+            var acc = []
+            root.eachItem(host.item, function (n) { if (pred(n)) acc.push(n) })
+            return acc
+        }
+        function textStarting(host, prefix) {
+            return findIn(host, function (n) {
+                return n.text !== undefined && typeof n.text === "string"
+                       && n.text.indexOf(prefix) === 0 })[0] || null
+        }
+        function rateTextOf(host) { return textStarting(host, "↓ ") }
+        function peakTextOf(host) { return textStarting(host, "peak ↓") }
+        // The outer GridLayout: the sparkline Canvas is its direct child.
+        function outerLayOf(host) { var cv = findCanvas(host); return cv ? cv.parent : null }
+
+        // The overlay is a size class like any other, and its box is the one it is
+        // actually given. This is the ONLY shape that catches a mode-keyed literal:
+        // the sibling test below holds the mode fixed at FALSE, where a surviving
+        // `w.expanded ? 30 : <derived>` never fires its literal at all and the
+        // derived branch keeps the assertion green.
+        //
+        // Both hosts are expanded AND "full"; only the BOX differs. A literal
+        // returns one number for both, so asserting the two differ IS the
+        // mode/size conflation, caught.
+        function test_overlay_is_sized_by_its_pane_not_by_a_mode_literal() {
+            tryVerify(function () { return hOvlL.ready && hOvlP.ready }, 3000)
+            var land = hOvlL.item; land.sizeClass = "full"
+            var port = hOvlP.item; port.sizeClass = "full"
+            feedTo(hOvlL, 2048000, 1024000); feedTo(hOvlP, 2048000, 1024000)
+            // A real event-loop turn, not wait(0). These hosts default to
+            // sizeClass "tall" (height > 240) and only become "full" on the lines
+            // above; wait(0) returns BEFORE the layout re-polishes, so a rendered
+            // read then reports PRE-change geometry — a flake that says nothing
+            // about the widget. waitForRendering is not the tool either: offscreen
+            // never swaps a frame, so it just burns its timeout.
+            wait(16)
+            compare(land.expanded, true, "precondition: this IS the overlay")
+            compare(port.expanded, true, "…and so is this one")
+            compare(land.roomy, true, "…and 'full' is roomy")
+
+            verify(land.rateFont !== port.rateFont,
+                   "the overlay's rate text is sized by the pane it is given, not by "
+                   + "one literal for 'the overlay' (941x456 -> "
+                   + land.rateFont.toFixed(1) + ", 656x980 -> "
+                   + port.rateFont.toFixed(1) + ")")
+            verify(land.rateFont > port.rateFont,
+                   "the 941-wide pane earns the bigger number ("
+                   + land.rateFont.toFixed(1) + " > " + port.rateFont.toFixed(1) + ")")
+
+            // The RENDERED Text's own font.pixelSize, not the property that feeds
+            // it: a Text that ignored rateFont and re-froze a literal would sail
+            // through a property-only check.
+            var lt = rateTextOf(hOvlL), pt = rateTextOf(hOvlP)
+            verify(lt !== null && pt !== null, "both rate readouts resolve")
+            compare(lt.font.pixelSize, Math.round(land.rateFont),
+                    "the landscape pane's rate Text actually uses the derived size")
+            compare(pt.font.pixelSize, Math.round(port.rateFont),
+                    "…and the portrait pane's does too")
+            verify(lt.font.pixelSize > pt.font.pixelSize,
+                   "…and the two rendered sizes genuinely differ ("
+                   + lt.font.pixelSize + " vs " + pt.font.pixelSize + ")")
+
+            // The peaks are derived FROM the rates, so they move with the pane too
+            // — `expanded ? 14` used to pin them at 14 beside a 30px rate number.
+            var lp = peakTextOf(hOvlL), pp = peakTextOf(hOvlP)
+            verify(lp !== null && pp !== null, "both peak readouts resolve")
+            verify(lp.font.pixelSize > pp.font.pixelSize,
+                   "the peaks follow the rates, so the pane moves them as well ("
+                   + lp.font.pixelSize + " vs " + pp.font.pixelSize + ")")
+
+            // The rates still FIT the pane they were sized for — the structural
+            // guarantee, not glyph ink (paintedWidth is meaningless headless).
+            verify(lt.width <= land.width + 0.51,
+                   "the landscape rate line stays inside its pane ("
+                   + lt.width.toFixed(0) + " in " + land.width + ")")
+            verify(pt.width <= port.width + 0.51,
+                   "…and the portrait one inside its own ("
+                   + pt.width.toFixed(0) + " in " + port.width + ")")
+        }
+
+        // The mirror image: hold the MODE fixed and move the room. Both hosts are
+        // expanded:false AND the same sizeClass, so only the box differs —
+        // anything that changes is genuinely sized by its box.
+        function test_sizing_follows_the_room_while_the_mode_is_held_fixed() {
+            tryVerify(function () { return hTall.ready && hRoomy.ready }, 3000)
+            var small = hTall.item;  small.sizeClass = "tall"    // 344x840
+            var roomy = hRoomy.item; roomy.sizeClass = "tall"    // 696x1229
+            feedTo(hTall, 2048000, 1024000); feedTo(hRoomy, 2048000, 1024000)
+            wait(16)
+            compare(small.expanded, false, "precondition: neither host is the overlay")
+            compare(roomy.expanded, false, "…including the roomy one")
+            compare(small.sizeClass, roomy.sizeClass,
+                    "…and both are the SAME class: only the box differs")
+            verify(roomy.roomy && !small.roomy,
+                   "696x1229 has half-screen room; 344x840 does not")
+
+            verify(roomy.rateFont > small.rateFont,
+                   "the rate text follows the room (" + roomy.rateFont.toFixed(1)
+                   + " on a half screen vs " + small.rateFont.toFixed(1)
+                   + " on a half cell)")
+            var rt = rateTextOf(hRoomy), st = rateTextOf(hTall)
+            verify(rt !== null && st !== null, "both rate readouts resolve")
+            verify(rt.font.pixelSize > st.font.pixelSize,
+                   "…and the RENDERED Text carries it (" + rt.font.pixelSize
+                   + " vs " + st.font.pixelSize + ")")
+
+            // The spacing, read off the LIVE layout item rather than the property
+            // that feeds it: a GridLayout that ignored the binding and kept a
+            // literal would sail through a property-only check.
+            var lr = outerLayOf(hRoomy), ls = outerLayOf(hTall)
+            verify(lr !== null && ls !== null, "both outer grids resolve")
+            verify(lr.rowSpacing > ls.rowSpacing,
+                   "the rendered grid gives a half-screen box more air between the "
+                   + "rates and the graph (" + lr.rowSpacing + " vs " + ls.rowSpacing + ")")
+        }
+
+        // `showPeaks` opened with `w.expanded ||`, which was already dead (the
+        // overlay is injected as "full", which `big` covers). Dead is not the same
+        // as gone: this pins that the peaks are decided by the ROOM alone. The
+        // combination below is synthetic — Dashboard always injects "full" with
+        // the overlay — and that is precisely the point: the mode must not be able
+        // to answer this question even when it is switched on.
+        function test_peaks_are_decided_by_the_room_alone_not_the_mode() {
+            tryVerify(function () { return hProbe.ready }, 3000)
+            var w = hProbe.item
+            w.sizeClass = "compact"
+            hProbe.expanded = true
+            wait(16)
+            compare(w.expanded, true, "precondition: the mode is ON")
+            compare(w.micro, false, "precondition: 696x840 is the baseline, not micro")
+            compare(w.showPeaks, false,
+                    "a 696x840 baseline box has no peaks REGARDLESS of the mode — "
+                    + "the `expanded ||` term is gone, not merely shadowed by `big`")
         }
     }
 }

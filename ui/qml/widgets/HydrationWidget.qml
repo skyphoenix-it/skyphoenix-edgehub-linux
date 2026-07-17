@@ -15,7 +15,18 @@ import QtQuick.Layouts
 //   • wide            — the grid BESIDE the count/controls column (1x0.5 portrait
 //                       is 696x409; stacked, that is three cramped bands).
 //   • tall            — the grid above a comfortable count + controls.
-//   • full (overlay)  — unchanged: the big block with tappable glasses.
+//   • full (overlay)  — the big block with tappable glasses.
+//
+// KNOWN DEFECT, deliberately left (it is a redesign, not a sizing pass): the
+// expanded ColumnLayout at the bottom of this file is built from literals — a
+// 110px count, 88px glass cells, a 42px droplet — chosen for a "full screen"
+// that does not exist. "full" is NOT a full screen: Dashboard hosts the overlay's
+// live preview in a pane beside the config form, ~941x456 in landscape and
+// ~656x980 stacked in portrait. Summed at the default goal of 8 those literals
+// ask for roughly 575px of height inside a 456px landscape pane, so the centred
+// column overruns it top and bottom. The literals in there are mode-keyed by
+// CONTAINMENT (`visible: w.expanded`) rather than by a ternary, which is why they
+// read as innocent. Everything ABOVE this line is sized by its box.
 WidgetChrome {
     id: w
     property var metrics: ({})
@@ -103,9 +114,16 @@ WidgetChrome {
                                 height * 0.075, 26))
     // Droplet size follows the box AND the goal — 20 glasses in a half tile are
     // not the same glyph as 6 in a baseline one.
-    readonly property real glassPx: w.expanded ? 42
-        : Math.max(11, Math.min((w.horiz ? width * 0.5 : width) * 0.9 / Math.max(4, Math.ceil(Math.sqrt(w.goal) * 1.6)),
-                                height * 0.16, 56))
+    //
+    // The `w.expanded ? 42` this used to open with was DEAD CODE, not merely
+    // mode-keyed: glassPx feeds only glassCell/glassCols and the droplet delegate,
+    // all of which live inside the tile GridLayout below — and that layout is
+    // `visible: !w.expanded`. The overlay draws its own glasses from its own
+    // literals (see the expanded ColumnLayout), so the 42 never rendered anywhere.
+    // Its existence is what made this read like a mode decision.
+    readonly property real glassPx:
+        Math.max(11, Math.min((w.horiz ? width * 0.5 : width) * 0.9 / Math.max(4, Math.ceil(Math.sqrt(w.goal) * 1.6)),
+                              height * 0.16, 56))
     // The grid is a real Grid (not a Flow): a Flow reports NO implicit width, so
     // Layout.alignment collapsed it to zero and the droplets spilled out of the
     // left edge in one unwrapped row. Columns are computed so they wrap honestly.
@@ -114,6 +132,17 @@ WidgetChrome {
         Math.floor(((w.horiz ? width * 0.5 : width) - 16) / Math.max(1, w.glassCell))))
 
     // Celebration pop (mirrors FocusWidget).
+    //
+    // The banner spans the whole CARD, so the card is what sizes it — the same
+    // shape HabitWidget uses. `expanded ? 40 : 20` asked the wrong question and
+    // got both answers wrong: a 696x819 baseline tile has more room than the
+    // overlay's live-preview pane and still popped at 20, while the overlay kept
+    // its 40 after W5 shrank that pane to 38% of the width in landscape. Both axes
+    // bind (the text wraps to at most 2 lines, so the overlay's wide-but-short
+    // 456px landscape pane must not overreach on width alone) and 40 stays the
+    // designed ceiling.
+    readonly property real celebratePx: Math.max(12, Math.min(width * 0.06,
+                                                              height * 0.08, 40))
     property string celebrateMsg: ""
     function celebrateNow(msg) { celebrateMsg = msg; celebrateAnim.restart(); flash.restart() }
     Rectangle {
@@ -126,9 +155,18 @@ WidgetChrome {
     }
     Text {
         id: celebrateLabel; anchors.centerIn: parent; z: 20
+        // Bounded to the card and allowed to wrap/elide. It had no width, no
+        // wrapMode and no elide, so a centred banner wider than the card had
+        // nowhere to go and simply spilled out of both edges — celebrateNow()
+        // takes an arbitrary string, and the only thing keeping this honest was
+        // that today's ("🎉 Goal reached!") happens to be short. The 40px ceiling
+        // makes that a real risk, not a theoretical one: at 40px on the narrowest
+        // box that reaches it, the string is already most of the card.
+        width: parent.width - 2 * theme.spacingLg
         text: w.celebrateMsg; opacity: 0
-        font.pixelSize: w.expanded ? 40 : 20; font.bold: true; font.family: theme.fontDisplay
+        font.pixelSize: Math.round(w.celebratePx); font.bold: true; font.family: theme.fontDisplay
         color: w.effAccent; horizontalAlignment: Text.AlignHCenter
+        wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
         SequentialAnimation {
             id: celebrateAnim; running: false
             PropertyAction { target: celebrateLabel; property: "scale"; value: 0.6 }

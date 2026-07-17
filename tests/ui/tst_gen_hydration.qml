@@ -364,6 +364,20 @@ Item {
     Item { id: yWideWrap; width: 696; height: 409
         WidgetHarness { id: yWide; anchors.fill: parent; widgetFile: "HydrationWidget.qml"; expanded: false } }
 
+    // The OVERLAY, at the two boxes Dashboard actually gives it. `expanded: true`
+    // AND sizeClass "full" — the real pairing — because a mode-keyed literal can
+    // only be caught with the mode switched ON. These are the live-preview pane
+    // beside the config form (Dashboard: 38% of the width in landscape, a <=46%-
+    // tall band stacked in portrait), NOT a 2560x720 screen.
+    Item { width: 941; height: 456
+        WidgetHarness { id: yOvlL; anchors.fill: parent; widgetFile: "HydrationWidget.qml"; expanded: true } }
+    Item { width: 656; height: 980
+        WidgetHarness { id: yOvlP; anchors.fill: parent; widgetFile: "HydrationWidget.qml"; expanded: true } }
+    // A dedicated host for the glassPx dead-branch probe, so a failure there
+    // cannot leak `expanded: true` into another test's host. Same box as yBase.
+    Item { width: 696; height: 819
+        WidgetHarness { id: yProbe; anchors.fill: parent; widgetFile: "HydrationWidget.qml"; expanded: false } }
+
     TestCase {
         name: "HydrationSizes"
         when: windowShown
@@ -447,6 +461,146 @@ Item {
                    "the same droplet object survives the class flip (no rebuild)")
             y.sizeClass = "compact"
         }
+
+        // ── size, not mode ──────────────────────────────────────────────────
+        function banner(host) {
+            return findAll(host.item, function (n) {
+                return n.hasOwnProperty("maximumLineCount") && n.maximumLineCount === 2
+                       && n.hasOwnProperty("font") }, [])[0] || null
+        }
+
+        // The overlay is a size class like any other, sized by the pane it is
+        // actually given. Both hosts are expanded AND "full"; only the BOX
+        // differs, so a literal returning one number for both is caught. This is
+        // the ONLY shape that catches a mode-keyed literal — a test that holds the
+        // mode at false never fires the literal branch at all.
+        function test_overlay_banner_is_sized_by_its_pane_not_by_a_mode_literal() {
+            tryVerify(function () { return yOvlL.ready && yOvlP.ready }, 3000)
+            var land = yOvlL.item; land.sizeClass = "full"
+            var port = yOvlP.item; port.sizeClass = "full"
+            seed(yOvlL); seed(yOvlP)
+            // A real event-loop turn, not wait(0): these hosts default to
+            // sizeClass "tall" and only become "full" on the lines above, so
+            // wait(0) reads PRE-change geometry. waitForRendering is wrong
+            // offscreen — no frame is ever swapped, so it just burns its timeout.
+            wait(16)
+            compare(land.expanded, true, "precondition: this IS the overlay")
+            compare(port.expanded, true, "…and so is this one")
+
+            var lb = banner(yOvlL), pb = banner(yOvlP)
+            verify(lb && pb, "both banners resolve")
+            // The RENDERED Text's own font.pixelSize, not w.celebratePx: checking
+            // the property only proves the arithmetic, and a Text that ignored it
+            // and re-froze a literal would pass that untouched.
+            compare(lb.font.pixelSize, Math.round(land.celebratePx),
+                    "the landscape pane's banner uses the derived size")
+            compare(pb.font.pixelSize, Math.round(port.celebratePx),
+                    "…and the portrait pane's does too")
+            verify(lb.font.pixelSize !== pb.font.pixelSize,
+                   "the overlay's banner is sized by the pane it is given, not by one "
+                   + "literal for 'the overlay' (941x456 -> " + lb.font.pixelSize
+                   + ", 656x980 -> " + pb.font.pixelSize + ")")
+            // Direction, not just difference: the 456-tall landscape pane is the
+            // SHORT one, and the banner wraps to 2 lines, so height must hold it
+            // back there. A scrambled binding cannot pass this.
+            verify(pb.font.pixelSize > lb.font.pixelSize,
+                   "the 980-tall pane earns the bigger pop (" + pb.font.pixelSize
+                   + " > " + lb.font.pixelSize + ")")
+        }
+
+        // The banner is sized by the CARD, at tile classes too.
+        function test_celebration_banner_is_sized_by_the_card_not_the_mode() {
+            tryVerify(function () { return yBase.ready && yMicro.ready }, 3000)
+            var base = yBase.item;   base.sizeClass = "compact"   // 696x819
+            var micro = yMicro.item; micro.sizeClass = "compact"  // 348x409
+            seed(yBase); seed(yMicro)
+            wait(16)
+            compare(base.expanded, false, "precondition: neither host is the overlay")
+            compare(micro.expanded, false, "…including the roomier one")
+            var bb = banner(yBase), mb = banner(yMicro)
+            verify(bb && mb, "both banners resolve")
+            compare(bb.font.pixelSize, Math.round(base.celebratePx),
+                    "the rendered banner uses the derived size on a 1x1 tile")
+            compare(mb.font.pixelSize, Math.round(micro.celebratePx),
+                    "…and on a micro tile")
+            verify(bb.font.pixelSize > mb.font.pixelSize,
+                   "a 696x819 tile pops bigger than a 348x409 one — the banner reads "
+                   + "the card, not the mode (" + bb.font.pixelSize + " vs "
+                   + mb.font.pixelSize + ")")
+        }
+
+        // The banner had NO width, no wrapMode and no elide, so a message longer
+        // than the card had nowhere to go and spilled out of both edges.
+        // Structural: bounded by the card, wrapped to at most 2 lines. Never glyph
+        // ink — paintedWidth is meaningless headless.
+        function test_a_long_celebration_stays_inside_the_card() {
+            tryVerify(function () { return yBase.ready }, 3000)
+            var y = yBase.item; y.sizeClass = "compact"
+            seed(yBase)
+            wait(16)
+            var b = banner(yBase)
+            verify(b !== null, "the banner resolves")
+            // Deliberately FAR longer than could conceivably fit: ~330 characters
+            // into two ~660px lines is ~4px per glyph at a ~40px font. No font
+            // makes that fit, so `lineCount`/`truncated` below are structural here
+            // rather than a claim about DejaVu's metrics — the margin, not the
+            // measurement, is what keeps them font-independent.
+            y.celebrateMsg = "🎉 Das tägliche Trinkziel ist erreicht — hervorragend "
+                           + "gemacht, und das schon den dritten Tag in Folge, was "
+                           + "wirklich bemerkenswert ist, wenn man bedenkt wie oft "
+                           + "das Glas Wasser sonst einfach vergessen wird, und "
+                           + "deshalb gibt es hier einen ausführlichen Glückwunsch "
+                           + "in voller Länge, damit auch niemand ihn übersieht!"
+            wait(16)
+            verify(b.width <= y.width + 0.51,
+                   "the banner stays inside the card (" + b.width.toFixed(1)
+                   + " in " + y.width + ") — it had no width at all and simply spilled")
+            compare(b.lineCount, 2,
+                    "…it WRAPS (so wrapMode is live) and stops at 2 lines")
+            verify(b.truncated,
+                   "…and elides the remainder instead of running past the card")
+            y.celebrateMsg = ""
+        }
+
+        // `glassPx` opened with `w.expanded ? 42`, which never rendered: glassPx
+        // feeds only the tile Grid (and its cell/column arithmetic), and that
+        // layout is `visible: !w.expanded`. Two halves — the deadness, then the
+        // removal — because either alone proves little.
+        //
+        // NOTE: unlike every other guard here this one asserts the PROPERTY, and
+        // it has to: the branch's whole defect is that it has no rendered value in
+        // the overlay to assert. The first half pins exactly that.
+        function test_glass_size_never_read_the_mode() {
+            tryVerify(function () { return yProbe.ready && yOvlP.ready }, 3000)
+            var ovl = yOvlP.item; ovl.sizeClass = "full"
+            seed(yOvlP)
+            wait(16)
+            // Half one: glassPx's only consumer is invisible in the overlay, so
+            // the 42 it used to return could never have been drawn.
+            var tileGrid = gridOf(yOvlP)
+            verify(tileGrid !== null, "the tile layout resolves in the overlay")
+            compare(tileGrid.visible, false,
+                    "the tile layout — glassPx's ONLY consumer — is not drawn in the "
+                    + "overlay, so `expanded ? 42` was dead, not merely mode-keyed")
+
+            // Half two, and the half that bites: same box, opposite modes. A
+            // surviving `expanded ? 42` returns 42 for one and the derived size
+            // for the other.
+            var probe = yProbe.item; probe.sizeClass = "compact"
+            var base = yBase.item;   base.sizeClass = "compact"
+            seed(yProbe); seed(yBase)
+            yProbe.expanded = true
+            wait(16)
+            compare(probe.expanded, true, "precondition: the mode is ON")
+            compare(base.expanded, false, "…and OFF on an identically-sized host")
+            compare(probe.width, base.width, "precondition: the two boxes match")
+            compare(probe.height, base.height, "…on both axes")
+            compare(probe.glassPx, base.glassPx,
+                    "the droplet size is decided by the box alone — flipping the mode "
+                    + "on an identical box moves nothing (" + probe.glassPx.toFixed(1)
+                    + " vs " + base.glassPx.toFixed(1) + ")")
+        }
+
         // The content GridLayout: the glass Grid's parent.
         function gridOf(host) {
             var g = findAll(host.item, function (n) {

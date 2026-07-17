@@ -55,15 +55,44 @@ WidgetChrome {
 
     // ── Per-size layout (sizeClass injected by Dashboard) ────────────────────
     readonly property bool horiz: sizeClass === "wide"
+
+    // Does this instance have half-screen room? HabitWidget's predicate, derived
+    // the same way and for the same reason — the room itself answers it, not a
+    // size name. Reachable here as a TILE: 1x1.5 (696x1229 / 1269x612) clears the
+    // 480 half-cell threshold WidgetChrome uses, and 1x2 / 1x3 are `large`.
+    readonly property bool roomy: sizeClass === "large" || sizeClass === "full"
+        || ((sizeClass === "tall" || sizeClass === "wide")
+            && Math.min(width, height) >= 480)
+
     // The progress bar + count is real content, so every size with room shows it
     // rather than keeping it behind the overlay.
     readonly property bool showSummary: !w.micro
     // A row is a real touch target at EVERY size: checking a task off is the
     // point. Room buys rows, never a thinner target.
     readonly property real rowH: theme.touchTertiary
-    readonly property real rowFont: w.expanded ? 18
-        : Math.max(13, Math.min((w.horiz ? width * 0.55 : width) * 0.032, 18))
-    readonly property real boxSize: w.expanded ? 30 : Math.max(20, Math.min(w.rowH * 0.52, 30))
+    // The `w.expanded ? 18` this used to open with is gone and costs exactly
+    // nothing: both overlay panes (941 and 656 wide) drive the width term well
+    // past the 18 cap it hardcoded, so the derived branch already returned 18
+    // there. It is dropped because it asked the wrong question, not because the
+    // answer moved.
+    readonly property real rowFont:
+        Math.max(13, Math.min((w.horiz ? width * 0.55 : width) * 0.032, 18))
+    // The checkbox is sized by its ROW, and the row is theme.touchTertiary at
+    // EVERY size by explicit design (see the header). So the box is a constant
+    // too, and `w.expanded ? 30` was a mode-keyed exception to a deliberate
+    // constant — the overlay's rows are not one pixel taller than a tile's. The
+    // overlay's box is therefore 27 rather than 30; the 52px TARGET around it is
+    // unchanged, which is the number that matters.
+    readonly property real boxSize: Math.max(20, Math.min(w.rowH * 0.52, 30))
+    // The celebration banner spans the whole CARD, so the card sizes it — the
+    // same shape HabitWidget uses. `expanded ? 34 : 18` asked the wrong question
+    // and got both answers wrong: a 696x819 baseline tile has more room than the
+    // overlay's live-preview pane and still popped at 18, while the overlay kept
+    // its 34 after W5 shrank that pane to 38% of the width. Both axes bind (the
+    // text wraps to at most 2 lines, so a wide-but-short pane must not overreach)
+    // and 34 stays the designed ceiling.
+    readonly property real celebratePx: Math.max(12, Math.min(width * 0.055,
+                                                              height * 0.075, 34))
 
     function _save(arr) { if (store) store.setSetting(instanceId, "items", arr) }
     // Key of the last list we celebrated, so re-completing an already-finished
@@ -104,9 +133,15 @@ WidgetChrome {
     }
     Text {
         id: celebrateLabel; anchors.centerIn: parent; z: 20
+        // Bounded to the card and allowed to wrap/elide. It had no width, no
+        // wrapMode and no elide, so a centred banner longer than the card simply
+        // spilled out of both edges — celebrateNow() takes an arbitrary string and
+        // the only thing keeping this honest was that today's is short.
+        width: parent.width - 2 * theme.spacingLg
         text: w.celebrateMsg; opacity: 0
-        font.pixelSize: w.expanded ? 34 : 18; font.bold: true; font.family: theme.fontDisplay
+        font.pixelSize: Math.round(w.celebratePx); font.bold: true; font.family: theme.fontDisplay
         color: w.effAccent; horizontalAlignment: Text.AlignHCenter
+        wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight
         SequentialAnimation {
             id: celebrateAnim; running: false
             PropertyAction { target: celebrateLabel; property: "scale"; value: 0.6 }
@@ -201,8 +236,20 @@ WidgetChrome {
                 visible: w.items.length === 0
                 width: parent.width - 2 * theme.spacingSm
                 horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
+                // The TEXT stays keyed off the mode, deliberately. It is content,
+                // not a size, and the long form names a DIRECTION ("below") that
+                // only the overlay's composition guarantees: a roomy wide box —
+                // 1x1.5 landscape is 1269x612 — puts the add row BESIDE the list,
+                // so a room-keyed long form would print a lie there. Converting
+                // this needs a second string, which is a copy decision, not a
+                // sizing one.
                 text: w.expanded ? "No tasks yet — add one below." : "No tasks"
-                color: theme.textTertiary; font.pixelSize: w.expanded ? 15 : 12
+                // The SIZE does follow the room. `expanded ? 15 : 12` had the
+                // overlay's pane and a 696-wide tile — the wider box of the two —
+                // on opposite sides of the same literal.
+                color: theme.textTertiary
+                font.pixelSize: Math.round(Math.max(12,
+                    Math.min((w.horiz ? w.width * 0.55 : w.width) * 0.026, 15)))
             }
         }
 
@@ -236,8 +283,19 @@ WidgetChrome {
                     // theme.touchSecondary at EVERY size: this was a fixed 40px on
                     // tiles, under theme.touchTertiary (52).
                     Layout.preferredHeight: theme.touchSecondary
+                    // placeholderText stays as it is: content, and already half
+                    // room-keyed via `horiz`.
                     placeholderText: w.expanded || w.horiz ? "Add a task…" : "Add…"
-                    color: theme.textPrimary; font.pixelSize: w.expanded ? 16 : 14
+                    // The field is a constant theme.touchSecondary tall at every
+                    // size, but the COLUMN it sits in is not — `horiz` caps that
+                    // column at 40% of the card (see Layout.maximumWidth below),
+                    // so the text measures against the room it actually has. 16
+                    // stays the designed ceiling; the overlay's narrow portrait
+                    // pane now honestly reports that it has a tile's room, not a
+                    // screen's.
+                    color: theme.textPrimary
+                    font.pixelSize: Math.round(Math.max(14,
+                        Math.min((w.horiz ? w.width * 0.4 : w.width) * 0.022, 16)))
                     placeholderTextColor: theme.textTertiary
                     background: Rectangle { radius: theme.radiusSm; color: theme.backgroundColor
                         border.color: input.activeFocus ? w.effAccent : theme.cardBorder; border.width: 1 }
