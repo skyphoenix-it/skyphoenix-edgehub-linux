@@ -23,6 +23,14 @@ import QtQuick.Layouts
 //     content rather than air either side of a centred ring.
 //   • full (overlay) — unchanged: the preset switcher and the 4-button row are
 //     genuinely modal and stay there.
+//
+// Three things stay keyed off the MODE rather than the room, and all are correct:
+// `showHeader: expanded` (chrome-header CONTENT, not a dimension), and the
+// tile/overlay VIEW split (`visible: !expanded` / `visible: expanded`) — the
+// overlay is a different view (preset switcher + big ring + a 4-button transport
+// row), not the tile at a larger scale, so room does not turn one into the other.
+// The one SIZE that was wearing the mode's clothes was the celebration banner —
+// see celebratePx.
 WidgetChrome {
     id: w
     property var metrics: ({})
@@ -193,11 +201,22 @@ WidgetChrome {
         }
     }
     // Celebration message — pops in on a completed session (dopamine kick).
+    //
+    // The banner spans the whole CARD, so the card is what sizes it. `expanded ?
+    // 34 : 18` asked the wrong question and got both answers wrong: a 696x819
+    // baseline tile has more room than the overlay's live-preview pane and still
+    // popped at 18, while the overlay kept its 34 after W5 shrank that pane to 38%
+    // of the width in landscape (~941x456 there, ~656x980 stacked in portrait).
+    // Both axes bind — a wide-but-short pane must not overreach — and 34 stays the
+    // designed ceiling, which the tile classes this type declares (1x1, 1x1.5) all
+    // reach. HorizontalFit + minimumPixelSize keep a long message inside the card.
+    readonly property real celebratePx: Math.max(12, Math.min(width * 0.055,
+                                                              height * 0.065, 34))
     Text {
         id: celebrateLabel; anchors.centerIn: parent; z: 20
         width: parent.width * 0.92
         text: w.celebrateMsg; opacity: 0
-        font.pixelSize: w.expanded ? 34 : 18; font.bold: true; font.family: theme.fontDisplay
+        font.pixelSize: Math.round(w.celebratePx); font.bold: true; font.family: theme.fontDisplay
         fontSizeMode: Text.HorizontalFit; minimumPixelSize: 12
         color: w.phaseColor(); horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight
         SequentialAnimation {

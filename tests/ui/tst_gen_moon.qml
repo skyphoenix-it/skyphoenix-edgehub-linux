@@ -34,6 +34,15 @@ Item {
 
     App.WidgetConfigSchema { id: sc }
 
+    // Recursively collect every descendant matching a predicate.
+    function findAll(node, pred, acc) {
+        if (!node) return acc
+        if (pred(node)) acc.push(node)
+        var kids = node.children
+        for (var i = 0; kids && i < kids.length; i++) findAll(kids[i], pred, acc)
+        return acc
+    }
+
     // Recursively find the first descendant whose `text` equals `txt`.
     function findByText(node, txt) {
         if (!node) return null
@@ -317,6 +326,14 @@ Item {
         WidgetHarness { id: hTall; anchors.fill: parent; widgetFile: "MoonWidget.qml"; expanded: false } }
     Item { width: 696; height: 840
         WidgetHarness { id: hBase; anchors.fill: parent; widgetFile: "MoonWidget.qml"; expanded: false } }
+    // The OVERLAY, at the two boxes Dashboard actually gives it: the live-preview
+    // pane beside the config form, ~941x456 landscape and ~656x980 portrait.
+    // `expanded: true` AND sizeClass "full" — the real pairing — because a
+    // mode-keyed literal can only be caught with the mode switched ON.
+    Item { width: 941; height: 456
+        WidgetHarness { id: hOvlL; anchors.fill: parent; widgetFile: "MoonWidget.qml"; expanded: true } }
+    Item { width: 656; height: 980
+        WidgetHarness { id: hOvlP; anchors.fill: parent; widgetFile: "MoonWidget.qml"; expanded: true } }
 
     TestCase {
         name: "MoonSizes"
@@ -373,6 +390,92 @@ Item {
             verify(w.illumLine.indexOf("days old") > 0, "tall earns the lunar age too")
             w.sizeClass = "full"
             compare(w.micro, false, "full is never micro")
+        }
+
+        // ── size, not mode ──────────────────────────────────────────────────
+        // rowSpacing, the column spacing, the phase name and the illumination
+        // line were all keyed off `expanded`. Catching that class needs the mode
+        // held FIXED while only the room moves. Both hosts below are
+        // expanded:false, so a surviving `w.expanded ? …` is pinned to its
+        // else-value and cannot follow the box at all.
+        function test_sizing_follows_the_room_while_the_mode_is_held_fixed() {
+            tryVerify(function () { return hTall.ready && hBase.ready }, 3000)
+            var tall = hTall.item; tall.sizeClass = "tall"
+            var base = hBase.item; base.sizeClass = "compact"
+            wait(16)
+            compare(tall.expanded, false, "precondition: neither host is the overlay")
+            compare(base.expanded, false, "…including the roomy one")
+            compare(tall.roomy, true, "…and 'tall' is the roomy class")
+            compare(base.roomy, false, "…while the baseline third is not")
+
+            // Read the spacings off the LIVE layout items, not the properties
+            // that feed them: a GridLayout that ignored the binding and kept a
+            // literal would sail through a property-only check.
+            function grid(host) {
+                return findAll(host.item, function (n) {
+                    return n.hasOwnProperty("rowSpacing")
+                           && n.hasOwnProperty("columnSpacing") }, [])[0]
+            }
+            var tg = grid(hTall), bg = grid(hBase)
+            verify(tg && bg, "both grids resolve")
+            verify(tg.rowSpacing > bg.rowSpacing,
+                   "a tall tile gets more air between the glyph and its readout ("
+                   + tg.rowSpacing + " vs " + bg.rowSpacing + ")")
+        }
+
+        // The overlay is a size class like any other, and its box is the one it is
+        // actually given. This is the test that catches a mode-keyed literal, and
+        // the ONLY shape that can: the sibling test above holds the mode fixed at
+        // false, where a surviving `w.expanded ? 150 : <derived>` never fires its
+        // literal at all and the derived branch keeps the assertion green.
+        //
+        // Both hosts are expanded AND "full"; only the BOX differs — the real
+        // live-preview panes beside the config form, NOT a 2560x720 screen. A
+        // literal returns one number for both, so asserting the two differ is
+        // exactly the mode/size conflation, caught.
+        function test_overlay_is_sized_by_its_pane_not_by_a_mode_literal() {
+            tryVerify(function () { return hOvlL.ready && hOvlP.ready }, 3000)
+            var land = hOvlL.item; land.sizeClass = "full"
+            var port = hOvlP.item; port.sizeClass = "full"
+            // A real event-loop turn, not wait(0): these hosts default to "tall"
+            // (height > 240) and only become "full" on the lines above; wait(0)
+            // returns BEFORE the layout re-polishes and a rendered read then
+            // reports pre-change geometry. waitForRendering is not the tool —
+            // offscreen never swaps a frame.
+            wait(16)
+            compare(land.expanded, true, "precondition: this IS the overlay")
+            compare(port.expanded, true, "…and so is this one")
+            compare(land.roomy, true, "…and 'full' is roomy")
+
+            verify(land.glyphPx !== port.glyphPx,
+                   "the overlay's glyph is sized by the pane it is given, not by one "
+                   + "literal for 'the overlay' (941x456 -> " + land.glyphPx.toFixed(1)
+                   + ", 656x980 -> " + port.glyphPx.toFixed(1) + ")")
+            verify(port.glyphPx > land.glyphPx,
+                   "the 980-tall pane earns the bigger moon (" + port.glyphPx.toFixed(1)
+                   + " > " + land.glyphPx.toFixed(1) + ")")
+            verify(port.namePx > land.namePx,
+                   "…and the bigger phase name (" + port.namePx.toFixed(1) + " > "
+                   + land.namePx.toFixed(1) + ")")
+            verify(port.illumPx > land.illumPx,
+                   "…and the bigger illumination line (" + port.illumPx.toFixed(1)
+                   + " > " + land.illumPx.toFixed(1) + ")")
+
+            // RENDERED, not merely derived: the Texts actually carry it.
+            var g = findByText(port, port.phases[port.idx])
+            verify(g !== null, "the portrait pane's glyph resolves")
+            compare(g.font.pixelSize, Math.round(Math.max(12, port.glyphPx)),
+                    "the rendered glyph is the derived size, not a re-frozen literal")
+            var nm = findByText(port, port.names[port.idx])
+            verify(nm !== null, "the portrait pane's phase name resolves")
+            compare(nm.font.pixelSize, Math.round(port.namePx),
+                    "…and so is the phase name")
+
+            // It still FITS the pane it was sized for — the structural guarantee,
+            // not glyph ink (headless font metrics are meaningless).
+            verify(g.width <= port.width + 0.51,
+                   "the glyph stays inside the portrait pane (" + g.width.toFixed(0)
+                   + " in " + port.width + ")")
         }
     }
 
