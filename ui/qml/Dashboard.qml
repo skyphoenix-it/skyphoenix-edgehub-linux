@@ -679,7 +679,25 @@ Item {
                     // two tiles, so there is nothing for row order to decide. Rows are
                     // therefore patched in place rather than moved — the minimum
                     // churn that still expresses the edit.
+                    //
+                    // The model is also where a tile's LIFETIME lives, which is what
+                    // lets a removed tile fade instead of blinking out: `dying` keeps
+                    // the row — and therefore the delegate — alive past the packing that
+                    // dropped it, and `entering` marks a row the page grew after it was
+                    // born. Both are properties of the ROW (a removed tile is exactly
+                    // "a row that is no longer in the packing"), so neither is a mode
+                    // flag that can drift out of sync with what is on screen.
                     ListModel { id: placementModel }
+
+                    // True once this page delegate has finished being built. It is the
+                    // whole difference between the model being SEEDED and the page
+                    // GROWING a tile: the rows appended during creation are the page's
+                    // starting state and must not animate in (or every tile would fade
+                    // in on every app start, and on every rotation that recreated a
+                    // page), while a row appended after it is an add. Monotonic, set
+                    // exactly once at the end of creation — it cannot come to mean
+                    // anything else later.
+                    property bool _live: false
 
                     // One packer placement → one model row. The string roles are
                     // coerced because a ListModel FIXES each role's type on the first
@@ -688,23 +706,68 @@ Item {
                     // hand-written document with a typeless tile would otherwise seed
                     // the role with `undefined`. "" is the value the tile loaders below
                     // already treat as "no usable type" (→ the Unavailable card).
+                    //
+                    // `dying`/`entering` are declared here for the same reason: the
+                    // first append fixes the ROLE SET too, so a role that only ever
+                    // appeared later would not exist at all.
                     function _row(p) {
                         return ({ tileId: p.id || "", tileType: p.type || "",
                                   tileSize: p.size || "", tileIdx: p.idx,
-                                  ps: p.s, pl: p.l, pes: p.es, pel: p.el })
+                                  ps: p.s, pl: p.l, pes: p.es, pel: p.el,
+                                  dying: false, entering: false })
+                    }
+                    // Drop a faded-out row. Called by the cell when its exit fade ends —
+                    // by id, because rows shift as others are reaped.
+                    //
+                    // Only a DYING row may be reaped: this is a fade closing the row it
+                    // opened, not a general-purpose delete. A row resurrected mid-fade
+                    // (see _syncPlacements) is live again and must survive the animation
+                    // that was removing it. That is belt-and-braces with the cell's
+                    // `exitFade.stop()` — measured: either one alone is enough today, so
+                    // this recheck is not load-bearing for the resurrection path. It is
+                    // kept because it is what makes the RULE true of the function itself
+                    // rather than of its one caller, and a lifetime rule should not have
+                    // a hole waiting for a second caller. Pinned directly, so it cannot
+                    // rot into a line that only looks like it does something.
+                    function _reapRow(id) {
+                        for (var r = 0; r < placementModel.count; r++)
+                            if (placementModel.get(r).tileId === id && placementModel.get(r).dying) {
+                                placementModel.remove(r)
+                                return true
+                            }
+                        return false
                     }
                     // Returns how many rows the model ended up with — one per placed
-                    // tile. (Same shape as _loadUserWidgets above: a count the caller
-                    // and the tests can check the sync against.)
+                    // tile, plus any still fading out. (Same shape as _loadUserWidgets
+                    // above: a count the caller and the tests can check the sync
+                    // against.)
                     function _syncPlacements() {
                         var ps = pageItem.placements || []
                         var byId = Object.create(null)
                         for (var i = 0; i < ps.length; i++) byId[ps[i].id] = ps[i]
 
-                        // Gone → drop the row (backwards: remove() shifts the tail).
-                        for (var r = placementModel.count - 1; r >= 0; r--)
-                            if (byId[placementModel.get(r).tileId] === undefined)
-                                placementModel.remove(r)
+                        // Gone → the tile was removed. Its delegate has to OUTLIVE the
+                        // packing that dropped it or there is nothing left to fade, so
+                        // the row is marked `dying` and the cell reaps it when its fade
+                        // ends (see the exit fade below).
+                        //
+                        // REDUCE MOTION: the duration token does the real work — at
+                        // motionRemove 0 the exit fade finishes SYNCHRONOUSLY when it is
+                        // started, so the row is reaped in this same event even by the
+                        // `dying` path (measured: dropping this branch does NOT make the
+                        // removal observably late). The branch is kept as the explicit
+                        // statement of intent, and to skip marking, animating and reaping
+                        // a row for a fade that cannot be seen — not as the mechanism.
+                        // Smooth is not more motion.
+                        for (var r = placementModel.count - 1; r >= 0; r--) {
+                            if (byId[placementModel.get(r).tileId] !== undefined) continue
+                            if (theme.motionRemove > 0) {
+                                if (!placementModel.get(r).dying)
+                                    placementModel.setProperty(r, "dying", true)
+                            } else {
+                                placementModel.remove(r)   // backwards: remove() shifts the tail
+                            }
+                        }
 
                         // Survivors → patch in place. THIS is the move: same row, same
                         // delegate object, new slot. set() only touches the roles that
@@ -713,7 +776,17 @@ Item {
                         for (var r2 = 0; r2 < placementModel.count; r2++) {
                             var row = placementModel.get(r2)
                             var p = byId[row.tileId]
+                            // A row with no placement is one of the dying rows above,
+                            // held open only for its fade. It is not in the packing, so
+                            // there is nothing to reconcile it against — and reading
+                            // `p.s` off it would throw.
+                            if (p === undefined) continue
                             seen[row.tileId] = true
+                            // Resurrection: this id was fading out and is back (an undo,
+                            // or a live push that re-adds it). Cancel the exit — the tile
+                            // exists, so it must not vanish when a fade nobody is watching
+                            // any more happens to finish.
+                            if (row.dying) placementModel.setProperty(r2, "dying", false)
                             if (row.ps !== p.s || row.pl !== p.l || row.pes !== p.es
                                 || row.pel !== p.el || row.tileIdx !== p.idx
                                 || row.tileSize !== p.size || row.tileType !== p.type)
@@ -722,10 +795,17 @@ Item {
 
                         // Genuinely new tiles → append. A new delegate is born at its
                         // final slot (a Behavior does not fire on initial binding), so
-                        // an add slides its NEIGHBOURS and never itself.
-                        for (var k = 0; k < ps.length; k++)
-                            if (seen[ps[k].id] === undefined)
-                                placementModel.append(pageItem._row(ps[k]))
+                        // an add slides its NEIGHBOURS and never itself — the tile's own
+                        // arrival is the `entering` fade instead. Only once the page is
+                        // `_live`, and only while the token allows it: the rows that seed
+                        // a page are not an add, and reduce-motion means there is no
+                        // entrance at all.
+                        for (var k = 0; k < ps.length; k++) {
+                            if (seen[ps[k].id] !== undefined) continue
+                            var fresh = pageItem._row(ps[k])
+                            fresh.entering = pageItem._live && theme.motionAdd > 0
+                            placementModel.append(fresh)
+                        }
 
                         return placementModel.count
                     }
@@ -733,7 +813,12 @@ Item {
                     // is not guaranteed for the binding's FIRST evaluation. Both paths
                     // are idempotent, so the overlap costs nothing.
                     onPlacementsChanged: pageItem._syncPlacements()
-                    Component.onCompleted: pageItem._syncPlacements()
+                    Component.onCompleted: {
+                        pageItem._syncPlacements()
+                        // AFTER the seed: every row that exists at birth is part of the
+                        // page's starting state, not an entrance.
+                        pageItem._live = true
+                    }
                     // How far the page reaches along the long axis, in half-cells.
                     // 6 (WidgetSizes.longHalves) is exactly one screen.
                     property int longExtent: packer.longExtent(pageItem.placements)
@@ -809,6 +894,70 @@ Item {
                                 required property int pl
                                 required property int pes
                                 required property int pel
+                                // Lifetime, not layout: `dying` is set on a row the
+                                // packing has dropped and kept until this cell has faded
+                                // out; `entering` is fixed at append time and says this
+                                // cell was grown by the page, not born with it.
+                                required property bool dying
+                                required property bool entering
+
+                                // ── The exit ──────────────────────────────────
+                                // A removed tile used to blink out of existence while
+                                // its neighbours glided into the space it left — the one
+                                // motion on screen belonged to everything EXCEPT the
+                                // thing the user actually acted on.
+                                //
+                                // The delegate has to outlive its removal from the
+                                // packing for there to be anything to fade, so the row
+                                // is the thing that is held open (`dying`, set by
+                                // _syncPlacements) and this cell is what closes it: when
+                                // the fade ends, it reaps its own row. That keeps the
+                                // lifetime in ONE place — no delegate can be orphaned by
+                                // a fade that never ran, because the only thing that
+                                // starts a fade is the role that also holds the row open.
+                                //
+                                // motionRemove (150ms) is shorter than the 250ms move,
+                                // so the ghost is gone before its neighbours arrive over
+                                // it. Under reduce-motion that token is 0, and THAT is
+                                // what makes a removal instant rather than merely quick:
+                                // a 0ms fade lands and reaps in the same event it starts.
+                                opacity: cell.entering ? 0 : 1
+                                // A ghost is not a tile: it must not answer a tap, or
+                                // offer edit chrome for a tile the store no longer has.
+                                enabled: !cell.dying
+                                onDyingChanged: {
+                                    // Only ever one animation owns `opacity`. A tile can
+                                    // be removed inside its own entrance (add a widget,
+                                    // think better of it, hit remove — 200ms is easy to
+                                    // beat), and two animations writing the same property
+                                    // every tick fight rather than blend.
+                                    if (cell.dying) { enterFade.stop(); exitFade.start() }
+                                    else { exitFade.stop(); cell.opacity = 1 }   // resurrected
+                                }
+                                NumberAnimation {
+                                    id: exitFade
+                                    target: cell; property: "opacity"; to: 0
+                                    duration: theme.motionRemove; easing.type: Easing.OutCubic
+                                    onFinished: pageItem._reapRow(cell.tileId)
+                                }
+
+                                // ── The entrance ──────────────────────────────
+                                // An added tile is the one thing on screen the user just
+                                // asked for, so it arrives in its own right instead of
+                                // simply already being there. It fades in AT its slot: it
+                                // does not fly in, because the packer put it where it
+                                // belongs and there is no truthful "from" to fly from.
+                                //
+                                // `entering` is decided once, when the row is appended
+                                // (see _syncPlacements), so a rotation — which never
+                                // appends — cannot trigger it, and reduce-motion means it
+                                // is never set and `opacity` stays bound at 1.
+                                Component.onCompleted: if (cell.entering) enterFade.start()
+                                NumberAnimation {
+                                    id: enterFade
+                                    target: cell; property: "opacity"; from: 0; to: 1
+                                    duration: theme.motionAdd; easing.type: Easing.OutCubic
+                                }
 
                                 // ── The move ──────────────────────────────────
                                 // The eased mirror of the semantic slot. Animating HERE
@@ -1046,7 +1195,37 @@ Item {
                             id: addTile
                             active: dashboard.editMode
                             visible: dashboard.editMode
-                            readonly property var _r: packer.rect(pageItem.addPlacement, pageItem.landscape,
+
+                            // ── The add slot MOVES too ────────────────────────
+                            // It is a real packed placement, so an edit re-packs it just
+                            // like a tile: remove a widget and the slot where the next
+                            // one lands closes up behind it. It used to JUMP there while
+                            // every tile around it glided — the one box on an edit-mode
+                            // page that teleported.
+                            //
+                            // Same shape as a tile's (animS/animL on the cell above) and
+                            // for the same reason: the ease is on the SEMANTIC slot, so
+                            // a rotation still re-projects it instantly.
+                            //
+                            // This needs no flag and no ordering against
+                            // _syncPlacements. The add slot is a function of the page's
+                            // TILES, not of the tile model — the two bindings read the
+                            // same `tiles` and never each other — so whichever runs
+                            // first, this one still eases from wherever it was to
+                            // wherever the packer now puts it. Only the EXTENT is read
+                            // straight through: the add slot is always one baseline
+                            // tile, so there is nothing there to ease.
+                            property real animS: pageItem.addPlacement.s
+                            property real animL: pageItem.addPlacement.l
+                            Behavior on animS { enabled: theme.motionPage > 0
+                                NumberAnimation { duration: theme.motionPage; easing.type: Easing.OutCubic } }
+                            Behavior on animL { enabled: theme.motionPage > 0
+                                NumberAnimation { duration: theme.motionPage; easing.type: Easing.OutCubic } }
+
+                            readonly property var _r: packer.rect({ s: addTile.animS, l: addTile.animL,
+                                                                    es: pageItem.addPlacement.es,
+                                                                    el: pageItem.addPlacement.el },
+                                                                  pageItem.landscape,
                                                                   pageFlick.cellShort, pageFlick.cellLong,
                                                                   theme.spacingMd)
                             x: _r.x; y: _r.y

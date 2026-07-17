@@ -124,20 +124,45 @@ Item {
         for (var i = 0; i < cs.length; i++) if (cs[i].tileId === id) return cs[i]
         return null
     }
+    // The edit-mode "Add widget" slot: the one placed box on a page that is not a
+    // tile, so it carries the eased slot mirror but none of the tile roles. (Its
+    // Loader exists whether or not edit mode is open; only its content is gated.)
+    function addSlot() {
+        return findPred(ld.item, function (x) {
+            return x && x.animL !== undefined && x.tileId === undefined
+        })
+    }
     // A cell's placement, reassembled from the roles it is built from — the shape
     // WidgetPacker speaks, which is what the slot assertions below compare in.
     function slotOf(c) {
         return ({ id: c.tileId, type: c.tileType, size: c.tileSize, idx: c.tileIdx,
                   s: c.ps, l: c.pl, es: c.pes, el: c.pel })
     }
-    // True once the page has laid out N tiles with real geometry, in `portrait`.
+    // True once the page has laid out N tiles with real geometry, in `portrait`,
+    // and every one of them has SETTLED.
+    //
+    // "Settled" is load-bearing, and it is why the geometry tests below can trust
+    // a pixel. A tile now MOVES to its slot and fades in or out around it, so a
+    // page can satisfy "N tiles with real geometry" while every one of them is
+    // still in flight — and a tile measured mid-glide is a third of the screen
+    // only by luck. (These tests reuse ids across documents: `init()` drops the
+    // previous page and the test re-adds `a`/`b`/`c` in the same event, which the
+    // model correctly reads as those tiles MOVING, not as new ones appearing.)
+    // A tile is settled when its eased mirror has reached the slot it mirrors and
+    // it is at full opacity — i.e. when the pixels mean what the packing says.
     function laidOut(n, portrait) {
         var f = pageFlick()
         if (!f || !(f.cellLong > 0)) return false
         if ((f.height > f.width) !== portrait) return false
         var cs = tileCells()
         if (cs.length !== n) return false
-        for (var i = 0; i < n; i++) if (!(cs[i].width > 0 && cs[i].height > 0)) return false
+        for (var i = 0; i < n; i++) {
+            var c = cs[i]
+            if (!(c.width > 0 && c.height > 0)) return false
+            if (c.animS !== c.ps || c.animL !== c.pl
+                || c.animEs !== c.pes || c.animEl !== c.pel) return false   // still moving
+            if (c.opacity !== 1) return false                               // still fading
+        }
         return true
     }
     // Make the dashboard PORTRAIT (tall: the 720x2560 reflow) or LANDSCAPE (the
@@ -863,6 +888,218 @@ Item {
             tryVerify(function () { return root.tileCells().length === 3 }, 4000, "the new tile is placed")
             verify(root.cellFor("a") === a, "a survived the add")
             verify(root.cellFor("c") === c, "and so did c")
+        }
+
+        // ── W3: a removed tile FADES; an added tile ARRIVES ──────────────────
+        // The gap the reorder fix left. A tile that was removed blinked out of
+        // existence while its neighbours glided into the space it left: the only
+        // motion on screen belonged to everything EXCEPT the thing the user acted
+        // on. `motionRemove` was defined for exactly this and used by nothing.
+        //
+        // The delegate has to OUTLIVE its removal from the packing for there to be
+        // anything left to fade, so the row is what is held open (`dying`), and the
+        // cell reaps its own row when its fade ends.
+
+        // COVERS: fn:Dashboard._reapRow
+        function test_removing_a_tile_fades_it_out_instead_of_blinking_it_away() {
+            _theme.reduceMotionPreference = "off"
+            compare(_theme.motionRemove, 150, "precondition: the exit token is live")
+            _threeTilePage()
+            var b = root.cellFor("b"), c = root.cellFor("c")
+
+            root.store().removeTile(0, "b")
+
+            // THE GUARD: the delegate outlives its removal from the packing. With
+            // the row dropped the instant the packer stopped mentioning it — what
+            // it used to do — there is no delegate left on screen to fade at all.
+            verify(root.cellFor("b") === b, "b's delegate outlived the removal — and is the SAME object")
+            compare(b.dying, true, "its row is held open for one reason only: the fade")
+            compare(b.opacity, 1, "which starts from where the tile actually was")
+            verify(!b.enabled, "but it is a ghost, not a tile: it can no longer be tapped or edited")
+            compare(root.store().pages()[0].tiles.length, 2,
+                    "…and the STORE has already let it go: the ghost is presentation, not data")
+
+            // It really fades, and then it really goes. A delegate kept alive by a
+            // fade nobody finishes is a leak.
+            tryVerify(function () { return b.opacity < 1 }, 4000, "the exit fade is running")
+            tryVerify(function () { return root.cellFor("b") === null }, 4000,
+                      "and the cell reaps its own row when the fade ends")
+            compare(root.tileCells().length, 2, "exactly the two survivors remain — no ghost left behind")
+            verify(root.cellFor("c") === c, "c MOVED into the freed slot — same object, not a rebuild")
+
+            // The reap only ever takes a row that is genuinely DYING: it is a fade
+            // closing the row it opened, not a general-purpose delete. (`a` is
+            // alive and on screen — reaping it here would delete a tile the store
+            // still has, which is precisely what a resurrected row must survive.)
+            compare(root.pageItem()._reapRow("a"), false, "_reapRow refuses a row that is not dying")
+            compare(root.tileCells().length, 2, "…and really did not remove it")
+            compare(root.pageItem()._reapRow("no-such-tile"), false,
+                    "and an id it has never heard of is a no-op")
+        }
+
+        // REDUCE MOTION: instant, not a fast fade — and not a 0ms animation that
+        // still reaps a frame late. The token is the mechanism: at motionRemove 0
+        // the row is never marked dying at all.
+        function test_reduce_motion_removes_a_tile_instantly() {
+            _theme.reduceMotionPreference = "on"
+            compare(_theme.motionRemove, 0, "precondition: reduce-motion collapses the exit token")
+            _threeTilePage()
+            var c = root.cellFor("c")
+
+            root.store().removeTile(0, "b")
+
+            // No tryVerify: gone in THIS event.
+            compare(root.cellFor("b"), null, "b is gone immediately — no ghost, not even for a frame")
+            compare(root.tileCells().length, 2, "two tiles remain")
+            verify(root.cellFor("c") === c, "and c is still the same delegate — instant is not a rebuild")
+            _theme.reduceMotionPreference = "auto"
+        }
+
+        // The dangerous edge of keeping a delegate alive past its removal: the id
+        // comes BACK inside the fade window (an undo, or a Manager push that
+        // re-adds it). The tile exists again, so the fade that was reaping it must
+        // not be allowed to finish the job.
+        function test_a_tile_that_comes_back_inside_its_own_fade_survives_it() {
+            _theme.reduceMotionPreference = "off"
+            _threeTilePage()
+            var b = root.cellFor("b")
+            root.store().removeTile(0, "b")
+            compare(b.dying, true, "precondition: b is mid-exit")
+
+            // Back, while the fade still runs.
+            ld.item.applyExternalState(root.makeDoc([ { id: "a", type: "cpu", size: "1x0.5" },
+                                                      { id: "b", type: "ram", size: "1x0.5" },
+                                                      { id: "c", type: "gpu", size: "1x0.5" } ]))
+            verify(root.cellFor("b") === b, "the row was reused: it never got as far as being reaped")
+            compare(b.dying, false, "the row is live again")
+            compare(b.opacity, 1, "and the tile is whole again, not stuck at whatever the fade reached")
+
+            // THE GUARD: wait out the fade that was already running. A reap firing
+            // now would delete a tile the store still has.
+            wait(_theme.motionRemove * 2 + 50)
+            verify(root.cellFor("b") !== null, "b is STILL there once the old fade's window has passed")
+            compare(root.store().pages()[0].tiles.length, 3, "…and the store agrees it exists")
+            compare(root.tileCells().length, 3, "three tiles — the resurrected id did not fork a second row")
+        }
+
+        // THE ENTRANCE. An added tile is the one thing on screen the user just
+        // asked for, so it arrives in its own right instead of merely already
+        // being there. It fades in AT its slot — the packer put it where it
+        // belongs, so there is no truthful place to fly in from.
+        function test_adding_a_tile_fades_it_in_at_its_final_slot() {
+            _theme.reduceMotionPreference = "off"
+            compare(_theme.motionAdd, 200, "precondition: the entrance token is live")
+            _threeTilePage()
+            var a = root.cellFor("a")
+
+            var id = root.store().addTile(0, "disk")
+            var n = root.cellFor(id)
+            verify(n !== null, "the new tile's delegate exists in the same event")
+            compare(n.entering, true, "the page GREW this tile — that is what an entrance is")
+            compare(n.opacity, 0, "so it starts invisible…")
+            // …at its destination: an entrance is not a move.
+            compare(n.animS, n.ps, "its eased mirror was BORN at its final slot (short axis)")
+            compare(n.animL, n.pl, "…and at its final slot down the long axis")
+            verify(root.cellFor("a") === a, "and the incumbent kept its delegate")
+            compare(a.opacity, 1, "the incumbent did not fade with it — only the new tile arrives")
+
+            tryVerify(function () { return n.opacity === 1 }, 4000, "the new tile fades in to full strength")
+        }
+
+        function test_reduce_motion_adds_a_tile_instantly() {
+            _theme.reduceMotionPreference = "on"
+            compare(_theme.motionAdd, 0, "precondition: reduce-motion collapses the entrance token")
+            _threeTilePage()
+            var id = root.store().addTile(0, "disk")
+            var n = root.cellFor(id)
+            verify(n !== null, "the new tile is placed")
+            compare(n.entering, false, "no entrance is even scheduled")
+            compare(n.opacity, 1, "it is simply THERE, at full strength, in the same event")
+            _theme.reduceMotionPreference = "auto"
+        }
+
+        // The other half of the entrance, and the reason it needs `_live`: the
+        // rows a page is BORN with are its starting state, not an add. Without
+        // that distinction every tile would fade in on every app start.
+        // A page that arrives already holding tiles is exactly that case.
+        function test_a_page_born_with_tiles_does_not_fade_them_in() {
+            _theme.reduceMotionPreference = "off"
+            root.orient(true)
+            ld.item.applyExternalState(root.makeDoc([ { id: "a", type: "cpu", size: "1x0.5" } ]))
+            tryVerify(function () { return root.pageItems().length === 1 && root.laidOut(1, true) },
+                      4000, "precondition: one page, one tile")
+
+            // A SECOND page that arrives with its tiles already on it: its delegate
+            // is created around them, exactly as page 1's is at app start.
+            ld.item.applyExternalState(JSON.stringify({ version: 1, appearance: {}, settings: {}, pages: [
+                { name: "P1", tiles: [ { id: "a", type: "cpu", size: "1x0.5" } ] },
+                { name: "P2", tiles: [ { id: "n1", type: "ram", size: "1x0.5" },
+                                       { id: "n2", type: "gpu", size: "1x0.5" } ] } ] }))
+            tryVerify(function () { return root.pageItems().length === 2
+                                        && root.cellFor("n1") !== null && root.cellFor("n2") !== null },
+                      4000, "the second page and its tiles exist")
+
+            verify(root.pageItems()[1]._live, "the new page finished being born")
+            compare(root.cellFor("n1").entering, false,
+                    "a tile the page was BORN with is not an entrance — it was always there")
+            compare(root.cellFor("n1").opacity, 1, "…so it was never faded in")
+            compare(root.cellFor("n2").entering, false, "…and neither was its neighbour")
+        }
+
+        // ── W3: the edit-mode "Add widget" slot moves like a tile ────────────
+        // It is a real packed placement — the same packer, as a real baseline tile
+        // — so an edit re-packs it too: remove a widget and the slot the next one
+        // lands in closes up behind it. It was the one box on an edit-mode page
+        // that still teleported while everything around it glided.
+        function test_the_add_slot_eases_to_its_new_place_like_a_tile() {
+            _theme.reduceMotionPreference = "off"
+            _threeTilePage()
+            ld.item.editMode = true
+            var slot = root.addSlot()
+            verify(slot !== null, "found the edit-mode add slot")
+            var p = root.pageItem()
+            // The add slot has its own mirror, so `laidOut` (which only settles the
+            // TILES) does not speak for it: settle it explicitly before measuring.
+            tryVerify(function () { return slot.animL === p.addPlacement.l }, 4000,
+                      "precondition: its mirror settles where the packer put it")
+            var startL = slot.animL, startY = slot.y
+            verify(startL > 0, "precondition: the add slot sits after the three tiles")
+
+            root.store().removeTile(0, "a")
+
+            // Frame 0: the target has moved up the page, the slot itself has not.
+            verify(p.addPlacement.l < startL, "the slot the next widget lands in really did move")
+            verify(slot.animL > p.addPlacement.l, "but it has NOT jumped: its mirror is still en route")
+            fuzzyCompare(slot.y, startY, 1.0, "and its pixels are still at the old slot on frame 0")
+
+            tryVerify(function () { return slot.animL === p.addPlacement.l }, 4000,
+                      "it arrives at the new slot")
+            verify(slot.y < startY - 1, "…which is further up the page than it started")
+
+            // And a ROTATION still re-projects it instantly: the ease is on the
+            // SEMANTIC slot, which a rotation does not touch.
+            var settled = slot.animL
+            root.orient(false)
+            compare(slot.animL, settled, "the rotation did not disturb the add slot's semantic mirror")
+            root.orient(true)
+            ld.item.editMode = false
+        }
+
+        function test_reduce_motion_moves_the_add_slot_instantly() {
+            _theme.reduceMotionPreference = "on"
+            compare(_theme.motionPage, 0, "precondition: reduce-motion collapses the move token")
+            _threeTilePage()
+            ld.item.editMode = true
+            var slot = root.addSlot()
+            var p = root.pageItem()
+            var startY = slot.y
+
+            root.store().removeTile(0, "a")
+
+            compare(slot.animL, p.addPlacement.l, "the mirror is ALREADY at the new slot — nothing animated")
+            verify(slot.y < startY - 1, "its pixels moved in the same event")
+            ld.item.editMode = false
+            _theme.reduceMotionPreference = "auto"
         }
 
         // A ROTATION must stay instant even though a reorder now eases. The two
