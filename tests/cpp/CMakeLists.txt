@@ -129,6 +129,25 @@ add_qt_test(distro_bridge SOURCES "${APP_SRC}/distro_bridge.h" LINK Qt6::Gui)
 # variants; the one real-bus case QSKIPs when the sandbox has no session bus.
 add_qt_test(system_settings_probe SOURCES "${APP_SRC}/system_settings_probe.h" LINK Qt6::DBus)
 
+# MPRIS player-choice policy + metadata/availability rules (mpris_state.cpp), and
+# the member-state fold that stayed in the bridge (MprisBridge::applyProps).
+# mpris_bridge.cpp is a SOURCE so applyProps can be driven; its Q_OBJECT header
+# gets moc'd from it (vtable rule above).
+#
+# NO BUS, BY CONSTRUCTION: DBUS_SESSION_BUS_ADDRESS is pointed at a socket that
+# cannot exist, so QDBusConnection::sessionBus() comes back disconnected and
+# MprisBridge's ctor takes its no-bus path — it never scans, and can never reach
+# the developer's real media players. This is NOT a "skip if no bus" test: the
+# suite ASSERTS the disconnection (mprisBridgeIsOfflineInThisTest) and FAILS if a
+# bus ever appears, so the guard cannot rot into a silent no-op. Verified by
+# sabotage (2026-07-17): deleting the override below turns that test red on a
+# box with a real bus, rather than skipping. Everything else here is pure and
+# needs no bus at all.
+add_qt_test(mpris_state SOURCES "${APP_SRC}/mpris_state.cpp" "${APP_SRC}/mpris_bridge.cpp"
+                        LINK Qt6::DBus)
+set_property(TEST mpris_state APPEND PROPERTY
+    ENVIRONMENT "DBUS_SESSION_BUS_ADDRESS=unix:path=${SOCK_ROOT}/mpris_state/nonexistent-bus")
+
 # ── Smoke: launch the REAL binaries offscreen (main()/screen match/thread lifecycle;
 #    doubles as the XENEON_GRAB UAF regression) ──
 add_executable(smoke_hub tst_smoke_hub.cpp)

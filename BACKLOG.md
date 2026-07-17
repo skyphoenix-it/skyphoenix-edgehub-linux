@@ -62,10 +62,21 @@ after the fix shipped). If an entry here disagrees with the code, the code wins.
   `tst_manager_backend_sync.cpp`'s FakeHub. The Manager saves only through GUI
   interaction and exposes no headless save hook; adding one would be product code
   written to pass a test. This is the one real gap left in the B5 story.
-- `mpris_bridge.cpp` D-Bus fan-out is uncovered — needs a session bus. NOTE: a
-  test that `QSKIP`s when no bus is present would be inert in exactly the
-  environment that matters (CI). A private bus via `dbus-run-session` is the
-  honest route.
+- ~~`mpris_bridge.cpp` D-Bus fan-out is uncovered — needs a session bus.~~
+  **Done 2026-07-17.** The "needs a bus" framing was wrong for most of it: the
+  player-choice policy, the metadata/availability rules and the dirty-check were
+  pure logic that merely *sat inside* bus-facing methods and an async lambda.
+  They now live in `app/src/mpris_state.{h,cpp}` and are unit-tested with no bus
+  at all (`tests/cpp/tst_mpris_state.cpp`, 35 cases, 100% line coverage on the
+  extracted logic). No `QSKIP` was used — the test instead points
+  `DBUS_SESSION_BUS_ADDRESS` at a nonexistent socket and *asserts* the bridge is
+  offline, so it fails loudly rather than skipping if a bus ever appears.
+  What genuinely still needs a bus, and is deliberately left to the on-device
+  E2E: the async fan-out plumbing itself (`ListNames` → per-player
+  `PlaybackStatus` → `GetAll` → `Position`), the `PropertiesChanged`
+  subscribe/unsubscribe, the stale-reply identity guards (they need two real
+  in-flight replies), and `callPlayer` transport control. Those are marked
+  `GCOVR_EXCL` in `mpris_bridge.cpp` with that reason.
 - **The Manager's About button opens `"#"`** (`manager/qml/Manager.qml:1220`:
   `Qt.openUrlExternally("#")`) — it silently does nothing. Verified 2026-07-17.
 - **`HydrationWidget.qml:260` hard-codes `PillButton { implicitWidth: 170 }`**,

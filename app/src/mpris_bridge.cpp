@@ -1,11 +1,11 @@
 #include "mpris_bridge.h"
 
+#include "mpris_state.h"
+
 #include <QDebug>
-#include <QFileInfo>
 #include <QMap>
 #include <QSharedPointer>
 #include <QStringList>
-#include <QUrl>
 #include <QtDBus/QDBusArgument>
 #include <QtDBus/QDBusMessage>
 #include <QtDBus/QDBusPendingCall>
@@ -16,7 +16,8 @@
 static const char* kPath = "/org/mpris/MediaPlayer2";
 static const char* kPlayerIface = "org.mpris.MediaPlayer2.Player";
 static const char* kPropsIface = "org.freedesktop.DBus.Properties";
-static const QString kPrefix = QStringLiteral("org.mpris.MediaPlayer2.");
+// The bus-name prefix and every decision made from it live in mpris_state.h —
+// see the note above applyProps().
 
 // Cap on how long a D-Bus call may take before erroring. Every call here is
 // ASYNC, so this bounds a hung player's reply latency without ever blocking the
@@ -24,6 +25,20 @@ static const QString kPrefix = QStringLiteral("org.mpris.MediaPlayer2.");
 // to (N+1)×800ms of stall across a rescan). Building calls with createMethodCall
 // (not QDBusInterface) also avoids a blocking introspection round-trip.
 static constexpr int kDbusTimeoutMs = 800;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Coverage note: everything from here to the STOP marker before applyProps() is
+// D-Bus plumbing — it only executes once a real session bus has answered a real
+// method call from a real media player, which no unit test may summon (and which
+// must never be the developer's own bus/players). It is excluded on the same
+// grounds as the hidraw glue in orientation_sensor.cpp.
+//
+// This is a marker on the CONVERSATION, not on the logic. Every decision this
+// plumbing used to make inline — which player wins, what a reply means, whether
+// QML must be told — now lives in mpris_state.{h,cpp} and is counted and tested
+// (tests/cpp/tst_mpris_state.cpp). If you add a *decision* below, it belongs
+// over there instead; do not grow this region.
+// GCOVR_EXCL_START
 
 // Build a Properties.Get(iface, prop) call message.
 static QDBusMessage propGetMsg(const QString& service, const QString& iface, const QString& prop) {
@@ -73,7 +88,7 @@ void MprisBridge::reevaluate() {
         QStringList services;
         if (reply.isValid()) {
             for (const QString& name : reply.value())
-                if (name.startsWith(kPrefix))
+                if (mpris::isMprisService(name))
                     services << name;
         }
         chooseFrom(services);
@@ -103,11 +118,9 @@ void MprisBridge::chooseFrom(const QStringList& services) {
             statuses->insert(s, reply.isValid() ? reply.value().variant().toString() : QString());
             if (--(*remaining) != 0)
                 return;
-            QString chosen;
-            for (const QString& cand : *order)
-                if (statuses->value(cand) == QStringLiteral("Playing")) { chosen = cand; break; }
-            if (chosen.isEmpty())
-                chosen = order->contains(m_service) ? m_service : order->first();
+            // The policy itself is pure and lives in mpris_state.h; this lambda
+            // only supplies the collected replies.
+            const QString chosen = mpris::choosePlayer(*order, *statuses, m_service);
             if (chosen != m_service)
                 connectTo(chosen);
             else
@@ -168,63 +181,50 @@ void MprisBridge::refresh() {
     });
 }
 
+// GCOVR_EXCL_STOP
+
+// Fold one GetAll reply into the exposed state. The two decisions here — what
+// the reply MEANS (mpris::resolveTrack: artist list-or-string, art-URL
+// validation, the availability rule) and whether QML must be told
+// (mpris::visiblyDiffers) — are pure and live in mpris_state.h, where
+// tests/cpp/tst_mpris_state.cpp drives them without a bus. What is left is the
+// member-state fold, which is what this test seam exists to cover.
 void MprisBridge::applyProps(const QVariantMap& m) {
-    // Compute the new values into locals first so we can dirty-check against the
-    // current state and only notify QML when something actually moved (see below).
-    QString status = m.value(QStringLiteral("PlaybackStatus")).toString();
-
-    const QVariantMap meta = qdbus_cast<QVariantMap>(m.value(QStringLiteral("Metadata")));
-    QString title = meta.value(QStringLiteral("xesam:title")).toString();
-    QStringList artists = qdbus_cast<QStringList>(meta.value(QStringLiteral("xesam:artist")));
-    if (artists.isEmpty())
-        artists = meta.value(QStringLiteral("xesam:artist")).toStringList();
-    QString artist = artists.join(QStringLiteral(", "));
-    QString album = meta.value(QStringLiteral("xesam:album")).toString();
-    QString artUrl = meta.value(QStringLiteral("mpris:artUrl")).toString();
-    // Some players (e.g. Chromium) advertise a file:// art path that may be
-    // stale/unreadable. Validate local files so QML never tries a bad URL
-    // (which would emit an Image "Cannot open" warning); http(s) is passed through.
-    if (artUrl.startsWith(QStringLiteral("file://"))) {
-        const QString local = QUrl(artUrl).toLocalFile();
-        if (local.isEmpty() || !QFileInfo(local).isReadable())
-            artUrl.clear();
-    }
-    qlonglong lengthUs = meta.value(QStringLiteral("mpris:length")).toLongLong();
-    QString playerName = m_service.mid(kPrefix.length());
-
-    // A service can be registered on the bus (CanControl: true) with no track
-    // actually loaded — e.g. a browser tab with audio capability but nothing
-    // played yet, or a player that was just stopped. Treat that as genuinely
-    // "nothing playing" rather than showing a blank card: require either a real
-    // title or an active Playing/Paused status.
-    const bool hasTrack = !title.isEmpty();
-    const bool isActive = status == QStringLiteral("Playing") || status == QStringLiteral("Paused");
-    bool available = hasTrack || isActive;
-    if (!available) {
-        title = artist = album = artUrl = QString();
-        lengthUs = 0;
-    }
-
+    const mpris::TrackState next = mpris::resolveTrack(m, m_service);
     // Dirty-check: applyProps runs on every 3s rescan, but emitting changed()
     // unconditionally re-fires every property NOTIFY and restarts QML animations
     // bound to them. Only emit when a visible field really changed.
-    const bool dirty = available != m_available || status != m_status ||
-                       title != m_title || artist != m_artist || album != m_album ||
-                       artUrl != m_artUrl || playerName != m_playerName;
+    const bool dirty = mpris::visiblyDiffers(currentTrack(), next);
 
-    m_status = status;
-    m_title = title;
-    m_artist = artist;
-    m_album = album;
-    m_artUrl = artUrl;
-    m_lengthUs = lengthUs;
-    m_playerName = playerName;
-    m_available = available;
+    m_status = next.status;
+    m_title = next.title;
+    m_artist = next.artist;
+    m_album = next.album;
+    m_artUrl = next.artUrl;
+    m_lengthUs = next.lengthUs;
+    m_playerName = next.playerName;
+    m_available = next.available;
 
     if (dirty)
         emit changed();
 }
 
+// The exposed state, in the same shape resolveTrack() produces, so the two can
+// be compared field-for-field.
+mpris::TrackState MprisBridge::currentTrack() const {
+    mpris::TrackState s;
+    s.status = m_status;
+    s.title = m_title;
+    s.artist = m_artist;
+    s.album = m_album;
+    s.artUrl = m_artUrl;
+    s.playerName = m_playerName;
+    s.lengthUs = m_lengthUs;
+    s.available = m_available;
+    return s;
+}
+
+// GCOVR_EXCL_START (D-Bus plumbing — see the note above propGetMsg)
 void MprisBridge::fetchPosition() {
     if (m_service.isEmpty())
         return;
@@ -277,3 +277,4 @@ void MprisBridge::callPlayer(const char* method) {
 void MprisBridge::playPause() { callPlayer("PlayPause"); }
 void MprisBridge::next() { callPlayer("Next"); }
 void MprisBridge::previous() { callPlayer("Previous"); }
+// GCOVR_EXCL_STOP

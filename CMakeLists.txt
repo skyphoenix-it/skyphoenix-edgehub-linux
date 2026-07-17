@@ -93,6 +93,7 @@ add_custom_target(rust_core ALL DEPENDS ${RUST_LIB})
 add_executable(xeneon-edge-hub
     app/src/main.cpp
     app/src/mpris_bridge.cpp
+    app/src/mpris_state.cpp
     app/src/control_server.cpp
     app/src/orientation_sensor.cpp
     app/src/autostart.cpp

@@ -7,6 +7,8 @@
 #include <QVariantMap>
 #include <QtDBus/QDBusConnection>
 
+#include "mpris_state.h"
+
 // MprisBridge — exposes the active MPRIS media player (Spotify, browsers /
 // YouTube Music, etc.) to QML: now-playing metadata + transport control.
 //
@@ -45,6 +47,19 @@ public:
     Q_INVOKABLE void next();
     Q_INVOKABLE void previous();
 
+    // ── Test seam (no D-Bus) ─────────────────────────────────────────────────
+    // Fold a Player GetAll property map into the exposed state, notifying QML
+    // only when a visible field moved. Public for the same reason
+    // SystemSettingsProbe::applySetting is: it is the seam tests drive with
+    // crafted property maps, so the dirty-check that suppresses redundant
+    // changed() (and with it the QML animation restarts) can be proven without
+    // a session bus. In production it is only ever called from refresh()'s
+    // async GetAll reply. See tests/cpp/tst_mpris_state.cpp.
+    void applyProps(const QVariantMap& props);
+
+    // The currently exposed state, in resolveTrack()'s shape.
+    mpris::TrackState currentTrack() const;
+
 signals:
     void changed();
     void positionChanged();
@@ -61,7 +76,6 @@ private:
     void connectTo(const QString& service);
     void chooseFrom(const QStringList& services);  // pick the active player (async fan-out)
     void refresh();                                 // GetAll → applyProps → fetchPosition
-    void applyProps(const QVariantMap& props);
     void fetchPosition();
     void callPlayer(const char* method);
 

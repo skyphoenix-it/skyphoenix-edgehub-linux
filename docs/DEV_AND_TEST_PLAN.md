@@ -301,8 +301,9 @@ coverage-wiring), each wave adversarially reviewed by "outstander" + rubber-duck
   coverage tooling (`cargo-llvm-cov`, `llvm-tools`, `gcovr`) installed without sudo.
 - **Honest residuals:** `config.rs` 93% (below the per-file 95 but the total gate passes;
   a config corrupt-path IO test would close it); `fn:main.onContentRotationChanged` (input-method
-  hide + fade restart — unobservable offscreen); `mpris_bridge.cpp` D-Bus fan-out (needs a
-  session bus) — all documented, none blocking.
+  hide + fade restart — unobservable offscreen); `mpris_bridge.cpp`'s async D-Bus plumbing
+  (genuinely needs a bus; its logic was extracted to `mpris_state.*` and is now 100% covered
+  — see below) — all documented, none blocking.
 
 ## Risks / open items
 
@@ -311,5 +312,10 @@ coverage-wiring), each wave adversarially reviewed by "outstander" + rubber-duck
   existing build + smoke.
 - C++ coverage denominator excludes hardware/`main()`/live-`QScreen` paths by design; those
   are covered by smoke + the on-device Python E2E, which are not in the CI line-% math.
-- `mpris_bridge.cpp` D-Bus fan-out is out of scope for line coverage (needs a session bus);
-  only its pure accessors are unit-tested. Tracked as a follow-up.
+- `mpris_bridge.cpp`: the *decisions* (which player wins, what a reply means, whether QML is
+  notified) were extracted to `app/src/mpris_state.{h,cpp}` and are unit-tested with no bus —
+  `tests/cpp/tst_mpris_state.cpp`, 100% line coverage on `mpris_state.cpp`, `mpris_bridge.h`
+  and the non-excluded part of `mpris_bridge.cpp`. Only the async D-Bus *plumbing* stays out
+  of the denominator (`GCOVR_EXCL`, reason in-source): it needs a live bus and a live player,
+  and is exercised by the on-device E2E. Note the marker is on the conversation, not the
+  logic — a new decision belongs in `mpris_state.*`, not inside the excluded region.
