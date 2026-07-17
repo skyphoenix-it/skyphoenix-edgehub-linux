@@ -27,15 +27,16 @@ after the fix shipped). If an entry here disagrees with the code, the code wins.
   Scope vocabulary defined, copy made honest, and a silent data-loss bug fixed (a
   typed page name was destroyed because nothing in the pane took focus). Open
   items it raised are listed under "Known gaps" below rather than left implicit.
-- **W3 — widget smoothness.** Sensors delegate-churn, the Dashboard reorder
-  teleport, the EdgeClone reorder teleport, and PillButton's glyph scaling are
-  all fixed. The Dashboard now also fades a removed tile out (on `motionRemove`,
-  previously defined and unused), fades an added tile in at its slot (on
-  `motionAdd`), and eases the edit-mode "Add widget" slot like a tile. Open:
-  the same exit/entrance gap still exists in the Manager's `EdgeClone` (its
-  reorder eases, but a removed tile still pops). None of the motion work is
-  verified on the real device — the offscreen harness cannot instantiate `qrc:`
-  widgets, so delegate survival is asserted via the Loader, not the widget.
+- **W3 — widget smoothness. DONE** (pending on-device verification). Sensors
+  delegate-churn, the Dashboard reorder teleport, the EdgeClone reorder teleport,
+  and PillButton's glyph scaling are all fixed. The Dashboard fades a removed tile
+  out (`motionRemove`), fades an added tile in at its slot (`motionAdd`), and eases
+  the edit-mode "Add widget" slot. The EdgeClone exit/entrance gap is ALSO closed
+  now (`b7c023f` — a removed tile fades, an added one arrives; the earlier "still
+  pops" note was stale). None of the motion work is verified on the real device —
+  the offscreen harness cannot instantiate `qrc:` widgets, so delegate survival is
+  asserted via the Loader, not the widget. **This is the one W-item that genuinely
+  needs Simon's eyes on the panel.**
 - **W4 — test growth.** Runtime E2E now at **9** scenarios (added: `--reset`
   flags, live-push single-writer over the real socket, page-dedup round-trip).
   Manager behavior tests landed with W2. Gates: matrix 100%, Rust+C++ ≥95%.
@@ -106,10 +107,15 @@ after the fix shipped). If an entry here disagrees with the code, the code wins.
   formula, so no test can tell them apart — the agents left a comment saying so
   instead of a green-either-way guard. **`full` is not a full screen** (the config
   preview is a pane ~941×456 / ~656×980) is now encoded in the tests.
-- **Two `expanded`-keyed layouts LEFT unfixed, by scope** (documented in-file):
-  HydrationWidget's expanded ColumnLayout is built from literals (110px count,
-  88px cells) for a screen that doesn't exist and overruns the 456px landscape
-  pane — a redesign, not a ternary swap. Worth a follow-up.
+- **HydrationWidget's expanded overlay overflows its box — IN PROGRESS.** Measured
+  2026-07-17 (anchoring on the 110px count text, mapping the ColumnLayout into its
+  host): the overlay is **612px** tall at goal 8, **812px** at goal 20, built from
+  fixed literals. In the 941×456 landscape preview pane it spills off BOTH ends
+  (top −53, bottom 559 at goal 8); and it overruns the real device's 720px
+  landscape screen too at goal ≳12 — the count clips off the top, the "Daily goal"
+  controls off the bottom (unreachable). Portrait panes fit. A room-derivation fix
+  is under way (scale the count/cells/spacing to the box height, both orientations).
+  Not a ternary swap — a genuine responsive redesign of the overlay.
 - ~~`RamGbOverflow::test_gb_centre_text_fits_ring_interior` fails under a
   DejaVu-only fontconfig~~ — **FIXED** (`18c927f`). It was the real bug, not an
   env quirk: with `theme.fontMono` falling back to a proportional face the ring's
