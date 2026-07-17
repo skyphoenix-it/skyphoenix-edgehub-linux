@@ -16,7 +16,34 @@ after the fix shipped). If an entry here disagrees with the code, the code wins.
 | D1 | Calm as the default theme? | Ships in the beta's first impression | Current default: dark |
 | D2 | Default font: system vs Atkinson Hyperlegible | Same | Atkinson is the a11y-forward pick |
 | D3 | Lawyer pass on distro theme naming | This is sold B2B | Partly de-risked already: `ui/qml/Theme.qml:334` keeps distro modes **colour-only** — no logos or wordmarks. The naming is the residual exposure. |
-| D4 | Payment provider | Pro cannot sell without it | Deferred from alpha by decision |
+| D4 | ~~Payment provider~~ | **DECIDED: Lemon Squeezy / Gumroad.** Licensing system built (see below). Remaining Simon steps: run `keygen` to arm the issuer key, and create the store product wiring key delivery. |
+
+## Licensing / Pro tier — BUILT 2026-07-17 (see docs/LICENSING.md)
+
+The premium tier is complete end-to-end and CI-verified. Free stays fully
+functional; Pro is a low-cost cosmetic "supporter" tier.
+
+- **Mechanism:** offline ed25519 verify (Rust, fails-soft) → `license_key` in
+  config → `LicenseBridge` (hub) / `ManagerBackend` (Manager) → QML `license.isPro`.
+  A key pasted in the Manager pushes over IPC so the hub re-gates LIVE (single-writer).
+- **UI:** Manager → About → licence card + paste-key dialog that verifies offline
+  as you type (Activate only enables for a key that unlocks Pro).
+- **Gate:** a premium theme pack (Synthwave, Cyberpunk, Vaporwave, Matrix + the 5
+  distro themes) — free users hover to taste, a PRO badge + click-to-activate; ~20
+  themes stay free. It's a `pro:` flag + one check, trivially adjustable.
+- **Issuer tool:** `tools/license-tool` (keygen + mint) + `scripts/mint-license.sh`;
+  crypto correctness gated in CI. NOT shipped in the app.
+
+**Remaining Simon steps (like GPG signing):**
+1. `cargo run --manifest-path tools/license-tool/Cargo.toml -- keygen` once; paste
+   the public key into `core/src/license.rs` (arms verification — until then every
+   key is free), store the private seed in Bitwarden.
+2. Create the Lemon Squeezy / Gumroad product and wire key delivery (mint from the
+   order). Set the price there.
+
+Open (needs Simon's content call, not code): whether to also gate a **premium
+PRESET pack** and **custom user widgets** — the flag infrastructure is the same
+one line; just needs the "which items" decision.
 
 ## Beta workstreams (`docs/BETA_PLAN.md`)
 
