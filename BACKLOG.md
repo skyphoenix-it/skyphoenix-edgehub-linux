@@ -163,6 +163,24 @@ the preset re-authoring and nobody noticed, because it never ran.
 > earning it. A guard is not done until it has been **proven to fail** when the
 > thing it guards is violated.
 
-Open follow-up: no mechanism forces that proof for tests outside the `_data`
-trap. Candidate: require new guards to record their fail-on-violation evidence
-(the sabotage tried, and that it went red) in the PR/commit body.
+**The recurring shape (audited 2026-07-17): a gate reports SUCCESS for the state
+where it did no work.** Six found, all green for a long time:
+
+| Gate | How it was inert | Status |
+|---|---|---|
+| 3 QtTest cases | `test_x_data()` = data provider for a `test_x()` that never existed | fixed `2717f84` |
+| `coverage.sh` C++ gate | gcovr arg misparse → `n/a` → the gate skipped **itself** | fixed `69a0484` |
+| `qml_coverage.py` | empty matrix scored **100%**; a typo'd source dropped 24 behaviors with no coverage drop | fixed `8b09f9e` |
+| `check_ui_links.sh` | grepped a pattern that was line-wrapped in its own target | fixed on arrival |
+| `check_live_tests.sh`, `check_doc_links.sh` | reported OK on an **empty tree** | fixed `92490f9` |
+
+**The fix is always the same: a gate must assert its own subjects exist.**
+`scripts/check_no_raw_xhr.sh` is the model — it checks "the gate must still own
+exactly one construction site", so it fails rather than going quiet if its pattern
+stops matching. Count subjects; print the count in the OK line; make zero fatal.
+
+Open follow-up: no mechanism forces the fail-on-violation proof for tests outside
+the `_data` trap. Candidate: require new guards to record their evidence (the
+sabotage tried, and that it went red) in the PR/commit body — every agent this
+session was asked to do exactly that, and it caught real defects in *their own*
+work four separate times.
