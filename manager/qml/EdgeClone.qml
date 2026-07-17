@@ -228,17 +228,30 @@ Item {
     property bool animatedBg: {
         store.revision
         var a = store.appearance() || ({})
-        return a.animatedBg === undefined ? true : a.animatedBg
+        // Calm-by-default, exactly like the hub (main.qml `animatedBackground:
+        // false`): an unset config means the orbs backdrop stays STILL. The old
+        // `true` default made every preview drive the animated Shapes backdrop
+        // out of the box — a continuous repaint beside the scrolled controls,
+        // and the single biggest source of the Manager's scroll lag.
+        return a.animatedBg === undefined ? false : a.animatedBg
     }
     // effectiveReduceMotion (not the raw store flag): the theme folds in the OS
     // reduce-motion probe, so the preview stills exactly when the hub would.
     property bool reduceMotion: theme.effectiveReduceMotion
 
+    // Pause everything that repaints continuously (the animated backdrop, the
+    // per-second tick and the metrics poll) whenever this clone is off-screen.
+    // A non-current Manager tab sets the whole subtree's `visible` to false, so
+    // this reads it directly. Without it the Layout/Appearance preview kept
+    // driving the orbs Shapes + rebinding every tile once a second even while a
+    // different tab was showing — wasted frames that made scrolling stutter.
+    readonly property bool previewLive: clone.visible
+
     property int tick: 0
     property var metricsObj: ({})
-    Timer { interval: 1000; running: true; repeat: true; onTriggered: clone.tick++ }
+    Timer { interval: 1000; running: clone.previewLive; repeat: true; onTriggered: clone.tick++ }
     Timer {
-        interval: 2000; running: true; repeat: true; triggeredOnStart: true
+        interval: 2000; running: clone.previewLive; repeat: true; triggeredOnStart: true
         onTriggered: {
             try { clone.metricsObj = JSON.parse(backend.metricsJson() || "{}") }
             catch (e) { clone.metricsObj = ({}) }
@@ -368,7 +381,10 @@ Item {
                 visible: clone.wallpaperSource === "" && theme.decorative
                 style: clone.pageBg.style
                 accent: theme.accent
-                running: clone.animatedBg && !clone.reduceMotion
+                // Only animate when this preview is actually on screen (see
+                // `previewLive`) — an off-tab clone must not keep the Shapes
+                // backdrop repainting.
+                running: clone.animatedBg && !clone.reduceMotion && clone.previewLive
             }
             Image {
                 id: cloneWall
