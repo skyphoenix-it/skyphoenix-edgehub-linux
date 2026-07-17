@@ -71,11 +71,21 @@ after the fix shipped). If an entry here disagrees with the code, the code wins.
 - **`HydrationWidget.qml:260` hard-codes `PillButton { implicitWidth: 170 }`**,
   overriding the content-derived sizing PillButton just gained; it will clip at
   textScale 1.6 with a longer label. Verified 2026-07-17.
-- **Wallpaper/theme name collision:** Midnight / Nebula / Aurora are each BOTH a
-  theme and a wallpaper, so "Midnight" in the Manager means two different things
-  depending on the section. Renaming either set would rewrite persisted config
-  values and needs a migration, so the cheap fix is disambiguation in the UI, not
-  a rename. Raised by the W2 audit.
+- **Wallpaper/theme name collision — it is FIVE names, not three.** Measured
+  2026-07-17: the overlap between `Theme.qml`'s modes and `WallpaperCatalog.qml`'s
+  items is **aurora, ember, midnight, nebula, sunset**. The W2 audit reported
+  Midnight/Nebula/Aurora, which understates it.
+  The nuance that matters before anyone "fixes" this: `WallpaperCatalog.qml`'s
+  header says the wallpapers are "tuned to the built-in themes", so a shared name
+  may be a deliberate PAIRING, not an accident. But the correspondence is partial
+  — only 5 of 12 wallpapers match a theme, and 19 of 24 themes have no wallpaper —
+  so it reads as a systematic pairing that is not one. There are also THREE
+  concepts in play, not two: themes (palettes), `WallpaperCatalog` (bundled
+  images) and `BackgroundCatalog` (colour/animated tokens).
+  Renaming either set rewrites persisted config values and needs a migration, so
+  the cheap fix is UI disambiguation + honest copy about the pairing. **Decide the
+  intent first** (is Midnight-the-wallpaper meant to go with Midnight-the-theme?);
+  it is a copy question, not an engineering one.
 - **`Theme.qml:209` defines `motionRemove: 150` and NOTHING uses it.** The token
   for the missing exit fade already exists. Verified 2026-07-17.
 - AppImage zsync update path has never been exercised end-to-end. It is an
