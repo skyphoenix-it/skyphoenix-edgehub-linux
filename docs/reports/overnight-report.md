@@ -283,3 +283,58 @@ manual — is corrected.
 sudo pacman -U packaging/local/xeneon-edge-hub-1.0.0.alpha.2.r122.g1335087-1-x86_64.pkg.tar.zst
 ```
 `sudo` isn't passwordless here, so this is yours. Genuine upgrade (`vercmp` = 1).
+
+---
+
+## Addendum 3 — 2026-07-17 late (backlog drained to decisions)
+
+This pass took the backlog down to what genuinely needs *you* — I stopped rather
+than manufacture work or make product calls unilaterally.
+
+**The Hydration overlay overflow is fixed** (`67052c6`). It was real, not
+speculative: measured 612px (goal 8) / 812px (goal 20) of fixed literals spilling
+off both ends of the 456px preview pane *and* off the real device's 720px
+landscape screen at goal ≳12 — the count clipped off the top, the goal controls
+off the bottom (unreachable). Now room-derived (an `ovlScale` from the box height
+plus a closed-form area budget for the glass grid, so 20 glasses fill columns
+instead of a taller stack). Portrait keeps its generous look. The agent caught a
+subtlety my own reproduction missed — the real overlay sets `showHeader=false`, so
+the guard measures the true on-device room. I independently re-verified the guard
+reds on violation (reverting count+cell to literals → top=-9 on the pane, -26 on
+the device).
+
+**Two stale backlog entries corrected against the code:** the EdgeClone
+exit/entrance "still pops" note (closed in `b7c023f`), and the Manager single-
+writer "unproven" note (it's proven by `connectedSaveIsIpcOnlyNoFileWrite`, which
+I confirmed reds on violation).
+
+**`path_sanitize.h`'s one uncovered line documented honestly** (`7abb6ee`). It was
+the path-traversal *reject* branch, unreachable because `fileName()` normalizes
+first — verified by the existing traversal matrix. Rather than fake a test that
+can't reach it, it's `GCOVR_EXCL_LINE` with a comment saying it's defense-in-depth
+retained against that normalization ever weakening. 100% of reachable lines now.
+
+### What is left — and none of it is mine to decide
+- **Decisions:** D1–D4 (Calm default, font, distro-name legal pass, payments);
+  the wallpaper/theme naming intent (is Midnight-the-wallpaper meant to pair with
+  Midnight-the-theme?); the AppImage `X-AppImage-UpdateInformation` URL contract;
+  whether a normal save should refresh `config.toml.bak`.
+- **Needs the physical panel:** W5 persona walkthroughs, and confirming the motion
+  work (reorder/fade/entrance in Dashboard + EdgeClone, the Hydration overlay) —
+  the offscreen harness can't instantiate `qrc:` widgets, so every fit/motion
+  guard asserts mapped geometry or Loader survival, never the rendered widget.
+- **Needs tooling absent here:** the AppImage download-and-patch round trip (needs
+  `zsync` + a buildable AppImage; linuxdeploy's `strip` can't read this host's
+  `.relr.dyn`).
+- **Tracked, non-blocking, diminishing returns:** C++-only coverage (91.5%,
+  ratchet 91; the remaining gaps are Qt socket/GUI glue, much already GCOVR_EXCL);
+  the CI font blind spot (a proportional-fallback overflow can't reproduce under
+  CI's DejaVu-mono — closing it means either CI cost you're quota-sensitive about
+  or test-infra whose only payoff is regression-prevention on an already-fixed
+  class; flagged rather than decided).
+
+### Install
+```
+sudo pacman -U packaging/local/xeneon-edge-hub-1.0.0.alpha.2.r128.g9633501-1-x86_64.pkg.tar.zst
+```
+`sudo` isn't passwordless here, so this is yours. Genuine upgrade (`vercmp` = 1).
