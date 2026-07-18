@@ -159,6 +159,10 @@ int main(int argc, char* argv[]) {
     systemSettings.start();
     engine.rootContext()->setContextProperty("systemSettings", &systemSettings);
 
+    // Keep the window hidden until we've placed it off the Edge (see below). Set
+    // before load so the QML `visible` binding starts false; we show it ourselves.
+    engine.rootContext()->setContextProperty("_deferInitialShow", true);
+
     engine.load(QUrl(QStringLiteral("qrc:/manager/Manager.qml")));
     if (engine.rootObjects().isEmpty()) {
         qCritical() << "Manager: failed to load QML";
@@ -176,6 +180,7 @@ int main(int argc, char* argv[]) {
             const int gw = qEnvironmentVariable("XENEON_GRAB_W", "0").toInt();
             const int gh = qEnvironmentVariable("XENEON_GRAB_H", "0").toInt();
             if (gw > 0 && gh > 0) gwin->resize(gw, gh);
+            gwin->setVisible(true);   // QML starts hidden (see below); grab needs it shown
         }
         QObject* root = engine.rootObjects().first();
         QTimer::singleShot(1800, [root, grabPath]() {
@@ -195,11 +200,13 @@ int main(int argc, char* argv[]) {
         // Normal launch: keep the Manager OFF the Edge. It configures the Edge, so
         // it must never open ON it — which is exactly what happened after the hub
         // grabbed the Edge fullscreen and a launcher (e.g. update-local.sh) started
-        // the Manager onto the now-active output. Move it to a non-Edge screen
-        // (prefer the primary). Best-effort: exact on X11; on Wayland the compositor
-        // may still decide, but this is the strongest hint a client can give.
-        if (auto* w = qobject_cast<QQuickWindow*>(engine.rootObjects().first()))
+        // the Manager onto the now-active output. The QML window starts HIDDEN; we
+        // pick a non-Edge screen (prefer the primary) and only THEN show it, because
+        // a Wayland client can only choose its output before the surface is mapped.
+        if (auto* w = qobject_cast<QQuickWindow*>(engine.rootObjects().first())) {
             placeManagerOffEdge(w);
+            w->setVisible(true);
+        }
     }
 
     return app.exec();

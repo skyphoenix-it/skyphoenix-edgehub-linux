@@ -17,7 +17,14 @@ ApplicationWindow {
     height: Math.min(1300, Screen.desktopAvailableHeight - 80)
     minimumWidth: Math.min(1120, Screen.desktopAvailableWidth - 40)
     minimumHeight: Math.min(760, Screen.desktopAvailableHeight - 40)
-    visible: true
+    // Normally shown immediately. The REAL app (main.cpp) sets `_deferInitialShow`
+    // and shows the window itself AFTER picking a non-Edge screen: on Wayland a
+    // client can only influence its output before the surface is first mapped, so
+    // the window must stay hidden until the screen is chosen (otherwise it opens on
+    // whatever output is active — the Edge, right after the hub grabbed it
+    // fullscreen). qmltestrunner sets no such property, so the window shows normally
+    // there (windowShown still fires). See placeManagerOffEdge().
+    visible: (typeof _deferInitialShow !== "undefined" && _deferInitialShow) ? false : true
     title: "EdgeHub Manager"
     color: m.bg
 
