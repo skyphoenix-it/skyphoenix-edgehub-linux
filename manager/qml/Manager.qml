@@ -1755,7 +1755,7 @@ ApplicationWindow {
                                 id: diagBox; visible: false
                                 Layout.fillWidth: true; Layout.preferredHeight: 220
                                 radius: m.radius; color: m.bg; border.width: 1; border.color: m.border
-                                ScrollView {
+                                MScroll {
                                     anchors.fill: parent; anchors.margins: 8; clip: true
                                     contentWidth: availableWidth
                                     Text {
@@ -1820,7 +1820,7 @@ ApplicationWindow {
                 ScopeTag { label: win.scopeLabels.page; Layout.alignment: Qt.AlignVCenter }
             }
         }
-        contentItem: ScrollView {
+        contentItem: MScroll {
             clip: true
             ColumnLayout {
                 width: addPicker.availableWidth
@@ -1915,7 +1915,7 @@ ApplicationWindow {
                 }
             }
         }
-        contentItem: ScrollView {
+        contentItem: MScroll {
             clip: true
             ColumnLayout {
                 width: presetDialog.availableWidth
