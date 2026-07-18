@@ -109,6 +109,10 @@ Item {
     // only enforces them on the way in.
     property QtObject _sizes: WidgetSizes {}
     property QtObject _catalog: WidgetCatalog {}
+    // The same packer the Dashboard/EdgeClone render with, so capacity is measured
+    // by real placement (half-width tiles pair across the short axis), never by a
+    // naive area sum. Used to enforce "one page = one screen, never scrolls".
+    property QtObject _packer: WidgetPacker {}
 
     // The catalog's per-type size API is consulted defensively: the store is
     // instantiated standalone in tests (and the catalog gained these functions
@@ -535,13 +539,98 @@ Item {
     }
     property int _idSeq: 0
 
-    function addTile(pageIdx, type) {
+    // ── One page = one screen (never scrolls) ────────────────────────────────
+    // Pack the page's tiles PLUS a probe of `size`; there is room iff the packing
+    // still fits within the screen's long axis (longHalves). Half-width tiles pair
+    // across the short axis, so this is measured by real placement, not an area sum.
+    function pageHasRoomFor(pageIdx, size) {
+        if (pageIdx < 0 || pageIdx >= data.pages.length) return false
+        if (!store._sizes.isLegal(size)) return false
+        var tiles = (data.pages[pageIdx].tiles || []).slice()
+        tiles.push({ "id": "__probe__", "type": "__probe__", "size": size })
+        return store._packer.longExtent(store._packer.pack(tiles)) <= store._sizes.longHalves
+    }
+    // Per-page column mode: 1 (full-width tiles) or 2 (half-width, two across).
+    // Default 1. Stored as the page `columns` key (survives _normaliseDoc).
+    function pageColumns(pageIdx) {
+        var ps = pages()
+        var p = (pageIdx >= 0 && pageIdx < ps.length) ? ps[pageIdx] : ({})
+        return (p.columns === 2) ? 2 : 1
+    }
+    // A supported size for `type` whose SHORT axis is `targetShort` (1 or 0.5), with
+    // the long axis closest to `currentSize`'s. "" if the type declares none that
+    // wide (e.g. focus has no 0.5-wide size) — the caller then keeps the old size.
+    function _sizeAtShort(type, currentSize, targetShort) {
+        var fn = store._catalogFn("sizesFor")
+        var legal = fn ? fn(type) : []
+        var curLong = (store._sizes.isLegal(currentSize) && store._sizes.table[currentSize])
+                      ? store._sizes.table[currentSize].long : 1
+        var best = "", bestDL = Infinity
+        for (var i = 0; i < legal.length; i++) {
+            var nm = legal[i]
+            if (!store._sizes.isLegal(nm)) continue
+            if (Math.abs(store._sizes.table[nm].short - targetShort) > 1e-9) continue
+            var dl = Math.abs(store._sizes.table[nm].long - curLong)
+            if (dl < bestDL) { bestDL = dl; best = nm }
+        }
+        return best
+    }
+    // The size a NEW tile of `type` takes on this page: honours the page's column
+    // mode (2 → a half-width size if the type has one) else the type's default.
+    function _addSizeFor(pageIdx, type) {
+        var base = _defaultSizeFor(type)
+        if (pageColumns(pageIdx) >= 2) {
+            var half = _sizeAtShort(type, base, 0.5)
+            if (half) return half
+        }
+        return base
+    }
+    // Set a page's column mode and REFLOW its tiles to that width — but only if the
+    // reflow still fits one screen (it must never create overflow). Narrowing to 2
+    // columns always fits; widening to 1 column is applied only when it does.
+    function setPageColumns(pageIdx, n) {
         if (pageIdx < 0 || pageIdx >= data.pages.length) return
+        var cols = (n >= 2) ? 2 : 1
+        var targetShort = (cols === 2) ? 0.5 : 1
+        var page = data.pages[pageIdx]
+        var tiles = page.tiles || []
+        var reflowed = tiles.map(function (t) {
+            var ns = store._sizeAtShort(t.type, t.size, targetShort)
+            return { "id": t.id, "type": t.type, "size": (ns && ns.length ? ns : t.size) }
+        })
+        if (store._packer.longExtent(store._packer.pack(reflowed)) <= store._sizes.longHalves)
+            for (var i = 0; i < tiles.length; i++) tiles[i].size = reflowed[i].size
+        page.columns = cols
+        _commitStructure()
+    }
+
+    // ── UI helpers for the add-widget affordances ────────────────────────────
+    // A page is full when not even the smallest widget (0.5x0.5) fits. Drives the
+    // Hub's edit-mode add slot and the picker's "page full" banner.
+    function pageIsFull(pageIdx) { return !pageHasRoomFor(pageIdx, "0.5x0.5") }
+    // The size the edit-mode "add" ghost previews: the column-aware baseline if it
+    // fits, else the largest smaller size that still fits, else "" (page full).
+    function nextAddSize(pageIdx) {
+        var pref = (pageColumns(pageIdx) >= 2) ? "0.5x1" : store._sizes.baseline
+        var order = [pref, "0.5x1", "0.5x0.5"]
+        for (var i = 0; i < order.length; i++)
+            if (pageHasRoomFor(pageIdx, order[i])) return order[i]
+        return ""
+    }
+    // Would adding a NEW tile of `type` fit on this page? Drives per-item enabling
+    // in the add-widget picker so a full page's widgets read as unavailable rather
+    // than silently doing nothing when tapped.
+    function addWouldFit(pageIdx, type) { return pageHasRoomFor(pageIdx, _addSizeFor(pageIdx, type)) }
+
+    // Add a tile — REFUSED when the page is already full (one screen never scrolls).
+    // Returns the new id, or null if there was no room. Size honours the page's
+    // column mode.
+    function addTile(pageIdx, type) {
+        if (pageIdx < 0 || pageIdx >= data.pages.length) return null
+        var size = _addSizeFor(pageIdx, type)
+        if (!pageHasRoomFor(pageIdx, size)) return null   // page full — do not overflow
         var id = _newId(type)
-        // A freshly-added tile is born WITH a size, so `size === undefined` keeps
-        // meaning exactly one thing — "this document predates the size key" — and
-        // never "this tile is simply new".
-        data.pages[pageIdx].tiles.push({ "id": id, "type": type, "size": _defaultSizeFor(type) })
+        data.pages[pageIdx].tiles.push({ "id": id, "type": type, "size": size })
         _commitStructure()
         return id
     }
@@ -567,6 +656,12 @@ Item {
         for (var i = 0; i < tiles.length; i++) {
             if (tiles[i].id === tileId) {
                 if (!_sizeSupported(tiles[i].type, size)) return false
+                // A resize must not push the page past one screen (never scrolls).
+                var probe = tiles.map(function (t) {
+                    return { "id": t.id, "type": t.type, "size": (t.id === tileId ? size : t.size) }
+                })
+                if (store._packer.longExtent(store._packer.pack(probe)) > store._sizes.longHalves)
+                    return false
                 tiles[i].size = size
                 _commitStructure()
                 return true

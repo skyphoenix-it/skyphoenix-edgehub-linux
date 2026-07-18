@@ -715,6 +715,40 @@ ApplicationWindow {
                                 MButton { text: "Start from a preset screen…"; iconName: "ui-layout"
                                     Layout.fillWidth: true; Layout.preferredHeight: m.touch
                                     onClicked: presetDialog.open() }
+
+                                // Per-page column layout. One screen never scrolls, so
+                                // "2 columns" reflows this page's widgets to half width
+                                // (two across) and new widgets default to half width too;
+                                // "1 column" makes them full width again. A switch that
+                                // would overflow the screen is refused by the store, so
+                                // the buttons never create a page you cannot see.
+                                RowLayout {
+                                    Layout.topMargin: 6; spacing: 8
+                                    Text { text: "Columns"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
+                                    ScopeTag { label: win.scopeLabels.page }
+                                }
+                                Text { text: "How many widgets sit side by side on this page. Switching reflows the widgets already here to fit — a page always stays one screen (it never scrolls)."
+                                    color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
+                                RowLayout {
+                                    Layout.fillWidth: true; spacing: 8
+                                    Repeater {
+                                        model: [ { n: 1, l: "1 column" }, { n: 2, l: "2 columns" } ]
+                                        delegate: Rectangle {
+                                            required property var modelData
+                                            Layout.fillWidth: true; height: m.touch; radius: m.radius
+                                            property bool sel: (store.structureRevision,
+                                                store.pageColumns(win.currentPageIndex)) === modelData.n
+                                            color: sel ? m.accent : (colMA.containsMouse ? m.panelAlt : m.panel)
+                                            border.width: 1; border.color: m.border
+                                            Text { anchors.centerIn: parent; text: modelData.l
+                                                color: parent.sel ? m.textOnAccent : m.textPrimary; font.pixelSize: 13 }
+                                            MouseArea { id: colMA; anchors.fill: parent; hoverEnabled: true
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: store.setPageColumns(win.currentPageIndex, modelData.n) }
+                                        }
+                                    }
+                                }
+
                                 Rectangle {
                                     Layout.fillWidth: true; Layout.preferredHeight: hintCol.implicitHeight + 24
                                     radius: m.radius; color: m.panel; border.width: 1; border.color: m.border
@@ -1654,6 +1688,26 @@ ApplicationWindow {
             ColumnLayout {
                 width: addPicker.availableWidth
                 spacing: 12
+                // One screen never scrolls: when the page is full, say so and disable
+                // the widgets that will not fit rather than letting a click do nothing.
+                Rectangle {
+                    Layout.fillWidth: true
+                    visible: (store.structureRevision, store.pageIsFull(win.currentPageIndex))
+                    implicitHeight: fullRowM.implicitHeight + 16
+                    radius: m.radius
+                    color: Qt.rgba(m.danger.r, m.danger.g, m.danger.b, 0.12)
+                    border.width: 1; border.color: Qt.rgba(m.danger.r, m.danger.g, m.danger.b, 0.5)
+                    RowLayout {
+                        id: fullRowM
+                        anchors.fill: parent; anchors.margins: 8; spacing: 8
+                        AppIcon { name: "ui-warning"; size: 18; color: m.danger; Layout.alignment: Qt.AlignVCenter }
+                        Text {
+                            Layout.fillWidth: true; wrapMode: Text.WordWrap
+                            text: "This screen is full. Remove or shrink a widget to make room — a page never scrolls."
+                            color: m.textPrimary; font.pixelSize: 13
+                        }
+                    }
+                }
                 Repeater {
                     model: catalog.categories()
                     delegate: ColumnLayout {
@@ -1666,7 +1720,10 @@ ApplicationWindow {
                                 model: catalog.inCategory(modelData)
                                 delegate: Rectangle {
                                     required property var modelData
+                                    readonly property bool fits: (store.structureRevision,
+                                        store.addWouldFit(win.currentPageIndex, modelData.type))
                                     width: 150; height: 84; radius: m.radius
+                                    opacity: fits ? 1.0 : 0.4
                                     color: itemMA.containsMouse ? m.panelAlt : m.bg
                                     border.width: 1; border.color: m.border
                                     ColumnLayout {
@@ -1676,6 +1733,7 @@ ApplicationWindow {
                                             color: m.textPrimary; font.pixelSize: 13 }
                                     }
                                     MouseArea { id: itemMA; anchors.fill: parent; hoverEnabled: true
+                                        enabled: parent.fits
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: { store.addTile(win.currentPageIndex, modelData.type); addPicker.close() } }
                                 }

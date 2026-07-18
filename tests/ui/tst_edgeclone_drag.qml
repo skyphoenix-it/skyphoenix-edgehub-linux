@@ -115,6 +115,14 @@ Item {
         store.addTile(0, "clock")
         store.addTile(0, "focus")
     }
+    // Two 1x1 tiles = 4 of the 6 long half-cells, leaving room for exactly one more
+    // (a page is one screen now — addTile refuses once it is full, so the add-a-tile
+    // tests must start from a page that still has room).
+    function seed2() {
+        store.load("blank")
+        store.addTile(0, "cpu")
+        store.addTile(0, "clock")
+    }
 
     TestCase {
         name: "EdgeCloneDrag"
@@ -207,6 +215,17 @@ Item {
                 }
                 return true
             }, 4000, "three tiles laid out, settled and whole")
+        }
+        function _laidOut2() {
+            seed2()
+            tryVerify(function () {
+                if (tileDelegates().length !== 2) return false
+                for (var i = 0; i < 2; i++) {
+                    var t = tileAtIdx(i)
+                    if (!t || t.width <= 0 || t.dying || t.lifeOpacity !== 1) return false
+                }
+                return true
+            }, 4000, "two tiles laid out, settled and whole")
         }
 
         // The two halves of the sync asserted directly: `_row` maps one packer
@@ -495,16 +514,16 @@ Item {
         function test_an_added_tile_fades_in_at_its_slot() {
             theme.reduceMotionPreference = "off"
             compare(theme.motionAdd, 200, "precondition: the entrance token is live")
-            _laidOut3()
+            _laidOut2()   // room for one more (a full page refuses the add now)
 
             store.addTile(0, "disk")
-            tryVerify(function () { return tileAtIdx(3) !== null }, 4000, "the new tile got a delegate")
-            var t = tileAtIdx(3)
+            tryVerify(function () { return tileAtIdx(2) !== null }, 4000, "the new tile got a delegate")
+            var t = tileAtIdx(2)
             // It fades in AT its slot: the packer put it where it belongs, so there is
             // no truthful place to fly in from.
             compare(t.animL, t.pl, "it is born AT its slot — it does not fly in from anywhere")
             verify(t.lifeOpacity < 1.0, "and it is arriving, not simply already there")
-            tryVerify(function () { return tileAtIdx(3) && tileAtIdx(3).lifeOpacity === 1.0 }, 2000,
+            tryVerify(function () { return tileAtIdx(2) && tileAtIdx(2).lifeOpacity === 1.0 }, 2000,
                       "the entrance completes")
             theme.reduceMotionPreference = "auto"
         }
@@ -514,11 +533,11 @@ Item {
         function test_reduce_motion_adds_a_tile_instantly() {
             theme.reduceMotionPreference = "on"
             compare(theme.motionAdd, 0, "precondition: reduce-motion collapses the entrance token")
-            _laidOut3()
+            _laidOut2()   // room for one more
 
             store.addTile(0, "disk")
-            tryVerify(function () { return tileAtIdx(3) !== null }, 4000, "the new tile is placed")
-            compare(tileAtIdx(3).lifeOpacity, 1.0,
+            tryVerify(function () { return tileAtIdx(2) !== null }, 4000, "the new tile is placed")
+            compare(tileAtIdx(2).lifeOpacity, 1.0,
                     "it is whole immediately — no entrance ran, not even a 0ms one")
             theme.reduceMotionPreference = "auto"
         }
@@ -530,23 +549,23 @@ Item {
         // of the delegate's life. This drags a tile that has ALREADY animated.
         function test_a_tile_that_has_faded_in_still_dims_when_dragged() {
             theme.reduceMotionPreference = "off"
-            _laidOut3()
+            _laidOut2()   // room for one more
 
             // Add a tile and let its ENTRANCE run to completion — an animation has now
             // owned this delegate's fade property.
             store.addTile(0, "disk")
             tryVerify(function () {
-                var t = tileAtIdx(3); return t && t.lifeOpacity === 1.0 && t.width > 0
+                var t = tileAtIdx(2); return t && t.lifeOpacity === 1.0 && t.width > 0
             }, 4000, "the new tile arrived and its entrance finished")
 
-            var t3 = tileAtIdx(3)
+            var t3 = tileAtIdx(2)
             compare(t3.opacity, 1.0, "precondition: settled and fully opaque")
-            var ma = dragMA(3)
+            var ma = dragMA(2)
             verify(ma, "the new tile has a drag overlay")
             mousePress(ma, t3.width / 2, t3.height / 2)
             mouseMove(ma, t3.width / 2 + 20, t3.height / 2 + 20)
 
-            compare(ld.item.dragIdx, 3, "precondition: the drag is live on the new tile")
+            compare(ld.item.dragIdx, 2, "precondition: the drag is live on the new tile")
             compare(t3.opacity, 0.3,
                     "the drag still dims it: the entrance never clobbered the drag binding")
             mouseRelease(ma, t3.width / 2 + 20, t3.height / 2 + 20)

@@ -830,44 +830,49 @@ Item {
                         pageItem._live = true
                     }
                     // How far the page reaches along the long axis, in half-cells.
-                    // 6 (WidgetSizes.longHalves) is exactly one screen.
+                    // 6 (WidgetSizes.longHalves) is exactly one screen. The store keeps
+                    // this <= 6 (a page never scrolls); it stays measured so tests and
+                    // future capacity checks can read the real extent.
                     property int longExtent: packer.longExtent(pageItem.placements)
 
                     // Where the next widget would land: the same packing with one more
-                    // baseline tile on the end. Drives the edit-mode "Add widget" slot.
+                    // tile (at the size the store would actually give it) on the end.
+                    // Drives the edit-mode "Add widget" slot. `nextAddSize` is "" when
+                    // the page is full, in which case the slot is hidden entirely.
+                    property string addSize: {
+                        store.structureRevision
+                        return store.nextAddSize(pageItem.index)
+                    }
+                    property bool hasAddRoom: pageItem.addSize !== ""
                     property var addPlacement: {
                         store.structureRevision
                         var virt = (pageItem.tiles || []).slice()
-                        virt.push({ id: "", type: "", size: sizes.baseline })
+                        virt.push({ id: "", type: "", size: pageItem.hasAddRoom ? pageItem.addSize : sizes.baseline })
                         var ps = packer.pack(virt)
                         return ps[ps.length - 1]
                     }
-                    // The extent that must be REACHABLE. In edit mode the add slot can
-                    // sit past the last tile (and past the screen), and an affordance you
-                    // cannot scroll to is not one.
-                    property int reachExtent: dashboard.editMode
-                        ? Math.max(pageItem.longExtent, pageItem.addPlacement.l + pageItem.addPlacement.el)
-                        : pageItem.longExtent
 
-                    // Scrollable page body. CAPACITY POLICY: a page is NEVER capped and
-                    // a tile is NEVER refused or dropped — a page longer than the screen
-                    // simply scrolls, exactly as it does today.
+                    // Page body. CAPACITY POLICY: one page = one screen, and a screen
+                    // the user can build NEVER scrolls. The store enforces this at the
+                    // source — addTile and setTileSize REFUSE any change that would push
+                    // a page past the 2x6 half-cell budget (DashboardStore.pageHasRoomFor)
+                    // — so every page created through the Hub or Manager packs to
+                    // longExtent <= longHalves and the content exactly fills the screen,
+                    // leaving `interactive` false. When a page is full the add affordance
+                    // is HIDDEN rather than parked off-screen where it could not be
+                    // reached, so there is never anything to scroll to.
                     //
-                    // The fixed 2x6 grid sizes the CELL, not the page: `1x1` must be a
-                    // third of the DISPLAY no matter what else is on the page (that is
-                    // the whole size model, and precisely what GridLayout could not do),
-                    // so the cell is screen/(2x6) and a 7th half-unit lands past the
-                    // screen edge rather than shrinking its neighbours. Capping instead
-                    // would refuse 15 of the 17 shipped preset pages outright, and
-                    // dropping tiles to fit is silent data loss — neither is a trade
-                    // worth making for a page that can just scroll.
+                    // `interactive` is gated on the REAL extent (not hard-false) purely
+                    // as a data-safety fallback: a LEGACY config saved before this policy
+                    // could still carry an overlong page, and letting it scroll keeps
+                    // every tile reachable — strictly better than clipping tiles out of
+                    // sight. Such a page shrinks back under budget the moment it is edited.
                     //
-                    // The scroll axis follows the LONG axis, so it is vertical in
-                    // portrait (720x2560) and HORIZONTAL in the default landscape strip
-                    // (2560x720) — see the report: a horizontal page scroll shares an
-                    // axis with the SwipeView's page swipe. `interactive` is therefore
-                    // false unless the page genuinely overflows, so it never competes on
-                    // a page that fits.
+                    // The fixed 2x6 grid sizes the CELL, not the page: `1x1` is always a
+                    // third of the DISPLAY no matter what else is on the page (the whole
+                    // size model, and what GridLayout could not do), so the cell is
+                    // screen/(2x6). The scroll axis follows the LONG axis (vertical in
+                    // portrait, horizontal on the landscape strip).
                     Flickable {
                         id: pageFlick
                         anchors.fill: parent
@@ -876,13 +881,15 @@ Item {
                         readonly property real cellShort: (pageItem.landscape ? height : width) / sizes.shortHalves
                         readonly property real cellLong: (pageItem.landscape ? width : height) / sizes.longHalves
                         readonly property real contentLong:
-                            Math.max(pageItem.landscape ? width : height, pageItem.reachExtent * cellLong)
+                            Math.max(pageItem.landscape ? width : height, pageItem.longExtent * cellLong)
                         contentWidth: pageItem.landscape ? contentLong : width
                         contentHeight: pageItem.landscape ? height : contentLong
                         flickableDirection: pageItem.landscape ? Flickable.HorizontalFlick
                                                                : Flickable.VerticalFlick
                         boundsBehavior: Flickable.StopAtBounds
-                        interactive: pageItem.reachExtent > sizes.longHalves
+                        // False for every page a user can create (store-enforced <= one
+                        // screen); true only for a legacy overlong page, so no tile hides.
+                        interactive: pageItem.longExtent > sizes.longHalves
 
                     Item {
                         id: pageGrid
@@ -1203,8 +1210,10 @@ Item {
                         // shows where the thing it adds will go rather than guessing.
                         Loader {
                             id: addTile
-                            active: dashboard.editMode
-                            visible: dashboard.editMode
+                            // Hidden when the page is full: the affordance only appears
+                            // where a widget can actually land (no off-screen ghost).
+                            active: dashboard.editMode && pageItem.hasAddRoom
+                            visible: dashboard.editMode && pageItem.hasAddRoom
 
                             // ── The add slot MOVES too ────────────────────────
                             // It is a real packed placement, so an edit re-packs it just
@@ -1638,6 +1647,27 @@ Item {
                         MouseArea { anchors.fill: parent; onClicked: picker.shown = false }
                     }
                 }
+                // A screen never scrolls: when it is full, say so plainly and point at
+                // the remedy (remove something, or shrink a widget) rather than letting
+                // taps land silently on widgets that cannot be added.
+                Rectangle {
+                    Layout.fillWidth: true
+                    visible: (store.structureRevision, store.pageIsFull(picker.pageIndex))
+                    implicitHeight: fullRow.implicitHeight + theme.spacingMd
+                    radius: theme.radiusMd
+                    color: Qt.rgba(theme.warning.r, theme.warning.g, theme.warning.b, 0.14)
+                    border.width: 1; border.color: Qt.rgba(theme.warning.r, theme.warning.g, theme.warning.b, 0.5)
+                    RowLayout {
+                        id: fullRow
+                        anchors.fill: parent; anchors.margins: theme.spacingSm; spacing: theme.spacingSm
+                        AppIcon { name: "ui-warning"; size: 20; color: theme.warning }
+                        Text {
+                            Layout.fillWidth: true; wrapMode: Text.WordWrap
+                            text: "This screen is full. Remove or shrink a widget to make room — a page never scrolls."
+                            font.pixelSize: 14; color: theme.textPrimary
+                        }
+                    }
+                }
                 Flickable {
                     Layout.fillWidth: true; Layout.fillHeight: true; clip: true
                     contentHeight: pickerCol.implicitHeight
@@ -1659,7 +1689,12 @@ Item {
                                         model: allowedItems
                                         delegate: Rectangle {
                                             required property var modelData
+                                            // A widget that will not fit on this (full/near-full) screen
+                                            // reads as unavailable rather than silently failing on tap.
+                                            readonly property bool fits: (store.structureRevision,
+                                                store.addWouldFit(picker.pageIndex, modelData.type))
                                             width: 200; height: theme.touchPrimary; radius: theme.radiusMd
+                                            opacity: fits ? 1.0 : 0.4
                                             // Touchscreens have no hover — react to `pressed` so a tap
                                             // gives real feedback (containsMouse alone did nothing).
                                             color: pickMA.pressed ? Qt.rgba(theme.accent.r, theme.accent.g, theme.accent.b, 0.22)
@@ -1682,6 +1717,7 @@ Item {
                                             }
                                             MouseArea {
                                                 id: pickMA; anchors.fill: parent; hoverEnabled: true
+                                                enabled: parent.fits
                                                 onClicked: { store.addTile(picker.pageIndex, modelData.type); picker.shown = false }
                                             }
                                         }

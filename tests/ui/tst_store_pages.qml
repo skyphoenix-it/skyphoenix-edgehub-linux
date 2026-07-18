@@ -6,6 +6,9 @@ import "../../ui/qml" as App
 // per-page columns, and unique page naming.
 //
 // COVERS: fn:DashboardStore.appendPreset, fn:DashboardStore._dedupPageName
+// COVERS: fn:DashboardStore.pageHasRoomFor, fn:DashboardStore.pageColumns, fn:DashboardStore.setPageColumns
+// COVERS: fn:DashboardStore._sizeAtShort, fn:DashboardStore._addSizeFor
+// COVERS: fn:DashboardStore.pageIsFull, fn:DashboardStore.nextAddSize, fn:DashboardStore.addWouldFit
 Item {
     width: 100; height: 100
     App.DashboardStore { id: store }
@@ -143,6 +146,70 @@ Item {
             verify(names.indexOf("Core") >= 0, "the screen added its 'Core' page")
             compare(store._dedupPageName("Core"), "Core 2", "_dedupPageName avoids the existing name")
             compare(store._dedupPageName("Brand New"), "Brand New", "a free name is returned unchanged")
+        }
+
+        // ── One page = one screen, never scrolls ─────────────────────────────
+        function test_capacity_column_functions_exist() {
+            verify(typeof store.pageHasRoomFor === "function", "pageHasRoomFor present")
+            verify(typeof store.pageColumns === "function", "pageColumns present")
+            verify(typeof store.setPageColumns === "function", "setPageColumns present")
+            verify(typeof store._sizeAtShort === "function", "_sizeAtShort present")
+            verify(typeof store._addSizeFor === "function", "_addSizeFor present")
+        }
+
+        function test_page_refuses_overflow() {
+            store.load("blank")                 // one screen = 6 long half-cells
+            verify(store.pageHasRoomFor(0, "1x1"), "an empty page has room")
+            verify(store.addTile(0, "cpu") !== null, "1st 1x1 fits")
+            verify(store.addTile(0, "gpu") !== null, "2nd 1x1 fits")
+            verify(store.addTile(0, "ram") !== null, "3rd 1x1 fits — page is now full")
+            verify(!store.pageHasRoomFor(0, "0.5x0.5"), "a full page has no room, not even for 0.5x0.5")
+            compare(store.addTile(0, "clock"), null, "adding to a full page is REFUSED (no overflow/scroll)")
+            compare(store.pages()[0].tiles.length, 3, "…and nothing was appended")
+        }
+
+        function test_resize_refuses_overflow() {
+            store.load("blank")
+            var a = store.addTile(0, "cpu")
+            store.addTile(0, "gpu"); store.addTile(0, "ram")   // page full (3× 1x1)
+            compare(store.setTileSize(0, a, "1x1.5"), false, "a resize that would overflow the screen is refused")
+            compare(store.pages()[0].tiles[0].size, "1x1", "…and the tile keeps its size")
+            compare(store.setTileSize(0, a, "0.5x0.5"), true, "shrinking always fits")
+        }
+
+        function test_columns_reflow_and_default() {
+            store.load("blank")
+            compare(store.pageColumns(0), 1, "default is 1 column (full width)")
+            store.addTile(0, "cpu")
+            compare(store.pages()[0].tiles[0].size, "1x1", "1-column default is full width")
+            store.setPageColumns(0, 2)
+            compare(store.pageColumns(0), 2, "switched to 2 columns")
+            compare(store._sizes.table[store.pages()[0].tiles[0].size].short, 0.5,
+                    "the existing tile reflowed to half width")
+            var id = store.addTile(0, "gpu")
+            verify(id !== null, "a new tile fits (2-column tiles are narrower)")
+            compare(store._sizes.table[store.pages()[0].tiles[1].size].short, 0.5,
+                    "a new tile defaults to half width in 2-column mode")
+            compare(store._sizes.table[store._sizeAtShort("cpu", "1x1", 0.5)].short, 0.5,
+                    "_sizeAtShort finds a half-width cpu size")
+            compare(store._sizeAtShort("focus", "1x1", 0.5), "",
+                    "_sizeAtShort returns '' when the type has no half-width size (focus)")
+            verify(store._addSizeFor(0, "gpu").length > 0, "_addSizeFor returns a size")
+        }
+
+        // The picker/add-affordance helpers built on top of pageHasRoomFor.
+        function test_add_affordance_helpers() {
+            store.load("blank")
+            verify(!store.pageIsFull(0), "an empty page is not full")
+            verify(store.addWouldFit(0, "cpu"), "a cpu fits on an empty page")
+            compare(store.nextAddSize(0), "1x1", "1-column add previews the baseline")
+            store.setPageColumns(0, 2)
+            compare(store.nextAddSize(0), "0.5x1", "2-column add previews a half-width size")
+            store.setPageColumns(0, 1)                                                   // back to full width
+            store.addTile(0, "cpu"); store.addTile(0, "gpu"); store.addTile(0, "ram")   // 3× 1x1 fills it
+            verify(store.pageIsFull(0), "the page is now full")
+            verify(!store.addWouldFit(0, "clock"), "nothing more fits")
+            compare(store.nextAddSize(0), "", "a full page has no add-size to preview")
         }
     }
 }
