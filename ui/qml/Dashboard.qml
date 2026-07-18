@@ -631,25 +631,39 @@ Item {
             clip: true
             interactive: !dashboard.editMode
 
-            // Landing on a just-added page is a two-step dance with the int-model
-            // Repeater: growing the model resets currentIndex to 0, and the new
-            // delegate isn't in `count` yet on the same tick — so setting the index
-            // straight away (or via a single Qt.callLater) either gets clobbered by
-            // the reset or clamped to the old last page. Instead we REMEMBER the
-            // wanted index and apply it the moment `count` catches up. goToPage()
-            // also tries immediately, for the common case where the page already
-            // exists (an existing-page target, or a synchronous model update).
+            // Landing on a just-added page fights the int-model Repeater: growing the
+            // model RESETS currentIndex to 0, the new delegate isn't in `count` on the
+            // same tick, and the reset can land AFTER a one-shot set — so a single
+            // Qt.callLater/onCountChanged didn't hold (the view snapped back to page
+            // 0). goToPage remembers the wanted index and RE-ASSERTS it briefly until
+            // it sticks: it applies immediately, on the next countChange, and on a
+            // short repeating timer that stops once the target has held (or after a
+            // safety window). This defeats a reset that arrives a few frames late.
             property int _wantIndex: -1
             function goToPage(idx) {
                 swipeView._wantIndex = idx
-                if (idx >= 0 && idx < swipeView.count) {
-                    swipeView.currentIndex = idx
-                    if (swipeView.currentIndex === idx) swipeView._wantIndex = -1
+                goHoldTimer.held = 0; goHoldTimer.ticks = 0
+                if (idx >= 0 && idx < swipeView.count) swipeView.currentIndex = idx
+                goHoldTimer.restart()
+            }
+            onCountChanged: if (_wantIndex >= 0 && _wantIndex < count) currentIndex = _wantIndex
+            Timer {
+                id: goHoldTimer
+                interval: 40; repeat: true
+                property int held: 0
+                property int ticks: 0
+                onTriggered: {
+                    var w = swipeView._wantIndex
+                    if (w < 0) { stop(); return }
+                    if (w < swipeView.count) {
+                        if (swipeView.currentIndex !== w) { swipeView.currentIndex = w; held = 0 }
+                        else held++
+                    }
+                    ticks++
+                    // Stop once it has held the target for ~120ms, or after ~800ms.
+                    if (held >= 3 || ticks >= 20) { swipeView._wantIndex = -1; stop() }
                 }
             }
-            onCountChanged: if (_wantIndex >= 0 && _wantIndex < count) {
-                                currentIndex = _wantIndex; _wantIndex = -1
-                            }
 
             Repeater {
                 // A COUNT, not the pages array. `store.pages()` returns a fresh array
