@@ -19,6 +19,12 @@ Item {
     property var wpCatalog
     property var uploadedImages: []
 
+    // Hover-preview hooks for animated styles (the host — e.g. the Manager — wires
+    // these to a live preview without committing). Unconnected in the hub, which is
+    // harmless.
+    signal previewStyle(string v)
+    signal previewEnded()
+
     implicitHeight: col2.implicitHeight
 
     // Text legible on an accent fill — prefer a theme token so a dark accent can't
@@ -92,7 +98,9 @@ Item {
                     Text { id: sLbl; anchors.centerIn: parent; text: modelData.l
                         color: sel ? bp.onAccent() : bp.col.textPrimary; font.pixelSize: 13 }
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                        onClicked: bp.pickStyle(modelData.v) }
+                        hoverEnabled: true
+                        onContainsMouseChanged: containsMouse ? bp.previewStyle(modelData.v) : bp.previewEnded()
+                        onClicked: { bp.pickStyle(modelData.v); bp.previewEnded() } }
                 }
             }
         }

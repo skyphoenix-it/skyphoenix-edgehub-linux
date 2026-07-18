@@ -6,6 +6,7 @@ import QtTest
 // COVERS: fn:Manager.previewTheme, fn:Manager.previewAccent, fn:Manager.endThemePreview, fn:Manager.confirmRemovePage
 // COVERS: fn:Manager.scopeDetail, fn:Manager.commitRename
 // COVERS: fn:Manager.applyPresetScreen, fn:Manager.confirmApplyPreset, fn:Manager.confirmResetLayout, fn:Manager.hoverPreview
+// COVERS: fn:Manager.commitTheme, fn:Manager._themeDef
 //
 // manager/qml/Manager.qml (hosted with a STUBBED `backend`) —
 //   • the 5-tab StackLayout (Layout/Appearance/Images/Display/About) switches
@@ -602,40 +603,32 @@ Item {
             tryVerify(function () { return win.isPro === false }, 2000)
         }
 
-        function _themeSwatch(key) {
-            return findPred(win, function (x) {
-                return x && x.hasOwnProperty("locked") && x.modelData
-                       && x.modelData.k === key })
-        }
-
+        // The Edge theme is chosen from a dropdown now; selection routes through
+        // win.commitTheme (which gates Pro themes). Test that logic directly (the
+        // dropdown rows live in a Popup that isn't in the tree until opened).
         function test_a_premium_theme_is_locked_for_free_and_applies_for_pro() {
             backend.storedKey = ""; backend.licenseChanged()
             _nav.currentIndex = 1                       // Appearance tab
             _store.setAppearance("themeMode", "dark")   // known starting point
+            tryVerify(function () { return win.isPro === false }, 2000)
+            verify(typeof win.commitTheme === "function", "commitTheme is exposed")
+            verify(win._themeDef("synthwave").pro === true, "_themeDef resolves the premium flag")
 
-            var sw = _themeSwatch("synthwave")          // a premium-pack theme
-            verify(sw, "the Synthwave swatch is present")
-            verify(sw.locked, "it is LOCKED on the free tier")
-
-            // Clicking a locked theme must NOT apply it (it opens the dialog).
-            var ma = findPred(sw, function (x) {
-                return x && typeof x.clicked === "function" && x.hasOwnProperty("hoverEnabled") })
-            verify(ma, "found the swatch's click area")
-            ma.clicked(null)
+            // A locked premium theme is NOT applied for a free user (commitTheme
+            // routes it to the licence dialog instead of the store).
+            win.commitTheme("synthwave")
             compare(_store.appearance().themeMode, "dark",
                     "a locked premium theme is not applied for a free user")
 
-            // Unlock Pro → the same theme is no longer locked and now applies.
+            // Unlock Pro → the same theme now applies.
             backend.setLicenseKey("XE1.valid.pro")
             tryVerify(function () { return win.isPro === true }, 2000)
-            tryVerify(function () { return _themeSwatch("synthwave").locked === false }, 2000)
-            _themeSwatch("synthwave").children  // force delegate refresh
-            var sw2 = _themeSwatch("synthwave")
-            var ma2 = findPred(sw2, function (x) {
-                return x && typeof x.clicked === "function" && x.hasOwnProperty("hoverEnabled") })
-            ma2.clicked(null)
+            win.commitTheme("synthwave")
             compare(_store.appearance().themeMode, "synthwave",
                     "with Pro, the premium theme applies")
+            // A free (non-Pro) theme always applies.
+            win.commitTheme("nord")
+            compare(_store.appearance().themeMode, "nord", "a free theme applies via commitTheme")
 
             backend.clearLicenseKey()
             _store.setAppearance("themeMode", "dark")
@@ -714,20 +707,33 @@ Item {
 
         // ── E: the Edge-theme grid is collapsed by default and expands on demand,
         // so the tab is not dominated by 29 swatches.
-        function test_theme_grid_collapses_and_expands() {
-            _nav.currentIndex = 1   // Appearance tab: `visible` is recursive, so the
-                                    // tab must be current for it to reflect the collapse
-                                    // state rather than the (hidden) non-current tab.
-            compare(win.apShowAllThemes, false, "theme grid starts collapsed")
-            // A non-featured, non-selected swatch is hidden while collapsed…
+        // The Edge theme is a compact dropdown whose model lists every theme; the
+        // field reflects the committed theme.
+        function test_theme_dropdown_lists_all_and_reflects_selection() {
+            _nav.currentIndex = 1
+            verify(win.apThemeModel.length >= 20, "the theme dropdown model lists all themes")
+            verify(win._themeDef("dark") !== null, "_themeDef resolves a known theme")
+            var field = findPred(win, function (x) { return x && x.objectName === "themeDropdownField" })
+            verify(field, "the theme dropdown field is present")
+            _store.setAppearance("themeMode", "nord")
+            compare(field.curKey, "nord", "the field reflects the committed theme")
             _store.setAppearance("themeMode", "dark")
-            var gruv = findPred(win, function (x) {
-                return x && x.hasOwnProperty("locked") && x.modelData && x.modelData.k === "gruvbox" })
-            verify(gruv, "the gruvbox swatch delegate exists")
-            verify(!gruv.visible, "a non-featured theme is hidden while collapsed")
-            win.apShowAllThemes = true
-            verify(gruv.visible, "expanding reveals all themes")
-            win.apShowAllThemes = false
+        }
+
+        // ── C: hovering a background style previews it live (audit F2) without
+        // committing to the store.
+        function test_background_style_hover_previews_without_committing() {
+            _nav.currentIndex = 1
+            var bgBefore = _store.appearance().bgStyle
+            var bp = findPred(win, function (x) {
+                return x && typeof x.previewStyle === "function"
+                       && x.hasOwnProperty("pageIndex") && x.pageIndex === -1 })
+            verify(bp, "found the global (Appearance) background picker")
+            bp.previewStyle("grid")
+            compare(_theme.previewBgStyle, "grid", "hovering a style previews it live")
+            compare(_store.appearance().bgStyle, bgBefore, "…without committing to the store")
+            bp.previewEnded()
+            compare(_theme.previewBgStyle, "", "leaving the chip ends the preview")
         }
 
         // ── A: the "can't move the glass slider" bug. The handle must track the

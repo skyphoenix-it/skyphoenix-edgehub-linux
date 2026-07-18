@@ -229,14 +229,52 @@ ApplicationWindow {
     }
 
     property int currentPageIndex: 0
-    // Appearance: the 29-swatch Edge-theme grid dominated the tab (audit: "cluttered
-    // and hard to understand"). It now shows a curated handful by default and
-    // expands on demand. The currently-selected theme is always shown, even when
-    // collapsed, so the selection is never hidden behind "Show all".
-    property bool apShowAllThemes: false
-    readonly property var apFeaturedThemes: [
-        "dark", "midnight", "aurora", "sunset", "nebula", "deep_ocean", "nord", "light"
+    // Appearance: the Edge theme is chosen from a compact dropdown (Hybrid design)
+    // instead of a 29-swatch grid that dominated the tab. This is the single source
+    // of the theme list — the dropdown and the tests both read it.
+    readonly property var apThemeModel: [
+        { k: "dark",          n: "Dark",       c1: "#161B22", c2: "#0A0E14" },
+        { k: "midnight",      n: "Midnight",   c1: "#1B1247", c2: "#070A1C" },
+        { k: "aurora",        n: "Aurora",     c1: "#0C2E3A", c2: "#111C40" },
+        { k: "sunset",        n: "Sunset",     c1: "#3A1230", c2: "#40161C" },
+        { k: "nebula",        n: "Nebula",     c1: "#2A1048", c2: "#120A2E" },
+        { k: "synthwave",     n: "Synthwave",  c1: "#2D0B45", c2: "#0F0524", pro: true },
+        { k: "cyberpunk",     n: "Cyberpunk",  c1: "#0A2A26", c2: "#020A08", pro: true },
+        { k: "deep_forest",   n: "Forest",     c1: "#143021", c2: "#06120A" },
+        { k: "deep_ocean",    n: "Ocean",      c1: "#0A2A3F", c2: "#020A14" },
+        { k: "ember",         n: "Ember",      c1: "#3A1509", c2: "#0F0705" },
+        { k: "vaporwave",     n: "Vaporwave",  c1: "#3A1A52", c2: "#140A20", pro: true },
+        { k: "rose_gold",     n: "Rose Gold",  c1: "#3A1E2C", c2: "#170C12" },
+        { k: "matrix",        n: "Matrix",     c1: "#0A160A", c2: "#000000", pro: true },
+        { k: "nord",          n: "Nord",       c1: "#3B4252", c2: "#272B35" },
+        { k: "dracula",       n: "Dracula",    c1: "#343746", c2: "#21222C" },
+        { k: "solarized",     n: "Solarized",  c1: "#073642", c2: "#00212B" },
+        { k: "gruvbox",       n: "Gruvbox",    c1: "#32302F", c2: "#1D2021" },
+        { k: "catppuccin",    n: "Catppuccin", c1: "#181825", c2: "#11111B" },
+        { k: "tokyonight",    n: "Tokyo Night",c1: "#24283B", c2: "#16161E" },
+        { k: "arch",          n: "Arch",       c1: "#1B2129", c2: "#14181D", pro: true },
+        { k: "cachyos",       n: "CachyOS",    c1: "#1C221A", c2: "#131611", pro: true },
+        { k: "debian",        n: "Debian",     c1: "#1F1922", c2: "#16121A", pro: true },
+        { k: "fedora",        n: "Fedora",     c1: "#152034", c2: "#0E1626", pro: true },
+        { k: "popos",         n: "Pop!_OS",    c1: "#262322", c2: "#1E1C1B", pro: true },
+        { k: "aubergine",     n: "Aubergine",  c1: "#3A0F2A", c2: "#2C0A20" },
+        { k: "crimson",       n: "Crimson",    c1: "#16080B", c2: "#0B0507" },
+        { k: "oled",          n: "OLED",       c1: "#0A0A0A", c2: "#000000" },
+        { k: "light",         n: "Light",      c1: "#F6F8FA", c2: "#E4E9F0" },
+        { k: "high_contrast", n: "Contrast",   c1: "#1A1A1A", c2: "#000000" }
     ]
+    function _themeDef(key) {
+        for (var i = 0; i < apThemeModel.length; i++)
+            if (apThemeModel[i].k === key) return apThemeModel[i]
+        return null
+    }
+    // Commit an Edge theme: a locked Pro theme opens the licence dialog instead of
+    // applying (free users can still hover-preview it). Otherwise persist it.
+    function commitTheme(key) {
+        var d = win._themeDef(key)
+        if (d && d.pro === true && !win.isPro) { win.endThemePreview(); licenseDialog.open(); return }
+        store.setAppearance("themeMode", key)
+    }
     // Transient "Starting hub…" feedback: set when the user hits Start, cleared
     // when the hub connects (see the backend Connections) or a safety timeout.
     property bool hubStarting: false
@@ -715,7 +753,7 @@ ApplicationWindow {
                     // true of. (Giving the background chips a real hover preview would
                     // be the better fix — it needs BackgroundPicker, which this
                     // workstream does not own. Recorded in the audit.)
-                    Text { text: "How your Edge looks. Hover a theme or accent swatch to try it in the preview — those two are only applied when you click. Every other control here applies as soon as you change it."
+                    Text { text: "How your Edge looks. Hover a theme or accent to try it in the preview — those two apply only when you click. Every other control here applies as soon as you change it."
                         color: m.textSecondary; font.pixelSize: 14; Layout.fillWidth: true; wrapMode: Text.WordWrap }
 
                     RowLayout {
@@ -723,105 +761,94 @@ ApplicationWindow {
                         Text { text: "Edge theme"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
                         ScopeTag { label: win.scopeLabels.edge }
                     }
-                    Text { text: "The colour palette for every page and widget. (The Manager window's own style is separate — bottom of the sidebar.)"
+                    Text { text: "The colour palette for every page and widget. Hover an option to try it in the preview; click to apply. (The Manager window's own style is a separate control below.)"
                         color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
-                    Flow {
-                        Layout.fillWidth: true; spacing: 10
-                        Repeater {
-                            model: [
-                                { k: "dark",          n: "Dark",      c1: "#161B22", c2: "#0A0E14" },
-                                { k: "midnight",      n: "Midnight",  c1: "#1B1247", c2: "#070A1C" },
-                                { k: "aurora",        n: "Aurora",    c1: "#0C2E3A", c2: "#111C40" },
-                                { k: "sunset",        n: "Sunset",    c1: "#3A1230", c2: "#40161C" },
-                                { k: "nebula",        n: "Nebula",    c1: "#2A1048", c2: "#120A2E" },
-                                { k: "synthwave",     n: "Synthwave", c1: "#2D0B45", c2: "#0F0524", pro: true },
-                                { k: "cyberpunk",     n: "Cyberpunk", c1: "#0A2A26", c2: "#020A08", pro: true },
-                                { k: "deep_forest",   n: "Forest",    c1: "#143021", c2: "#06120A" },
-                                { k: "deep_ocean",    n: "Ocean",     c1: "#0A2A3F", c2: "#020A14" },
-                                { k: "ember",         n: "Ember",     c1: "#3A1509", c2: "#0F0705" },
-                                { k: "vaporwave",     n: "Vaporwave", c1: "#3A1A52", c2: "#140A20", pro: true },
-                                { k: "rose_gold",     n: "Rose Gold", c1: "#3A1E2C", c2: "#170C12" },
-                                { k: "matrix",        n: "Matrix",    c1: "#0A160A", c2: "#000000", pro: true },
-                                { k: "nord",          n: "Nord",      c1: "#3B4252", c2: "#272B35" },
-                                { k: "dracula",       n: "Dracula",   c1: "#343746", c2: "#21222C" },
-                                { k: "solarized",     n: "Solarized", c1: "#073642", c2: "#00212B" },
-                                { k: "gruvbox",       n: "Gruvbox",   c1: "#32302F", c2: "#1D2021" },
-                                { k: "catppuccin",    n: "Catppuccin",c1: "#181825", c2: "#11111B" },
-                                { k: "tokyonight",    n: "Tokyo Night",c1: "#24283B", c2: "#16161E" },
-                                { k: "arch", n: "Arch", c1: "#1B2129", c2: "#14181D", pro: true },
-                                { k: "cachyos", n: "CachyOS", c1: "#1C221A", c2: "#131611", pro: true },
-                                { k: "debian", n: "Debian", c1: "#1F1922", c2: "#16121A", pro: true },
-                                { k: "fedora", n: "Fedora", c1: "#152034", c2: "#0E1626", pro: true },
-                                { k: "popos", n: "Pop!_OS", c1: "#262322", c2: "#1E1C1B", pro: true },
-                                { k: "aubergine", n: "Aubergine", c1: "#3A0F2A", c2: "#2C0A20" },
-                                { k: "crimson", n: "Crimson", c1: "#16080B", c2: "#0B0507" },
-                                { k: "oled",          n: "OLED",      c1: "#0A0A0A", c2: "#000000" },
-                                { k: "light",         n: "Light",     c1: "#F6F8FA", c2: "#E4E9F0" },
-                                { k: "high_contrast", n: "Contrast",  c1: "#1A1A1A", c2: "#000000" }
-                            ]
-                            delegate: Rectangle {
-                                required property var modelData
-                                // A premium-pack theme the user hasn't unlocked. Free
-                                // users can still HOVER to taste it in the preview —
-                                // that sells it — but committing needs Pro.
-                                readonly property bool locked: (modelData.pro === true) && !win.isPro
-                                width: 150; height: 80; radius: m.radius; clip: true
-                                property bool sel: (store.revision, store.appearance().themeMode || "dark") === modelData.k
-                                // Collapsed by default to a curated set; the selected
-                                // theme always shows so it's never hidden. (Positioners
-                                // skip invisible children, so the Flow simply reflows.)
-                                visible: win.apShowAllThemes
-                                         || win.apFeaturedThemes.indexOf(modelData.k) >= 0
-                                         || sel
-                                border.width: sel ? 3 : 1
-                                border.color: sel ? m.accent : (swMA.containsMouse ? m.accent : m.border)
+
+                    // Theme dropdown (Hybrid appearance): a compact field that opens a
+                    // scrollable list of swatch + name rows. Pro themes are badged and,
+                    // if locked, selecting opens the licence dialog (commitTheme). Hover
+                    // previews live; closing the popup without committing restores.
+                    Rectangle {
+                        id: themeField
+                        objectName: "themeDropdownField"
+                        Layout.fillWidth: true; implicitHeight: 46; radius: m.radius
+                        color: themeFieldMA.containsMouse ? m.panelAlt : m.panel
+                        border.width: 1; border.color: themePopup.visible ? m.accent : m.border
+                        readonly property string curKey: (store.revision, store.appearance().themeMode || "dark")
+                        readonly property var curDef: win._themeDef(themeField.curKey)
+                        RowLayout {
+                            anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 12; spacing: 10
+                            Rectangle {
+                                width: 28; height: 28; radius: 6; border.width: 1; border.color: m.border
                                 gradient: Gradient {
-                                    GradientStop { position: 0.0; color: modelData.c1 }
-                                    GradientStop { position: 1.0; color: modelData.c2 }
+                                    GradientStop { position: 0.0; color: themeField.curDef ? themeField.curDef.c1 : "#161B22" }
+                                    GradientStop { position: 1.0; color: themeField.curDef ? themeField.curDef.c2 : "#0A0E14" }
                                 }
-                                Text { anchors.left: parent.left; anchors.bottom: parent.bottom; anchors.margins: 8
-                                    text: modelData.n; font.pixelSize: 14; font.bold: true
-                                    color: modelData.k === "light" ? "#1F2328" : "#FFFFFF" }
-                                Rectangle { visible: parent.sel; anchors.top: parent.top; anchors.right: parent.right
-                                    anchors.margins: 6; width: 22; height: 22; radius: 11; color: m.accent
-                                    AppIcon { anchors.centerIn: parent; name: "ui-check"; size: 13; color: m.textOnAccent } }
-                                // PRO badge on a locked theme.
-                                Rectangle {
-                                    visible: parent.locked
-                                    anchors.top: parent.top; anchors.right: parent.right; anchors.margins: 6
-                                    width: proLbl.implicitWidth + 14; height: 18; radius: 9
-                                    color: Qt.rgba(0, 0, 0, 0.55)
+                            }
+                            Text {
+                                Layout.fillWidth: true; elide: Text.ElideRight
+                                text: (themeField.curDef ? themeField.curDef.n : themeField.curKey)
+                                color: m.textPrimary; font.pixelSize: 14
+                            }
+                            Text { text: themePopup.visible ? "▴" : "▾"; color: m.textSecondary; font.pixelSize: 14 }
+                        }
+                        MouseArea {
+                            id: themeFieldMA; anchors.fill: parent; hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: themePopup.visible ? themePopup.close() : themePopup.open()
+                        }
+                        Popup {
+                            id: themePopup
+                            y: themeField.height + 4; x: 0; width: themeField.width
+                            implicitHeight: Math.min(380, themeList.contentHeight + 12)
+                            padding: 6; modal: false; focus: true
+                            closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+                            background: Rectangle { color: m.panel; radius: m.radius; border.width: 1; border.color: m.border }
+                            // Restore the committed appearance if the user only hovered.
+                            onClosed: win.endThemePreview()
+                            contentItem: ListView {
+                                id: themeList
+                                clip: true; implicitHeight: contentHeight
+                                model: win.apThemeModel
+                                currentIndex: -1
+                                ScrollBar.vertical: ScrollBar {
+                                    policy: themeList.contentHeight > themeList.height ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff }
+                                delegate: Rectangle {
+                                    required property var modelData
+                                    readonly property bool locked: (modelData.pro === true) && !win.isPro
+                                    readonly property bool sel: (store.revision, (store.appearance().themeMode || "dark") === modelData.k)
+                                    width: ListView.view ? ListView.view.width : 0
+                                    height: 42; radius: 8
+                                    color: rowMA.containsMouse ? m.panelAlt : "transparent"
                                     RowLayout {
-                                        anchors.centerIn: parent; spacing: 3
-                                        AppIcon { name: "ui-settings"; size: 10; color: "#FFFFFF" }
-                                        Text { id: proLbl; text: "PRO"; color: "#FFFFFF"
-                                            font.pixelSize: 10; font.bold: true; font.letterSpacing: 0.5 }
+                                        anchors.fill: parent; anchors.leftMargin: 8; anchors.rightMargin: 8; spacing: 10
+                                        Rectangle {
+                                            width: 26; height: 26; radius: 6; border.width: 1; border.color: m.border
+                                            gradient: Gradient {
+                                                GradientStop { position: 0.0; color: modelData.c1 }
+                                                GradientStop { position: 1.0; color: modelData.c2 } }
+                                        }
+                                        Text { Layout.fillWidth: true; elide: Text.ElideRight
+                                            text: modelData.n; color: m.textPrimary
+                                            font.pixelSize: 14; font.bold: sel }
+                                        Rectangle {
+                                            visible: locked
+                                            implicitWidth: proL.implicitWidth + 12; implicitHeight: 18; radius: 9
+                                            color: Qt.rgba(0, 0, 0, 0.30)
+                                            Text { id: proL; anchors.centerIn: parent; text: "PRO"
+                                                color: m.textSecondary; font.pixelSize: 10; font.bold: true }
+                                        }
+                                        AppIcon { visible: sel; name: "ui-check"; size: 16; color: m.accent }
                                     }
-                                }
-                                MouseArea { id: swMA; anchors.fill: parent; hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    // Hover = transient try-on in the preview; click commits —
-                                    // unless it's a locked Pro theme, where the click opens the
-                                    // activate dialog instead of applying it. Debounced (see
-                                    // hoverPreview) so scrolling the grid can't storm applyTheme.
-                                    onContainsMouseChanged: win.hoverPreview("theme", modelData.k, containsMouse)
-                                    onClicked: {
-                                        if (parent.locked) { win.endThemePreview(); licenseDialog.open() }
-                                        else store.setAppearance("themeMode", modelData.k)
+                                    MouseArea {
+                                        id: rowMA; anchors.fill: parent; hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onContainsMouseChanged: win.hoverPreview("theme", modelData.k, containsMouse)
+                                        onClicked: { win.commitTheme(modelData.k); themePopup.close() }
                                     }
                                 }
                             }
                         }
-                    }
-
-                    // Expand / collapse the theme grid (keeps the tab uncluttered).
-                    Text {
-                        text: win.apShowAllThemes ? "Show fewer themes ▴" : "Show all themes ▾"
-                        color: m.accent; font.pixelSize: 13; font.bold: true
-                        Layout.topMargin: 2
-                        MouseArea { anchors.fill: parent; hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: win.apShowAllThemes = !win.apShowAllThemes }
                     }
 
                     // Manager window style — moved here from the sidebar so it sits
@@ -905,6 +932,11 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         store: store; pageIndex: -1; col: win.mCol
                         bgCatalog: bgCatalog; wpCatalog: bundledWallpapers; uploadedImages: win.uploadedWallpapers
+                        // Hover a style chip → preview it live in the clone without
+                        // committing (finally makes the tab's "hover to try" true for
+                        // backgrounds too — audit F2).
+                        onPreviewStyle: (v) => theme.previewBgStyle = v
+                        onPreviewEnded: theme.previewBgStyle = ""
                     }
 
                     // A default "Layout columns" picker stood here, alongside the

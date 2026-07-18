@@ -13,6 +13,11 @@ QtObject {
     property bool showWidgetGlow: false
     property bool reduceMotion: false
     property string accentName: "blue"
+    // Transient background-style preview (Manager only): when non-empty, the
+    // Manager's EdgeClone renders this animated style instead of the stored one, so
+    // hovering a background chip previews it live without committing. Never
+    // persisted, never set by the hub (defaults empty).
+    property string previewBgStyle: ""
 
     // ── Reduce motion: OS signal vs. explicit choice ─────────────────────────
     // `reduceMotion` above is the PERSISTED config flag. Two more inputs decide

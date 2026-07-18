@@ -207,6 +207,10 @@ Item {
     //    animated style OR wallpaper, per-page override → global default) ──
     property var pageBg: {
         store.revision
+        // Live hover-preview of a background style from the Appearance picker
+        // (Manager only): show it over everything without touching the store.
+        if (theme.previewBgStyle && theme.previewBgStyle.length)
+            return { wallpaper: "", style: theme.previewBgStyle }
         var pages = store.pages()
         var p = (pageIndex >= 0 && pageIndex < pages.length) ? pages[pageIndex] : ({})
         var pbg = p.bg || ({})
