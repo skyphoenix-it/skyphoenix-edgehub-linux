@@ -40,7 +40,7 @@ WidgetChrome {
 
     // Three distinct states, and conflating any two of them is a lie:
     //   • no bridge / not probed yet  → "…"      (we do not know YET)
-    //   • probed, unsupported family  → "—"      (we CANNOT know; reason shown)
+    //   • probed, unsupported family  → "-"      (we CANNOT know; reason shown)
     //   • probed, counted             → a number (0 would be a real answer)
     readonly property bool loading: w.probe === null
     readonly property bool counted: !w.loading && w.probe.packageCount !== null
@@ -85,7 +85,7 @@ WidgetChrome {
             Layout.preferredWidth: w.width - 2 * w.contentMargins
             Layout.maximumWidth: w.width - 2 * w.contentMargins
             horizontalAlignment: Text.AlignHCenter
-            text: w.loading ? "…" : (w.counted ? w.groupDigits(w.count) : "—")
+            text: w.loading ? "…" : (w.counted ? w.groupDigits(w.count) : "-")
             font.pixelSize: w.expanded ? 120 : Math.max(28, Math.min(w.width * 0.30, 64))
             fontSizeMode: Text.HorizontalFit; minimumPixelSize: 12; elide: Text.ElideRight
             font.bold: true; font.family: theme.fontMono

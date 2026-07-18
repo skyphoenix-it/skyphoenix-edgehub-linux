@@ -186,7 +186,7 @@ Item {
             mockHub.allowHosts = ["ci.example.com", "api.corp.example"]
             diag.netHub = mockHub
             diag.currentPage = 4
-            verify(findText(diag, "Offline kill switch: On — all remote requests are refused") !== null,
+            verify(findText(diag, "Offline kill switch: On - all remote requests are refused") !== null,
                    "the kill switch reads as ON with its consequence spelled out")
             verify(findText(diag, "Allowed hosts: ci.example.com, api.corp.example") !== null,
                    "a non-empty allowlist renders its hosts")

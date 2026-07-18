@@ -251,7 +251,7 @@ Item {
                             Text { Layout.fillWidth: true; text: "✨  Recommended starter"
                                 font.pixelSize: 17; font.bold: true; color: theme.textPrimary }
                             Text { Layout.fillWidth: true; wrapMode: Text.WordWrap
-                                text: "A few ready-made screens to swipe between — focus & tasks, system stats, and home. Add or remove screens any time."
+                                text: "A few ready-made screens to swipe between - focus & tasks, system stats, and home. Add or remove screens any time."
                                 font.pixelSize: 13; color: theme.textSecondary }
                         }
                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor

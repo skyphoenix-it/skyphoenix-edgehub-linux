@@ -111,7 +111,7 @@ WidgetChrome {
         anchors.centerIn: parent
         width: parent.width - 2 * theme.spacingSm
         visible: w.stepList.length === 0
-        text: w.expanded ? "Add your steps in settings — one per line."
+        text: w.expanded ? "Add your steps in settings - one per line."
                          : "Add steps\nin settings"
         color: theme.textTertiary; font.pixelSize: w.expanded ? 15 : 12
         horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
@@ -127,7 +127,7 @@ WidgetChrome {
         columnSpacing: theme.spacingLg
 
         // ── Summary: progress, stated as a fact and nothing more. No
-        // "x% — keep going!", no target, no comparison to yesterday (there is no
+        // "x% - keep going!", no target, no comparison to yesterday (there is no
         // yesterday here).
         ColumnLayout {
             visible: w.showSummary

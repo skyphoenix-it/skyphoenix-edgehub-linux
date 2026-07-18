@@ -48,7 +48,7 @@ WidgetChrome {
         "sprint":  { work: 15, short: 3, long: 10, every: 4, label: "Sprint" }
     })
     readonly property var nudges: [
-        "One small step at a time.", "You've got this — stay with it.",
+        "One small step at a time.", "You've got this - stay with it.",
         "Progress over perfection.", "Just focus on this one thing.",
         "Breathe. Reset. Continue.", "Future you says thanks."
     ]

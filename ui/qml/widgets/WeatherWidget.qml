@@ -288,7 +288,7 @@ WidgetChrome {
                     Text {
                         text: (w.loaded && !w.errorText.length)
                               ? Math.round(w.curTemp) + w.degSym
-                              : (w.errorText.length ? "—" : "…")
+                              : (w.errorText.length ? "-" : "…")
                         font.pixelSize: w.tempPx; font.bold: true; color: theme.textPrimary
                     }
                     // "Feels like" is data the CURRENT reading already carries —
@@ -425,7 +425,7 @@ WidgetChrome {
             Text { text: w.loaded ? w.weatherGlyph(w.curCode) : "…"; font.pixelSize: w.expanded ? 72 : 34 }
             ColumnLayout {
                 spacing: 0
-                Text { text: (w.loaded && !w.errorText.length) ? Math.round(w.curTemp) + w.degSym : (w.errorText.length ? "—" : "…")
+                Text { text: (w.loaded && !w.errorText.length) ? Math.round(w.curTemp) + w.degSym : (w.errorText.length ? "-" : "…")
                     font.pixelSize: w.expanded ? 64 : 28; font.bold: true; color: theme.textPrimary }
                 Text { visible: w.expanded && w.loaded; text: "Feels " + Math.round(w.feels) + w.degSym + "  ·  " + w.place
                     font.pixelSize: 14; color: theme.textSecondary }
@@ -437,7 +437,7 @@ WidgetChrome {
             horizontalAlignment: Text.AlignHCenter
             elide: Text.ElideRight               // S12: long place/error must not overflow the tile
             // Compact: place (or the error). Expanded: surface the error reason too
-            // (otherwise the big "—" gives no hint why there's no data).
+            // (otherwise the big "-" gives no hint why there's no data).
             visible: !w.expanded || w.errorText.length > 0
             text: w.errorText.length ? w.errorText : w.place
             font.pixelSize: w.expanded && w.errorText.length ? 15 : 12

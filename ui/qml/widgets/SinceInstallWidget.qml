@@ -71,7 +71,7 @@ WidgetChrome {
     // people check against `uptime`-style facts.
     readonly property string valueText: {
         if (w.loading) return "…"
-        if (!w.known) return "—"
+        if (!w.known) return "-"
         if (w.ageUnit === "days") return "" + w.days
         if (w.days < 60) return "" + w.days
         if (w.days < 730) return "" + Math.floor(w.days / 30.44)

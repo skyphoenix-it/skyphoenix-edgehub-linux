@@ -63,7 +63,7 @@ Item {
             })
             compare(w.known, false)
             compare(w.loading, false, "we got an answer; it has no date")
-            compare(w.valueText, "—")
+            compare(w.valueText, "-")
             compare(w.dateText, "", "no date rendered at all")
             verify(w.unitText.indexOf("unavailable") >= 0)
         }

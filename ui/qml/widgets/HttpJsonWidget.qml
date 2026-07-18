@@ -158,7 +158,7 @@ WidgetChrome {
                 var doc
                 try { doc = JSON.parse(body) } catch (e) { _put({ httpErr: "Parse error" }); return }
                 var v = self.resolvePath(doc, w.jsonPath)
-                if (v === undefined) { _put({ httpErr: "No match", httpText: "—" }); return }
+                if (v === undefined) { _put({ httpErr: "No match", httpText: "-" }); return }
                 self._apply(v)
             },
             onError: function (reason) {
@@ -196,7 +196,7 @@ WidgetChrome {
             patch.httpVal = undefined; patch.httpList = []
             patch.httpText = v ? "true" : "false"
         } else if (v === null || v === undefined) {
-            patch.httpVal = undefined; patch.httpList = []; patch.httpText = "—"
+            patch.httpVal = undefined; patch.httpList = []; patch.httpText = "-"
         } else {
             patch.httpVal = undefined; patch.httpList = []
             patch.httpText = ("" + v).slice(0, 64)
@@ -340,7 +340,7 @@ WidgetChrome {
                         anchors.horizontalCenter: parent.horizontalCenter
                         anchors.horizontalCenterOffset: -parent.unitW / 2
                         width: Math.max(40, parent.width - parent.unitW)
-                        text: w.errText.length ? "—" : (w.valText.length ? w.valText : "…")
+                        text: w.errText.length ? "-" : (w.valText.length ? w.valText : "…")
                         font.pixelSize: w.valuePx; font.bold: true
                         color: w.valColor
                         horizontalAlignment: Text.AlignHCenter
@@ -393,7 +393,7 @@ WidgetChrome {
             ok: !w.errText.length && typeof w.valNum === "number"
             value: (typeof w.valNum === "number" && w.gaugeMax > 0)
                    ? Math.max(0, Math.min(1, w.valNum / w.gaugeMax)) : 0
-            big: w.errText.length ? "—" : (w.valText.length ? w.valText + (w.unit.length ? w.unit : "") : "…")
+            big: w.errText.length ? "-" : (w.valText.length ? w.valText + (w.unit.length ? w.unit : "") : "…")
             // The overlay captions with the path; a tall TILE has earned it too.
             sub: (w.expanded || w.tallish)
                  ? (w.errText.length ? w.errText : w.jsonPath) : ""

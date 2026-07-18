@@ -78,7 +78,7 @@ QtObject {
     readonly property string message: {
         if (checker.status === "checking") return "Checking…"
         if (checker.status === "update")
-            return "EdgeHub " + checker.latestTag + " is available — " +
+            return "EdgeHub " + checker.latestTag + " is available - " +
                    (checker.installKind === "appimage"
                         ? "update the AppImage via its .zsync (or download it from GitHub Releases)."
                         : "update via your package manager.")
@@ -87,10 +87,10 @@ QtObject {
         if (checker.status === "offline") return checker.errorText
         if (checker.status === "error") return checker.errorText
         if (checker.status === "unknown")
-            return "Latest release is " + checker.latestTag + " — this build (" +
+            return "Latest release is " + checker.latestTag + " - this build (" +
                    (checker.currentVersion.length ? checker.currentVersion : "dev") +
                    ") has no comparable version."
-        return checker.enabled ? "Not checked yet." : "Off — EdgeHub never checks on its own."
+        return checker.enabled ? "Not checked yet." : "Off - EdgeHub never checks on its own."
     }
 
     property var _xhr: null
@@ -116,7 +116,7 @@ QtObject {
         if (!checker.enabled) return   // opt-in is load-bearing: never fire when off
         if (!checker.netHub) {
             checker.status = "error"
-            checker.errorText = "No egress gate available — check skipped."
+            checker.errorText = "No egress gate available - check skipped."
             return
         }
         if (checker._xhr) { checker._xhr.abort(); checker._xhr = null }

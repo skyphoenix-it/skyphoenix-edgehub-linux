@@ -34,7 +34,7 @@ WidgetChrome {
         ],
         "stoic": [
             { t: "We suffer more in imagination than in reality.", a: "Seneca" },
-            { t: "You have power over your mind — not outside events.", a: "Marcus Aurelius" },
+            { t: "You have power over your mind - not outside events.", a: "Marcus Aurelius" },
             { t: "The best way out is always through.", a: "Robert Frost" },
             { t: "Discipline equals freedom.", a: "Jocko Willink" },
             { t: "First say to yourself what you would be; then do what you have to do.", a: "Epictetus" },
@@ -56,14 +56,14 @@ WidgetChrome {
         ]
     })
 
-    // Parse the user's custom list: one quote per line, optional " — Author".
+    // Parse the user's custom list: one quote per line, optional " - Author".
     function parseCustom() {
         var out = []
         var lines = ("" + w.customText).split("\n")
         for (var i = 0; i < lines.length; i++) {
             var ln = lines[i].trim()
             if (!ln.length) continue
-            var sep = ln.indexOf(" — ")
+            var sep = ln.indexOf(" - ")
             if (sep < 0) sep = ln.indexOf(" -- ")
             if (sep < 0) sep = ln.indexOf(" | ")
             if (sep < 0) sep = ln.indexOf(" - ")   // plain ASCII hyphen (on-device keyboards)
@@ -183,7 +183,7 @@ WidgetChrome {
             Text {
                 Layout.fillWidth: true
                 horizontalAlignment: w.horiz ? Text.AlignLeft : Text.AlignHCenter
-                visible: w.showAuthor; text: "— " + w.q.a
+                visible: w.showAuthor; text: "- " + w.q.a
                 font.pixelSize: w.sizeClass === "full" ? 18
                                 : Math.max(12, Math.min(w.width * 0.03, 16))
                 color: theme.textSecondary

@@ -151,7 +151,7 @@ WidgetChrome {
             Layout.maximumWidth: w.horiz ? Math.round(tileLayout.width * 0.42)
                                          : tileLayout.width
             horizontalAlignment: Text.AlignHCenter
-            text: !w.valid ? "—" : (w.days > 0 ? w.days : (w.days === 0 ? "🎉" : Math.abs(w.days)))
+            text: !w.valid ? "-" : (w.days > 0 ? w.days : (w.days === 0 ? "🎉" : Math.abs(w.days)))
             font.pixelSize: w.numPx
             fontSizeMode: Text.HorizontalFit; minimumPixelSize: 12; elide: Text.ElideRight
             font.bold: true; font.family: theme.fontMono; color: w.effAccent

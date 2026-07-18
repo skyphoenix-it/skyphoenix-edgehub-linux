@@ -129,9 +129,9 @@ Dialog {
                 onError: function (reason) {
                     if (seq !== dlg._geoSeq) return
                     dlg._geoXhr = null
-                    dlg.geoStatus = reason === "offline" ? "Offline — lookup unavailable"
+                    dlg.geoStatus = reason === "offline" ? "Offline - lookup unavailable"
                         : reason === "blocked" ? "Lookup host not allowed"
-                        : reason === "timeout" ? "Lookup timed out — try again" : "Lookup failed"
+                        : reason === "timeout" ? "Lookup timed out - try again" : "Lookup failed"
                 }
             })
             if (seq === dlg._geoSeq) dlg._geoXhr = xhr
@@ -176,7 +176,7 @@ Dialog {
             AppIcon { name: dlg.wType; size: 32; color: theme.accent; Layout.alignment: Qt.AlignVCenter }
             ColumnLayout {
                 spacing: 1; Layout.fillWidth: true
-                Text { text: catalog.title(dlg.wType) + " — Configure"; color: m.textPrimary; font.pixelSize: 20; font.bold: true }
+                Text { text: catalog.title(dlg.wType) + " - Configure"; color: m.textPrimary; font.pixelSize: 20; font.bold: true }
                 Text { text: catalog.desc(dlg.wType); color: m.textSecondary; font.pixelSize: 12
                     elide: Text.ElideRight; Layout.fillWidth: true }
             }
@@ -261,8 +261,8 @@ Dialog {
                 // Honest about the commit path: "instantly on the Edge" was shown
                 // even while the sidebar said "Hub offline (saved)".
                 text: backend.hubConnected
-                      ? "Live & interactive — changes apply instantly to the Edge."
-                      : "Live preview — changes are saved and appear when the hub starts."
+                      ? "Live & interactive - changes apply instantly to the Edge."
+                      : "Live preview - changes are saved and appear when the hub starts."
                 color: m.textSecondary; font.pixelSize: 12
             }
             // Token-styled (mirrors Manager's MButton) so it matches the dark app

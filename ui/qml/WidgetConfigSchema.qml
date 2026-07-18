@@ -53,7 +53,7 @@ QtObject {
                   help: "Reads the name your system reports in /etc/os-release." } ] },
             titleSection("Packages"),
             about("Counts the packages installed on this machine, straight from your package "
-                  + "manager's database — pacman or dpkg. It only ever READS: nothing here "
+                  + "manager's database - pacman or dpkg. It only ever READS: nothing here "
                   + "installs, removes or updates anything, and it needs no privileges. "
                   + "RPM-based systems aren't supported, because reading that database needs "
                   + "librpm and this app will not shell out to `rpm`.") ] }
@@ -210,7 +210,7 @@ QtObject {
                 { key: "dailyGoal", label: "Daily focus goal", type: "number", min: 1, max: 16, step: 1, suffix: " sessions", dflt: 4,
                   help: "Progress toward this shows on the timer; hitting it triggers a bigger celebration." },
                 { key: "celebrate", label: "Celebrate finished sessions", type: "toggle", dflt: true,
-                  help: "A burst of colour + a “nice!” when a focus session completes — a little dopamine hit." },
+                  help: "A burst of colour + a “nice!” when a focus session completes - a little dopamine hit." },
                 { key: "rewardPoints", label: "Earn reward points", type: "toggle", dflt: true,
                   help: "Rack up points per session (bonus for hitting your goal)." },
                 { key: "showNudges", label: "Show encouraging nudges", type: "toggle", dflt: true },
@@ -250,7 +250,7 @@ QtObject {
                 { key: "date", label: "Date", type: "date" } ] },
             { title: "Behaviour", cols: 1, fields: [
                 { key: "repeatYearly", label: "Repeats every year", type: "toggle", dflt: false,
-                  help: "For birthdays and anniversaries — counts down to the next occurrence and never shows “passed”." } ] },
+                  help: "For birthdays and anniversaries - counts down to the next occurrence and never shows “passed”." } ] },
             titleSection("Countdown"),
             about("Counts the days to a date you choose.") ] }
 
@@ -293,7 +293,7 @@ QtObject {
             titleSection("Meds"),
             about("A reminder of what you take and when, and a one-tap record of what you've "
                   + "marked as taken today. It resets each morning.\n\n"
-                  + "It only knows what you tap — it cannot know what you actually took, so it "
+                  + "It only knows what you tap - it cannot know what you actually took, so it "
                   + "never nags, never turns red and never counts a dose as missed. Tap again "
                   + "to undo a mistaken mark. This is not medical software: don't rely on it "
                   + "as your only record, and never use it to decide whether to re-dose.") ] }
@@ -304,7 +304,7 @@ QtObject {
                   help: "Turn off for a plain list." } ] },
             titleSection("Braindump"),
             about("A place to offload a thought in one line so you can stop holding it. Type "
-                  + "and press Enter — newest first. Different from Quick Note: that is one "
+                  + "and press Enter - newest first. Different from Quick Note: that is one "
                   + "page you keep, this is a queue you empty. The newest 100 are kept.") ] }
 
         case "routine": return { sections: [
@@ -314,7 +314,7 @@ QtObject {
                   help: "One step per line, in the order you do them." } ] },
             titleSection("Routine"),
             about("Today's checklist. Everything unticks itself at midnight.\n\n"
-                  + "Nothing is remembered from one day to the next — no streak, no history, "
+                  + "Nothing is remembered from one day to the next - no streak, no history, "
                   + "no score. A skipped day costs you nothing, because there is nothing to "
                   + "lose. If you do want a streak, use the Habit widget instead.") ] }
 
@@ -337,7 +337,7 @@ QtObject {
             { title: "Note", cols: 1, fields: [
                 { key: "text", label: "", type: "textarea", placeholder: "Type anything…" } ] },
             titleSection("Quick Note"),
-            about("A quick scratchpad — saves automatically.") ] }
+            about("A quick scratchpad - saves automatically.") ] }
 
         case "httpjson": return { sections: [
             { title: "Data source", cols: 1, fields: [
@@ -347,7 +347,7 @@ QtObject {
                   help: "Dot/bracket path to the value inside the response. Blank = the whole body." },
                 { key: "authToken", label: "Bearer token", type: "text", placeholder: "(optional)", dflt: "",
                   help: "Sent as “Authorization: Bearer …”. Leave blank if the endpoint is public. " +
-                        "A token typed here is stored in plain text in config.toml — prefer a reference: " +
+                        "A token typed here is stored in plain text in config.toml - prefer a reference: " +
                         "${env:MY_TOKEN} reads an environment variable, file:/path/to/token reads a file. " +
                         "Either is resolved only when the request is made and never written to disk." } ] },
             { title: "Display", cols: 1, fields: [
@@ -359,7 +359,7 @@ QtObject {
                 { key: "gaugeMax", label: "Gauge maximum", type: "number", min: 1, max: 1000000, step: 1, dflt: 100,
                   help: "Full-scale value for the gauge ring." },
                 { key: "listMax", label: "List rows", type: "number", min: 1, max: 12, step: 1, dflt: 5,
-                  help: "At most this many. A smaller tile shows fewer — it never overflows, and never shows more than you ask for." } ] },
+                  help: "At most this many. A smaller tile shows fewer - it never overflows, and never shows more than you ask for." } ] },
             { title: "Thresholds (colour)", cols: 2,
               desc: "Colour the value amber at “Warn” and red at “Critical”. Leave blank to disable.", fields: [
                 { key: "warnAt", label: "Warn ≥", type: "text", placeholder: "80", dflt: "" },
@@ -367,7 +367,7 @@ QtObject {
             { title: "Polling", cols: 1, fields: [
                 { key: "pollSec", label: "Refresh every", type: "slider", min: 5, max: 3600, step: 5, suffix: " s", dflt: 60 } ] },
             titleSection("HTTP / JSON"),
-            about("Connect any JSON endpoint. Pull one value out by path and show it as a number, gauge or list. All requests go through the app's egress gate — nothing else phones home.") ] }
+            about("Connect any JSON endpoint. Pull one value out by path and show it as a number, gauge or list. All requests go through the app's egress gate - nothing else phones home.") ] }
 
         case "kpi": return { sections: [
             { title: "Source", cols: 1, fields: [
@@ -382,7 +382,7 @@ QtObject {
                   help: "Path to the number inside a JSON response. Blank if the body is already just a number." },
                 { key: "authToken", label: "Bearer token", type: "text", placeholder: "(optional)", dflt: "",
                   help: "Used with the “URL” source. A token typed here is stored in plain text in " +
-                        "config.toml — prefer ${env:MY_TOKEN} or file:/path/to/token, which are read " +
+                        "config.toml - prefer ${env:MY_TOKEN} or file:/path/to/token, which are read " +
                         "only when the request is made and never written to disk." } ] },
             { title: "Presentation", cols: 1, fields: [
                 { key: "label", label: "Label", type: "text", placeholder: "Queue depth", dflt: "" },
@@ -390,13 +390,13 @@ QtObject {
             { title: "Thresholds (colour)", cols: 1,
               desc: "Colour the number amber/red at these values.", fields: [
                 { key: "invert", label: "Lower is worse", type: "toggle", dflt: false,
-                  help: "For uptime, budget or headroom — turns the colour on when the value drops BELOW the thresholds." },
+                  help: "For uptime, budget or headroom - turns the colour on when the value drops BELOW the thresholds." },
                 { key: "warnAt", label: "Warn", type: "text", placeholder: "80", dflt: "" },
                 { key: "critAt", label: "Critical", type: "text", placeholder: "95", dflt: "" } ] },
             { title: "Polling", cols: 1, fields: [
                 { key: "pollSec", label: "Refresh every", type: "slider", min: 5, max: 3600, step: 5, suffix: " s", dflt: 60 } ] },
             titleSection("KPI"),
-            about("One number that matters — from a URL or a local file — with a label, unit and colour-coded thresholds. A local file reads without any network access.") ] }
+            about("One number that matters - from a URL or a local file - with a label, unit and colour-coded thresholds. A local file reads without any network access.") ] }
 
         case "calendar": return { sections: [
             { title: "Subscription", cols: 1, fields: [
@@ -404,7 +404,7 @@ QtObject {
                 { type: "info", text: "Paste the secret iCal/ICS URL from Google, Outlook or Nextcloud." } ] },
             { title: "Display", cols: 1, fields: [
                 { key: "maxEvents", label: "Events to show", type: "number", min: 1, max: 12, step: 1, dflt: 5,
-                  help: "At most this many. A smaller tile shows fewer — it never overflows, and never shows more than you ask for." } ] },
+                  help: "At most this many. A smaller tile shows fewer - it never overflows, and never shows more than you ask for." } ] },
             titleSection("Calendar"),
             about("Upcoming events from a calendar you subscribe to.") ] }
 
@@ -421,7 +421,7 @@ QtObject {
                     { value: "kindness", label: "Kindness" },
                     { value: "custom", label: "My own" } ] },
                 { key: "customText", label: "Your own quotes", type: "textarea",
-                  placeholder: "One per line — add “ — Author” for attribution",
+                  placeholder: "One per line - add “ - Author” for attribution",
                   help: "Used when the category is “My own”. One quote per line." } ] },
             titleSection("Daily Quote"),
             about("A fresh bit of motivation each day. Pick a category or add your own; Shuffle grabs another.") ] }

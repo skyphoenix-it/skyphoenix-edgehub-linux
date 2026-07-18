@@ -269,8 +269,8 @@ ApplicationWindow {
     // Layout hint card and the Appearance preview so they can never disagree
     // with the sidebar's connection dot again.
     readonly property string liveNote: backend.hubConnected
-        ? "Hub connected — changes appear on the Edge immediately."
-        : "Hub offline — changes are saved and appear when the hub starts."
+        ? "Hub connected - changes appear on the Edge immediately."
+        : "Hub offline - changes are saved and appear when the hub starts."
 
     // Scope pill ("Whole Edge" / "This page only" / …): the audit's core finding
     // was that no control said what it would affect, so scope becomes a visible,
@@ -291,7 +291,7 @@ ApplicationWindow {
         switch (label) {
         case "This widget only": return "Changes this one tile. Other widgets of the same type are untouched."
         case "This screen only": return "Changes this screen only. Your other screens are untouched."
-        case "All screens":      return "The default for every screen — but a screen can override it (Screens → “This screen's look”)."
+        case "All screens":      return "The default for every screen - but a screen can override it (Screens → “This screen's look”)."
         case "Whole Edge":       return "Changes every screen and every widget. There is no per-screen override for this."
         case "This computer":    return "Changes this computer's hub, not the Edge layout. Other machines are untouched."
         case "This window only": return "Changes the Manager window you're looking at. Your Edge is untouched."
@@ -459,15 +459,6 @@ ApplicationWindow {
         pageName.text = store.pages()[idx].name
         win.currentPageIndex = idx
     }
-    function confirmApplyPreset(presetId, title) {
-        // Additive and non-destructive, but a light confirm sets the expectation:
-        // a page is ADDED, the rest of the layout and the theme stay put.
-        confirmDialog.message = "Add the “" + title + "” screen as a new screen? "
-            + "Your other screens and your theme are untouched."
-        confirmDialog.onConfirm = function () { win.applyPresetScreen(presetId) }
-        confirmDialog.open()
-    }
-
     // Reset every page + widget to the default layout (a clean starting point).
     // Uploaded images live on disk and are untouched.
     function confirmResetLayout() {
@@ -661,7 +652,7 @@ ApplicationWindow {
                     spacing: 16
 
                     Text { text: "Screens"; color: m.textPrimary; font.pixelSize: 24; font.bold: true }
-                    Text { text: "Step 2 — build each screen: add & arrange its widgets. Set the overall look for every screen in Look first."
+                    Text { text: "Step 2 - build each screen: add & arrange its widgets. Set the overall look for every screen in Look first."
                         color: m.textSecondary; font.pixelSize: 14; Layout.fillWidth: true; wrapMode: Text.WordWrap }
 
                     // Page selector
@@ -777,7 +768,7 @@ ApplicationWindow {
                                     Text { text: "Columns"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
                                     ScopeTag { label: win.scopeLabels.page }
                                 }
-                                Text { text: "How many widgets sit side by side on this screen. Switching reflows the widgets already here to fit — a screen always stays one screen (it never scrolls)."
+                                Text { text: "How many widgets sit side by side on this screen. Switching reflows the widgets already here to fit - a screen always stays one screen (it never scrolls)."
                                     color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
                                 MSegment {
                                     Layout.fillWidth: true
@@ -887,7 +878,7 @@ ApplicationWindow {
                     // true of. (Giving the background chips a real hover preview would
                     // be the better fix — it needs BackgroundPicker, which this
                     // workstream does not own. Recorded in the audit.)
-                    Text { text: "Step 1 — the look for EVERY screen: theme, accent, background and effects. A single screen can override its background in Screens. Hover a theme or accent to try it in the preview (those apply on click); everything else applies as you change it."
+                    Text { text: "Step 1 - the look for EVERY screen: theme, accent, background and effects. A single screen can override its background in Screens. Hover a theme or accent to try it in the preview (those apply on click); everything else applies as you change it."
                         color: m.textSecondary; font.pixelSize: 14; Layout.fillWidth: true; wrapMode: Text.WordWrap }
 
                     RowLayout {
@@ -1018,7 +1009,7 @@ ApplicationWindow {
                         Text { text: "Manager window style"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
                         ScopeTag { label: win.scopeLabels.window }
                     }
-                    Text { text: "The look of THIS companion window on your PC — separate from the Edge theme above. Default is the warm SKYPhoenix palette."
+                    Text { text: "The look of THIS companion window on your PC - separate from the Edge theme above. Default is the warm SKYPhoenix palette."
                         color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
                     MSegment {
                         Layout.fillWidth: true
@@ -1084,11 +1075,11 @@ ApplicationWindow {
                         Text { text: "Background"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
                         ScopeTag { label: win.scopeLabels.pages }
                     }
-                    Text { text: "Pick an animated style OR a wallpaper — the default every screen starts from. One screen can go its own way in Screens → “This screen's look”."
+                    Text { text: "Pick an animated style OR a wallpaper - the default every screen starts from. One screen can go its own way in Screens → “This screen's look”."
                         color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
                     RowLayout { visible: !theme.decorative; Layout.fillWidth: true; spacing: 6
                         AppIcon { name: "ui-warning"; size: 14; color: m.danger; Layout.alignment: Qt.AlignTop }
-                        Text { text: "The High Contrast theme keeps backgrounds off for legibility — switch themes to see them."
+                        Text { text: "The High Contrast theme keeps backgrounds off for legibility - switch themes to see them."
                             color: m.danger; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap } }
                     BackgroundPicker {
                         Layout.fillWidth: true
@@ -1279,7 +1270,7 @@ ApplicationWindow {
                 ColumnLayout {
                     anchors.fill: parent; anchors.margins: 24; spacing: 16
                     Text { text: "Images"; color: m.textPrimary; font.pixelSize: 24; font.bold: true }
-                    Text { text: "Upload your own images here — they then appear as wallpaper options in the background picker (Look → Background, or per-screen in Screens)."
+                    Text { text: "Upload your own images here - they then appear as wallpaper options in the background picker (Look → Background, or per-screen in Screens)."
                         color: m.textSecondary; font.pixelSize: 14; Layout.fillWidth: true; wrapMode: Text.WordWrap }
 
                     RowLayout {
@@ -1307,7 +1298,7 @@ ApplicationWindow {
                     // over the full tab height (audit finding F8).
                     Text { visible: imagesModel.count === 0; Layout.fillWidth: true; Layout.topMargin: 24
                         horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
-                        text: "No images yet — use “Import image…” to add one."
+                        text: "No images yet - use “Import image…” to add one."
                         color: m.textSecondary; font.pixelSize: 14 }
                     Item { visible: imagesModel.count === 0; Layout.fillHeight: true }
                     GridView {
@@ -1397,7 +1388,7 @@ ApplicationWindow {
                         Text { text: "Screen the hub runs on"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
                         ScopeTag { label: win.scopeLabels.computer }
                     }
-                    Text { text: "Applies next time the hub starts — a running hub stays where it is."
+                    Text { text: "Applies next time the hub starts - a running hub stays where it is."
                         color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
 
                     // Audit F8 / W5 #13: with no screens the tab showed a sentence
@@ -1525,7 +1516,7 @@ ApplicationWindow {
                                 checked = Qt.binding(function () { store.revision; return store.appearance().updateCheck === true })
                             }
                         }
-                        Text { text: "Off by default — EdgeHub never checks on its own. When on, the Edge asks GitHub for the latest release tag through its audited network gate (nothing identifying is sent) and shows the result on the display itself. Install updates with your package manager."
+                        Text { text: "Off by default - EdgeHub never checks on its own. When on, the Edge asks GitHub for the latest release tag through its audited network gate (nothing identifying is sent) and shows the result on the display itself. Install updates with your package manager."
                             color: m.textSecondary; font.pixelSize: 12; Layout.leftMargin: 56
                             Layout.fillWidth: true; wrapMode: Text.WordWrap }
                     }
@@ -1536,7 +1527,7 @@ ApplicationWindow {
                         Text { text: "Troubleshooting"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
                         ScopeTag { label: win.scopeLabels.edge }
                     }
-                    Text { text: "Start over from a clean default layout. Your uploaded images are kept — only screens and widgets are reset."
+                    Text { text: "Start over from a clean default layout. Your uploaded images are kept - only screens and widgets are reset."
                         color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
                     RowLayout {
                         Layout.fillWidth: true; spacing: 8
@@ -1643,7 +1634,7 @@ ApplicationWindow {
                                     Text {
                                         text: win.isPro
                                               ? ("Thank you" + (win.licStatus.issuedTo
-                                                   ? ", " + win.licStatus.issuedTo : "") + " — premium unlocked.")
+                                                   ? ", " + win.licStatus.issuedTo : "") + " - premium unlocked.")
                                             : win.licStatus.state === "expired"
                                               ? "Renew to keep the premium extras. Your dashboards keep working."
                                             : "Everything works. Pro adds premium themes, preset packs and custom widgets."
@@ -1718,7 +1709,7 @@ ApplicationWindow {
                                     + "  ·  " + win.screens.length + " display" + (win.screens.length === 1 ? "" : "s")
                                     + (win.currentTarget.length ? "  ·  target " + win.currentTarget : "")
                                 color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
-                            Text { text: "Live network egress counters are shown on the Edge itself (the hub's Diagnostics) — the Manager makes no network requests of its own."
+                            Text { text: "Live network egress counters are shown on the Edge itself (the hub's Diagnostics) - the Manager makes no network requests of its own."
                                 color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
                             Rectangle {
                                 id: diagBox; visible: false
@@ -1809,7 +1800,7 @@ ApplicationWindow {
                         AppIcon { name: "ui-add-page"; size: 18; color: m.accent; Layout.alignment: Qt.AlignVCenter }
                         Text {
                             Layout.fillWidth: true; wrapMode: Text.WordWrap
-                            text: "This screen is full — your next widget will start a new screen."
+                            text: "This screen is full - your next widget will start a new screen."
                             color: m.textPrimary; font.pixelSize: 13
                         }
                     }
@@ -1859,10 +1850,10 @@ ApplicationWindow {
 
     // ── Preset "screens" picker ──
     // The full curated library. ADDITIVE: choosing one appends it as a NEW screen
-    // (confirmApplyPreset → applyPresetScreen → store.appendPreset), leaving the
-    // other screens and the global look untouched — same meaning as the hub's
-    // preset picker. (It is NOT a full replace; "Reset to default layout" on the
-    // Device/About side is the destructive path.)
+    // (applyPresetScreen → store.appendPreset) and jumps to it, leaving the other
+    // screens and the global look untouched — same meaning as the hub's preset
+    // picker. It applies immediately (no confirm; adding is harmless). "Reset to
+    // default layout" on the Device/About side is the destructive path.
     Dialog {
         id: presetDialog
         title: "Start from a preset screen"
@@ -1879,7 +1870,7 @@ ApplicationWindow {
                 ColumnLayout {
                     spacing: 1; Layout.fillWidth: true
                     Text { text: "Start from a preset screen"; color: m.textPrimary; font.pixelSize: 19; font.bold: true }
-                    Text { text: "Adds the chosen screen as a NEW screen — your other screens and your look stay put. Tweak it afterwards."
+                    Text { text: "Adds the chosen screen as a NEW screen - your other screens and your look stay put. Tweak it afterwards."
                         color: m.textSecondary; font.pixelSize: 12; elide: Text.ElideRight; Layout.fillWidth: true }
                 }
             }
@@ -1915,10 +1906,12 @@ ApplicationWindow {
                                 Text { text: modelData.blurb || ""; color: m.textSecondary
                                     font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
                             }
-                            MButton { text: "Use this"; iconName: "ui-check"; primary: true
+                            MButton { text: "Add screen"; iconName: "ui-check"; primary: true
                                 Layout.alignment: Qt.AlignVCenter
-                                onClicked: { presetDialog.close()
-                                    win.confirmApplyPreset(modelData.id, modelData.title) } }
+                                // Adding a preset screen is additive and harmless, so it
+                                // applies straight away — no "this won't affect your other
+                                // screens" confirm to click through.
+                                onClicked: { presetDialog.close(); win.applyPresetScreen(modelData.id) } }
                         }
                         MouseArea { id: presetMA; anchors.fill: parent; hoverEnabled: true; z: -1 }
                     }
@@ -1970,7 +1963,7 @@ ApplicationWindow {
             spacing: 12
             Text {
                 text: "Paste the licence key from your purchase e-mail. It is verified on "
-                    + "this device — nothing is sent anywhere."
+                    + "this device - nothing is sent anywhere."
                 color: m.textSecondary; font.pixelSize: 13
                 Layout.fillWidth: true; wrapMode: Text.WordWrap
             }
@@ -2005,7 +1998,7 @@ ApplicationWindow {
                     Layout.fillWidth: true; wrapMode: Text.WordWrap
                     color: m.textPrimary; font.pixelSize: 13
                     text: parent.ok
-                          ? ("Valid — unlocks Pro"
+                          ? ("Valid - unlocks Pro"
                              + (licenseDialog.preview.issuedTo ? " for " + licenseDialog.preview.issuedTo : "") + ".")
                         : parent.expired
                           ? "This key has expired. Renew to reactivate Pro."

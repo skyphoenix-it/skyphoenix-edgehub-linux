@@ -111,7 +111,7 @@ WidgetChrome {
         Text {
             x: editor.x; y: editor.y
             visible: editor.text.length === 0
-            text: "Type anything — it saves automatically."
+            text: "Type anything - it saves automatically."
             color: theme.textTertiary; font.pixelSize: 18
         }
     }

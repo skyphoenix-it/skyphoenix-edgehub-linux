@@ -71,7 +71,7 @@ QtObject {
         uc.items = good
         uc.rejects = bad
         for (var j = 0; j < bad.length; j++)
-            console.warn("[user-widgets] skipped", bad[j].dir, "—", bad[j].reason)
+            console.warn("[user-widgets] skipped", bad[j].dir, "-", bad[j].reason)
     }
 
     function _isObj(v) { return v !== null && typeof v === "object" && !Array.isArray(v) }
@@ -155,7 +155,7 @@ QtObject {
                 return no("icon must be a plain .svg or .png file name inside the widget directory")
             if (files.indexOf(m.icon) >= 0) { iconSource = _url(scan.dir + "/" + m.icon); iconName = "" }
             else console.warn("[user-widgets]", scan.dir,
-                              "— declared icon '" + m.icon + "' not found; using the fallback glyph")
+                              "- declared icon '" + m.icon + "' not found; using the fallback glyph")
         }
 
         // Config fields: strict — a manifest that lies about its form is

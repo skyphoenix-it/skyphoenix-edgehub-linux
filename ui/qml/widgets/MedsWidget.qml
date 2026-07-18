@@ -155,7 +155,7 @@ WidgetChrome {
         return "Not marked"
     }
     function timeOf(dose) {
-        if (dose.mins < 0) return "—"
+        if (dose.mins < 0) return "-"
         return (dose.hour < 10 ? "0" : "") + dose.hour + ":" + (dose.minute < 10 ? "0" : "") + dose.minute
     }
 
@@ -207,7 +207,7 @@ WidgetChrome {
         anchors.centerIn: parent
         width: parent.width - 2 * theme.spacingSm
         visible: w.doses.length === 0
-        text: w.expanded ? "Add your doses in settings — one per line, like “08:00 Vitamin D”."
+        text: w.expanded ? "Add your doses in settings - one per line, like “08:00 Vitamin D”."
                          : "Add doses\nin settings"
         color: theme.textTertiary; font.pixelSize: w.expanded ? 15 : 12
         horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap

@@ -102,7 +102,7 @@ Item {
             compare(d[0].name, "Vitamin D", "timed doses come first")
             compare(d[1].name, "Inhaler as needed")
             compare(d[1].mins, -1, "no time")
-            compare(h.item.timeOf(d[1]), "—", "and it renders as having no time")
+            compare(h.item.timeOf(d[1]), "-", "and it renders as having no time")
         }
 
         // 25:00 / 08:99 are not times. They must not become hour 25.

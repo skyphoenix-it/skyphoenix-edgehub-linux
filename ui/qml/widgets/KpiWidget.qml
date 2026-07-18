@@ -154,7 +154,7 @@ WidgetChrome {
             var n = Number(t)
             v = (t.length && !isNaN(n)) ? n : t
         }
-        if (v === undefined) { _put({ httpErr: "No match", httpText: "—" }); return }
+        if (v === undefined) { _put({ httpErr: "No match", httpText: "-" }); return }
         _apply(v)
     }
 
@@ -170,7 +170,7 @@ WidgetChrome {
             w.hist = h
             patch.hist = _normalise(h)
         } else if (v === null || v === undefined) {
-            patch.httpVal = undefined; patch.httpText = "—"
+            patch.httpVal = undefined; patch.httpText = "-"
         } else {
             patch.httpVal = undefined; patch.httpText = ("" + v).slice(0, 32)
         }
@@ -233,7 +233,7 @@ WidgetChrome {
         return { min: lo, max: hi, avg: sum / a.length }
     }
     function fmt(v) {
-        if (typeof v !== "number" || !isFinite(v)) return "—"
+        if (typeof v !== "number" || !isFinite(v)) return "-"
         return Number.isInteger(v) ? "" + v : (Math.abs(v) >= 100 ? "" + Math.round(v) : v.toFixed(1))
     }
 
@@ -289,7 +289,7 @@ WidgetChrome {
                 Layout.alignment: Qt.AlignHCenter; spacing: 4
                 Text {
                     id: valueText
-                    text: w.errText.length ? "—" : (w.valText.length ? w.valText : "…")
+                    text: w.errText.length ? "-" : (w.valText.length ? w.valText : "…")
                     font.pixelSize: Math.round(w.valuePx); font.bold: true; color: w.valColor
                     font.family: theme.fontDisplay
                     // valuePx (char-count based) is the real fit; HorizontalFit +
@@ -370,7 +370,7 @@ WidgetChrome {
                         }
                         Text {
                             Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter
-                            text: w.stats ? w.fmt(w.stats[statCell.modelData]) : "—"
+                            text: w.stats ? w.fmt(w.stats[statCell.modelData]) : "-"
                             color: theme.textSecondary; font.family: theme.fontMono
                             font.pixelSize: Math.round(w.labelPx); elide: Text.ElideRight
                         }

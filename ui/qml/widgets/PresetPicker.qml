@@ -10,12 +10,10 @@ import QtQuick.Layouts
 // again (the only route was the --reset-wizard CLI flag). This full-screen
 // overlay reopens the same library from the Settings sheet.
 //
-// Selecting a card only ARMS it — applying replaces the current pages, so an
-// explicit confirm bar (with honest scope copy: layout is replaced, the
-// user's theme/appearance stay) stands between a tap and the reset. The
-// apply itself is emitted upward (applyRequested) and performed by the
-// Dashboard through the store's normal seed path, so this stays a dumb
-// surface with no store access of its own.
+// Selecting a card ARMS it; a light confirm bar then ADDS it as a new screen
+// (additive — the user's other screens and their look are untouched). The apply
+// is emitted upward (applyRequested) and performed by the Dashboard via
+// store.appendPreset, so this stays a dumb surface with no store access of its own.
 //
 // Org policy (E9): under a forced preset (`lockToPreset`) the surface is
 // ABSENT, not greyed out — `locked` gates visibility outright, so a managed
@@ -86,7 +84,7 @@ Rectangle {
                     }
                     Text {
                         Layout.fillWidth: true
-                        text: "Ready-made layouts from setup. Applying one replaces your pages — your theme, accent and appearance settings stay."
+                        text: "Ready-made screens. Adding one appends a new screen and takes you to it; your other screens and your look stay as they are."
                         font.pixelSize: theme.fontCaption; color: theme.textSecondary
                         wrapMode: Text.WordWrap
                     }
@@ -187,8 +185,9 @@ Rectangle {
                 }
             }
 
-            // Confirm bar — armed by a selection. Applying replaces the layout,
-            // so it never happens on the first tap.
+            // Confirm bar — armed by a selection. Adding is additive (a new screen),
+            // so this is a light touch-confirm, not a "you're about to replace
+            // everything" gate.
             Rectangle {
                 objectName: "presetConfirmBar"
                 Layout.fillWidth: true
@@ -206,8 +205,7 @@ Rectangle {
 
                     Text {
                         Layout.fillWidth: true
-                        text: "Replace your current pages with " + picker.pendingTitle
-                              + "? Your theme and appearance settings stay."
+                        text: "Add " + picker.pendingTitle + " as a new screen?"
                         color: theme.textPrimary; font.pixelSize: theme.fontLabel
                         wrapMode: Text.WordWrap
                     }
@@ -229,7 +227,7 @@ Rectangle {
                         Layout.preferredHeight: theme.touchSecondary
                         radius: theme.radiusMd
                         color: applyMA.pressed ? Qt.darker(theme.accent, 1.2) : theme.accent
-                        Text { id: applyLbl; anchors.centerIn: parent; text: "Replace layout"
+                        Text { id: applyLbl; anchors.centerIn: parent; text: "Add screen"
                             color: theme.backgroundColor; font.pixelSize: theme.fontLabel; font.bold: true }
                         MouseArea { id: applyMA; anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                             onClicked: if (picker.pendingId !== "") picker.applyRequested(picker.pendingId) }

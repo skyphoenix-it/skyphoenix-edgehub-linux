@@ -99,7 +99,7 @@ Item {
             var entry = findPred(panel, function (n) { return n.objectName === "screensEntry" })
             verify(entry !== null && !entry.visible,
                    "an org-forced preset removes the entry outright (absent, not greyed)")
-            var caption = findText(panel, "The ready-made screens from setup. Applying one replaces your pages — your theme stays.")
+            var caption = findText(panel, "Ready-made screens. Adding one appends a new screen and takes you to it; your look stays.")
             verify(caption === null || !caption.visible, "the caption disappears with it")
             panel.presetsLocked = false
             verify(entry.visible, "clearing the lock restores the entry")

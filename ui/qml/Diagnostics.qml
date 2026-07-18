@@ -41,7 +41,7 @@ Item {
         if (!r || r.enabled === undefined)
             return "No loader report available."
         if (!r.enabled)
-            return "Disabled (enableUserWidgets is off — the default).\nThe widgets directory is not scanned."
+            return "Disabled (enableUserWidgets is off - the default).\nThe widgets directory is not scanned."
         var lines = ["Directory: " + (r.dir || "?")]
         var loaded = r.loaded || [], skipped = r.skipped || []
         lines.push("Loaded: " + loaded.length)
@@ -309,7 +309,7 @@ Item {
                                 anchors.margins: 12; spacing: 6
                                 Text {
                                     text: "Offline kill switch: " + (diag.netHub && diag.netHub.offline
-                                          ? "On — all remote requests are refused" : "Off")
+                                          ? "On - all remote requests are refused" : "Off")
                                     color: diag.netHub && diag.netHub.offline ? theme.warning : theme.textPrimary
                                     font.pixelSize: 13; wrapMode: Text.WordWrap; Layout.fillWidth: true
                                 }
@@ -362,7 +362,7 @@ Item {
                         }
                         Text {
                             visible: !!diag.netHub
-                            text: "\"(local)\" counts file:/qrc: reads — they never leave this machine."
+                            text: "\"(local)\" counts file:/qrc: reads - they never leave this machine."
                             color: theme.textTertiary; font.pixelSize: 11; wrapMode: Text.WordWrap; Layout.fillWidth: true
                         }
                     }

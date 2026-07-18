@@ -147,7 +147,7 @@ Rectangle {
                         }
                         Text {
                             Layout.fillWidth: true; wrapMode: Text.WordWrap
-                            text: "The ready-made screens from setup. Applying one replaces your pages — your theme stays."
+                            text: "Ready-made screens. Adding one appends a new screen and takes you to it; your look stays."
                             font.pixelSize: theme.fontCaption; color: theme.textTertiary
                         }
                     }
@@ -230,7 +230,7 @@ Rectangle {
                                                 id: chipMA; anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                                 onClicked: {
                                                     if (locked) {
-                                                        themeSection.lockHint = "“" + modelData.n + "” is a Pro theme — add your licence in the EdgeHub Manager to use it."
+                                                        themeSection.lockHint = "“" + modelData.n + "” is a Pro theme - add your licence in the EdgeHub Manager to use it."
                                                         return
                                                     }
                                                     themeSection.lockHint = ""
@@ -275,13 +275,13 @@ Rectangle {
                     ColumnLayout {
                         Layout.fillWidth: true; spacing: theme.spacingSm
                         Text { text: "Background"; font.pixelSize: theme.fontLabel; font.bold: true; color: theme.textSecondary }
-                        Text { text: "Pick a living animation OR a wallpaper — they show through the frosted widgets."
+                        Text { text: "Pick a living animation OR a wallpaper - they show through the frosted widgets."
                             font.pixelSize: theme.fontCaption; color: theme.textTertiary
                             Layout.fillWidth: true; wrapMode: Text.WordWrap }
                         RowLayout {
                             visible: !theme.decorative; Layout.fillWidth: true; spacing: theme.spacingSm
                             AppIcon { name: "ui-warning"; size: theme.iconSm; color: theme.warning; Layout.alignment: Qt.AlignTop }
-                            Text { text: "The High Contrast theme keeps backgrounds off for legibility — switch themes to see them."
+                            Text { text: "The High Contrast theme keeps backgrounds off for legibility - switch themes to see them."
                                 font.pixelSize: theme.fontCaption; color: theme.warning
                                 Layout.fillWidth: true; wrapMode: Text.WordWrap }
                         }
@@ -433,7 +433,7 @@ Rectangle {
                         }
                         Text {
                             Layout.fillWidth: true; wrapMode: Text.WordWrap
-                            text: "Off by default — EdgeHub never phones home on its own. When on, it asks "
+                            text: "Off by default - EdgeHub never phones home on its own. When on, it asks "
                                   + "GitHub for the latest release tag (one request through the audited "
                                   + "network gate, nothing identifying sent) and only tells you here."
                             font.pixelSize: theme.fontCaption; color: theme.textTertiary

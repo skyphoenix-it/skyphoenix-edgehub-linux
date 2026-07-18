@@ -5,7 +5,7 @@ import QtTest
 // COVERS: fn:Manager.onScreensChanged, fn:Manager.pageTiles, fn:Manager.refreshImages, fn:Manager.syncTheme
 // COVERS: fn:Manager.previewTheme, fn:Manager.previewAccent, fn:Manager.endThemePreview, fn:Manager.confirmRemovePage
 // COVERS: fn:Manager.scopeDetail, fn:Manager.commitRename
-// COVERS: fn:Manager.applyPresetScreen, fn:Manager.confirmApplyPreset, fn:Manager.confirmResetLayout, fn:Manager.hoverPreview
+// COVERS: fn:Manager.applyPresetScreen, fn:Manager.confirmResetLayout, fn:Manager.hoverPreview
 // COVERS: fn:Manager.commitTheme, fn:Manager._themeDef
 //
 // manager/qml/Manager.qml (hosted with a STUBBED `backend`) —
@@ -651,7 +651,6 @@ Item {
         // backs the coverage claims — each leaf token appears in an assertion).
         function test_manager_control_functions_are_exposed() {
             verify(typeof win.applyPresetScreen === "function", "applyPresetScreen present")
-            verify(typeof win.confirmApplyPreset === "function", "confirmApplyPreset present")
             verify(typeof win.confirmResetLayout === "function", "confirmResetLayout present")
             verify(typeof win.hoverPreview === "function", "hoverPreview present")
             // hoverPreview debounces a theme try-on into the live theme instance.

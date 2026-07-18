@@ -58,13 +58,13 @@ QtObject {
               { type: "notes", size: "1x1.5" }, { type: "habit", size: "1x1.5" } ] } ] },
 
         { id: "home-ambient", title: "Home", icon: "house",
-          blurb: "A beautiful desk companion — the time and the weather, up front.",
+          blurb: "A beautiful desk companion - the time and the weather, up front.",
           appearance: _ambient, surfaced: ["Time", "Info"],
           pages: [ { name: "Home", tiles: [
               { type: "clock", size: "1x1.5" }, { type: "weather", size: "1x1.5" } ] } ] },
 
         { id: "ambient", title: "Ambient", icon: "moon-stars",
-          blurb: "When it's not working hard — what's playing and tonight's moon.",
+          blurb: "When it's not working hard - what's playing and tonight's moon.",
           appearance: _ambient, surfaced: ["Media", "Time"],
           pages: [ { name: "Ambient", tiles: [
               { type: "media", size: "1x1.5" }, { type: "moon", size: "1x1" } ] } ] },
@@ -77,54 +77,54 @@ QtObject {
               { type: "weather", size: "0.5x1" }, { type: "moon", size: "0.5x1" } ] } ] },
 
         { id: "health", title: "Health & Routine", icon: "heartbeat",
-          blurb: "Gentle nudges toward a good day — water, breaks, and a daily streak.",
+          blurb: "Gentle nudges toward a good day - water, breaks, and a daily streak.",
           appearance: _soft, surfaced: ["Focus"],
           pages: [ { name: "Health", tiles: [
               { type: "hydration", size: "1x1" }, { type: "break", size: "1x1" },
               { type: "habit", size: "1x1" } ] } ] },
 
         { id: "creator", title: "Creator / Media", icon: "film-slate",
-          blurb: "For making things — now-playing front and centre, and a focus timer.",
+          blurb: "For making things - now-playing front and centre, and a focus timer.",
           appearance: _ambient, surfaced: ["Media", "Focus"],
           pages: [ { name: "Studio", tiles: [
               { type: "media", size: "1x1.5" }, { type: "focus", size: "1x1.5" } ] } ] },
 
         { id: "study", title: "Student / Study", icon: "books",
-          blurb: "Study sessions that stick — a focus timer and a countdown to the exam.",
+          blurb: "Study sessions that stick - a focus timer and a countdown to the exam.",
           appearance: _soft, surfaced: ["Focus", "Info"],
           pages: [ { name: "Study", tiles: [
               { type: "focus", size: "1x1.5" },
               { type: "countdown", size: "1x1.5", settings: { label: "Exam", date: "", repeatYearly: false } } ] } ] },
 
         { id: "productivity", title: "Productivity", icon: "check-circle",
-          blurb: "Get things done — a focus timer beside today's tasks.",
+          blurb: "Get things done - a focus timer beside today's tasks.",
           appearance: _soft, surfaced: ["Focus", "Time"],
           pages: [ { name: "Focus", tiles: [
               { type: "focus", size: "1x1.5" }, { type: "tasks", size: "1x1.5" } ] } ] },
 
         { id: "remote-work", title: "Remote Work", icon: "briefcase",
-          blurb: "The working day — today's tasks and how much of the workday is left.",
+          blurb: "The working day - today's tasks and how much of the workday is left.",
           appearance: _calm, surfaced: ["Focus", "Info"],
           pages: [ { name: "Day", tiles: [
               { type: "tasks", size: "1x1.5" },
               { type: "eod", size: "1x1.5", settings: { startHour: 9, endHour: 17, progressStyle: "bar" } } ] } ] },
 
         { id: "gaming", title: "Gaming Cockpit", icon: "game-controller",
-          blurb: "Rig telemetry beside your game — the GPU front and centre, CPU and memory.",
+          blurb: "Rig telemetry beside your game - the GPU front and centre, CPU and memory.",
           appearance: _tech, surfaced: ["System", "Media"],
           pages: [ { name: "GPU", tiles: [
               { type: "gpu", size: "1x1.5" },
               { type: "cpu", size: "0.5x1" }, { type: "ram", size: "0.5x1" } ] } ] },
 
         { id: "system-monitor", title: "System Core", icon: "gauge",
-          blurb: "The classic — CPU, GPU and memory at a glance.",
+          blurb: "The classic - CPU, GPU and memory at a glance.",
           appearance: _tech, surfaced: ["System"],
           pages: [ { name: "Core", tiles: [
               { type: "cpu", size: "1x1" }, { type: "gpu", size: "1x1" },
               { type: "ram", size: "1x1" } ] } ] },
 
         { id: "system-io", title: "System I/O", icon: "compass",
-          blurb: "The other half — network, disk, and temperatures.",
+          blurb: "The other half - network, disk, and temperatures.",
           appearance: _tech, surfaced: ["System"],
           pages: [ { name: "I/O", tiles: [
               { type: "net", size: "1x1" }, { type: "disk", size: "1x1" },
@@ -132,27 +132,27 @@ QtObject {
 
         // ── Screens with a labelled online slot (blank endpoint → self-explains) ─
         { id: "day-plan", title: "Day Plan", icon: "calendar-dots",
-          blurb: "The time and your agenda — connect a calendar (ICS URL) in settings.",
+          blurb: "The time and your agenda - connect a calendar (ICS URL) in settings.",
           appearance: _calm, surfaced: ["Time", "Info"],
           pages: [ { name: "Agenda", tiles: [
               { type: "clock", size: "1x1" }, { type: "calendar", size: "1x2" } ] } ] },
 
         { id: "developer", title: "Developer", icon: "code",
-          blurb: "Your build and a number you watch — CI status and open PRs. Add your URLs.",
+          blurb: "Your build and a number you watch - CI status and open PRs. Add your URLs.",
           appearance: _tech, surfaced: ["Data", "System"],
           pages: [ { name: "Dev", tiles: [
               { type: "httpjson", size: "1x1.5", settings: { title: "CI status", mode: "list", listMax: 5, pollSec: 120 } },
               { type: "kpi", size: "1x1.5", settings: { title: "Open PRs", label: "Open PRs", pollSec: 300 } } ] } ] },
 
         { id: "homelab", title: "Homelab Ops", icon: "hard-drives",
-          blurb: "Watch the lab — service uptime and container health. Add your endpoints.",
+          blurb: "Watch the lab - service uptime and container health. Add your endpoints.",
           appearance: _tech, surfaced: ["Data", "System"],
           pages: [ { name: "Services", tiles: [
               { type: "httpjson", size: "1x1.5", settings: { title: "Uptime", mode: "list", listMax: 6, pollSec: 60 } },
               { type: "httpjson", size: "1x1.5", settings: { title: "Containers", mode: "list", listMax: 6, pollSec: 60 } } ] } ] },
 
         { id: "trading-desk", title: "Trading Desk", icon: "chart-line-up",
-          blurb: "Two clocks and your P&L — local and New York, beside one headline number.",
+          blurb: "Two clocks and your P&L - local and New York, beside one headline number.",
           appearance: _calm, surfaced: ["Time", "Data"],
           pages: [ { name: "Desk", tiles: [
               // The two zones sit side by side — one glance, two clocks.
@@ -161,7 +161,7 @@ QtObject {
               { type: "kpi", size: "1x1.5", settings: { title: "P&L", label: "P&L", unit: "%", pollSec: 60 } } ] } ] },
 
         { id: "analyst", title: "Analyst / Data", icon: "chart-line-down",
-          blurb: "A calm data corner — two headline numbers (one from a local file) and a feed.",
+          blurb: "A calm data corner - two headline numbers (one from a local file) and a feed.",
           appearance: _calm, surfaced: ["Data", "Time"],
           pages: [ { name: "Data", tiles: [
               { type: "kpi", size: "1x1.5", settings: { title: "Headline metric", label: "Headline metric", source: "http", pollSec: 300 } },
@@ -170,7 +170,7 @@ QtObject {
               { type: "httpjson", size: "0.5x1", settings: { title: "Monitoring", mode: "value", pollSec: 120 } } ] } ] },
 
         { id: "enterprise", title: "Team / Enterprise", icon: "buildings",
-          blurb: "A clean managed baseline — your workday and one approved team number.",
+          blurb: "A clean managed baseline - your workday and one approved team number.",
           appearance: _calm, surfaced: ["Info", "Data"],
           pages: [ { name: "Team", tiles: [
               { type: "eod", size: "1x1.5" },

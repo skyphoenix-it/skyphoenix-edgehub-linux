@@ -288,7 +288,7 @@ Item {
             // Matching on a pattern that EXCLUDES the token: if the message
             // contained "ghp_supersecret" this regex still matches, so assert the
             // absence separately via the ignore pattern being the whole message.
-            ignoreWarning(/^NetHub: this widget's Bearer token is stored in plain text in config\.toml\. Use \$\{env:VAR\} or file:\/path instead — it is then read only when the request is made and never written to disk\.$/)
+            ignoreWarning(/^NetHub: this widget's Bearer token is stored in plain text in config\.toml\. Use \$\{env:VAR\} or file:\/path instead - it is then read only when the request is made and never written to disk\.$/)
             hub.request({ url: "https://api.example.com/s", authToken: "ghp_supersecret", onDone: function () {} })
             hub.secretResolver = null
         }

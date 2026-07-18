@@ -243,7 +243,7 @@ WidgetChrome {
                 // so a room-keyed long form would print a lie there. Converting
                 // this needs a second string, which is a copy decision, not a
                 // sizing one.
-                text: w.expanded ? "No tasks yet — add one below." : "No tasks"
+                text: w.expanded ? "No tasks yet - add one below." : "No tasks"
                 // The SIZE does follow the room. `expanded ? 15 : 12` had the
                 // overlay's pane and a 696-wide tile — the wider box of the two —
                 // on opposite sides of the same literal.

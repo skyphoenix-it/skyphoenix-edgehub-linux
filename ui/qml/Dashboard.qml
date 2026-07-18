@@ -417,7 +417,9 @@ Item {
     function appendPreset(presetId) {
         var idx = store.appendPreset(presetId)   // -1 when managed/locked or unknown id
         if (idx < 0) return false
-        swipeView.currentIndex = idx
+        // Land on the new screen after the SwipeView has grown its delegate (else it
+        // snaps back to page 0 — same int-model race as the add-page button).
+        Qt.callLater(function () { swipeView.currentIndex = idx })
         return true
     }
 
@@ -1212,8 +1214,14 @@ Item {
                             id: addTile
                             // Hidden when the page is full: the affordance only appears
                             // where a widget can actually land (no off-screen ghost).
-                            active: dashboard.editMode && pageItem.hasAddRoom
-                            visible: dashboard.editMode && pageItem.hasAddRoom
+                            // Also gated to the CURRENT page: a just-added page's delegate
+                            // can transiently sit at x=0 over page 0 during a SwipeView
+                            // model change, and an unguarded ghost bled onto the first
+                            // screen. Only the visible page shows its add slot.
+                            readonly property bool _showHere: dashboard.editMode && pageItem.hasAddRoom
+                                                              && pageItem.index === swipeView.currentIndex
+                            active: _showHere
+                            visible: _showHere
 
                             // ── The add slot MOVES too ────────────────────────
                             // It is a real packed placement, so an edit re-packs it just
@@ -1349,9 +1357,13 @@ Item {
             // screen as it fits. Targets the page currently in view.
             BarButton { iconName: "ui-plus"; visible: dashboard.editMode
                         onClicked: { picker.pageIndex = swipeView.currentIndex; picker.shown = true } }
-            // Add page (edit mode) — jump to the new page so the add lands visibly.
+            // Add page (edit mode) — land ON the new page (matches the Manager). The
+            // index is set AFTER the SwipeView has grown its delegate (Qt.callLater):
+            // setting it synchronously raced the int-model growth, so the view snapped
+            // back to page 0 and the new page's overlay bled onto it.
             BarButton { iconName: "ui-add-page"; visible: dashboard.editMode
-                        onClicked: { store.addPage(""); swipeView.currentIndex = store.pageCount() - 1 } }
+                        onClicked: { store.addPage("")
+                                     Qt.callLater(function () { swipeView.currentIndex = store.pageCount() - 1 }) } }
             // Remove current page (edit mode, keep ≥1) — re-clamp the index so the
             // view never points past the new end after deleting the last page.
             BarButton { iconName: "ui-del-page"; visible: dashboard.editMode && store.pageCount() > 1
@@ -1667,7 +1679,7 @@ Item {
                         AppIcon { name: "ui-add-page"; size: 20; color: theme.accent }
                         Text {
                             Layout.fillWidth: true; wrapMode: Text.WordWrap
-                            text: "This screen is full — your next widget will start a new screen."
+                            text: "This screen is full - your next widget will start a new screen."
                             font.pixelSize: 14; color: theme.textPrimary
                         }
                     }
@@ -1723,7 +1735,10 @@ Item {
                                                     picker.shown = false
                                                     if (newId) {
                                                         var tp = store.pageIndexForTile(newId)
-                                                        if (tp >= 0) swipeView.currentIndex = tp
+                                                        // Defer: if the tile started a NEW screen, set the
+                                                        // index after the SwipeView grew its delegate (else
+                                                        // it snaps back to page 0 — same race as add-page).
+                                                        if (tp >= 0) Qt.callLater(function () { swipeView.currentIndex = tp })
                                                     }
                                                 }
                                             }

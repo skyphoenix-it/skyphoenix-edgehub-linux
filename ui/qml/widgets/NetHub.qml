@@ -114,7 +114,7 @@ QtObject {
             if (res.plaintext === true && !hub._plaintextWarned[raw]) {
                 hub._plaintextWarned[raw] = true
                 console.warn("NetHub: this widget's Bearer token is stored in plain text in " +
-                             "config.toml. Use ${env:VAR} or file:/path instead — it is then read " +
+                             "config.toml. Use ${env:VAR} or file:/path instead - it is then read " +
                              "only when the request is made and never written to disk.")
             }
             return { ok: !!res.ok, value: res.value || "", error: res.error || "" }

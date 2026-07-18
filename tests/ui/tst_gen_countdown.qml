@@ -101,7 +101,7 @@ Item {
             var w = hCd.item
             compare(w.valid, false, "no date → not valid")
             compare(w.days, -999, "empty date is the -999 sentinel")
-            verify(findText(w, "—") !== null, "collapsed placeholder number is —")
+            verify(findText(w, "-") !== null, "collapsed placeholder number is -")
             verify(findText(w, "Set a date below") !== null, "prompt text is shown")
         }
 

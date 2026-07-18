@@ -144,9 +144,9 @@ WidgetChrome {
 
             Repeater {
                 model: [
-                    { k: "Used",  val: w.avail ? w.human(w.usedBytes) : "—", hot: true },
-                    { k: "Free",  val: w.avail ? w.human(w.freeBytes) : "—", hot: false },
-                    { k: "Total", val: w.avail ? w.human(metrics.disk_total_bytes || 0) : "—", hot: false }
+                    { k: "Used",  val: w.avail ? w.human(w.usedBytes) : "-", hot: true },
+                    { k: "Free",  val: w.avail ? w.human(w.freeBytes) : "-", hot: false },
+                    { k: "Total", val: w.avail ? w.human(metrics.disk_total_bytes || 0) : "-", hot: false }
                 ]
                 delegate: RowLayout {
                     Layout.fillWidth: true

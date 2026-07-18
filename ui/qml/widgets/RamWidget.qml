@@ -77,7 +77,7 @@ WidgetChrome {
         // reports the percent instead of repeating it. No bytes yet → placeholder.
         // micro drops the line entirely: the one number IS the tile.
         sub: w.micro ? ""
-           : !w.haveBytes ? "—"
+           : !w.haveBytes ? "-"
            : w.unit === "gb" ? w.v.toFixed(0) + "%"
                              : w.gb(w.usedBytes) + " / " + w.gb(w.totalBytes) + " GB"
         color: w.col(w.v)
