@@ -47,7 +47,10 @@ ApplicationWindow {
     // theme it edits. Persisted locally (QSettings). Dark / Light / Default, where
     // Default is the warm SKYPhoenix palette (corporate orange/red) that suits the
     // colour logo and ships as the out-of-box look. The preview keeps using `theme`.
-    Settings { id: appSettings; category: "ManagerChrome"; property string chromeTheme: "default" }
+    Settings { id: appSettings; category: "ManagerChrome"; property string chromeTheme: "default"
+               // Remembers whether the Screens "how-to" card is collapsed (it is
+               // onboarding text living in a workspace — dismissable, and it stays so).
+               property bool howToCollapsed: false }
 
     // --- Local design tokens (the Manager's own chrome; three switchable themes) ---
     QtObject {
@@ -214,6 +217,16 @@ ApplicationWindow {
                 }
             }
         }
+    }
+
+    // MDivider — a hairline section separator. The Look tab was one long flat scroll
+    // of label+control blocks with no rhythm; a divider before each major section
+    // gives the hierarchy the content already implies.
+    component MDivider: Rectangle {
+        Layout.fillWidth: true
+        Layout.topMargin: 8
+        implicitHeight: 1
+        color: m.border
     }
 
     // Shared hub model + registry.
@@ -800,17 +813,56 @@ ApplicationWindow {
                                     onSelected: (v) => store.setPageColumns(win.currentPageIndex, v)
                                 }
 
+                                // Collapsible how-to card. Onboarding lives here, but it
+                                // shouldn't permanently eat the workspace — it remembers
+                                // being collapsed. Each tip pairs the REAL SVG icon with
+                                // its action (no ⚙/⤡/✕ text glyphs that don't match the set).
                                 Rectangle {
-                                    Layout.fillWidth: true; Layout.preferredHeight: hintCol.implicitHeight + 24
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: hintCol.implicitHeight + 20
                                     radius: m.radius; color: m.panel; border.width: 1; border.color: m.border
                                     ColumnLayout {
-                                        id: hintCol; anchors.fill: parent; anchors.margins: 12; spacing: 6
-                                        Text { text: "This is your Edge"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
-                                        Text { Layout.fillWidth: true; wrapMode: Text.WordWrap; color: m.textSecondary; font.pixelSize: 13
-                                            text: "• Click a tile (or ⚙) to configure that widget\n• Drag a tile onto another to reorder\n• Drag the ⤡ corner to resize\n• ✕ removes the widget from this screen" }
-                                        Text { Layout.fillWidth: true; wrapMode: Text.WordWrap; font.pixelSize: 12
-                                            text: win.liveNote
-                                            color: backend.hubConnected ? m.success : m.textSecondary }
+                                        id: hintCol; anchors.left: parent.left; anchors.right: parent.right
+                                        anchors.top: parent.top; anchors.margins: 10; spacing: 6
+                                        Item {
+                                            Layout.fillWidth: true
+                                            implicitHeight: hdrRow.implicitHeight
+                                            RowLayout {
+                                                id: hdrRow
+                                                anchors.left: parent.left; anchors.right: parent.right
+                                                anchors.verticalCenter: parent.verticalCenter; spacing: 6
+                                                Text { text: "This is your Edge"; color: m.textPrimary
+                                                    font.pixelSize: 15; font.bold: true; Layout.fillWidth: true }
+                                                AppIcon { name: "ui-caret-right"; size: 14; color: m.textSecondary
+                                                    rotation: appSettings.howToCollapsed ? 0 : -90
+                                                    Behavior on rotation { NumberAnimation { duration: 120 } } }
+                                            }
+                                            MouseArea { anchors.fill: parent; hoverEnabled: true
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: appSettings.howToCollapsed = !appSettings.howToCollapsed }
+                                        }
+                                        ColumnLayout {
+                                            visible: !appSettings.howToCollapsed
+                                            Layout.fillWidth: true; spacing: 5
+                                            Repeater {
+                                                model: [ { i: "ui-settings", t: "Click a tile (or its gear) to configure that widget" },
+                                                         { i: "ui-grip",     t: "Drag a tile onto another to reorder" },
+                                                         { i: "ui-resize",   t: "Drag the corner handle to resize" },
+                                                         { i: "ui-close",    t: "Remove a widget from this screen" } ]
+                                                delegate: RowLayout {
+                                                    required property var modelData
+                                                    Layout.fillWidth: true; spacing: 8
+                                                    AppIcon { name: modelData.i; size: 15; color: m.textSecondary
+                                                        Layout.alignment: Qt.AlignTop }
+                                                    Text { text: modelData.t; color: m.textSecondary; font.pixelSize: 13
+                                                        Layout.fillWidth: true; wrapMode: Text.WordWrap }
+                                                }
+                                            }
+                                            Text { Layout.fillWidth: true; wrapMode: Text.WordWrap; font.pixelSize: 12
+                                                Layout.topMargin: 2
+                                                text: win.liveNote
+                                                color: backend.hubConnected ? m.success : m.textSecondary }
+                                        }
                                     }
                                 }
                                 // ── This screen's look (override) ───────────────
@@ -983,6 +1035,7 @@ ApplicationWindow {
                         }
                     }
 
+                    MDivider {}
                     // Manager window style — moved here from the sidebar so it sits
                     // right beside the Edge theme. The scope pill makes the
                     // difference explicit: this restyles ONLY the Manager window on
@@ -1002,6 +1055,7 @@ ApplicationWindow {
                         onSelected: (v) => appSettings.chromeTheme = v
                     }
 
+                    MDivider {}
                     RowLayout {
                         Layout.topMargin: 4; spacing: 8
                         Text { text: "Accent colour"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
@@ -1051,6 +1105,7 @@ ApplicationWindow {
                         Repeater { model: m.a11yAccents; delegate: mAccentSwatch }
                     }
 
+                    MDivider {}
                     RowLayout {
                         Layout.topMargin: 4; spacing: 8
                         Text { text: "Background"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
@@ -1078,6 +1133,7 @@ ApplicationWindow {
                     // is fixed at WidgetSizes.shortHalves across the short axis, so
                     // `1x1` means one third of the screen on every page.
 
+                    MDivider {}
                     RowLayout {
                         Layout.topMargin: 4; spacing: 8
                         Text { text: "Effects"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }

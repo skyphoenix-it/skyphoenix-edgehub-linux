@@ -122,9 +122,17 @@ Item {
                         fillMode: Image.PreserveAspectCrop; asynchronous: true }
                     Rectangle { anchors.bottom: parent.bottom; anchors.left: parent.left; anchors.right: parent.right
                         height: 18; color: Qt.rgba(0, 0, 0, 0.5)
-                        Text { anchors.centerIn: parent; text: modelData.label + (parent.parent.sel ? " ✓" : "")
+                        Text { anchors.centerIn: parent; text: modelData.label
                             color: "#fff"; font.pixelSize: 9; elide: Text.ElideRight; width: parent.width - 4
                             horizontalAlignment: Text.AlignHCenter } }
+                    // Selected state as a check BADGE (real icon), matching the app's
+                    // icon set instead of a "✓" text glyph in the label.
+                    Rectangle {
+                        visible: parent.sel
+                        anchors.top: parent.top; anchors.right: parent.right; anchors.margins: 4
+                        width: 18; height: 18; radius: 9; color: bp.col.accent
+                        AppIcon { anchors.centerIn: parent; name: "ui-check"; size: 12; color: "#FFFFFF" }
+                    }
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                         onClicked: bp.pickWallpaper(modelData.source) }
                 }
