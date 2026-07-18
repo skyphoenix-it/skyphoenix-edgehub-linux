@@ -8,7 +8,8 @@ Item {
 
     property int currentStep: 0
     property var selectedScreen: null
-    property string selectedLayout: "productivity"
+    // Default to the recommended few-screen starter bundle (see DashboardStore.seed).
+    property string selectedLayout: "starter"
 
     // The curated preset library drives the "choose a screen" step.
     PresetCatalog { id: presetCatalog }
@@ -231,6 +232,35 @@ Item {
                     Text {
                         text: "You can customize everything later."
                         font.pixelSize: 14
+                        color: theme.textSecondary
+                    }
+
+                    // The recommended few-screen starter (work + system + home) —
+                    // selected by default, so a new user has pages to swipe at once.
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: recCol.implicitHeight + 28
+                        radius: 12
+                        color: selectedLayout === "starter" ? Qt.lighter(theme.cardBackground, 1.15) : theme.cardBackground
+                        border.width: selectedLayout === "starter" ? 2 : 1
+                        border.color: selectedLayout === "starter" ? theme.accent : theme.cardBorder
+                        ColumnLayout {
+                            id: recCol
+                            anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
+                            anchors.margins: 14; spacing: 4
+                            Text { Layout.fillWidth: true; text: "✨  Recommended starter"
+                                font.pixelSize: 17; font.bold: true; color: theme.textPrimary }
+                            Text { Layout.fillWidth: true; wrapMode: Text.WordWrap
+                                text: "A few ready-made screens to swipe between — focus & tasks, system stats, and home. Add or remove screens any time."
+                                font.pixelSize: 13; color: theme.textSecondary }
+                        }
+                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                            onClicked: selectedLayout = "starter" }
+                    }
+
+                    Text {
+                        text: "…or start from a single screen:"
+                        font.pixelSize: 13
                         color: theme.textSecondary
                     }
 

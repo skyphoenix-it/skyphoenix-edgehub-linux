@@ -4,6 +4,8 @@ import "../../ui/qml" as App
 
 // Coverage for the page-level store functions added for per-page backgrounds,
 // per-page columns, and unique page naming.
+//
+// COVERS: fn:DashboardStore.appendPreset, fn:DashboardStore._dedupPageName
 Item {
     width: 100; height: 100
     App.DashboardStore { id: store }
@@ -97,6 +99,50 @@ Item {
             store.resetSettings("c", { fresh: 1 })
             compare(store.settingsFor("c").fresh, 1)
             compare(store.settingsFor("c").leftover, undefined, "stale key removed")
+        }
+
+        // ── appendPreset: add a single-page "screen" as ONE new page, additive ──
+        function test_appendPreset_adds_one_page_and_leaves_appearance() {
+            var before = store.pageCount()               // blank = one "Home" page
+            var themeBefore = store.appearance().themeMode
+            var idx = store.appendPreset("calm-focus")
+            compare(idx, before, "appendPreset returns the new page index")
+            compare(store.pageCount(), before + 1, "exactly one page was added")
+            var pages = store.pages()
+            compare(pages[idx].name, "Focus", "the added page is the screen's single page")
+            verify(pages[idx].tiles.length >= 1, "the added page carries the screen's tiles")
+            verify(pages[idx].bg && pages[idx].bg.style !== undefined,
+                   "the screen's character rides on the page (per-page background)")
+            compare(store.appearance().themeMode, themeBefore,
+                    "appendPreset does NOT touch the global appearance")
+            compare(pages[0].name, "Home", "the user's existing page is untouched")
+        }
+
+        function test_appendPreset_rekeys_ids_no_collision() {
+            store.appendPreset("system-monitor")         // cpu/gpu/ram
+            store.appendPreset("system-monitor")         // again → ids must not collide
+            var ids = ({})
+            var pages = store.pages()
+            for (var p = 0; p < pages.length; p++)
+                for (var t = 0; t < pages[p].tiles.length; t++) {
+                    var id = pages[p].tiles[t].id
+                    verify(ids[id] === undefined, "appendPreset re-keys tile ids uniquely: " + id)
+                    ids[id] = true
+                }
+        }
+
+        function test_appendPreset_unknown_id_is_refused() {
+            var before = store.pageCount()
+            compare(store.appendPreset("does-not-exist"), -1, "appendPreset refuses an unknown id")
+            compare(store.pageCount(), before, "nothing was added")
+        }
+
+        function test_dedupPageName_avoids_collision() {
+            store.appendPreset("system-monitor")         // adds a "Core" page
+            var names = store.pages().map(function (p) { return p.name })
+            verify(names.indexOf("Core") >= 0, "the screen added its 'Core' page")
+            compare(store._dedupPageName("Core"), "Core 2", "_dedupPageName avoids the existing name")
+            compare(store._dedupPageName("Brand New"), "Brand New", "a free name is returned unchanged")
         }
     }
 }

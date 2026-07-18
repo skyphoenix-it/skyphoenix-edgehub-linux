@@ -426,7 +426,7 @@ Item {
             // old w/h vocabulary, so this is what gives a fresh install's tiles a
             // `size` — the invariant "every tile in `data` has one" must hold on
             // EVERY path into `data`, not just the load-from-disk one.
-            data = _normaliseDoc(seed(seedLayout && seedLayout.length ? seedLayout : "productivity"))
+            data = _normaliseDoc(seed(seedLayout && seedLayout.length ? seedLayout : "starter"))
             _flush()
         }
         loaded = true
@@ -646,11 +646,57 @@ Item {
     // time to migrate the old `w` span it was measured against), and the pickers
     // that wrote them are gone from both the hub's SettingsPanel and the Manager.
 
-    // Reset the whole dashboard to a named starter layout.
+    // Reset the whole dashboard to a named starter layout (default: the recommended
+    // few-screen starter bundle).
     function resetTo(seedLayout) {
-        data = _normaliseDoc(seed(seedLayout || "productivity"))
+        data = _normaliseDoc(seed(seedLayout || "starter"))
         loaded = true
         _commitStructure()   // force-flushes; no extra save needed
+    }
+
+    // Append a single-page preset ("screen") as a NEW page. Additive — unlike
+    // resetTo, it never replaces the user's other pages and NEVER writes
+    // data.appearance (the global theme/accent/offline/reduceMotion stay put). It
+    // re-keys tile ids against the live document (so they can't collide with an
+    // existing tile/settings bucket), merges the screen's per-tile settings, and
+    // carries the screen's character as a per-page BACKGROUND so a calm screen
+    // doesn't restyle the whole Edge. Returns the new page index, or -1 if refused
+    // (managed lock) or the id is unknown. Guarded like every mutation by the E9
+    // forced-preset lock.
+    function appendPreset(presetId) {
+        if (policyLockedPreset !== "") return -1
+        if (!data || !data.pages) return -1
+        var doc = _presetCatalog.buildDoc(presetId)
+        if (!doc || !doc.pages || !doc.pages.length) return -1
+        var src = doc.pages[0]                       // screens are single-page
+        if (!data.settings) data.settings = {}
+        var tiles = []
+        for (var i = 0; i < src.tiles.length; i++) {
+            var st = src.tiles[i]
+            var nid = _newId(st.type)                // re-key: no collision with live tiles
+            var tile = { "id": nid, "type": st.type }
+            if (st.size) tile.size = st.size
+            tiles.push(tile)
+            if (doc.settings && doc.settings[st.id] !== undefined)
+                data.settings[nid] = JSON.parse(JSON.stringify(doc.settings[st.id]))
+        }
+        var page = { "name": _dedupPageName(src.name), "tiles": tiles }
+        if (doc.appearance && doc.appearance.bgStyle)
+            page.bg = { "style": doc.appearance.bgStyle }
+        data.pages.push(page)
+        _commitStructure()
+        return data.pages.length - 1
+    }
+    // Dedup a proposed page name against existing pages (mirrors renamePage's rule).
+    function _dedupPageName(proposed) {
+        var want = String(proposed || "").trim()
+        if (want === "") return _uniquePageName()
+        var existing = Object.create(null)
+        for (var i = 0; i < data.pages.length; i++) existing[data.pages[i].name] = true
+        if (!existing[want]) return want
+        var base = want, n = 2
+        while (existing[base + " " + n]) n++
+        return base + " " + n
     }
 
     // ── Starter layouts (seed the grid from the wizard's / preset choice) ─────
@@ -673,12 +719,23 @@ Item {
     function _blankDoc() {
         return { "version": 1, "appearance": {}, "settings": {}, "pages": [ { "name": "Home", "tiles": [] } ] }
     }
+    // The recommended few-screen starter a fresh install / wizard begins with —
+    // work, system, and home (each a single-page screen), composed by buildBundle.
+    readonly property var _starterBundle: ["productivity", "system-monitor", "home-ambient"]
     function seed(which) {
         if (which === "blank") return _blankDoc()
-        // Route through the curated preset library. Legacy ids "productivity",
-        // "gaming", "minimal" are preset ids too, so old configs keep working.
-        var id = (which && _presetCatalog.has(which)) ? which : "productivity"
-        var doc = _presetCatalog.buildDoc(id)
-        return doc ? doc : _blankDoc()
+        if (which === "starter") {
+            var b = _presetCatalog.buildBundle(_starterBundle)
+            return b ? b : _blankDoc()
+        }
+        // A KNOWN preset id seeds that one screen (legacy ids "productivity",
+        // "gaming", "minimal" still resolve, so old configs keep working); anything
+        // else — empty or unknown, i.e. the default — starts from the starter bundle.
+        if (which && _presetCatalog.has(which)) {
+            var doc = _presetCatalog.buildDoc(which)
+            return doc ? doc : _blankDoc()
+        }
+        var bd = _presetCatalog.buildBundle(_starterBundle)
+        return bd ? bd : _blankDoc()
     }
 }

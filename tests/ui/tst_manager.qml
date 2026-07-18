@@ -669,22 +669,20 @@ Item {
             win.endThemePreview()
         }
 
-        // ── D: the Manager can start a page set from a curated preset (parity with
-        // the hub's preset picker; applied via store.resetTo → persist + push).
-        function test_apply_preset_screen_replaces_pages() {
-            win.applyPresetScreen("calm-focus")
-            tryVerify(function () { return _store.pageCount() >= 1 }, 2000)
-            var names = []
+        // ── D/B: adding a curated "screen" APPENDS one new page (single-page
+        // presets), never replacing the user's pages and never touching the theme.
+        function test_apply_preset_screen_appends_a_page() {
+            var before = _store.pageCount()
+            var themeBefore = _store.appearance().themeMode
+            win.applyPresetScreen("calm-focus")        // additive
+            tryVerify(function () { return _store.pageCount() === before + 1 }, 2000)
             var pages = _store.pages()
-            for (var i = 0; i < pages.length; i++) names.push(pages[i].name)
-            verify(names.indexOf("Focus") >= 0, "calm-focus preset applied its Focus page")
-            verify(names.indexOf("Notes") >= 0, "calm-focus preset applied its Notes page")
-            // The user's reduce-motion accessibility choice is preserved across a
-            // preset apply (mirrors Dashboard.applyPreset).
-            _store.setAppearance("reduceMotion", true)
+            compare(pages[pages.length - 1].name, "Focus", "the added screen is calm-focus's single page")
+            compare(_store.appearance().themeMode, themeBefore, "appending a screen leaves the global theme untouched")
+            compare(win.currentPageIndex, before, "navigated to the newly added screen")
+            // A second add coexists (tile ids don't collide).
             win.applyPresetScreen("developer")
-            compare(_store.appearance().reduceMotion, true,
-                    "a preset apply preserves the user's reduce-motion choice")
+            tryVerify(function () { return _store.pageCount() === before + 2 }, 2000)
             backend.configChanged()   // restore the blank "Home" baseline for later tests
         }
 
@@ -696,15 +694,13 @@ Item {
                 return x && x.hasOwnProperty("onConfirm") && typeof x.onConfirm === "function" })
             verify(dlg, "reset opened the confirm dialog")
             dlg.onConfirm()
-            tryVerify(function () { return _store.pageCount() >= 1 }, 2000)
+            tryVerify(function () { return _store.pageCount() >= 2 }, 2000)
             var names = []
             var pages = _store.pages()
             for (var i = 0; i < pages.length; i++) names.push(pages[i].name)
-            // The default (productivity) set is Focus/Day/System; calm-focus was
-            // Focus/Notes. So "Notes" must be gone and Day/System present.
-            verify(names.indexOf("Notes") < 0, "reset cleared the calm-focus 'Notes' page")
-            verify(names.indexOf("Day") >= 0 && names.indexOf("System") >= 0,
-                   "reset restored the default (productivity) page set")
+            // Reset restores the recommended starter BUNDLE (a few single-page screens).
+            verify(names.indexOf("Focus") >= 0 && names.indexOf("Core") >= 0,
+                   "reset restored the starter bundle (work + system + home)")
             backend.configChanged()   // restore the blank "Home" baseline for later tests
         }
 

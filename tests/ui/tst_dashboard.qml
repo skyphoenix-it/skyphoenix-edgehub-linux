@@ -4,7 +4,7 @@ import "../../ui/qml" as App
 
 // COVERS: fn:Dashboard._tileExists, fn:Dashboard.applyAppearance, fn:Dashboard.applyExternalState, fn:Dashboard.cfgAction, fn:Dashboard.closeExpanded, fn:Dashboard.injectWidget
 // COVERS: fn:Dashboard.onAccentNameChanged, fn:Dashboard.onAnimatedBackgroundChanged, fn:Dashboard.onGlassOpacityChanged, fn:Dashboard.onOrientationModeChanged, fn:Dashboard.onReduceMotionChanged, fn:Dashboard.onShowWidgetGlowChanged
-// COVERS: fn:Dashboard.onThemeModeChanged, fn:Dashboard.applyPreset
+// COVERS: fn:Dashboard.onThemeModeChanged, fn:Dashboard.applyPreset, fn:Dashboard.appendPreset
 //
 // ui/qml/Dashboard.qml —
 //   • cfgAction: geocode-with-place, empty-place, non-geocode action, no overlay
@@ -408,7 +408,7 @@ Item {
 
             verify(d.applyPreset("developer"), "applyPreset accepts a known preset id")
             var pages = s.pages()
-            compare(pages.length, 2, "the developer preset's two pages were seeded")
+            compare(pages.length, 1, "the developer screen's single page was seeded")
             compare(pages[0].tiles[0].type, "httpjson", "…with its designed tiles (CI status slot)")
             compare(s.settingsFor(pages[0].tiles[0].id).title, "CI status", "and the authored per-tile settings")
 
@@ -446,6 +446,21 @@ Item {
             verify(!d.applyPreset("developer"), "applyPreset refuses under an org-forced preset (E9)")
             compare(JSON.stringify(s.pages()), before, "the forced layout is untouched")
             s.policyLockedPreset = ""          // release the lock for later tests
+            s.load("blank")
+        }
+
+        // ── appendPreset (post-setup Screens picker): ADD a screen as a new page ──
+        function test_appendPreset_adds_a_page_without_replacing() {
+            var d = ld.item
+            var s = root.store()
+            s.load("blank")                       // one "Home" page
+            s.setAppearance("themeMode", "nord")  // a user choice that must survive
+            var before = s.pageCount()
+            verify(d.appendPreset("system-monitor"), "appendPreset adds a known screen")
+            compare(s.pageCount(), before + 1, "exactly one page was added, not a replace")
+            compare(s.pages()[0].name, "Home", "the user's existing page survives")
+            compare(s.appearance().themeMode, "nord", "appending a screen keeps the global theme")
+            verify(!d.appendPreset("no-such-preset"), "an unknown id is refused")
             s.load("blank")
         }
 

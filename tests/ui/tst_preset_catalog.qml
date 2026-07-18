@@ -2,7 +2,7 @@ import QtQuick
 import QtTest
 import "../../ui/qml" as App
 
-// COVERS: fn:PresetCatalog.list, fn:PresetCatalog.def, fn:PresetCatalog.has, fn:PresetCatalog.buildDoc
+// COVERS: fn:PresetCatalog.list, fn:PresetCatalog.def, fn:PresetCatalog.has, fn:PresetCatalog.buildDoc, fn:PresetCatalog.buildBundle
 //
 // The curated preset library (ui/qml/PresetCatalog.qml) drives the first-run
 // "choose a screen" picker and DashboardStore.seed(). These tests guarantee the
@@ -230,6 +230,36 @@ Item {
             compare(presets.buildDoc("does-not-exist"), null)
             verify(!presets.has("does-not-exist"))
             verify(presets.has("productivity"), "legacy 'productivity' id is a preset")
+        }
+
+        // Every preset is now a SINGLE page (the "screen" model): applying one adds
+        // exactly one page.
+        function test_every_preset_is_a_single_page() {
+            var list = presets.list()
+            for (var i = 0; i < list.length; i++)
+                compare(list[i].pages.length, 1, list[i].id + " is a single-page screen")
+        }
+
+        // buildBundle composes several single-page screens into one document — the
+        // "a few starter screens" a fresh install begins with.
+        function test_buildBundle_composes_several_screens() {
+            var doc = presets.buildBundle(["productivity", "system-monitor", "home-ambient"])
+            verify(doc && doc.pages && doc.pages.length === 3, "buildBundle makes one page per screen")
+            var seen = ({})
+            for (var pg = 0; pg < doc.pages.length; pg++)
+                for (var t = 0; t < doc.pages[pg].tiles.length; t++) {
+                    var id = doc.pages[pg].tiles[t].id
+                    verify(!seen[id], "buildBundle keeps tile ids unique across the bundle: " + id)
+                    seen[id] = 1
+                }
+            verify(doc.pages[0].bg && doc.pages[0].bg.style !== undefined,
+                   "bundle pages carry their screen's character as a per-page background")
+            verify(!doc.appearance.themeMode && !doc.appearance.accent,
+                   "a bundle sets no global theme/accent (the user's look governs)")
+            verify(store.applyExternal(JSON.stringify(doc)), "the bundle applies through the store")
+            compare(store.pages().length, 3, "…as three pages")
+            compare(presets.buildBundle(["productivity", "nope"]).pages.length, 1,
+                    "buildBundle skips unknown ids")
         }
 
         // DashboardStore.seed() routes through the preset library; "blank" stays blank.

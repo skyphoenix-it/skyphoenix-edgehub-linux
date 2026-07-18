@@ -3,42 +3,35 @@ import QtQuick
 // ─────────────────────────────────────────────────────────────────────────
 // PresetCatalog — the curated library of ready-made "screens".
 //
-// Mirrors WidgetCatalog: a single registry, reused by the first-run wizard's
-// "what is this screen for?" picker and by DashboardStore.seed(). Each preset is
-// a DESIGNED layout — a small, purposeful set of widgets (never overloaded), a
-// fitting background/motion character, and (optionally) which widget categories
-// to feature in the add-picker. `buildDoc(id)` materializes a full ui_state
-// document (with fresh tile ids) that the store applies verbatim.
+// EACH PRESET IS ONE SCREEN = EXACTLY ONE PAGE, designed for a single workflow.
+// A "screen" is applied by ADDING it as one new page (DashboardStore.appendPreset)
+// — it never overwrites the user's other pages. (The first-run wizard and
+// "reset to default" still compose a few screens into a fresh document via
+// DashboardStore.seed()/buildBundle().) Each preset is a small, purposeful set of
+// widgets (never overloaded), with a fitting background/motion character and
+// (optionally) which widget categories to feature in the add-picker.
+// `buildDoc(id)` materializes a full ui_state document (with fresh tile ids).
 //
 // A tile spec is { type, size?, settings? }. `size` is a name from WidgetSizes and
 // MUST be one the type declares in WidgetCatalog; omit it for the type's default.
 // Appearance only sets the preset's *character* (bgStyle / animatedBg /
 // reduceMotion) — never themeMode/accent, so applying a preset preserves the user's
-// chosen colours. Every tile `type` MUST exist in WidgetCatalog (a QML test asserts
-// both).
+// chosen colours; appendPreset carries the character as a per-page background so it
+// rides on the page, not the global look. Every tile `type` MUST exist in
+// WidgetCatalog (a QML test asserts both).
 //
-// EVERY PAGE FITS ON ONE SCREEN. A page's tiles may not exceed
-// WidgetSizes.longHalves (6 half-cells) along the long axis — three `1x1` fill a
-// screen exactly, and a hero `1x1.5` plus a `1x1.5` companion does too. This is a
-// hard product constraint, asserted by tst_preset_catalog against the real
-// WidgetPacker, not a style note:
+// THE ONE PAGE FITS ON ONE SCREEN. Its tiles may not exceed WidgetSizes.longHalves
+// (6 half-cells) along the long axis — three `1x1` fill a screen exactly, and a
+// hero `1x1.5` plus a `1x1.5` companion does too. Hard product constraint, asserted
+// by tst_preset_catalog against the real WidgetPacker: the scroll axis follows the
+// long axis, which in landscape is the SwipeView's own swipe axis, so an overflowing
+// page would fight the page swipe. A page that fits never scrolls.
 //
-//   the scroll axis follows the LONG axis, which in the default 2560x720 landscape
-//   is the SAME axis as the SwipeView's page swipe. On an overflowing landscape page
-//   the inner Flickable wins the drag and the PageIndicator becomes the only way to
-//   change pages. A page that fits never scrolls, so the conflict cannot arise.
-//
-// The budget is why a preset SPLITS across pages rather than dropping a widget:
-// four widgets is two pages, and every widget a preset intends to show still ships.
-//
-// Data-connected presets (developer, homelab, trading-desk, analyst, enterprise)
+// Data-connected screens (developer, homelab, trading-desk, analyst, enterprise)
 // carry HTTP/JSON + KPI tiles with a purposeful `title` but a BLANK url/filePath:
 // the endpoint is the one thing only the user can supply, so the tile ships as a
 // labelled, self-explaining slot ("CI status" → "Add a URL in settings") rather
 // than a wrong guess. Nothing polls until it is connected.
-//
-// Presets still marked "⟶ enrich" gain tiles from later epics (E5 wellness, and
-// the post-1.0 integration packs); today they use the shipping widgets.
 // ─────────────────────────────────────────────────────────────────────────
 QtObject {
     id: presets
@@ -50,117 +43,31 @@ QtObject {
     readonly property var _soft:  ({ bgStyle: "orbs",  animatedBg: false, reduceMotion: false, glow: true })
 
     property var items: [
-        // `focus` tops out at 1x1.5 — the hero timer is the largest the widget
-        // renders, not the largest size there is.
+        // ── Local, no online config needed ──────────────────────────────────
+        // `focus` tops out at 1x1.5 — the hero timer is the largest it renders.
         { id: "calm-focus", title: "Calm Focus", icon: "🧘",
-          blurb: "Deep work, quietly. A big timer beside your one thing — with a scratchpad and your streak a swipe away.",
+          blurb: "Deep work, quietly. A big timer beside your one thing.",
           appearance: _calm, surfaced: ["Focus"],
-          pages: [
-              { name: "Focus", tiles: [
-                  { type: "focus", size: "1x1.5" }, { type: "rightnow", size: "1x1.5" } ] },
-              { name: "Notes", tiles: [
-                  { type: "notes", size: "1x2" }, { type: "habit", size: "1x1" } ] } ] },
+          pages: [ { name: "Focus", tiles: [
+              { type: "focus", size: "1x1.5" }, { type: "rightnow", size: "1x1.5" } ] } ] },
 
-        { id: "home-ambient", title: "Home & Ambient", icon: "🏠",
-          blurb: "A beautiful desk companion — the time and the weather up front, what's playing and tonight's moon a swipe away.",
-          appearance: _ambient, surfaced: ["Time", "Media", "Info"],
-          pages: [
-              { name: "Home",    tiles: [
-                  { type: "clock", size: "1x1.5" }, { type: "weather", size: "1x1.5" } ] },
-              { name: "Ambient", tiles: [
-                  { type: "media", size: "1x1.5" }, { type: "moon", size: "1x1" } ] } ] },
+        { id: "notes-streak", title: "Notes & Streak", icon: "📝",
+          blurb: "A scratchpad that saves itself, next to your daily streak.",
+          appearance: _calm, surfaced: ["Focus"],
+          pages: [ { name: "Notes", tiles: [
+              { type: "notes", size: "1x1.5" }, { type: "habit", size: "1x1.5" } ] } ] },
 
-        { id: "remote-work", title: "Remote Work", icon: "💼",
-          blurb: "Stay on top of the day — the time and your calendar, then today's tasks and how much workday is left.",
-          appearance: _calm, surfaced: ["Time", "Info", "Focus"],
-          pages: [
-              { name: "Work", tiles: [
-                  { type: "clock", size: "1x1" }, { type: "calendar", size: "1x2" } ] },
-              { name: "Day",  tiles: [
-                  { type: "tasks", size: "1x1.5" },
-                  { type: "eod", size: "1x1.5", settings: { startHour: 9, endHour: 17, progressStyle: "bar" } } ] } ] },
+        { id: "home-ambient", title: "Home", icon: "🏠",
+          blurb: "A beautiful desk companion — the time and the weather, up front.",
+          appearance: _ambient, surfaced: ["Time", "Info"],
+          pages: [ { name: "Home", tiles: [
+              { type: "clock", size: "1x1.5" }, { type: "weather", size: "1x1.5" } ] } ] },
 
-        { id: "developer", title: "Developer", icon: "💻",
-          blurb: "Your build and your box — CI status and a number you watch, with machine health a swipe away.",
-          appearance: _tech, surfaced: ["Data", "System"],
-          pages: [
-              { name: "Dev", tiles: [
-                  { type: "httpjson", size: "1x1.5", settings: { title: "CI status", mode: "list", listMax: 5, pollSec: 120 } },
-                  { type: "kpi", size: "1x1.5", settings: { title: "Open PRs", label: "Open PRs", pollSec: 300 } } ] },
-              // Two half-width gauges pair across the short axis; first fit backfills
-              // the second beside the first rather than starting a new row.
-              { name: "Box", tiles: [
-                  { type: "cpu", size: "0.5x1" }, { type: "ram", size: "0.5x1" },
-                  { type: "disk", size: "1x1" } ] } ] },
-
-        { id: "homelab", title: "Homelab Ops", icon: "🖥️",
-          blurb: "Watch the lab — service uptime and container health, with CPU, memory, network and disk a swipe away.",
-          appearance: _tech, surfaced: ["Data", "System"],
-          pages: [
-              { name: "Services", tiles: [
-                  { type: "httpjson", size: "1x1.5", settings: { title: "Uptime", mode: "list", listMax: 6, pollSec: 60 } },
-                  { type: "httpjson", size: "1x1.5", settings: { title: "Containers", mode: "list", listMax: 6, pollSec: 60 } } ] },
-              { name: "Machine",  tiles: [
-                  { type: "cpu", size: "1x1.5" }, { type: "ram", size: "1x1.5" } ] },
-              { name: "Traffic",  tiles: [
-                  { type: "net", size: "1x1.5" }, { type: "disk", size: "1x1" } ] } ] },
-
-        { id: "gaming", title: "Gaming Cockpit", icon: "🎮",
-          blurb: "Rig telemetry beside your game — the GPU front and centre, CPU and memory, network and temps, and what's playing. ⟶ enrich with FPS & OBS.",
-          appearance: _tech, surfaced: ["System", "Media"],
-          pages: [
-              { name: "GPU",    tiles: [
-                  { type: "gpu", size: "1x1.5" },
-                  { type: "cpu", size: "0.5x1" }, { type: "ram", size: "0.5x1" } ] },
-              { name: "System", tiles: [
-                  { type: "net", size: "1x1" }, { type: "sensors", size: "1x1.5" } ] },
-              { name: "Play",   tiles: [
-                  { type: "clock", size: "1x1" }, { type: "media", size: "1x1.5" } ] } ] },
-
-        { id: "trading-desk", title: "Trading Desk", icon: "📈",
-          blurb: "The desk at a glance — your time and the market's beside your P&L, with exposure and what's next a swipe away.",
-          appearance: _calm, surfaced: ["Time", "Data", "Info"],
-          pages: [
-              { name: "Desk", tiles: [
-                  // The two zones sit side by side — one glance, two clocks.
-                  { type: "clock", size: "0.5x1" },
-                  { type: "clock", size: "0.5x1", settings: { title: "New York", customZone: true, zoneId: "America/New_York" } },
-                  { type: "kpi", size: "1x1.5", settings: { title: "P&L", label: "P&L", unit: "%", pollSec: 60 } } ] },
-              { name: "Next", tiles: [
-                  { type: "kpi", size: "1x1", settings: { title: "Exposure", label: "Exposure", pollSec: 60 } },
-                  { type: "calendar", size: "1x2" } ] } ] },
-
-        // hydration/break/habit all top out at 1x1 — three of them fill the page
-        // exactly, which is the blurb's promise in one screen.
-        { id: "health", title: "Health & Routine", icon: "💧",
-          blurb: "Gentle nudges toward a good day — water, breaks, and a daily streak, with your one thing a swipe away. ⟶ enrich with meds reminder.",
-          appearance: _soft, surfaced: ["Focus"],
-          pages: [
-              { name: "Health",    tiles: [
-                  { type: "hydration", size: "1x1" }, { type: "break", size: "1x1" },
-                  { type: "habit", size: "1x1" } ] },
-              { name: "Right Now", tiles: [
-                  { type: "rightnow", size: "1x1.5" } ] } ] },
-
-        { id: "creator", title: "Creator / Media", icon: "🎬",
-          blurb: "For making things — now-playing front and centre and a focus timer, with the time and a spark of inspiration a swipe away.",
-          appearance: _ambient, surfaced: ["Media", "Focus"],
-          pages: [
-              { name: "Studio", tiles: [
-                  { type: "media", size: "1x1.5" }, { type: "focus", size: "1x1.5" } ] },
-              { name: "Desk",   tiles: [
-                  { type: "clock", size: "1x1" }, { type: "quote", size: "1x1.5" } ] } ] },
-
-        { id: "system-monitor", title: "System Monitor", icon: "📊",
-          blurb: "The classic — CPU, GPU and memory at a glance, with network, disk and sensors a swipe away.",
-          appearance: _tech, surfaced: ["System"],
-          pages: [
-              { name: "Core", tiles: [
-                  { type: "cpu", size: "1x1" }, { type: "gpu", size: "1x1" },
-                  { type: "ram", size: "1x1" } ] },
-              { name: "I/O",  tiles: [
-                  { type: "net", size: "1x1" }, { type: "disk", size: "1x1" },
-                  { type: "sensors", size: "1x1" } ] } ] },
+        { id: "ambient", title: "Ambient", icon: "🌙",
+          blurb: "When it's not working hard — what's playing and tonight's moon.",
+          appearance: _ambient, surfaced: ["Media", "Time"],
+          pages: [ { name: "Ambient", tiles: [
+              { type: "media", size: "1x1.5" }, { type: "moon", size: "1x1" } ] } ] },
 
         { id: "minimal", title: "Minimalist", icon: "✨",
           blurb: "Almost nothing. A beautiful clock, the weather, and the moon.",
@@ -169,52 +76,107 @@ QtObject {
               { type: "clock", size: "1x1.5" },
               { type: "weather", size: "0.5x1" }, { type: "moon", size: "0.5x1" } ] } ] },
 
-        { id: "analyst", title: "Analyst / Data", icon: "📉",
-          blurb: "A calm data corner — two headline numbers and a monitoring feed, with the time and your tasks a swipe away.",
-          appearance: _calm, surfaced: ["Data", "Time", "Focus"],
-          pages: [
-              { name: "Data", tiles: [
-                  { type: "kpi", size: "1x1.5", settings: { title: "Headline metric", label: "Headline metric", source: "http", pollSec: 300 } },
-                  // The file source reads a local path — a fully offline KPI (no egress).
-                  { type: "kpi", size: "0.5x1", settings: { title: "Daily total", label: "Daily total", source: "file", pollSec: 60 } },
-                  { type: "httpjson", size: "0.5x1", settings: { title: "Monitoring", mode: "value", pollSec: 120 } } ] },
-              { name: "Desk", tiles: [
-                  { type: "clock", size: "1x1" }, { type: "tasks", size: "1x1.5" } ] } ] },
+        { id: "health", title: "Health & Routine", icon: "💧",
+          blurb: "Gentle nudges toward a good day — water, breaks, and a daily streak.",
+          appearance: _soft, surfaced: ["Focus"],
+          pages: [ { name: "Health", tiles: [
+              { type: "hydration", size: "1x1" }, { type: "break", size: "1x1" },
+              { type: "habit", size: "1x1" } ] } ] },
+
+        { id: "creator", title: "Creator / Media", icon: "🎬",
+          blurb: "For making things — now-playing front and centre, and a focus timer.",
+          appearance: _ambient, surfaced: ["Media", "Focus"],
+          pages: [ { name: "Studio", tiles: [
+              { type: "media", size: "1x1.5" }, { type: "focus", size: "1x1.5" } ] } ] },
 
         { id: "study", title: "Student / Study", icon: "📚",
-          blurb: "Study sessions that stick — a focus timer and your tasks, with a countdown to the exam and your streak a swipe away.",
+          blurb: "Study sessions that stick — a focus timer and a countdown to the exam.",
           appearance: _soft, surfaced: ["Focus", "Info"],
-          pages: [
-              { name: "Study", tiles: [
-                  { type: "focus", size: "1x1.5" }, { type: "tasks", size: "1x1.5" } ] },
-              { name: "Goals", tiles: [
-                  { type: "countdown", size: "1x1.5", settings: { label: "Exam", date: "", repeatYearly: false } },
-                  { type: "habit", size: "1x1" } ] } ] },
+          pages: [ { name: "Study", tiles: [
+              { type: "focus", size: "1x1.5" },
+              { type: "countdown", size: "1x1.5", settings: { label: "Exam", date: "", repeatYearly: false } } ] } ] },
 
         { id: "productivity", title: "Productivity", icon: "✅",
-          blurb: "Get things done — focus and tasks, your streak and the day's progress, with system stats a swipe away.",
-          appearance: _soft, surfaced: ["Focus", "System", "Time"],
-          pages: [
-              { name: "Focus",  tiles: [
-                  { type: "focus", size: "1x1.5" }, { type: "tasks", size: "1x1.5" } ] },
-              { name: "Day",    tiles: [
-                  { type: "habit", size: "1x1" }, { type: "eod", size: "1x1.5" } ] },
-              { name: "System", tiles: [
-                  { type: "cpu", size: "1x1" }, { type: "ram", size: "1x1" },
-                  { type: "clock", size: "1x1" } ] } ] },
+          blurb: "Get things done — a focus timer beside today's tasks.",
+          appearance: _soft, surfaced: ["Focus", "Time"],
+          pages: [ { name: "Focus", tiles: [
+              { type: "focus", size: "1x1.5" }, { type: "tasks", size: "1x1.5" } ] } ] },
 
-        { id: "enterprise", title: "Enterprise / Locked", icon: "🔒",
-          blurb: "A clean, managed baseline for work — the time and your agenda, with your workday and one approved team number a swipe away.",
-          appearance: _calm, surfaced: ["Time", "Info", "Data"],
-          pages: [
-              { name: "Work", tiles: [
-                  { type: "clock", size: "1x1" }, { type: "calendar", size: "1x2" } ] },
-              { name: "Team", tiles: [
-                  { type: "eod", size: "1x1.5" },
-                  // "Approved KPI/monitoring tiles only" — a KPI the org points at its
-                  // own endpoint. The egress primitives stay governed by NetHub's
-                  // allowlist.
-                  { type: "kpi", size: "1x1.5", settings: { title: "Team KPI", label: "Team KPI", pollSec: 300 } } ] } ] }
+        { id: "remote-work", title: "Remote Work", icon: "💼",
+          blurb: "The working day — today's tasks and how much of the workday is left.",
+          appearance: _calm, surfaced: ["Focus", "Info"],
+          pages: [ { name: "Day", tiles: [
+              { type: "tasks", size: "1x1.5" },
+              { type: "eod", size: "1x1.5", settings: { startHour: 9, endHour: 17, progressStyle: "bar" } } ] } ] },
+
+        { id: "gaming", title: "Gaming Cockpit", icon: "🎮",
+          blurb: "Rig telemetry beside your game — the GPU front and centre, CPU and memory.",
+          appearance: _tech, surfaced: ["System", "Media"],
+          pages: [ { name: "GPU", tiles: [
+              { type: "gpu", size: "1x1.5" },
+              { type: "cpu", size: "0.5x1" }, { type: "ram", size: "0.5x1" } ] } ] },
+
+        { id: "system-monitor", title: "System Core", icon: "📊",
+          blurb: "The classic — CPU, GPU and memory at a glance.",
+          appearance: _tech, surfaced: ["System"],
+          pages: [ { name: "Core", tiles: [
+              { type: "cpu", size: "1x1" }, { type: "gpu", size: "1x1" },
+              { type: "ram", size: "1x1" } ] } ] },
+
+        { id: "system-io", title: "System I/O", icon: "🧭",
+          blurb: "The other half — network, disk, and temperatures.",
+          appearance: _tech, surfaced: ["System"],
+          pages: [ { name: "I/O", tiles: [
+              { type: "net", size: "1x1" }, { type: "disk", size: "1x1" },
+              { type: "sensors", size: "1x1" } ] } ] },
+
+        // ── Screens with a labelled online slot (blank endpoint → self-explains) ─
+        { id: "day-plan", title: "Day Plan", icon: "📅",
+          blurb: "The time and your agenda — connect a calendar (ICS URL) in settings.",
+          appearance: _calm, surfaced: ["Time", "Info"],
+          pages: [ { name: "Agenda", tiles: [
+              { type: "clock", size: "1x1" }, { type: "calendar", size: "1x2" } ] } ] },
+
+        { id: "developer", title: "Developer", icon: "💻",
+          blurb: "Your build and a number you watch — CI status and open PRs. Add your URLs.",
+          appearance: _tech, surfaced: ["Data", "System"],
+          pages: [ { name: "Dev", tiles: [
+              { type: "httpjson", size: "1x1.5", settings: { title: "CI status", mode: "list", listMax: 5, pollSec: 120 } },
+              { type: "kpi", size: "1x1.5", settings: { title: "Open PRs", label: "Open PRs", pollSec: 300 } } ] } ] },
+
+        { id: "homelab", title: "Homelab Ops", icon: "🖥️",
+          blurb: "Watch the lab — service uptime and container health. Add your endpoints.",
+          appearance: _tech, surfaced: ["Data", "System"],
+          pages: [ { name: "Services", tiles: [
+              { type: "httpjson", size: "1x1.5", settings: { title: "Uptime", mode: "list", listMax: 6, pollSec: 60 } },
+              { type: "httpjson", size: "1x1.5", settings: { title: "Containers", mode: "list", listMax: 6, pollSec: 60 } } ] } ] },
+
+        { id: "trading-desk", title: "Trading Desk", icon: "📈",
+          blurb: "Two clocks and your P&L — local and New York, beside one headline number.",
+          appearance: _calm, surfaced: ["Time", "Data"],
+          pages: [ { name: "Desk", tiles: [
+              // The two zones sit side by side — one glance, two clocks.
+              { type: "clock", size: "0.5x1" },
+              { type: "clock", size: "0.5x1", settings: { title: "New York", customZone: true, zoneId: "America/New_York" } },
+              { type: "kpi", size: "1x1.5", settings: { title: "P&L", label: "P&L", unit: "%", pollSec: 60 } } ] } ] },
+
+        { id: "analyst", title: "Analyst / Data", icon: "📉",
+          blurb: "A calm data corner — two headline numbers (one from a local file) and a feed.",
+          appearance: _calm, surfaced: ["Data", "Time"],
+          pages: [ { name: "Data", tiles: [
+              { type: "kpi", size: "1x1.5", settings: { title: "Headline metric", label: "Headline metric", source: "http", pollSec: 300 } },
+              // The file source reads a local path — a fully offline KPI (no egress).
+              { type: "kpi", size: "0.5x1", settings: { title: "Daily total", label: "Daily total", source: "file", pollSec: 60 } },
+              { type: "httpjson", size: "0.5x1", settings: { title: "Monitoring", mode: "value", pollSec: 120 } } ] } ] },
+
+        { id: "enterprise", title: "Team / Enterprise", icon: "🔒",
+          blurb: "A clean managed baseline — your workday and one approved team number.",
+          appearance: _calm, surfaced: ["Info", "Data"],
+          pages: [ { name: "Team", tiles: [
+              { type: "eod", size: "1x1.5" },
+              // "Approved KPI/monitoring tiles only" — a KPI the org points at its
+              // own endpoint. The egress primitives stay governed by NetHub's allowlist.
+              { type: "kpi", size: "1x1.5", settings: { title: "Team KPI", label: "Team KPI", pollSec: 300 } } ] } ] }
     ]
 
     // ── API (mirrors WidgetCatalog) ─────────────────────────────────────────
@@ -258,5 +220,39 @@ QtObject {
         var appearance = p.appearance ? JSON.parse(JSON.stringify(p.appearance)) : ({})
         if (p.surfaced && p.surfaced.length) appearance.presetSurface = p.surfaced.slice()
         return { "version": 1, "appearance": appearance, "settings": settings, "pages": pages }
+    }
+
+    // Compose several single-page presets into ONE document — the "a few starter
+    // screens" a fresh install / wizard begins with. Each preset contributes its
+    // one page (with its character as a per-page background so the pages differ),
+    // tile ids stay unique across the bundle, and per-tile settings are merged. The
+    // document's global appearance is left EMPTY: a bundle spans characters, so the
+    // user's/global look governs the whole Edge, not any one screen's character.
+    function buildBundle(ids) {
+        var seq = 0
+        var pages = []
+        var settings = ({})
+        for (var b = 0; b < ids.length; b++) {
+            var p = def(ids[b])
+            if (!p) continue
+            for (var pi = 0; pi < p.pages.length; pi++) {
+                var src = p.pages[pi]
+                var tiles = []
+                for (var ti = 0; ti < src.tiles.length; ti++) {
+                    var t = src.tiles[ti]
+                    var tid = t.type + "-" + (++seq)
+                    var tile = { "id": tid, "type": t.type }
+                    if (t.size) tile.size = t.size
+                    tiles.push(tile)
+                    if (t.settings) settings[tid] = JSON.parse(JSON.stringify(t.settings))
+                }
+                var page = { "name": src.name, "tiles": tiles }
+                if (p.appearance && p.appearance.bgStyle)
+                    page.bg = { "style": p.appearance.bgStyle }
+                pages.push(page)
+            }
+        }
+        if (!pages.length) return null
+        return { "version": 1, "appearance": ({}), "settings": settings, "pages": pages }
     }
 }

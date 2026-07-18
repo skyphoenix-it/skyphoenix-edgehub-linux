@@ -217,11 +217,12 @@ Item {
         when: windowShown
 
         function test_seed_shapes_the_document() {
+            // Presets are single-page "screens" now — each seeds exactly one page.
             var cases = {
                 "blank":        { pages: ["Home"], firstTileCount: 0 },
                 "minimal":      { pages: ["Home"] },
-                "gaming":       { pages: ["GPU", "System", "Play"] },
-                "productivity": { pages: ["Focus", "Day", "System"] }
+                "gaming":       { pages: ["GPU"] },
+                "productivity": { pages: ["Focus"] }
             }
             for (var which in cases) {
                 var doc = store.seed(which)
@@ -237,13 +238,14 @@ Item {
             compare(store.seed("blank").pages[0].tiles.length, 0)
         }
 
-        function test_unknown_seed_falls_back_to_productivity() {
-            // An unknown seed id resolves to the "productivity" preset (whatever
-            // that preset's designed layout currently is).
+        function test_unknown_seed_falls_back_to_the_starter_bundle() {
+            // An unknown/empty seed id resolves to the recommended starter BUNDLE —
+            // a few single-page screens — not a single preset.
             var unknown = store.seed("nonsense").pages.map(function (p) { return p.name })
-            var prod = store.seed("productivity").pages.map(function (p) { return p.name })
-            compare(unknown, prod, "unknown seed falls back to the productivity preset")
-            verify(prod.length >= 1 && prod.indexOf("Focus") !== -1, "productivity preset has a Focus page")
+            var starter = store.seed("starter").pages.map(function (p) { return p.name })
+            compare(unknown, starter, "unknown seed falls back to the starter bundle")
+            verify(starter.length >= 2, "the starter bundle is a few screens, not one")
+            verify(starter.indexOf("Focus") !== -1, "the bundle includes the Focus screen")
         }
 
         // The blank document is the canonical empty layout: one "Home" page, no

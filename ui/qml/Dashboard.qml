@@ -411,6 +411,16 @@ Item {
         return true
     }
 
+    // Add a curated screen as a NEW page (additive) and swipe to it. Unlike
+    // applyPreset (wizard/reset — full replace), this never disturbs the user's
+    // other pages or the global appearance. Returns whether a page was added.
+    function appendPreset(presetId) {
+        var idx = store.appendPreset(presetId)   // -1 when managed/locked or unknown id
+        if (idx < 0) return false
+        swipeView.currentIndex = idx
+        return true
+    }
+
     // Close the expanded overlay + clear its transient state (shared by the
     // header back button and the reachable bottom "Done" bar).
     function closeExpanded() {
@@ -1696,12 +1706,13 @@ Item {
     }
 
     // Post-setup preset library ("Screens", W5 finding 3) — opened from the
-    // settings sheet; applying routes through applyPreset() above.
+    // settings sheet. A screen is ADDED as a new page (additive), never replacing
+    // the user's layout — that's the wizard's/reset's job (applyPreset).
     PresetPicker {
         id: presetPicker
         catalog: presetLib
         locked: store.policyLockedPreset !== ""
-        onApplyRequested: (pid) => { if (dashboard.applyPreset(pid)) presetPicker.shown = false }
+        onApplyRequested: (pid) => { if (dashboard.appendPreset(pid)) presetPicker.shown = false }
         onCloseRequested: shown = false
     }
 }

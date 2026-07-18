@@ -346,28 +346,28 @@ ApplicationWindow {
         hoverPreviewTimer.restart()
     }
 
-    // Apply a curated "screen" preset. Mirrors Dashboard.applyPreset: the preset's
-    // own character (background/glow/motion) applies, but the user's accessibility
-    // choice (reduceMotion) and any appearance keys the preset doesn't set are
-    // preserved. store.resetTo persists + pushes live to a running hub.
+    // Add a curated "screen" as a NEW page (additive) — never replaces the user's
+    // other pages, and never touches the global theme/accent. store.appendPreset
+    // persists + pushes live to a running hub, and returns the new page index so we
+    // land the user on the screen they just added.
     function applyPresetScreen(presetId) {
         if (!presetLib.has(presetId)) return
-        var prev = store.appearance()
-        var keep = {}
-        for (var k in prev) keep[k] = prev[k]
-        store.resetTo(presetId)
-        for (var kk in keep)
-            if (store.appearance()[kk] === undefined) store.setAppearance(kk, keep[kk])
-        if (keep.reduceMotion !== undefined) store.setAppearance("reduceMotion", keep.reduceMotion)
-        win.currentPageIndex = 0
-        pageName.forIndex = 0
-        pageName.text = win.currentPageName()
+        var idx = store.appendPreset(presetId)
+        if (idx < 0) return
+        // Sync the rename field to the new page BEFORE moving currentPageIndex —
+        // onCurrentPageIndexChanged runs commitRename(), which would otherwise write
+        // the STALE field text onto the freshly-added page (e.g. renaming its page
+        // to a leftover name). Setting forIndex+text to the target makes that
+        // commitRename a no-op.
+        pageName.forIndex = idx
+        pageName.text = store.pages()[idx].name
+        win.currentPageIndex = idx
     }
     function confirmApplyPreset(presetId, title) {
-        var n = store.pageCount()
-        confirmDialog.message = "Replace your current " + n + " page" + (n === 1 ? "" : "s")
-            + " with the “" + title + "” screen set? This can't be undone. "
-            + "Your uploaded images are kept."
+        // Additive and non-destructive, but a light confirm sets the expectation:
+        // a page is ADDED, the rest of the layout and the theme stay put.
+        confirmDialog.message = "Add the “" + title + "” screen as a new page? "
+            + "Your other pages and your theme are untouched."
         confirmDialog.onConfirm = function () { win.applyPresetScreen(presetId) }
         confirmDialog.open()
     }
@@ -378,10 +378,13 @@ ApplicationWindow {
         confirmDialog.message = "Reset every page and widget to the default layout? "
             + "This can't be undone. Your uploaded images are kept."
         confirmDialog.onConfirm = function () {
-            store.resetTo("productivity")
-            win.currentPageIndex = 0
+            store.resetTo("starter")   // the recommended few-screen default
+            // Sync the rename field to page 0 BEFORE moving currentPageIndex, so
+            // onCurrentPageIndexChanged's commitRename can't write the stale field
+            // onto a reset page (see applyPresetScreen).
             pageName.forIndex = 0
-            pageName.text = win.currentPageName()
+            pageName.text = store.pages()[0].name
+            win.currentPageIndex = 0
         }
         confirmDialog.open()
     }
