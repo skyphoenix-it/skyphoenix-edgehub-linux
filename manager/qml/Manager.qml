@@ -969,6 +969,12 @@ ApplicationWindow {
                             background: Rectangle {
                                 x: glassSlider.leftPadding
                                 y: glassSlider.topPadding + glassSlider.availableHeight / 2 - height / 2
+                                // implicit* MUST be set: the Slider derives its own implicit
+                                // size (and thus its hit area) from the background/handle. A
+                                // Rectangle's implicit size is 0, so without these the whole
+                                // Slider collapsed to ~0 height and could not be pressed or
+                                // dragged — the real "stuck at 55%" bug.
+                                implicitWidth: 200; implicitHeight: 6
                                 width: glassSlider.availableWidth; height: 6; radius: 3
                                 color: m.panelAlt; border.width: 1; border.color: m.border
                                 Rectangle {
@@ -979,6 +985,8 @@ ApplicationWindow {
                             handle: Rectangle {
                                 x: glassSlider.leftPadding + glassSlider.visualPosition * (glassSlider.availableWidth - width)
                                 y: glassSlider.topPadding + glassSlider.availableHeight / 2 - height / 2
+                                // See background: implicit size gives the Slider a real hit area.
+                                implicitWidth: 20; implicitHeight: 20
                                 width: 20; height: 20; radius: 10
                                 color: glassSlider.pressed ? Qt.lighter(m.accent, 1.15) : m.textOnAccent
                                 border.width: 2; border.color: m.accent

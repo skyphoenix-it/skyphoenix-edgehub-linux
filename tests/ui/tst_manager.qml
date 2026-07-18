@@ -751,6 +751,11 @@ Item {
             _nav.currentIndex = 1                      // Appearance tab
             var sl = _glassSlider()
             verify(sl, "found the glass slider")
+            // The slider MUST have a real hit area. A custom handle/background without
+            // implicit sizes collapses the Slider to ~0 height, so it can't be pressed
+            // or dragged — the real "stuck at 55%" bug. This guards that regression
+            // (offscreen, so a real drag can't be delivered here — height is the proxy).
+            verify(sl.height >= 16, "the glass slider has a pressable height (" + sl.height + ")")
             _theme.glassOpacity = 0.77
             compare(sl.value, 0.77, "the glass slider tracks theme.glassOpacity (the fix)")
             // A metric tick bumps store.revision WITHOUT changing glass (hist is ephemeral).
