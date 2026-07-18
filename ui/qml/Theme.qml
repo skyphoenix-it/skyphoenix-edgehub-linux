@@ -240,12 +240,13 @@ QtObject {
     readonly property color cardBorderGlass:
         !decorative
             ? cardBorder
-            : Qt.rgba(cardBorder.r + (textPrimary.r - cardBorder.r) * glassOpacity * 0.40,
-                      cardBorder.g + (textPrimary.g - cardBorder.g) * glassOpacity * 0.40,
-                      cardBorder.b + (textPrimary.b - cardBorder.b) * glassOpacity * 0.40, 1)
+            : Qt.rgba(cardBorder.r + (textPrimary.r - cardBorder.r) * glassOpacity * 0.62,
+                      cardBorder.g + (textPrimary.g - cardBorder.g) * glassOpacity * 0.62,
+                      cardBorder.b + (textPrimary.b - cardBorder.b) * glassOpacity * 0.62, 1)
     // Strength of the card's top-edge frosted highlight, also scaling with glass
-    // (0.04 → ~0.16 white). A second visible cue that reads as "more glass".
-    readonly property real cardSheen: decorative ? (0.04 + glassOpacity * 0.12) : 0.0
+    // (~0.03 → ~0.26 white). A second visible cue that reads as "more glass" — with
+    // a wider range for more pezazz between low and high glass.
+    readonly property real cardSheen: decorative ? (0.03 + glassOpacity * 0.23) : 0.0
 
     property int motionPage: effectiveReduceMotion ? 0 : 250
     property int motionAdd: effectiveReduceMotion ? 0 : 200
