@@ -219,15 +219,15 @@ ApplicationWindow {
     // single source of that text: pass a label from `scopeLabels` and the wording
     // can never drift between two sections claiming the same scope.
     readonly property var scopeLabels: ({
-        widget: "This widget only", page: "This page only", pages: "All pages",
+        widget: "This widget only", page: "This screen only", pages: "All screens",
         edge: "Whole Edge", computer: "This computer", window: "This window only"
     })
     function scopeDetail(label) {
         switch (label) {
         case "This widget only": return "Changes this one tile. Other widgets of the same type are untouched."
-        case "This page only":   return "Changes this page only. Your other pages are untouched."
-        case "All pages":        return "The default for every page — but a page can override it (Layout → “This page's background”)."
-        case "Whole Edge":       return "Changes every page and every widget. There is no per-page override for this."
+        case "This screen only": return "Changes this screen only. Your other screens are untouched."
+        case "All screens":      return "The default for every screen — but a screen can override it (Screens → “This screen's look”)."
+        case "Whole Edge":       return "Changes every screen and every widget. There is no per-screen override for this."
         case "This computer":    return "Changes this computer's hub, not the Edge layout. Other machines are untouched."
         case "This window only": return "Changes the Manager window you're looking at. Your Edge is untouched."
         }
@@ -424,8 +424,8 @@ ApplicationWindow {
     function confirmApplyPreset(presetId, title) {
         // Additive and non-destructive, but a light confirm sets the expectation:
         // a page is ADDED, the rest of the layout and the theme stay put.
-        confirmDialog.message = "Add the “" + title + "” screen as a new page? "
-            + "Your other pages and your theme are untouched."
+        confirmDialog.message = "Add the “" + title + "” screen as a new screen? "
+            + "Your other screens and your theme are untouched."
         confirmDialog.onConfirm = function () { win.applyPresetScreen(presetId) }
         confirmDialog.open()
     }
@@ -433,7 +433,7 @@ ApplicationWindow {
     // Reset every page + widget to the default layout (a clean starting point).
     // Uploaded images live on disk and are untouched.
     function confirmResetLayout() {
-        confirmDialog.message = "Reset every page and widget to the default layout? "
+        confirmDialog.message = "Reset every screen and widget to the default layout? "
             + "This can't be undone. Your uploaded images are kept."
         confirmDialog.onConfirm = function () {
             store.resetTo("starter")   // the recommended few-screen default
@@ -452,7 +452,7 @@ ApplicationWindow {
     function confirmRemovePage() {
         var idx = currentPageIndex
         var n = pageTiles().length
-        confirmDialog.message = "Remove page “" + currentPageName() + "”"
+        confirmDialog.message = "Remove screen “" + currentPageName() + "”"
             + (n > 0 ? " and its " + n + " widget" + (n === 1 ? "" : "s") : "")
             + "? This can't be undone."
         confirmDialog.onConfirm = function () {
@@ -531,8 +531,12 @@ ApplicationWindow {
                 }
 
                 Repeater {
-                    model: [ { l: "Layout", i: "ui-layout" }, { l: "Appearance", i: "ui-palette" },
-                             { l: "Images", i: "ui-image" }, { l: "Display", i: "ui-display" },
+                    // Screen-first studio: "Look" owns the GLOBAL look for every
+                    // screen; "Screens" is where each screen is built (widgets,
+                    // columns, and its optional per-screen look override). Order is
+                    // unchanged (tests address tabs by index).
+                    model: [ { l: "Screens", i: "ui-layout" }, { l: "Look", i: "ui-palette" },
+                             { l: "Images", i: "ui-image" }, { l: "Device", i: "ui-display" },
                              { l: "About", i: "ui-settings" } ]
                     delegate: Rectangle {
                         required property int index
@@ -618,9 +622,9 @@ ApplicationWindow {
                     anchors.margins: 24
                     spacing: 16
 
-                    Text { text: "Layout"; color: m.textPrimary; font.pixelSize: 24; font.bold: true }
-                    Text { text: "Arrange the widgets shown on each page of your Edge."
-                        color: m.textSecondary; font.pixelSize: 14 }
+                    Text { text: "Screens"; color: m.textPrimary; font.pixelSize: 24; font.bold: true }
+                    Text { text: "Step 2 — build each screen: add & arrange its widgets. Set the overall look for every screen in Look first."
+                        color: m.textSecondary; font.pixelSize: 14; Layout.fillWidth: true; wrapMode: Text.WordWrap }
 
                     // Page selector
                     Flow {
@@ -659,7 +663,7 @@ ApplicationWindow {
                     // Page tools
                     RowLayout {
                         Layout.fillWidth: true; spacing: 8
-                        Text { text: "Page name:"; color: m.textSecondary; font.pixelSize: 13
+                        Text { text: "Screen name:"; color: m.textSecondary; font.pixelSize: 13
                             Layout.alignment: Qt.AlignVCenter }
                         TextField {
                             id: pageName; Layout.preferredWidth: 240; Layout.preferredHeight: m.touch
@@ -675,7 +679,7 @@ ApplicationWindow {
                         }
                         ScopeTag { label: win.scopeLabels.page; Layout.alignment: Qt.AlignVCenter }
                         Item { Layout.fillWidth: true }
-                        MButton { text: "Remove page"; iconName: "ui-trash"
+                        MButton { text: "Remove screen"; iconName: "ui-trash"
                             enabled: (store.revision, store.pageCount() > 1)
                             onClicked: win.confirmRemovePage() }
                     }
@@ -709,6 +713,13 @@ ApplicationWindow {
                             ColumnLayout {
                                 width: helperScroll.availableWidth
                                 spacing: 12
+
+                                // ── Widgets ─────────────────────────────────────
+                                RowLayout {
+                                    spacing: 8
+                                    Text { text: "Widgets"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
+                                    ScopeTag { label: win.scopeLabels.page }
+                                }
                                 MButton { text: "Add widget"; iconName: "ui-plus"; primary: true
                                     Layout.fillWidth: true; Layout.preferredHeight: m.touch
                                     onClicked: addPicker.open() }
@@ -716,18 +727,19 @@ ApplicationWindow {
                                     Layout.fillWidth: true; Layout.preferredHeight: m.touch
                                     onClicked: presetDialog.open() }
 
-                                // Per-page column layout. One screen never scrolls, so
-                                // "2 columns" reflows this page's widgets to half width
+                                // ── Columns ─────────────────────────────────────
+                                // Per-screen column layout. One screen never scrolls, so
+                                // "2 columns" reflows this screen's widgets to half width
                                 // (two across) and new widgets default to half width too;
                                 // "1 column" makes them full width again. A switch that
                                 // would overflow the screen is refused by the store, so
-                                // the buttons never create a page you cannot see.
+                                // the buttons never create a screen you cannot see.
                                 RowLayout {
                                     Layout.topMargin: 6; spacing: 8
                                     Text { text: "Columns"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
                                     ScopeTag { label: win.scopeLabels.page }
                                 }
-                                Text { text: "How many widgets sit side by side on this page. Switching reflows the widgets already here to fit — a page always stays one screen (it never scrolls)."
+                                Text { text: "How many widgets sit side by side on this screen. Switching reflows the widgets already here to fit — a screen always stays one screen (it never scrolls)."
                                     color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
                                 RowLayout {
                                     Layout.fillWidth: true; spacing: 8
@@ -756,19 +768,20 @@ ApplicationWindow {
                                         id: hintCol; anchors.fill: parent; anchors.margins: 12; spacing: 6
                                         Text { text: "This is your Edge"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
                                         Text { Layout.fillWidth: true; wrapMode: Text.WordWrap; color: m.textSecondary; font.pixelSize: 13
-                                            text: "• Click a tile (or ⚙) to configure that widget\n• Drag a tile onto another to reorder\n• Drag the ⤡ corner to resize\n• ✕ removes the widget from this page" }
+                                            text: "• Click a tile (or ⚙) to configure that widget\n• Drag a tile onto another to reorder\n• Drag the ⤡ corner to resize\n• ✕ removes the widget from this screen" }
                                         Text { Layout.fillWidth: true; wrapMode: Text.WordWrap; font.pixelSize: 12
                                             text: win.liveNote
                                             color: backend.hubConnected ? m.success : m.textSecondary }
                                     }
                                 }
+                                // ── This screen's look (override) ───────────────
                                 RowLayout {
                                     Layout.topMargin: 6; spacing: 8
-                                    Text { text: "This page's background"; color: m.textPrimary
+                                    Text { text: "This screen's look"; color: m.textPrimary
                                         font.pixelSize: 15; font.bold: true }
                                     ScopeTag { label: win.scopeLabels.page }
                                 }
-                                Text { text: "Overrides the Edge-wide background from Appearance, for this page alone. “Use global” returns to the shared one."
+                                Text { text: "Optional. Overrides the global background from Look, for this screen alone. “Use global” returns to the shared one."
                                     color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
                                 BackgroundPicker {
                                     Layout.fillWidth: true
@@ -801,7 +814,7 @@ ApplicationWindow {
                 ColumnLayout {
                     width: apScroll.availableWidth
                     spacing: 18
-                    Text { text: "Appearance"; color: m.textPrimary; font.pixelSize: 24; font.bold: true }
+                    Text { text: "Look"; color: m.textPrimary; font.pixelSize: 24; font.bold: true }
                     // Audit F2: this line used to promise "Hover a swatch to try it —
                     // nothing is applied until you click" for the WHOLE tab, but the
                     // Background chips two sections down commit on click with no
@@ -810,7 +823,7 @@ ApplicationWindow {
                     // true of. (Giving the background chips a real hover preview would
                     // be the better fix — it needs BackgroundPicker, which this
                     // workstream does not own. Recorded in the audit.)
-                    Text { text: "How your Edge looks. Hover a theme or accent to try it in the preview — those two apply only when you click. Every other control here applies as soon as you change it."
+                    Text { text: "Step 1 — the look for EVERY screen: theme, accent, background and effects. A single screen can override its background in Screens. Hover a theme or accent to try it in the preview (those apply on click); everything else applies as you change it."
                         color: m.textSecondary; font.pixelSize: 14; Layout.fillWidth: true; wrapMode: Text.WordWrap }
 
                     RowLayout {
@@ -818,7 +831,7 @@ ApplicationWindow {
                         Text { text: "Edge theme"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
                         ScopeTag { label: win.scopeLabels.edge }
                     }
-                    Text { text: "The colour palette for every page and widget. Hover an option to try it in the preview; click to apply. (The Manager window's own style is a separate control below.)"
+                    Text { text: "The colour palette for every screen and widget. Hover an option to try it in the preview; click to apply. (The Manager window's own style is a separate control below.)"
                         color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
 
                     // Theme dropdown (Hybrid appearance): a compact field that opens a
@@ -979,7 +992,7 @@ ApplicationWindow {
                         Text { text: "Background"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
                         ScopeTag { label: win.scopeLabels.pages }
                     }
-                    Text { text: "Pick an animated style OR a wallpaper — the default every page starts from. One page can go its own way in Layout → “This page's background”."
+                    Text { text: "Pick an animated style OR a wallpaper — the default every screen starts from. One screen can go its own way in Screens → “This screen's look”."
                         color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
                     RowLayout { visible: !theme.decorative; Layout.fillWidth: true; spacing: 6
                         AppIcon { name: "ui-warning"; size: 14; color: m.danger; Layout.alignment: Qt.AlignTop }
@@ -1173,7 +1186,7 @@ ApplicationWindow {
                 ColumnLayout {
                     anchors.fill: parent; anchors.margins: 24; spacing: 16
                     Text { text: "Images"; color: m.textPrimary; font.pixelSize: 24; font.bold: true }
-                    Text { text: "Upload your own images here — they then appear as wallpaper options in the background picker (Appearance → Background, or per-page in Layout)."
+                    Text { text: "Upload your own images here — they then appear as wallpaper options in the background picker (Look → Background, or per-screen in Screens)."
                         color: m.textSecondary; font.pixelSize: 14; Layout.fillWidth: true; wrapMode: Text.WordWrap }
 
                     RowLayout {
@@ -1193,7 +1206,7 @@ ApplicationWindow {
                         ScopeTag { visible: imagesModel.count > 0; label: win.scopeLabels.pages }
                         Item { Layout.fillWidth: true }
                     }
-                    Text { text: "Click an image to make it the wallpaper on every page. To use one on a single page instead, go to Layout → “This page's background”."
+                    Text { text: "Click an image to make it the wallpaper on every screen. To use one on a single screen instead, go to Screens → “This screen's look”."
                         color: m.textSecondary; font.pixelSize: 12; visible: imagesModel.count > 0
                         Layout.fillWidth: true; wrapMode: Text.WordWrap }
                     // Empty state. The trailing filler keeps the column top-packed while the
@@ -1277,7 +1290,7 @@ ApplicationWindow {
                 ColumnLayout {
                     width: dpScroll.availableWidth - 48
                     x: 24; y: 24; spacing: 16
-                    Text { text: "Display & Startup"; color: m.textPrimary; font.pixelSize: 24; font.bold: true }
+                    Text { text: "Device"; color: m.textPrimary; font.pixelSize: 24; font.bold: true }
                     // Audit F7: "Applies next time the hub starts" used to sit HERE,
                     // as the tab subtitle — above Orientation (which pushes live) and
                     // the autostart switch (immediate). Read as tab-level guidance it
@@ -1430,7 +1443,7 @@ ApplicationWindow {
                         Text { text: "Troubleshooting"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
                         ScopeTag { label: win.scopeLabels.edge }
                     }
-                    Text { text: "Start over from a clean default layout. Your uploaded images are kept — only pages and widgets are reset."
+                    Text { text: "Start over from a clean default layout. Your uploaded images are kept — only screens and widgets are reset."
                         color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
                     RowLayout {
                         Layout.fillWidth: true; spacing: 8
@@ -1675,7 +1688,7 @@ ApplicationWindow {
                     Text { text: "Add a widget"; color: m.textPrimary; font.pixelSize: 19; font.bold: true }
                     Text {
                         objectName: "addPickerTarget"
-                        text: "Adds to the page “" + (store.structureRevision, win.currentPageName()) + "”."
+                        text: "Adds to the screen “" + (store.structureRevision, win.currentPageName()) + "”."
                         color: m.textSecondary; font.pixelSize: 12
                         elide: Text.ElideRight; Layout.fillWidth: true
                     }
@@ -1771,7 +1784,7 @@ ApplicationWindow {
                 ColumnLayout {
                     spacing: 1; Layout.fillWidth: true
                     Text { text: "Start from a preset screen"; color: m.textPrimary; font.pixelSize: 19; font.bold: true }
-                    Text { text: "Replaces every page with a ready-made set. You can tweak it afterwards."
+                    Text { text: "Replaces every screen with a ready-made set. You can tweak it afterwards."
                         color: m.textSecondary; font.pixelSize: 12; elide: Text.ElideRight; Layout.fillWidth: true }
                 }
                 ScopeTag { label: win.scopeLabels.edge; Layout.alignment: Qt.AlignVCenter }

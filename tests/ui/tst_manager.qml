@@ -463,12 +463,12 @@ Item {
         // the config dialog both read it, so a label with no rule (or a typo'd one)
         // must be an empty string, never a guess.
         function test_scopeDetail_defines_each_scope_and_rejects_unknown() {
-            verify(win.scopeDetail(win.scopeLabels.page).indexOf("other pages") >= 0,
-                   "scopeDetail spells out the per-page rule")
+            verify(win.scopeDetail(win.scopeLabels.page).indexOf("other screens") >= 0,
+                   "scopeDetail spells out the per-screen rule")
             verify(win.scopeDetail(win.scopeLabels.pages).indexOf("override") >= 0,
-                   "scopeDetail explains that 'All pages' is a default a page can override")
-            verify(win.scopeDetail(win.scopeLabels.edge).indexOf("every page") >= 0,
-                   "scopeDetail explains 'Whole Edge' covers every page")
+                   "scopeDetail explains that 'All screens' is a default a screen can override")
+            verify(win.scopeDetail(win.scopeLabels.edge).indexOf("every screen") >= 0,
+                   "scopeDetail explains 'Whole Edge' covers every screen")
             compare(win.scopeDetail("Sometimes"), "", "an unknown scope label states no rule")
         }
 
