@@ -223,18 +223,21 @@ QtObject {
     // Back-compat shim: existing call sites use cardFill(); both resolve here.
     function cardFill() { return cardFillColor }
 
-    // Card BORDER, brightened with glassOpacity — this is what makes the slider
-    // visibly DO something on the common flat-dark case, where the fill alone
-    // couldn't change perceptibly without breaking accent contrast. More glass →
-    // a brighter "rim light" frosty edge (up to ~45% toward white), the hallmark
-    // of a glass surface. Decoupled from every legibility gate (nothing measures
-    // contrast against the border). High-contrast keeps its solid white border.
+    // Card BORDER, pushed toward the text colour with glassOpacity — this is what
+    // makes the slider visibly DO something on the common flat-dark case, where the
+    // fill alone couldn't change perceptibly without breaking accent contrast. More
+    // glass → a stronger "rim light" edge (up to ~40% toward textPrimary), the
+    // hallmark of a glass surface. Blending toward textPrimary (not a fixed white)
+    // keeps the edge visible on BOTH light and dark themes: it brightens a dark
+    // card's border and darkens a light card's, since textPrimary always contrasts
+    // the card. Decoupled from every legibility gate (nothing measures contrast
+    // against the border). High-contrast keeps its solid border.
     readonly property color cardBorderGlass:
         !decorative
             ? cardBorder
-            : Qt.rgba(cardBorder.r + (1.0 - cardBorder.r) * glassOpacity * 0.45,
-                      cardBorder.g + (1.0 - cardBorder.g) * glassOpacity * 0.45,
-                      cardBorder.b + (1.0 - cardBorder.b) * glassOpacity * 0.45, 1)
+            : Qt.rgba(cardBorder.r + (textPrimary.r - cardBorder.r) * glassOpacity * 0.40,
+                      cardBorder.g + (textPrimary.g - cardBorder.g) * glassOpacity * 0.40,
+                      cardBorder.b + (textPrimary.b - cardBorder.b) * glassOpacity * 0.40, 1)
     // Strength of the card's top-edge frosted highlight, also scaling with glass
     // (0.04 → ~0.16 white). A second visible cue that reads as "more glass".
     readonly property real cardSheen: decorative ? (0.04 + glassOpacity * 0.12) : 0.0
