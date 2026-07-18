@@ -36,11 +36,22 @@ Item {
         store.structureRevision
         return packer.pack(clone.tiles)
     }
-    // The clone draws the Edge UPRIGHT (long axis vertical). The hub picks its
-    // orientation from the panel sensor; the Manager runs on a desktop and has no
-    // panel, so it shows the one orientation a still picture can honestly claim, and
-    // the semantic packing is identical in the other one anyway.
-    readonly property bool landscape: false
+    // Orientation of the clone, mirroring what the Edge actually shows:
+    //   • a FIXED orientation mode (portrait/landscape/…) → use it directly;
+    //   • AUTO → follow the panel's live rotation, pulled from the hub over the
+    //     control socket (backend.hubRotation) so turning the panel refreshes the
+    //     preview. Unknown/offline (-1) stays portrait, which is also what the
+    //     offscreen tests (no backend) see, so the semantic packing is unchanged there.
+    readonly property bool landscape: {
+        store.revision   // re-evaluate when the orientation mode changes
+        var mode = (typeof store !== "undefined" && store && store.appearance)
+                   ? (store.appearance().orientation || "auto") : "auto"
+        if (mode === "landscape" || mode === "inverted-landscape") return true
+        if (mode === "portrait" || mode === "inverted-portrait") return false
+        var r = (typeof backend !== "undefined" && backend && backend.hubRotation !== undefined)
+                ? backend.hubRotation : -1
+        return r === 90 || r === 270
+    }
     // How long the device drawn here must be, in half-cells: a full screen (6), or
     // the page if it is longer. An over-long page is shown WHOLE — a taller device
     // scaled down — rather than clipped: the Manager is where you see that a page

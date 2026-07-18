@@ -578,6 +578,10 @@ int main(int argc, char *argv[]) {
     });
     if (orientation->start() && orientation->rotation() >= 0)
         pushRotation(orientation->rotation());
+    // Let a connected Manager mirror the panel's live orientation in its preview:
+    // the getUiState reply carries the current sensor rotation (the Manager combines
+    // it with the orientation mode). -1 until the sensor reports / a value is restored.
+    controlServer->setRotationProvider([orientation]() { return orientation->rotation(); });
 
     // Metrics on a dedicated worker thread (every 2s), so the Rust FFI collection
     // + JSON serialization never janks the GUI event loop. Results arrive on the

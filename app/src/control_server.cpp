@@ -112,8 +112,13 @@ void ControlServer::handleLine(QLocalSocket* sock, const QByteArray& line) {
 
     if (type == "getUiState") {
         const QString state = m_provider ? m_provider() : QString();
-        writeJson(sock, QJsonDocument(QJsonObject{{"type", "uiState"}, {"state", state}})
-                            .toJson(QJsonDocument::Compact));
+        QJsonObject reply{{"type", "uiState"}, {"state", state}};
+        // Carry the live content rotation so a connected Manager can mirror the
+        // panel's orientation in its preview. Omitted when no provider is set, so
+        // the reply is byte-identical for callers that don't wire one.
+        if (m_rotationProvider)
+            reply["rotation"] = m_rotationProvider();
+        writeJson(sock, QJsonDocument(reply).toJson(QJsonDocument::Compact));
     } else if (type == "setUiState") {
         const QString state = obj.value("state").toString();
         if (state.isEmpty()) {

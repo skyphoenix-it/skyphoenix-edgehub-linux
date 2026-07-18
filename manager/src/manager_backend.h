@@ -53,6 +53,10 @@ public:
 class ManagerBackend : public QObject {
     Q_OBJECT
     Q_PROPERTY(bool hubConnected READ hubConnected NOTIFY hubConnectedChanged)
+    // The panel's live content rotation (0/90/180/270, or -1 unknown), pulled from
+    // the hub with the periodic getUiState. Lets the Manager's Edge preview mirror
+    // the panel's orientation when it is physically turned (auto mode).
+    Q_PROPERTY(int hubRotation READ hubRotation NOTIFY hubRotationChanged)
 public:
     explicit ManagerBackend(QObject* parent = nullptr) : QObject(parent) {
         m_config = xeneon_config_load();
@@ -145,6 +149,7 @@ public:
     int rxBufferSizeForTest() const { return m_rxBuf.size(); }
 
     bool hubConnected() const { return m_hubConnected; }
+    int hubRotation() const { return m_hubRotation; }
 
     // Launch the hub if it isn't already running. Returns false only when the
     // launch could not be started (missing binary). If a hub is already up (or
@@ -465,6 +470,7 @@ public:
 
 signals:
     void hubConnectedChanged();
+    void hubRotationChanged();
     void imagesChanged();
     void screensChanged();
     void configChanged();   // config reloaded (from the hub or disk) → QML re-reads
@@ -495,6 +501,12 @@ private slots:
             const QJsonObject o = doc.object();
             const QString type = o.value("type").toString();
             if (type == "uiState") {
+                // The hub tags its reply with the live panel rotation (optional; a
+                // mock/older hub omits it). Drives the Manager preview's orientation.
+                if (o.contains("rotation")) {
+                    const int r = o.value("rotation").toInt(-1);
+                    if (r != m_hubRotation) { m_hubRotation = r; emit hubRotationChanged(); }
+                }
                 const QString st = o.value("state").toString();
                 // ── Reconnect reconciliation ──
                 // On the first pull after reconnecting, decide the fate of any edit
@@ -697,6 +709,7 @@ private:
     qint64 m_ignoreWatchUntilMs = 0;
     qint64 m_suppressAdoptUntilMs = 0;
     bool m_hubConnected = false;
+    int m_hubRotation = -1;                  // panel's live content rotation from the hub
     bool m_pendingPushAwaitingHub = false;  // reconcile buffered push on next pull
     // Injectable clock (ms since epoch); defaults to the wall clock. Overridable in
     // tests via setClockForTest so the suppression windows need no real waiting.

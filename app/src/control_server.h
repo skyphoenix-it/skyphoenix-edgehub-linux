@@ -50,6 +50,11 @@ public:
     // The current UI-state JSON, supplied by the owner (main) so the server can
     // answer getUiState without depending on the config layer directly.
     void setStateProvider(const std::function<QString()>& provider) { m_provider = provider; }
+    // The current content rotation (0/90/180/270, or -1 unknown), so the getUiState
+    // reply can carry it and a connected Manager can mirror the panel's live
+    // orientation in its preview. Optional: with no provider the field is omitted
+    // and the reply is unchanged (older/other clients ignore it).
+    void setRotationProvider(const std::function<int()>& provider) { m_rotationProvider = provider; }
 
 signals:
     // A client pushed a new UI-state document; main persists + reloads it and
@@ -83,6 +88,7 @@ private:
     QLocalServer* m_server = nullptr;
     QHash<QLocalSocket*, QByteArray> m_buffers;   // per-connection read buffer
     std::function<QString()> m_provider;
+    std::function<int()> m_rotationProvider;
 };
 
 #endif // CONTROL_SERVER_H
