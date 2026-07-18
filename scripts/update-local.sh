@@ -58,6 +58,32 @@ if [ "$DO_RESTART" -eq 0 ]; then
     exit 0
 fi
 
+# Reopen the Manager BEFORE the hub restart — the ORDER is the whole point. A
+# Wayland compositor opens a new window on the ACTIVE output. If the Manager is
+# relaunched AFTER the hub takes the Edge fullscreen, the Edge is the active output
+# and the Manager opens ON the Edge (wrong: it configures the Edge, it must live on
+# your main screen). Relaunching it now — while THIS terminal, on your main
+# display, is still the active window — lands it on the main screen. It connects to
+# the still-running old hub, and its 2s reconnect timer re-attaches to the new hub
+# after the restart below. We only reopen one if one was already open (never pop an
+# unwanted window). The Manager also picks a non-Edge screen itself as a fallback.
+MGR_WAS_OPEN=0
+if pgrep -f xeneon-edge-manager >/dev/null; then
+    MGR_WAS_OPEN=1
+    echo "==> Closing the open Manager (it will reopen on your main screen, before the hub takes the Edge)"
+    pkill -TERM -f xeneon-edge-manager
+    for _ in $(seq 1 20); do pgrep -f xeneon-edge-manager >/dev/null || break; sleep 0.5; done
+    if pgrep -f xeneon-edge-manager >/dev/null; then
+        pkill -KILL -f xeneon-edge-manager || true
+        sleep 1
+    fi
+fi
+if [ "$MGR_WAS_OPEN" -eq 1 ]; then
+    echo "==> Reopening the Manager on the active (main) screen"
+    setsid /usr/bin/xeneon-edge-manager >/dev/null 2>&1 &
+    sleep 2   # let it map on the main screen while this terminal is still active
+fi
+
 if pgrep -x xeneon-edge-hub >/dev/null; then
     echo "==> Restarting the hub (SIGTERM — it saves config on the way out)"
     pkill -TERM -x xeneon-edge-hub
@@ -91,34 +117,14 @@ else
     echo "==> Hub running; no control socket yet (Manager may not connect)" >&2
 fi
 
-# Restart the Manager too, if it is running. It is a GUI tool, not a persistent
-# service, so we only relaunch one when we stopped one — we do NOT pop an
-# unwanted window on someone who did not have it open. Unlike the hub it owns no
-# config while connected (the hub is the single writer), so a plain SIGTERM is
-# safe; we still wait for a clean exit before relaunching so the new process
-# never races a dying one for the control socket.
-#
-# NOTE: match with -f (full command line), NOT -x. Linux truncates a process's
-# `comm` to 15 chars, and "xeneon-edge-manager" is 19 → comm is "xeneon-edge-man",
-# so `pgrep -x xeneon-edge-manager` never matched and the Manager was silently
-# never restarted. (The hub is exactly 15 chars, so -x still works for it.)
-if pgrep -f xeneon-edge-manager >/dev/null; then
-    echo "==> Restarting the Manager (it was open — bringing it to the new build)"
-    pkill -TERM -f xeneon-edge-manager
-    for _ in $(seq 1 20); do
-        pgrep -f xeneon-edge-manager >/dev/null || break
-        sleep 0.5
-    done
+# The Manager was already reopened ABOVE, before the hub restart, so it lands on
+# the main screen rather than on the freshly-fullscreened Edge. It reconnects to
+# this new hub on its own (2s reconnect timer). Just report the outcome.
+# (`pgrep -f`, not `-x`: Linux truncates `comm` to 15 chars, and
+# "xeneon-edge-manager" is 19, so `-x` never matches it.)
+if [ "$MGR_WAS_OPEN" -eq 1 ]; then
     if pgrep -f xeneon-edge-manager >/dev/null; then
-        echo "    Manager did not exit within 10s; sending SIGKILL (it holds no"
-        echo "    unsaved state — the hub owns config while connected)." >&2
-        pkill -KILL -f xeneon-edge-manager || true
-        sleep 1
-    fi
-    setsid /usr/bin/xeneon-edge-manager >/dev/null 2>&1 &
-    sleep 1
-    if pgrep -f xeneon-edge-manager >/dev/null; then
-        echo "==> Manager running on the new build"
+        echo "==> Manager reopened on the main screen (reconnecting to the new hub)"
     else
         echo "    Manager did not come back up — launch xeneon-edge-manager yourself." >&2
     fi

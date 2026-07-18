@@ -89,7 +89,11 @@ static void placeManagerOffEdge(QQuickWindow* win) {
     if (!target)
         for (QScreen* s : QGuiApplication::screens())
             if (!screenIsEdge(s)) { target = s; break; }
-    if (!target || win->screen() == target) return;
+    if (!target) return;                       // only the Edge is connected
+    // Always assert the screen + a centred position on it, even if Qt already
+    // reports this as the current screen: it is the explicit placement hint the
+    // compositor reads for the first map, and skipping it let the compositor fall
+    // back to "open on the active output" (the Edge, right after the hub grabbed it).
     win->setScreen(target);
     const QRect g = target->availableGeometry();
     win->setPosition(g.x() + (g.width() - win->width()) / 2,
