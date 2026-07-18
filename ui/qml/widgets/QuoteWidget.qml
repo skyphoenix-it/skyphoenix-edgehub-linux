@@ -63,7 +63,7 @@ WidgetChrome {
         for (var i = 0; i < lines.length; i++) {
             var ln = lines[i].trim()
             if (!ln.length) continue
-            var sep = ln.indexOf(" - ")
+            var sep = ln.indexOf(" — ")            // em-dash (pasted/typographic quotes)
             if (sep < 0) sep = ln.indexOf(" -- ")
             if (sep < 0) sep = ln.indexOf(" | ")
             if (sep < 0) sep = ln.indexOf(" - ")   // plain ASCII hyphen (on-device keyboards)

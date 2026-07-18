@@ -63,7 +63,7 @@ Item {
         when: windowShown
 
         function test_expected_count() {
-            compare(wp.items.length, 12, "twelve bundled wallpapers")
+            compare(wp.items.length, 18, "eighteen bundled wallpapers (12 theme-tuned + 6 Xeneon graphics)")
         }
 
         function test_unique_names_required_fields_and_paths() {

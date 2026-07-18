@@ -281,17 +281,27 @@ Item {
         // of a set" rather than the old row of loose pills. Selected = accent fill;
         // uses the shared f.col tokens so it themes for both the hub and the Manager.
         Rectangle {
-            implicitHeight: Math.max(44, f.ctlH - 8)
+            // Track wraps the segments (content-sized, +6 for the 3px margins) rather
+            // than the segments filling the track — so each chip keeps its explicit
+            // touch height even where the parent has no resolved height (e.g. a config
+            // column that sizes to content), exactly like the accent swatches.
+            implicitHeight: segRow.implicitHeight + 6
             radius: 10
             color: f.col.bg
             border.width: 1; border.color: f.col.border
             RowLayout {
-                anchors.fill: parent; anchors.margins: 3; spacing: 3
+                id: segRow
+                anchors.left: parent.left; anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.leftMargin: 3; anchors.rightMargin: 3; spacing: 3
                 Repeater {
                     model: f.field.options || []
                     delegate: Rectangle {
                         required property var modelData
-                        Layout.fillWidth: true; Layout.fillHeight: true
+                        // Explicit touch height (>= 44px), independent of the parent —
+                        // the width still fills the track evenly across the segments.
+                        Layout.fillWidth: true
+                        implicitHeight: Math.max(44, f.ctlH - 2)
                         radius: 8
                         property bool sel: f.cur() === modelData.value
                         color: sel ? f.col.accent
