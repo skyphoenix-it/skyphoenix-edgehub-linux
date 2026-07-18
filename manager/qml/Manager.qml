@@ -675,6 +675,9 @@ ApplicationWindow {
                             Layout.fillHeight: true
                             Layout.preferredWidth: 440
                             pageIndex: win.currentPageIndex
+                            // Pause the live preview while the helper column scrolls, so an
+                            // animated preview doesn't repaint every scroll frame.
+                            scrolling: helperScroll.contentItem ? helperScroll.contentItem.moving : false
                             onConfigRequested: (tileId, tileType) => cfgDialog.openFor(tileId, tileType)
                         }
 
@@ -1102,6 +1105,8 @@ ApplicationWindow {
                         editable: false
                         Layout.fillWidth: true; Layout.fillHeight: true
                         pageIndex: win.currentPageIndex
+                        // Pause the live preview while the Appearance controls scroll.
+                        scrolling: apScroll.contentItem ? apScroll.contentItem.moving : false
                     }
                     Text { text: win.liveNote; color: backend.hubConnected ? m.success : m.textSecondary
                         font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }

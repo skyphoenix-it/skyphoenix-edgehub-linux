@@ -877,5 +877,20 @@ Item {
             compare(_nav.currentIndex, 2, "clicking a nav chip switches to that tab")
             _nav.currentIndex = 0
         }
+
+        // The live preview must PAUSE while the surrounding controls scroll — an
+        // animated preview repainting every scroll frame is the Manager scroll lag.
+        function test_preview_pauses_during_scroll() {
+            _nav.currentIndex = 0                      // Layout tab (its clone is visible)
+            var clone = findPred(win, function (x) {
+                return x && x.hasOwnProperty("scrolling") && x.hasOwnProperty("previewLive")
+                       && x.hasOwnProperty("pageIndex") && x.visible })
+            verify(clone, "found the visible edge-clone preview")
+            tryVerify(function () { return clone.previewLive === true }, 2000)
+            clone.scrolling = true
+            compare(clone.previewLive, false, "the preview pauses (stops animating) while scrolling")
+            clone.scrolling = false
+            compare(clone.previewLive, true, "…and resumes the instant the scroll settles")
+        }
     }
 }

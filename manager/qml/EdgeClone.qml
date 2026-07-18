@@ -243,13 +243,18 @@ Item {
     // reduce-motion probe, so the preview stills exactly when the hub would.
     property bool reduceMotion: theme.effectiveReduceMotion
 
+    // Host-driven: true while the surrounding controls are being scrolled. A
+    // continuously-animating preview (animated background, metric sweeps) beside a
+    // scrolling ScrollView forces a full-window repaint every scroll frame — the
+    // Manager's scroll lag. Pausing the preview for the duration of the flick keeps
+    // scrolling smooth; it resumes the instant the scroll settles.
+    property bool scrolling: false
+
     // Pause everything that repaints continuously (the animated backdrop, the
-    // per-second tick and the metrics poll) whenever this clone is off-screen.
-    // A non-current Manager tab sets the whole subtree's `visible` to false, so
-    // this reads it directly. Without it the Layout/Appearance preview kept
-    // driving the orbs Shapes + rebinding every tile once a second even while a
-    // different tab was showing — wasted frames that made scrolling stutter.
-    readonly property bool previewLive: clone.visible
+    // per-second tick and the metrics poll) whenever this clone is off-screen OR
+    // the controls beside it are being scrolled. A non-current Manager tab sets the
+    // whole subtree's `visible` to false, so this reads it directly.
+    readonly property bool previewLive: clone.visible && !clone.scrolling
 
     property int tick: 0
     property var metricsObj: ({})
