@@ -16,6 +16,9 @@
 #include <QColor>
 #include <QQuickWindow>
 #include <QQuickStyle>
+#include <QScreen>
+#include <QRect>
+#include <QSize>
 #include <QUrl>
 
 #include "xeneon_core.h"
@@ -61,6 +64,36 @@ static QPalette darkPalette() {
     pal.setColor(QPalette::Disabled, QPalette::ButtonText, muted);
     pal.setColor(QPalette::Disabled, QPalette::Highlight, alt);
     return pal;
+}
+
+// Is this screen the Xeneon Edge? Mirrors the hub's `likelyXeneonEdge` heuristic
+// (app/src/main.cpp): by model/manufacturer, or the panel's telltale resolution
+// in either orientation.
+static bool screenIsEdge(const QScreen* s) {
+    if (!s) return false;
+    if (s->model().contains(QStringLiteral("XENEON"), Qt::CaseInsensitive)
+        || s->manufacturer().contains(QStringLiteral("Corsair"), Qt::CaseInsensitive))
+        return true;
+    const QSize sz = s->size();
+    return (sz.width() == 2560 && sz.height() == 720)
+        || (sz.width() == 720 && sz.height() == 2560);
+}
+
+// The Manager must never OPEN on the Edge (it configures it). Place it on a
+// non-Edge screen, preferring the primary, centered. No-op if the Edge is the only
+// display connected (nothing better to do).
+static void placeManagerOffEdge(QQuickWindow* win) {
+    if (!win) return;
+    QScreen* primary = QGuiApplication::primaryScreen();
+    QScreen* target = (primary && !screenIsEdge(primary)) ? primary : nullptr;
+    if (!target)
+        for (QScreen* s : QGuiApplication::screens())
+            if (!screenIsEdge(s)) { target = s; break; }
+    if (!target || win->screen() == target) return;
+    win->setScreen(target);
+    const QRect g = target->availableGeometry();
+    win->setPosition(g.x() + (g.width() - win->width()) / 2,
+                     g.y() + (g.height() - win->height()) / 2);
 }
 
 int main(int argc, char* argv[]) {
@@ -158,6 +191,15 @@ int main(int argc, char* argv[]) {
             }
             QCoreApplication::quit();   // always quit so a headless run never hangs
         });
+    } else {
+        // Normal launch: keep the Manager OFF the Edge. It configures the Edge, so
+        // it must never open ON it — which is exactly what happened after the hub
+        // grabbed the Edge fullscreen and a launcher (e.g. update-local.sh) started
+        // the Manager onto the now-active output. Move it to a non-Edge screen
+        // (prefer the primary). Best-effort: exact on X11; on Wayland the compositor
+        // may still decide, but this is the strongest hint a client can give.
+        if (auto* w = qobject_cast<QQuickWindow*>(engine.rootObjects().first()))
+            placeManagerOffEdge(w);
     }
 
     return app.exec();
