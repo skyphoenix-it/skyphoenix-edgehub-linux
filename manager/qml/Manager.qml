@@ -1333,6 +1333,44 @@ ApplicationWindow {
                         Item { Layout.fillWidth: true }
                     }
 
+                    // Bundled backgrounds — the sleek graphics that ship with EdgeHub,
+                    // browsable and pickable right here (the user asked for the images to
+                    // live in this section). Clicking sets it as the Edge-wide wallpaper.
+                    RowLayout {
+                        Layout.fillWidth: true; Layout.topMargin: 4; spacing: 8
+                        Text { text: "Bundled backgrounds"; color: m.textSecondary; font.pixelSize: 14; font.bold: true }
+                        ScopeTag { label: win.scopeLabels.pages }
+                        Item { Layout.fillWidth: true }
+                    }
+                    Text { text: "Graphics that ship with EdgeHub — click one to use it on every screen (a single screen can override it in Screens)."
+                        color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
+                    Flow {
+                        Layout.fillWidth: true; spacing: 8
+                        Repeater {
+                            model: bundledWallpapers.items
+                            delegate: Rectangle {
+                                required property var modelData
+                                width: 128; height: 76; radius: m.radius; clip: true
+                                property bool bw: (store.revision, store.appearance().wallpaper === modelData.source)
+                                color: m.panel; border.width: bw ? 2 : 1
+                                border.color: bw ? m.accent : m.border
+                                Image { anchors.fill: parent; anchors.margins: 2; source: modelData.source
+                                    fillMode: Image.PreserveAspectCrop; asynchronous: true; mipmap: true }
+                                Rectangle { anchors.bottom: parent.bottom; anchors.left: parent.left
+                                    anchors.right: parent.right; height: 18; color: Qt.rgba(0, 0, 0, 0.5)
+                                    Text { anchors.centerIn: parent; text: modelData.label; color: "#fff"
+                                        font.pixelSize: 10; elide: Text.ElideRight; width: parent.width - 6
+                                        horizontalAlignment: Text.AlignHCenter } }
+                                Rectangle { visible: parent.bw; anchors.top: parent.top; anchors.right: parent.right
+                                    anchors.margins: 4; width: 18; height: 18; radius: 9; color: m.accent
+                                    AppIcon { anchors.centerIn: parent; name: "ui-check"; size: 12; color: "#FFFFFF" } }
+                                MouseArea { anchors.fill: parent; hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: store.setAppearance("wallpaper", modelData.source) }
+                            }
+                        }
+                    }
+
                     // Audit F6: clicking a card writes appearance.wallpaper — the
                     // biggest unlabelled scope jump in the app. The tab had no pill,
                     // no preview, and copy ("use it as the wallpaper") that never said

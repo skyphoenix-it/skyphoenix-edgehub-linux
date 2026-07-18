@@ -12,15 +12,11 @@
         <file alias="slate.png">wallpapers/slate.png</file>
         <file alias="sunset.png">wallpapers/sunset.png</file>
         <file alias="teal.png">wallpapers/teal.png</file>
-        <file alias="mesh-aurora.png">wallpapers/mesh-aurora.png</file>
-        <file alias="mesh-ocean.png">wallpapers/mesh-ocean.png</file>
-        <file alias="mesh-violet.png">wallpapers/mesh-violet.png</file>
-        <file alias="mesh-sunset.png">wallpapers/mesh-sunset.png</file>
-        <file alias="starfield.png">wallpapers/starfield.png</file>
-        <file alias="dawn.png">wallpapers/dawn.png</file>
-        <file alias="photo-nebula.jpg">wallpapers/photo-nebula.jpg</file>
-        <file alias="photo-galaxy.jpg">wallpapers/photo-galaxy.jpg</file>
-        <file alias="photo-earth.jpg">wallpapers/photo-earth.jpg</file>
-        <file alias="photo-deepfield.jpg">wallpapers/photo-deepfield.jpg</file>
+        <file alias="edge-cyan.png">wallpapers/edge-cyan.png</file>
+        <file alias="edge-ember.png">wallpapers/edge-ember.png</file>
+        <file alias="aurora-veil.png">wallpapers/aurora-veil.png</file>
+        <file alias="grid-horizon.png">wallpapers/grid-horizon.png</file>
+        <file alias="techdots.png">wallpapers/techdots.png</file>
+        <file alias="prism.png">wallpapers/prism.png</file>
     </qresource>
 </RCC>
