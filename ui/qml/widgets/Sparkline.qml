@@ -78,8 +78,13 @@ Item {
     // Poll for in-place mutation of the bound array (no reassignment ⇒ no
     // onValuesChanged). Repaint only when the sample signature actually changes,
     // so an idle sparkline stays quiet on the fanless panel.
+    // running: s.visible — a sparkline that isn't on screen must not poll. The
+    // Manager keeps preview widgets INSTANTIATED across tab switches (Loaders don't
+    // unload when a tab hides), so an ungated 100ms timer here kept firing on EVERY
+    // Manager section, burning frames and making all scrolling stutter. Gating on
+    // visibility stops every off-screen sparkline; a visible one polls as before.
     Timer {
-        interval: 100; running: true; repeat: true
+        interval: 100; running: s.visible; repeat: true
         onTriggered: {
             var sig = s._signature()
             if (sig !== s._sig) { s._sig = sig; cv.requestPaint() }

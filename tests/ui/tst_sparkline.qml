@@ -113,5 +113,27 @@ Item {
             verify(!threw, "out-of-range samples are accepted (clamped inside the Canvas Y())")
             compare(sl.values.length, 3, "values still stored")
         }
+
+        // The 100ms poll timer MUST stop when the sparkline is off-screen — an
+        // ungated one kept firing on every persisted preview widget and made the
+        // whole Manager scroll stutter. Guards that regression.
+        function _pollTimer() {
+            var kids = sl.data || []
+            for (var i = 0; i < kids.length; i++)
+                if (kids[i] && kids[i].interval !== undefined && kids[i].repeat !== undefined
+                    && typeof kids[i].running === "boolean")
+                    return kids[i]
+            return null
+        }
+        function test_poll_timer_gated_on_visibility() {
+            var t = _pollTimer()
+            verify(t, "found the sparkline poll timer")
+            sl.visible = true
+            tryVerify(function () { return t.running === true }, 1000)
+            sl.visible = false
+            compare(t.running, false, "the poll timer stops when the sparkline is hidden")
+            sl.visible = true
+            compare(t.running, true, "…and resumes when visible")
+        }
     }
 }

@@ -382,18 +382,19 @@ Item {
                 GradientStop { position: 1.0; color: theme.backgroundColor3 }
             }
 
-            // Animated backdrop (orbs / waves / stars / …) — shown when no wallpaper
-            // is set, mirroring the hub so the "Animated background" toggle + style
-            // choice preview live. Declared before the grid so it sits underneath.
+            // Background style, shown when no wallpaper is set. The style renders
+            // STATICALLY in the Manager preview (running: false): a small companion
+            // thumbnail does not need a live 60fps animation, and an animating
+            // backdrop beside a scrolling ScrollView forces a full-window repaint
+            // every scroll frame — the Manager's scroll lag. The chosen style is
+            // still visible; the real Edge animates it. (Wheel scrolling doesn't set
+            // Flickable.moving, so a static backdrop is more robust than pausing.)
             BackdropLayer {
                 anchors.fill: parent
                 visible: clone.wallpaperSource === "" && theme.decorative
                 style: clone.pageBg.style
                 accent: theme.accent
-                // Only animate when this preview is actually on screen (see
-                // `previewLive`) — an off-tab clone must not keep the Shapes
-                // backdrop repainting.
-                running: clone.animatedBg && !clone.reduceMotion && clone.previewLive
+                running: false
             }
             Image {
                 id: cloneWall
