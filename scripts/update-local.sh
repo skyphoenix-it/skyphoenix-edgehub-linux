@@ -97,22 +97,27 @@ fi
 # config while connected (the hub is the single writer), so a plain SIGTERM is
 # safe; we still wait for a clean exit before relaunching so the new process
 # never races a dying one for the control socket.
-if pgrep -x xeneon-edge-manager >/dev/null; then
+#
+# NOTE: match with -f (full command line), NOT -x. Linux truncates a process's
+# `comm` to 15 chars, and "xeneon-edge-manager" is 19 → comm is "xeneon-edge-man",
+# so `pgrep -x xeneon-edge-manager` never matched and the Manager was silently
+# never restarted. (The hub is exactly 15 chars, so -x still works for it.)
+if pgrep -f xeneon-edge-manager >/dev/null; then
     echo "==> Restarting the Manager (it was open — bringing it to the new build)"
-    pkill -TERM -x xeneon-edge-manager
+    pkill -TERM -f xeneon-edge-manager
     for _ in $(seq 1 20); do
-        pgrep -x xeneon-edge-manager >/dev/null || break
+        pgrep -f xeneon-edge-manager >/dev/null || break
         sleep 0.5
     done
-    if pgrep -x xeneon-edge-manager >/dev/null; then
+    if pgrep -f xeneon-edge-manager >/dev/null; then
         echo "    Manager did not exit within 10s; sending SIGKILL (it holds no"
         echo "    unsaved state — the hub owns config while connected)." >&2
-        pkill -KILL -x xeneon-edge-manager || true
+        pkill -KILL -f xeneon-edge-manager || true
         sleep 1
     fi
     setsid /usr/bin/xeneon-edge-manager >/dev/null 2>&1 &
     sleep 1
-    if pgrep -x xeneon-edge-manager >/dev/null; then
+    if pgrep -f xeneon-edge-manager >/dev/null; then
         echo "==> Manager running on the new build"
     else
         echo "    Manager did not come back up — launch xeneon-edge-manager yourself." >&2
