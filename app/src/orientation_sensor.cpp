@@ -3,6 +3,8 @@
 #include <QSocketNotifier>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
+#include <QSaveFile>
 #include <QRegularExpression>
 #include <QTimer>
 #include <QDebug>
@@ -104,6 +106,17 @@ bool OrientationSensor::openAndWatch(const QString& path) {
     queryInitialOrientation();
     // Also drain any immediately-available change report.
     onReadable();
+    // Still nothing? Restore the orientation remembered from the last run, so a
+    // restart isn't stuck mis-rotated on panels that answer no GET_REPORT (they only
+    // push on physical change). A later real report overrides this immediately.
+    if (m_rotation < 0) {
+        const int saved = restorePersistedRotation();
+        if (saved >= 0) {
+            qInfo() << "OrientationSensor: restored last-known orientation" << saved
+                    << "deg (panel gave no startup reading; will update on the next rotation)";
+            applyRotation(saved);
+        }
+    }
     // Some panels don't answer a GET_REPORT the instant the node opens; if we still
     // have no reading, try once more shortly after. Harmless if already resolved (it
     // no-ops when m_rotation is set) or if GET is unsupported (it just warns again).
@@ -112,6 +125,40 @@ bool OrientationSensor::openAndWatch(const QString& path) {
             if (m_fd >= 0 && m_rotation < 0) queryInitialOrientation();
         });
     return true;
+}
+
+// Single place a new rotation is adopted: update, notify, and remember it.
+void OrientationSensor::applyRotation(int rot) {
+    if (rot < 0 || rot == m_rotation)
+        return;
+    m_rotation = rot;
+    persistRotation();
+    emit rotationChanged(m_rotation);
+}
+
+void OrientationSensor::persistRotation() const {
+    if (m_statePath.isEmpty() || m_rotation < 0)
+        return;
+    QDir().mkpath(QFileInfo(m_statePath).absolutePath());
+    QSaveFile f(m_statePath);
+    if (f.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        f.write(QByteArray::number(m_rotation));
+        f.commit();
+    }
+}
+
+int OrientationSensor::restorePersistedRotation() const {
+    if (m_statePath.isEmpty())
+        return -1;
+    QFile f(m_statePath);
+    if (!f.open(QIODevice::ReadOnly))
+        return -1;
+    bool ok = false;
+    const int v = f.readAll().trimmed().toInt(&ok);
+    // Only accept the four legal content rotations.
+    if (ok && (v == 0 || v == 90 || v == 180 || v == 270))
+        return v;
+    return -1;
 }
 
 void OrientationSensor::queryInitialOrientation() {
@@ -147,10 +194,7 @@ void OrientationSensor::queryInitialOrientation() {
     // FIFO test seam both ioctls fail and we return at the guard above).
     qInfo() << "OrientationSensor: initial orientation from" << via << "-> rotation"
             << rot << "deg";
-    if (rot != m_rotation) {
-        m_rotation = rot;
-        emit rotationChanged(m_rotation);
-    }
+    applyRotation(rot);
     // GCOVR_EXCL_STOP
 }
 
@@ -225,10 +269,6 @@ void OrientationSensor::onReadable() {
         // Orientation notification: report id 0x01, header byte 0x11, value at [7].
         if (buf[0] != 0x01 || buf[1] != 0x11)
             continue;
-        const int rot = byteToRotation(buf[7]);
-        if (rot >= 0 && rot != m_rotation) {
-            m_rotation = rot;
-            emit rotationChanged(m_rotation);
-        }
+        applyRotation(byteToRotation(buf[7]));
     }
 }

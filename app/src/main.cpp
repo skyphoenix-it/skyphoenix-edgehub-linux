@@ -562,6 +562,11 @@ int main(int argc, char *argv[]) {
     // pipe). In "auto" mode QML rotates + reflows the UI to match. The manual
     // orientation modes ignore this and apply a fixed rotation instead.
     auto* orientation = new OrientationSensor(&app);
+    // Remember orientation across runs: panels that answer no startup GET_REPORT
+    // (only pushing on physical change) would otherwise restart mis-rotated until
+    // the user turns the panel. The state file lives beside the config.
+    orientation->setStatePath(XeneonString(xeneon_config_dir()).qstring()
+                              + QStringLiteral("/orientation.state"));
     auto pushRotation = [&engine](int rot) {
         for (auto* obj : engine.rootObjects())
             obj->setProperty("sensorRotation", rot);

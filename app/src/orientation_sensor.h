@@ -39,6 +39,12 @@ public:
     // Whether the reopen retry timer is currently armed (device-lost recovery).
     bool retryActiveForTest() const { return m_retry.isActive(); }
 
+    // Remember the last orientation across runs. Some panels answer no GET_REPORT
+    // and only push a report on physical *change*, so a restart would otherwise
+    // start mis-rotated until the user turns the panel. With a state file, a restart
+    // restores the last-seen orientation immediately. Set before start().
+    void setStatePath(const QString& path) { m_statePath = path; }
+
 signals:
     void rotationChanged(int rotation);
 
@@ -58,11 +64,18 @@ private:
     // Actively query the current orientation once at open time (the panel only
     // pushes reports on *change*, so without this the UI can start mis-rotated).
     void queryInitialOrientation();
+    // Adopt a rotation: update m_rotation, emit, and persist it (single path so
+    // every source — GET_REPORT, a pushed report, or the restored state — is saved).
+    void applyRotation(int rot);
+    // Persist / restore the last orientation to m_statePath (a plain integer file).
+    void persistRotation() const;
+    int restorePersistedRotation() const;   // -1 if none/unreadable
     // Scan /sys/class/hidraw for the Edge; returns "/dev/hidrawN" or empty.
     static QString findEdgeHidraw();
 
     int m_fd = -1;
     int m_rotation = -1;
+    QString m_statePath;   // where the last orientation is remembered across runs
     QSocketNotifier* m_notifier = nullptr;
     QTimer m_retry;   // polls for the hidraw node to reappear after an unplug
 };

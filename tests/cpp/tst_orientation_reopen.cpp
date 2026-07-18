@@ -5,6 +5,7 @@
 #include <QtTest>
 #include <QSignalSpy>
 #include <QTemporaryDir>
+#include <QFile>
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -105,6 +106,44 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(spy.count() >= 1, 3000);
         QCOMPARE(s.rotation(), 0);
 
+        ::close(wfd);
+    }
+
+    // Persistence: a live rotation is written to the state file, and a fresh sensor
+    // that gets NO startup report restores it (the fix for panels that answer no
+    // GET_REPORT and only push on physical change — a restart would otherwise start
+    // mis-rotated).
+    void persistsAndRestoresOrientation() {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QString state = dir.path() + "/orientation.state";
+        const QString fifo = dir.path() + "/edge_fifo";
+        QCOMPARE(::mkfifo(fifo.toUtf8().constData(), 0600), 0);
+        int wfd = ::open(fifo.toUtf8().constData(), O_RDWR | O_NONBLOCK);
+        QVERIFY(wfd >= 0);
+
+        // (a) A pushed report is persisted.
+        {
+            OrientationSensor s;
+            s.setStatePath(state);
+            QVERIFY(s.openForTest(fifo));
+            QSignalSpy spy(&s, &OrientationSensor::rotationChanged);
+            unsigned char report[64] = {0};
+            report[0] = 0x01; report[1] = 0x11; report[7] = 0x02;   // 0x02 → 90°
+            QCOMPARE(::write(wfd, report, sizeof(report)), ssize_t(sizeof(report)));
+            QTRY_VERIFY_WITH_TIMEOUT(spy.count() >= 1, 3000);
+            QCOMPARE(s.rotation(), 90);
+            QFile f(state);
+            QVERIFY(f.open(QIODevice::ReadOnly));
+            QCOMPARE(f.readAll().trimmed().toInt(), 90);
+        }
+        // (b) A fresh sensor with no startup report restores the persisted 90°.
+        {
+            OrientationSensor s2;
+            s2.setStatePath(state);
+            QVERIFY(s2.openForTest(fifo));   // writer present → active, nothing pushed
+            QCOMPARE(s2.rotation(), 90);     // restored synchronously at open time
+        }
         ::close(wfd);
     }
 };
