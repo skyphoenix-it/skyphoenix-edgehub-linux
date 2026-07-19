@@ -42,8 +42,12 @@ QtObject {
     property string currentVersion: ""
 
     // The one URL the check ever touches.
+    // The LIST endpoint, not /releases/latest. GitHub's "latest" EXCLUDES
+    // pre-releases and 404s when every release is one — exactly the alpha/beta
+    // situation, where the check then reported an error instead of a version.
+    // Listing lets us pick the newest release on the user's own channel.
     readonly property string releasesUrl:
-        "https://api.github.com/repos/skyphoenix-it/XeneonEdge_Linux/releases/latest"
+        "https://api.github.com/repos/skyphoenix-it/XeneonEdge_Linux/releases?per_page=20"
 
     // Test seam, passed through the gate exactly like the net widgets do.
     property var xhrFactory: null
@@ -155,7 +159,9 @@ QtObject {
             checker.errorText = "Check failed (malformed response)."
             return
         }
-        var tag = (doc && typeof doc.tag_name === "string") ? doc.tag_name.trim() : ""
+        var tag = Array.isArray(doc)
+                  ? checker._pickRelease(doc)
+                  : ((doc && typeof doc.tag_name === "string") ? doc.tag_name.trim() : "")
         if (!tag.length) {
             checker.updateAvailable = false
             checker.status = "error"
@@ -191,6 +197,33 @@ QtObject {
     //     of its tag is not told to "update" to that same tag.
     // Returns -1 / 0 / 1, or null when either side has no parsable version
     // (e.g. "dev") — null means "cannot honestly order these".
+    // Newest release the user should be OFFERED, from the list endpoint.
+    // Channel rule: a pre-release is only offered when the RUNNING build is
+    // itself a pre-release — a stable user is never pushed onto an alpha, and an
+    // alpha user still gets alpha updates (without this, every check during the
+    // whole alpha/beta period fails). Drafts are never offered.
+    function _pickRelease(list) {
+        var onPre = checker._isPrerelease(checker.currentVersion)
+        var best = ""
+        for (var i = 0; i < list.length; i++) {
+            var r = list[i]
+            if (!r || r.draft === true) continue
+            if (r.prerelease === true && !onPre) continue
+            var t = (typeof r.tag_name === "string") ? r.tag_name.trim() : ""
+            if (!t.length) continue
+            if (best === "" || compareVersions(best, t) === -1) best = t
+        }
+        return best
+    }
+
+    // Is this version string a pre-release (has SemVer pre-release identifiers)?
+    // A git-describe build like v1.0.0-alpha.2-220-gabc rides its identifiers, so
+    // a dev build off an alpha tag correctly counts as pre-release.
+    function _isPrerelease(v) {
+        var p = parseVersion(v)
+        return !!(p && p.pre && p.pre.length)
+    }
+
     function parseVersion(s) {
         var t = ("" + (s || "")).trim().replace(/^v/i, "")
         var m = /^(\d+)\.(\d+)(?:\.(\d+))?(?:-([0-9A-Za-z.\-]+))?(?:\+[0-9A-Za-z.\-]+)?$/.exec(t)

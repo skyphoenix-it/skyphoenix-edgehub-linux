@@ -146,7 +146,7 @@ Item {
             compare(gate.requests, 1, "…and it went through the NetHub gate")
             compare(lastFake.method, "GET")
             compare(lastFake.url, checker.releasesUrl)
-            compare(lastFake.url, "https://api.github.com/repos/skyphoenix-it/XeneonEdge_Linux/releases/latest")
+            compare(lastFake.url, "https://api.github.com/repos/skyphoenix-it/XeneonEdge_Linux/releases?per_page=20")
             verify(lastFake.headers["Authorization"] === undefined, "no credential rides along")
             verify(lastFake.body === undefined, "a GET with no body — nothing identifying sent")
             compare(checker.status, "checking")
@@ -189,6 +189,65 @@ Item {
             lastFake.resolveWith(200, '{"tag_name":"v1.0.0-alpha.2"}')
             compare(checker.updateAvailable, false)
             compare(checker.status, "uptodate")
+        }
+
+        // ── The list endpoint + release channel (the alpha/beta bug) ────────
+        // GitHub's /releases/latest EXCLUDES pre-releases and 404s when every
+        // release is one. With alpha.1/alpha.2 both flagged prerelease, a real
+        // "Check for updates" returned HTTP 404 -> "no tag_name" -> an ERROR
+        // instead of a version, for the entire alpha/beta period. These pin the
+        // list-endpoint behaviour that fixes it.
+        readonly property string realWorldReleases:
+            '[{"tag_name":"v1.0.0-alpha.2","prerelease":true,"draft":false},' +
+            ' {"tag_name":"v1.0.0-alpha.1","prerelease":true,"draft":false}]'
+
+        function test_all_prereleases_still_report_a_version_not_an_error() {
+            // The exact production situation that used to 404.
+            checker.currentVersion = "v1.0.0-alpha.2-220-gabc1234"
+            checker.enabled = true
+            lastFake.resolveWith(200, realWorldReleases)
+            compare(checker.latestTag, "v1.0.0-alpha.2", "the newest pre-release is reported")
+            verify(checker.status !== "error", "an all-prerelease repo must not error")
+            compare(checker.updateAvailable, false, "this build is ahead of alpha.2")
+        }
+
+        function test_prerelease_user_is_offered_a_newer_prerelease() {
+            checker.currentVersion = "v1.0.0-alpha.1"
+            checker.enabled = true
+            lastFake.resolveWith(200, realWorldReleases)
+            compare(checker.latestTag, "v1.0.0-alpha.2")
+            compare(checker.updateAvailable, true, "alpha user gets the newer alpha")
+            compare(checker.status, "update")
+        }
+
+        function test_stable_user_is_NOT_pushed_onto_a_prerelease() {
+            // Channel rule: a stable build must never be offered an alpha.
+            checker.currentVersion = "v1.0.0"
+            checker.enabled = true
+            lastFake.resolveWith(200,
+                '[{"tag_name":"v1.1.0-beta.1","prerelease":true,"draft":false},' +
+                ' {"tag_name":"v1.0.0","prerelease":false,"draft":false}]')
+            compare(checker.latestTag, "v1.0.0", "the beta is skipped for a stable build")
+            compare(checker.updateAvailable, false)
+        }
+
+        function test_stable_user_still_gets_a_newer_stable() {
+            checker.currentVersion = "v1.0.0"
+            checker.enabled = true
+            lastFake.resolveWith(200,
+                '[{"tag_name":"v1.2.0","prerelease":false,"draft":false},' +
+                ' {"tag_name":"v1.1.0-beta.1","prerelease":true,"draft":false}]')
+            compare(checker.latestTag, "v1.2.0")
+            compare(checker.updateAvailable, true)
+        }
+
+        function test_drafts_are_never_offered() {
+            checker.currentVersion = "v1.0.0-alpha.1"
+            checker.enabled = true
+            lastFake.resolveWith(200,
+                '[{"tag_name":"v9.9.9","prerelease":false,"draft":true},' +
+                ' {"tag_name":"v1.0.0-alpha.2","prerelease":true,"draft":false}]')
+            compare(checker.latestTag, "v1.0.0-alpha.2", "the draft is ignored")
         }
 
         function test_dev_build_reports_unknown_never_update() {
