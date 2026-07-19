@@ -66,14 +66,44 @@ ACCENT_WALK = ["#58A6FF", "#3FB950", "#F778BA", "#E3B341", "#000000"]
 BG_WALK = ["orbs", "mesh", "aurora", "waves", "stars", "bokeh", "grid", "none"]
 
 
+# Fraction of a step's settle time. The hub applies + renders fast; 0.45s was
+# conservative. 0.25 keeps grabs clean while cutting ~40% off the run.
+SETTLE = float(os.environ.get("XENEON_BUILDUP_SETTLE", "0.25"))
+
+
+def grid_sig(path, n=8):
+    """An n x n grid of average colours — a cheap render fingerprint that is
+    sensitive to WHERE things are, not just the overall tint. Two frames with
+    the same average but different layout (a widget present vs an empty page)
+    have very different grid signatures."""
+    from PIL import Image
+    im = Image.open(path).convert("RGB")
+    w, h = im.size
+    small = im.resize((n, n))
+    return [small.getpixel((x, y)) for y in range(n) for x in range(n)]
+
+
+def sig_distance(a, b):
+    return sum(sum((p - q) ** 2 for p, q in zip(pa, pb)) ** 0.5
+               for pa, pb in zip(a, b)) / max(len(a), 1)
+
+
 class BuildUp:
     def __init__(self, h):
         self.h = h
         self.n = 0
         self.frames = []
+        self.empty_sig = None      # grid signature of the empty content page
 
-    def step(self, label, mutate, verify):
-        """One atomic change: push it, read it back, grab the panel."""
+    def step(self, label, mutate, verify, min_render_delta=None):
+        """One atomic change: push it, read it back, grab the panel.
+
+        min_render_delta (optional): the grabbed frame must differ from the
+        empty-page baseline by at least this much. This is what makes a WIDGET
+        test a real GUI test — it asserts the widget actually RENDERED, not just
+        that the hub's state reports it. The 65/65 run before this existed showed
+        an empty page for every 'widget added' step because the content was on a
+        page the hub was not displaying."""
         self.n += 1
         tag = "%03d-%s" % (self.n, label.replace(" ", "_").replace("/", "-"))
         try:
@@ -81,17 +111,38 @@ class BuildUp:
         except Exception as e:  # noqa: BLE001
             self.h.check(label, False, "mutate raised: %r" % (e,))
             return False
-        time.sleep(0.45)  # let the hub apply + render before we read and grab
+        time.sleep(SETTLE)
         st = self.h.get_state()
         ok, detail = verify(st)
-        self.h.check(label, ok, detail)
         path = os.path.join(self.h.work, tag + ".png")
+        grabbed = False
         try:
-            self.h.grab(path)
+            grabbed = self.h.grab(path)
             self.frames.append(path)
         except Exception as e:  # noqa: BLE001
             print("    (grab failed: %r)" % (e,))
+        if ok and min_render_delta is not None:
+            if not grabbed:
+                ok, detail = False, "no grab to check rendering against"
+            elif self.empty_sig is None:
+                detail += " [no empty baseline captured]"
+            else:
+                d = sig_distance(grid_sig(path), self.empty_sig)
+                if d < min_render_delta:
+                    ok = False
+                    detail = ("STATE ok but NOT RENDERED: frame differs from the "
+                              "empty page by only %.0f (need >=%.0f) — the content "
+                              "is not on screen" % (d, min_render_delta))
+                else:
+                    detail += " [rendered, delta=%.0f]" % d
+        self.h.check(label, ok, detail)
         return ok
+
+    def capture_empty_baseline(self):
+        """Grab the current (empty) content page as the render baseline."""
+        p = os.path.join(self.h.work, "000-empty-baseline.png")
+        if self.h.grab(p):
+            self.empty_sig = grid_sig(p)
 
 
 def pages_of(st):
@@ -121,37 +172,46 @@ def main():
             print("!! could not verify the hub is the window on the Edge — aborting")
             return 2
 
-        # ── 0. STRIP: remove every screen ────────────────────────────────────
-        # A single empty page, because a dashboard with zero pages is not a
-        # state the UI is specified to reach — "remove all screens" in the
-        # Manager leaves exactly one.
+        # THROUGHOUT: the page under test is page 0 ("Home"), because the hub
+        # resets swipeView.currentIndex to 0 on every setUiState
+        # (ui/qml/Dashboard.qml:410) and the state has no field to select a
+        # page. Earlier versions put content on page 1 and the hub kept
+        # displaying page 0, so every "widget added" frame showed an EMPTY page
+        # and the visual verification was hollow. Content stays on page 0 here so
+        # it actually renders and can be checked.
+
+        # ── 0. STRIP: one empty screen, and capture it as the render baseline ─
         b.step("strip-to-one-empty-screen",
-               lambda: h.set_state(doc([page("Blank", [])])),
+               lambda: h.set_state(doc([page("Home", [])])),
                lambda st: (len(pages_of(st)) == 1 and not pages_of(st)[0].get("tiles"),
                            "pages=%d tiles=%s" % (len(pages_of(st)),
                                                   pages_of(st)[0].get("tiles") if pages_of(st) else "?")))
+        b.capture_empty_baseline()
 
-        # ── 1. SCREENS: add them back one at a time ──────────────────────────
-        names = ["Home", "System", "Focus", "Media"]
-        for i, nm in enumerate(names, start=1):
-            want = i + 1  # Blank + i added
+        # ── 1. SCREENS: add extra ones AFTER the visible content page ────────
+        # "Home" stays page 0 (shown); System/Focus/Media are appended after it.
+        extra = ["System", "Focus", "Media"]
+        for i, nm in enumerate(extra, start=1):
+            want = i + 1  # Home + i added
 
             def mut(upto=i):
-                h.set_state(doc([page("Blank", [])] +
-                                [page(names[k], []) for k in range(upto)]))
+                h.set_state(doc([page("Home", [])] +
+                                [page(extra[k], []) for k in range(upto)]))
 
             def ver(st, want=want):
                 got = len(pages_of(st))
                 return got == want, "expected %d screens, hub reports %d" % (want, got)
             b.step("screen-add-%d-%s" % (i, nm), mut, ver)
 
-        # ── 2. WIDGETS: one at a time onto screen "Home" ─────────────────────
+        names = ["Home"] + extra   # full set, Home first
+
+        # ── 2. WIDGETS onto the VISIBLE page — asserts they RENDER ───────────
         placed = []
         for i, (wtype, family) in enumerate(WIDGET_WALK, start=1):
             placed.append(tile("bu-%s" % wtype, wtype, 1, 1))
 
             def mut(tiles=list(placed)):
-                h.set_state(doc([page("Blank", []), page("Home", tiles)]))
+                h.set_state(doc([page("Home", tiles)] + [page(n, []) for n in extra]))
 
             def ver(st, want=i, wtype=wtype):
                 pg = [p for p in pages_of(st) if p.get("name") == "Home"]
@@ -161,17 +221,17 @@ def main():
                 types = [t.get("type") for t in tiles]
                 return (len(tiles) == want and wtype in types,
                         "want %d tiles incl %s, hub has %d: %s" % (want, wtype, len(tiles), types))
-            b.step("widget-add-%d-%s" % (i, wtype), mut, ver)
+            # min_render_delta: the frame MUST differ from the empty page now.
+            b.step("widget-add-%d-%s" % (i, wtype), mut, ver, min_render_delta=12)
 
         # ── 2a-i. RENAME each screen ─────────────────────────────────────────
         for i, nm in enumerate(names):
             newname = nm + " R"
 
             def mut(idx=i, nn=newname):
-                pgs = [page("Blank", [])] + [
-                    page(names[k] if k != idx else nn,
-                         list(placed) if names[k] == "Home" else [])
-                    for k in range(len(names))]
+                pgs = [page(names[k] if k != idx else nn,
+                            list(placed) if names[k] == "Home" else [])
+                       for k in range(len(names))]
                 h.set_state(doc(pgs))
 
             def ver(st, nn=newname):
@@ -191,7 +251,7 @@ def main():
                 tiles = [{"id": "bu-clock", "type": "clock", "size": size}] + \
                         [{"id": "bu-%s" % t, "type": t, "size": "1x1"}
                          for (t, _) in WIDGET_WALK[1:]]
-                h.set_state(doc([page("Blank", []), page("Home", tiles)]))
+                h.set_state(doc([page("Home", tiles)] + [page(n, []) for n in extra]))
 
             def ver(st, size=sz):
                 pg = [p for p in pages_of(st) if p.get("name") == "Home"]
@@ -210,7 +270,7 @@ def main():
             remaining = remaining[:i]
 
             def mut(tiles=list(remaining)):
-                h.set_state(doc([page("Blank", []), page("Home", tiles)]))
+                h.set_state(doc([page("Home", tiles)] + [page(n, []) for n in extra]))
 
             def ver(st, want=i):
                 pg = [p for p in pages_of(st) if p.get("name") == "Home"]
@@ -219,8 +279,7 @@ def main():
             b.step("widget-remove-down-to-%d" % i, mut, ver)
 
         # Put the widgets back for the removal walk below.
-        h.set_state(doc([page("Blank", [])] + [page(n, list(placed) if n == "Home" else [])
-                                               for n in names]))
+        h.set_state(doc([page("Home", list(placed))] + [page(n, []) for n in extra]))
         time.sleep(0.4)
 
         # ── 2b. SCREENS: remove them again, one at a time ────────────────────
@@ -232,8 +291,8 @@ def main():
             want = i  # Blank + (i-1) remaining
 
             def mut(keep=i - 1):
-                h.set_state(doc([page("Blank", [])] +
-                                [page(names[k], []) for k in range(keep)]))
+                h.set_state(doc([page("Home", list(placed))] +
+                                [page(extra[k], []) for k in range(keep)]))
 
             def ver(st, want=want):
                 got = len(pages_of(st))
@@ -241,16 +300,17 @@ def main():
             b.step("screen-remove-down-to-%d" % want, mut, ver)
 
         b.step("screens-fully-stripped",
-               lambda: h.set_state(doc([page("Blank", [])])),
-               lambda st: (len(pages_of(st)) == 1 and not pages_of(st)[0].get("tiles"),
-                           "back to one empty screen: pages=%d" % len(pages_of(st))))
+               lambda: h.set_state(doc([page("Home", list(placed))])),
+               lambda st: (len(pages_of(st)) == 1,
+                           "back to one screen (Home, with its widgets): pages=%d" % len(pages_of(st))))
 
-        # Re-seed the working layout for the appearance walk below.
-        h.set_state(doc([page("Blank", []), page("Home", list(placed))]))
-        time.sleep(0.4)
+        # Keep Home + its widgets on page 0 for the appearance walk, so themes,
+        # accents, backgrounds and wallpapers are all judged against a page that
+        # actually has content on it.
+        time.sleep(SETTLE)
 
         # A stable layout to mutate appearance against, from here on.
-        base = [page("Blank", []), page("Home", list(placed))]
+        base = [page("Home", list(placed))] + [page(n, []) for n in extra]
 
         def push_appearance(**kw):
             app = {"mode": "dark", "themeMode": "nord", "accent": "#58A6FF",
