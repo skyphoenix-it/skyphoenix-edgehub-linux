@@ -9,6 +9,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Stability, fidelity and correctness pass. Everything below is user-visible unless
+marked *(internal)*.
+
+### Fixed
+- **The Edge now shows the screen you're editing.** Selecting a screen in the
+  Manager — or adding one — left the panel stuck on the first screen. The Manager
+  now tells the hub which screen is selected and the panel follows.
+- **Landscape orientation is no longer shown as portrait in the Manager.** The hub
+  reported its raw sensor rotation instead of what it was actually displaying, so
+  with no sensor reading (the hub's landscape default) the Manager preview drew
+  the panel upright. It now reports what the panel really shows.
+- **The Manager preview no longer squeezes a landscape Edge.** In landscape the
+  preview moves full-width above the controls instead of being crushed into a
+  narrow column beside them; portrait keeps the preview alongside.
+- **Animated backgrounds animate in the Manager preview.** Orbs, waves, aurora,
+  starfield and friends were drawn as still images in the preview while moving on
+  the panel. They now match, and still respect reduce-motion.
+- **A widget can no longer be resized past the space left.** Dragging a widget
+  larger on a full screen briefly showed it overflowing (and appearing to scroll)
+  before snapping back. The resize now only offers sizes that fit, so a screen
+  always stays one screen — while dragging, not just afterwards.
+- **Version reporting.** Both apps always reported `0.1.0` regardless of the build,
+  the Manager ignored `--version` entirely, and the hub answered it only when no
+  other copy was running. As a direct consequence, **"Check for updates" could
+  never detect a newer release** — it had no real version to compare. Fixed.
+- **Memory.** Fixed leaks that could grow the app to many gigabytes: three
+  scene-graph traversals that re-walked the same nodes exponentially, and dashboard
+  rows that were never reclaimed when a removed widget's fade was interrupted.
+- The preview has a **minimum size** so a narrow Manager window can't shrink it
+  to nothing.
+
+### Changed
+- **Calm is the default look.** New installs start on the Nord palette rather than
+  the previous dark default.
+- **Inspired themes renamed.** The distro-flavoured palettes are now named after
+  the idea rather than the project (Trilby, Keystone, Swirl, Cascade, Fizz) and
+  grouped as "Inspired". Saved themes are unaffected.
+- **The preset picker previews what you get** — each preset's layout is drawn with
+  the real packer, colour-coded by widget category and labelled with the widget
+  names, so you can tell the presets apart before adding one.
+
+### Known issues
+- **AppImage self-update is not verified.** beta.1 listed it as delivered; the
+  update *check* now works correctly, but the download-and-patch (zsync) path has
+  never been exercised against a published release. Treat it as unproven until a
+  release is cut and the round trip is tested.
+
 ## [1.0.0-beta.1] - 2026-07-17
 
 First public **beta**. Everything from alpha.2 plus the beta workstreams (sizing,
