@@ -106,6 +106,11 @@ def main():
     h = E2E(workdir=tempfile.mkdtemp(prefix="edge-buildup-"))
     b = BuildUp(h)
     try:
+        # Seed the config BEFORE launching: without first_run_complete the hub
+        # boots into the First-Run Wizard, the Dashboard never loads, and every
+        # probe/grab shows the same wizard — which reads as "distance 0, the hub
+        # is not on the Edge" when in fact it is, just showing another screen.
+        h.write_config(doc([page("Blank", [])]))
         h.launch_hub()
         if not h.verify_target_window():
             print("!! could not verify the hub is the window on the Edge — aborting")
