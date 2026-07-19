@@ -56,6 +56,37 @@ Item {
                     "the grow did not silently move tiles to another page")
         }
 
+        // B1/B2: the resize DRAG preview snaps only among fittingSizesFor(), so
+        // it can never offer a size that overflows the page. This is the
+        // deterministic guarantee behind "make bigger with no room doesn't move"
+        // and "no transient overflow/scroll while dragging". Proves the store
+        // helper the EdgeClone drag relies on actually caps the offered sizes.
+        function test_fittingSizes_cap_the_resize_preview_on_a_full_page() {
+            var ids = fillPage()
+            verify(ids.length >= 2, "page filled with " + ids.length + " tiles")
+            verify(store.pageIsFull(0), "page reports full")
+
+            var last = ids[ids.length - 1]
+            var declared = store._catalogFn("sizesFor")("cpu") || []
+            var fitting = store.fittingSizesFor(0, last)
+
+            verify(fitting.length >= 1, "at least the current size fits")
+            verify(fitting.length <= declared.length, "fitting is a subset of declared")
+            // On a FULL page, a bigger size must NOT be offered: every fitting
+            // size, applied, must keep the page within one screen.
+            for (var i = 0; i < fitting.length; i++) {
+                var probe = store.pages()[0].tiles.map(function (t) {
+                    return { id: t.id, type: t.type, size: (t.id === last ? fitting[i] : t.size) }
+                })
+                verify(store._packer.longExtent(store._packer.pack(probe)) <= store._sizes.longHalves,
+                       "offered size '" + fitting[i] + "' keeps the page one screen")
+            }
+            // And the widget's LARGEST declared size must be excluded on a full
+            // page (else the preview could still overflow). CPU's largest is 1x1.5.
+            verify(fitting.indexOf("1x1.5") < 0 || declared.indexOf("1x1.5") < 0,
+                   "the largest size is not offered when it would overflow")
+        }
+
         function test_shrink_frees_space_no_overflow_no_crosspage_pull() {
             // Two pages: page 0 full-ish, page 1 has a distinctive tile.
             store.load("blank")
