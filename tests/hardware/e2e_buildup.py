@@ -163,6 +163,66 @@ def main():
                         "want %d tiles incl %s, hub has %d: %s" % (want, wtype, len(tiles), types))
             b.step("widget-add-%d-%s" % (i, wtype), mut, ver)
 
+        # ── 2a-i. RENAME each screen ─────────────────────────────────────────
+        for i, nm in enumerate(names):
+            newname = nm + " R"
+
+            def mut(idx=i, nn=newname):
+                pgs = [page("Blank", [])] + [
+                    page(names[k] if k != idx else nn,
+                         list(placed) if names[k] == "Home" else [])
+                    for k in range(len(names))]
+                h.set_state(doc(pgs))
+
+            def ver(st, nn=newname):
+                got = [p.get("name") for p in pages_of(st)]
+                return nn in got, "expected %r among hub screens %s" % (nn, got)
+            b.step("screen-rename-%d-%s" % (i + 1, nm), mut, ver)
+
+        # ── 2a-ii. RESIZE a widget through its DECLARED legal sizes ──────────
+        # The canonical tile format is a `size` STRING ("1x1", "1x1.5"), not
+        # integer w/h. Every widget declares its own legal set in
+        # ui/qml/WidgetCatalog.qml and the hub coerces DOWN to the nearest legal
+        # size (DashboardStore.qml:144) — so a resize test MUST use sizes that
+        # are actually legal for the widget, or it only ever tests coercion.
+        # The clock's set is ["0.5x0.5","0.5x1","1x0.5","1x1","1x1.5"].
+        for sz in ("0.5x0.5", "0.5x1", "1x0.5", "1x1.5", "1x1"):
+            def mut(size=sz):
+                tiles = [{"id": "bu-clock", "type": "clock", "size": size}] + \
+                        [{"id": "bu-%s" % t, "type": t, "size": "1x1"}
+                         for (t, _) in WIDGET_WALK[1:]]
+                h.set_state(doc([page("Blank", []), page("Home", tiles)]))
+
+            def ver(st, size=sz):
+                pg = [p for p in pages_of(st) if p.get("name") == "Home"]
+                if not pg:
+                    return False, "no Home screen"
+                t0 = [t for t in pg[0].get("tiles", []) if t.get("id") == "bu-clock"]
+                if not t0:
+                    return False, "clock tile missing after resize"
+                got = t0[0].get("size")
+                return got == size, "asked size=%s, hub reports size=%s" % (size, got)
+            b.step("widget-resize-%s" % sz.replace(".", "_"), mut, ver)
+
+        # ── 2a-iii. REMOVE widgets one at a time ─────────────────────────────
+        remaining = list(placed)
+        for i in range(len(placed) - 1, -1, -1):
+            remaining = remaining[:i]
+
+            def mut(tiles=list(remaining)):
+                h.set_state(doc([page("Blank", []), page("Home", tiles)]))
+
+            def ver(st, want=i):
+                pg = [p for p in pages_of(st) if p.get("name") == "Home"]
+                got = len(pg[0].get("tiles", [])) if pg else -1
+                return got == want, "expected %d widgets left, hub reports %d" % (want, got)
+            b.step("widget-remove-down-to-%d" % i, mut, ver)
+
+        # Put the widgets back for the removal walk below.
+        h.set_state(doc([page("Blank", [])] + [page(n, list(placed) if n == "Home" else [])
+                                               for n in names]))
+        time.sleep(0.4)
+
         # ── 2b. SCREENS: remove them again, one at a time ────────────────────
         # Adding was covered above; REMOVAL is the direction that strands state
         # (a page's tiles, the current-page index, the dying-row sweep in
