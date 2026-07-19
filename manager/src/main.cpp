@@ -96,8 +96,23 @@ static void placeManagerOffEdge(QQuickWindow* win) {
     // back to "open on the active output" (the Edge, right after the hub grabbed it).
     win->setScreen(target);
     const QRect g = target->availableGeometry();
-    win->setPosition(g.x() + (g.width() - win->width()) / 2,
-                     g.y() + (g.height() - win->height()) / 2);
+    const int px = g.x() + (g.width() - win->width()) / 2;
+    const int py = g.y() + (g.height() - win->height()) / 2;
+    win->setPosition(px, py);
+    // Log the final rect the way the hub logs its own placement. This is the
+    // ONLY machine-readable source for where the Manager window actually landed:
+    // it has no control socket, and KWin exposes no window geometry over DBus
+    // without loading a script. tests/hardware/desktop_target.py parses this to
+    // clamp synthetic input to the WINDOW rect rather than the whole monitor —
+    // i.e. it is what keeps real-input tests from clicking outside the app.
+    // fprintf, NOT qInfo: Qt's default handler routes to journald when stderr is
+    // not a TTY (see the single-instance message below), so a redirected log file
+    // would silently miss this line — and a test that cannot read the rect must
+    // refuse to inject, which would make the whole suite unrunnable.
+    std::fprintf(stderr, "Placing Manager on \"%s\" at %d , %d %d x %d\n",
+                 target->name().toUtf8().constData(), px, py,
+                 win->width(), win->height());
+    std::fflush(stderr);
 }
 
 int main(int argc, char* argv[]) {

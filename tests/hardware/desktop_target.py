@@ -171,3 +171,54 @@ def pointer_for(rect, guard=None):
     cw, ch = canvas_size()
     _, x, y, w, h = rect if len(rect) == 5 else (None,) + tuple(rect)
     return u.VPointer(cw, ch, (x, y, w, h), guard=guard)
+
+
+MGR_PLACE_RE = re.compile(
+    r'Placing Manager on "([^"]+)" at (-?\d+) , (-?\d+) (\d+) x (\d+)')
+
+
+def manager_rect_from_log(log_path, timeout=15.0):
+    """The Manager's REAL window rect, parsed from its own placement log line.
+
+    This is what makes the clamp window-precise instead of monitor-precise. The
+    Manager has no control socket, and KWin exposes no window geometry over DBus
+    without loading a script, so the app logging its own final rect
+    (manager/src/main.cpp, placeManagerOffEdge) is the only machine-readable
+    source. Clamping to the monitor would satisfy "cannot leave this screen" but
+    NOT the owner's actual constraint, which is "clicks focused on the
+    application being tested" — on a 5120x1440 monitor those are very different.
+
+    Returns (name, x, y, w, h) or None if the line never appears.
+    """
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            with open(log_path, "r", errors="replace") as fh:
+                m = None
+                for line in fh:
+                    hit = MGR_PLACE_RE.search(line)
+                    if hit:
+                        m = hit               # last one wins (re-placement)
+                if m:
+                    return (m.group(1), int(m.group(2)), int(m.group(3)),
+                            int(m.group(4)), int(m.group(5)))
+        except OSError:
+            pass
+        time.sleep(0.25)
+    return None
+
+
+def assert_rect_on_a_desktop_screen(rect, edge_name):
+    """The window rect must lie on a NON-Edge screen, and inside it.
+
+    Belt-and-braces against a stale or bogus log line: if the parsed rect does
+    not sit within a real desktop screen, we do not know where the window is and
+    must not inject. Same refuse-by-default rule as the Edge probe.
+    """
+    _, x, y, w, h = rect
+    for (name, sx, sy, sw, sh) in desktop_screens(edge_name):
+        if sx <= x and sy <= y and x + w <= sx + sw and y + h <= sy + sh:
+            return name
+    raise TargetNotVerified(
+        "Manager rect %r is not contained in any non-Edge screen — refusing to "
+        "inject." % (rect,))
