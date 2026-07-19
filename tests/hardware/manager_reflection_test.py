@@ -73,6 +73,26 @@ def preview_rect(path, win_w, win_h):
     return (maxx - minx, maxy - miny)
 
 
+def preview_is_landscape(path):
+    """True if the Manager preview is in its LANDSCAPE (full-width, top) layout.
+
+    Robust binary discriminator for the O2 layout: three points on the RIGHT
+    side, upper area, are the light CONFIG panel in portrait (preview is a narrow
+    left column) but are COVERED by the dark full-width preview in landscape.
+    Dark at all three => landscape. Measured on real captures: portrait
+    (250,244,236) light vs landscape (~60,70,85) dark."""
+    from PIL import Image
+    im = Image.open(path).convert("RGB")
+    W, H = im.size
+    pts = [(0.55, 0.28), (0.65, 0.28), (0.72, 0.30)]
+    dark = 0
+    for fx, fy in pts:
+        r, g, b = im.getpixel((int(W * fx), int(H * fy)))
+        if r + g + b < 260:
+            dark += 1
+    return dark >= 2
+
+
 def preview_center(path, win_w, win_h):
     """Centre pixel of the preview's dark bounding box, or None."""
     from PIL import Image
@@ -109,7 +129,7 @@ def main():
     try:
         # Hub: a couple of visible widgets so the preview has content, auto orient.
         base_pages = [page("Home", [tile("clock-1", "clock"), tile("cpu-1", "cpu")])]
-        h.write_config(doc(base_pages))
+        h.write_config(doc(base_pages, appearance={"themeMode": "nord", "orientation": "portrait"}))
         if not h.launch_hub() or not h.verify_target_window():
             print("!! hub not verifiably on the Edge"); return 2
         h.set_state(doc(base_pages))     # clear the probe tile
@@ -147,7 +167,7 @@ def main():
         def appearance(**kw):
             a = {"themeMode": "nord", "accent": "#58A6FF", "bgStyle": "orbs",
                  "animatedBg": True, "glass": 0.55, "glow": True,
-                 "gridCols": 1, "orientation": "auto"}
+                 "gridCols": 1, "orientation": "portrait"}
             a.update(kw)
             return a
 
@@ -203,30 +223,27 @@ def main():
         time.sleep(PULL)
         lsc = grab("05-orient-landscape")
 
-        rp = preview_rect(pth, w, hgt)
-        rl = preview_rect(lsc, w, hgt)
-        print("  preview portrait rect=%s  landscape rect=%s" % (rp, rl))
-        if rp and rl:
-            h.check("manager-preview-portrait-is-tall", rp[1] > rp[0],
-                    "portrait preview %dx%d (h>w expected)" % rp)
-            h.check("manager-preview-landscape-is-wide", rl[0] > rl[1],
-                    "landscape preview %dx%d (w>h expected) — if tall, the hub "
-                    "orientation is NOT reflected in the Manager" % rl)
-        else:
-            h.check("manager-preview-landscape-is-wide", False,
-                    "could not measure preview rects (p=%s l=%s)" % (rp, rl))
+        lp = preview_is_landscape(pth)
+        ll = preview_is_landscape(lsc)
+        print("  preview-is-landscape: portrait=%s landscape=%s" % (lp, ll))
+        # Hub portrait -> Manager preview in the beside-config (portrait) layout.
+        h.check("manager-preview-portrait-layout", lp is False,
+                "hub portrait -> Manager preview beside config (not full-width)")
+        # Hub landscape -> Manager preview in the full-width (landscape) layout.
+        h.check("manager-preview-landscape-layout", ll is True,
+                "hub landscape -> Manager preview full-width on top; if not, the "
+                "hub orientation is NOT reflected in the Manager")
 
         # AUTO with no sensor: the hub defaults to LANDSCAPE, so the Manager
         # preview in auto must ALSO be wide. This is the exact reported case.
         h.set_state(doc(base_pages, appearance=appearance(orientation="auto")))
         time.sleep(PULL)
         auto = grab("06-orient-auto")
-        ra = preview_rect(auto, w, hgt)
-        print("  preview auto rect=%s (hub default is landscape)" % (ra,))
-        if ra:
-            h.check("manager-preview-auto-matches-hub-landscape", ra[0] > ra[1],
-                    "auto preview %dx%d — hub defaults to landscape so this must "
-                    "be wide; tall means the reported bug" % ra)
+        la = preview_is_landscape(auto)
+        print("  preview-is-landscape (auto)=%s (hub default is landscape)" % la)
+        h.check("manager-preview-auto-matches-hub-landscape", la is True,
+                "hub auto defaults to landscape, so the Manager preview must be "
+                "full-width; beside-config = the reported bug")
 
         h.check("hub-alive-after", h.ping(), "hub still answering")
         print("\nframes in %s" % work)

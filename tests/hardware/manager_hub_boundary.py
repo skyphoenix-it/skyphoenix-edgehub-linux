@@ -91,8 +91,13 @@ def main():
     h = E2E(workdir=work)
     mgr = None
     try:
-        # Hub on the Edge, one empty screen, 1-column (fills fastest).
-        h.write_config(doc([page("Home", [])]))
+        # Hub on the Edge, one empty screen, 1-column (fills fastest). PORTRAIT:
+        # this test's Manager coordinates (Add widget, picker) assume the
+        # beside-the-config layout; O2 moves the config BELOW the preview in
+        # landscape, so pin portrait to keep the layout — and the coordinates —
+        # deterministic. This test is not about orientation.
+        h.write_config(doc([page("Home", [])],
+                           appearance={"themeMode": "nord", "orientation": "portrait"}))
         if not h.launch_hub() or not h.verify_target_window():
             print("!! hub not verifiably on the Edge"); return 2
         h.check("hub-up", h.ping(), "control socket answering")
