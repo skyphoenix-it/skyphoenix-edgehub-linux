@@ -615,9 +615,31 @@ int main(int argc, char *argv[]) {
     if (orientation->start() && orientation->rotation() >= 0)
         pushRotation(orientation->rotation());
     // Let a connected Manager mirror the panel's live orientation in its preview:
-    // the getUiState reply carries the current sensor rotation (the Manager combines
-    // it with the orientation mode). -1 until the sensor reports / a value is restored.
-    controlServer->setRotationProvider([orientation]() { return orientation->rotation(); });
+    // the getUiState reply carries the EFFECTIVE content rotation.
+    //
+    // This used to return the raw SENSOR rotation (orientation->rotation()),
+    // which is -1 when the panel answers no startup GET_REPORT — but in that
+    // very case the hub DEFAULTS its content to landscape (main.qml
+    // contentRotation, "the Edge's primary orientation"). So the panel showed
+    // landscape while the Manager, in auto, was told "unknown" and fell back to
+    // portrait: hub horizontal, Manager vertical. Reported by the owner and
+    // reproduced by tests/hardware/manager_reflection_test.py.
+    //
+    // main.qml's `contentRotation` is the single source of truth for what the
+    // panel actually displays (it already folds the orientation mode together
+    // with the sensor). Reporting THAT makes the Manager's auto preview mirror
+    // the panel exactly. Safe to read here: ControlServer is parented to the
+    // engine and never moved off the GUI thread, so this runs on the same thread
+    // that owns the QML objects. Falls back to the raw sensor value if the root
+    // has not exposed contentRotation (e.g. a future/alternate shell).
+    controlServer->setRotationProvider([&engine, orientation]() -> int {
+        for (auto* obj : engine.rootObjects()) {
+            const QVariant v = obj->property("contentRotation");
+            if (v.isValid())
+                return v.toInt();
+        }
+        return orientation->rotation();
+    });
 
     // Metrics on a dedicated worker thread (every 2s), so the Rust FFI collection
     // + JSON serialization never janks the GUI event loop. Results arrive on the
