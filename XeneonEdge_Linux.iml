@@ -2,7 +2,28 @@
 <module type="GENERAL_MODULE" version="4">
   <component name="NewModuleRootManager" inherit-compiler-output="true">
     <exclude-output />
-    <content url="file://$MODULE_DIR$" />
+    <content url="file://$MODULE_DIR$">
+      <!-- Build artifacts and generated sources, excluded from indexing. The
+           tree is ~4.7 GB, of which core/target (2.5 GB) and tools/*/target
+           (1.4 GB) are Rust build output, and build/ holds two generated 25 MB
+           qrc_wallpapers.cpp translation units. Indexing those buys nothing and
+           costs heap, CPU and responsiveness on every project open. -->
+      <excludeFolder url="file://$MODULE_DIR$/core/target" />
+      <excludeFolder url="file://$MODULE_DIR$/tools/license-tool/target" />
+      <excludeFolder url="file://$MODULE_DIR$/tools/license-webhook/target" />
+      <excludeFolder url="file://$MODULE_DIR$/build" />
+      <excludeFolder url="file://$MODULE_DIR$/cmake-build-release" />
+      <excludeFolder url="file://$MODULE_DIR$/build-appimage" />
+      <excludeFolder url="file://$MODULE_DIR$/build-qa" />
+      <excludeFolder url="file://$MODULE_DIR$/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/packaging/aur/src" />
+      <excludeFolder url="file://$MODULE_DIR$/packaging/aur/pkg" />
+      <excludeFolder url="file://$MODULE_DIR$/packaging/local/src" />
+      <excludeFolder url="file://$MODULE_DIR$/packaging/local/pkg" />
+      <excludeFolder url="file://$MODULE_DIR$/.flatpak-builder" />
+      <excludeFolder url="file://$MODULE_DIR$/gui-evidence" />
+      <excludeFolder url="file://$MODULE_DIR$/coverage" />
+    </content>
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>

@@ -63,4 +63,15 @@ QML behaviour matrix 98.8%, all 8 runtime E2E); theme 98/98, manager 40/40.
 
 `qmltestrunner` runs test functions **alphabetically**, so a test that mutates the
 shared store must restore it (emit `backend.configChanged()`) or a later test
-inherits the state. `tst_manager` is heavy (~250–300 s) — expected, not a hang.
+inherits the state.
+
+> **CORRECTION (2026-07-19).** This note previously read: *"`tst_manager` is heavy
+> (~250–300 s) — expected, not a hang."* **That was wrong, and the wrongness was
+> load-bearing.** `tst_manager.qml` carried an unmemoised multi-axis scene-graph
+> walk: it grew from 7 MB to **20 GB RSS in 25 seconds** and never completed. The
+> "expected slowness" framing is why nobody investigated. After the fix it runs in
+> **1.1 s at 105 MB peak**, 54/54 passing. Two sibling copies of the same bug
+> existed (`tests/gui/GuiUtil.js`, `tests/ui/tst_gen_notes.qml`); one of them
+> triggered a system-wide kernel OOM that killed the developer's IDE. If a test in
+> this repo is "just slow", treat that as a defect report, not a fact of life.
+> Guard: `scripts/check_tree_walks.py`, wired into `scripts/run_all_tests.sh`.
