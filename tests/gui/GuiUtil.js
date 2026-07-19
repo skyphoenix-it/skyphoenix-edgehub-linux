@@ -32,6 +32,20 @@ function _walk(node, fn, seen) {
     var d = node.data
     if (d && d !== kids) for (var j = 0; j < d.length; j++)
         if (_walk(d[j], fn, seen)) return true
+    // QQC2 Control/Popup content axes. A Dialog's visible content is NOT in its
+    // `children` or `data` — it hangs off the `contentItem`/`header`/`footer`
+    // PROPERTIES, and for a Popup the item is reparented into the window
+    // overlay. Without these, searching from a Dialog object finds the dialog
+    // and nothing inside it, which is why 20 dialog assertions failed while
+    // `d.opened` passed on the line right above them.
+    //
+    // Descending extra axes is only safe BECAUSE of the `seen` set above: these
+    // overlap heavily with `children` (a Control's contentItem is usually also
+    // one of its children), and that overlap is precisely what made the
+    // unmemoised walk exponential. Do not add axes without the seen-set.
+    var extra = [node.contentItem, node.header, node.footer]
+    for (var k = 0; k < extra.length; k++)
+        if (extra[k] && _walk(extra[k], fn, seen)) return true
     return false
 }
 
