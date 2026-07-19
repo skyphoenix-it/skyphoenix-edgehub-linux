@@ -49,6 +49,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 import desktop_target as dt          # noqa: E402
+import input_guard                   # noqa: E402
 import uinput_touch as u             # noqa: E402
 from e2e_harness import E2E, MANAGER, doc, page, tile   # noqa: E402
 
@@ -59,9 +60,15 @@ class ManagerGui:
         self.name, self.x, self.y, self.w, self.hgt = rect
         self.n = 0
         cw, ch = dt.canvas_size()
+        # The kill switch is MANDATORY — UinputSink refuses to construct without
+        # one, by design. require_user_idle blocks until the owner has been
+        # hands-off, and any real input afterwards aborts injection for the rest
+        # of the run.
+        self.guard = input_guard.ActivityGuard.connect()
+        self.guard.require_user_idle()
         # THE clamp: the Manager window rect, nothing wider.
         self.p = u.VPointer(cw, ch, (self.x, self.y, self.w, self.hgt),
-                            guard=getattr(h, "guard", None))
+                            guard=self.guard)
 
     def click_rel(self, fx, fy, settle=0.8):
         """Click at a FRACTION of the Manager window (0..1), so the test does
@@ -70,6 +77,12 @@ class ManagerGui:
         cy = self.y + int(self.hgt * fy)
         self.p.tap(cx, cy)
         time.sleep(settle)
+
+    @staticmethod
+    def _sig(path):
+        from PIL import Image
+        import hashlib
+        return hashlib.md5(Image.open(path).convert("RGB").tobytes()).hexdigest()
 
     def shot(self, tag):
         self.n += 1
@@ -134,12 +147,25 @@ def main():
         # ── drive the five tabs, screenshotting each ─────────────────────────
         # The sidebar is the left ~12% of the window; the five entries are
         # evenly spaced down its upper half.
+        # ASSERT THE SCREEN CHANGED, not merely that a grab succeeded. The
+        # first version of this checked `p is not None`, which passed for three
+        # tabs whose clicks missed the sidebar entirely and produced byte-
+        # identical frames. A GUI test that cannot tell "the UI changed" from
+        # "I took a picture of the same UI" is worse than no test.
         tabs = ["Screens", "Look", "Images", "Device", "About"]
+        sigs = {}
         for i, name in enumerate(tabs):
             gui.click_rel(0.06, 0.18 + i * 0.07)
             p = gui.shot("tab-%d-%s" % (i, name.lower()))
-            h.check("manager-tab-%s" % name.lower(), p is not None,
-                    "clicked sidebar entry %d, captured %s" % (i, bool(p)))
+            if not p:
+                h.check("manager-tab-%s" % name.lower(), False, "no grab")
+                continue
+            sig = gui._sig(p)
+            dup = sigs.get(sig)
+            h.check("manager-tab-%s" % name.lower(), dup is None,
+                    "distinct screen" if dup is None
+                    else "IDENTICAL to '%s' — the click did not change tabs" % dup)
+            sigs.setdefault(sig, name)
 
         # ── the integration assertion: Manager click -> hub state ────────────
         # This is the leg nothing else covers. We do NOT assert a specific

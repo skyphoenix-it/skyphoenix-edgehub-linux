@@ -117,13 +117,31 @@ def _full_grab(tmpdir, tag):
     for attempt in (1, 2):
         subprocess.run(["spectacle", "-b", "-n", "-f", "-o", p],
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        for _ in range(30):
-            if os.path.exists(p) and os.path.getsize(p) > 0:
-                return p
-            time.sleep(0.1)
+        if _wait_stable(p):
+            return p
         if attempt == 1:
             time.sleep(1.0)
     return None
+
+
+def _wait_stable(path, tries=40, quiet=0.25):
+    """Wait until `path` exists AND its size stops changing.
+
+    Waiting for size>0 is not enough: spectacle writes a multi-megabyte PNG
+    incrementally, so a fast reader gets "image file is truncated". Two
+    consecutive equal sizes means the writer is done.
+    """
+    last = -1
+    for _ in range(tries):
+        try:
+            sz = os.path.getsize(path)
+        except OSError:
+            sz = -1
+        if sz > 0 and sz == last:
+            return True
+        last = sz
+        time.sleep(quiet)
+    return False
 
 
 def locate_and_verify(tmpdir, edge_name, mutate_a, mutate_b, min_dist=25):

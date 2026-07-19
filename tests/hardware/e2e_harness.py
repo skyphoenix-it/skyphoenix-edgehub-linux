@@ -93,6 +93,26 @@ def _abs_wayland_display(env):
     env["WAYLAND_DISPLAY"] = wl
 
 
+def _wait_stable(path, tries=40, quiet=0.25):
+    """Wait until `path` exists AND its size stops changing.
+
+    Waiting for size>0 is not enough: spectacle writes a multi-megabyte PNG
+    incrementally, so a fast reader gets "image file is truncated". Two
+    consecutive equal sizes means the writer is done.
+    """
+    last = -1
+    for _ in range(tries):
+        try:
+            sz = os.path.getsize(path)
+        except OSError:
+            sz = -1
+        if sz > 0 and sz == last:
+            return True
+        last = sz
+        time.sleep(quiet)
+    return False
+
+
 class E2E:
     def __init__(self, workdir):
         self.work = workdir
@@ -433,15 +453,11 @@ class E2E:
         for attempt in (1, 2):
             subprocess.run(["spectacle", "-b", "-n", "-f", "-o", full],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            for _ in range(30):                       # up to 3 s
-                if os.path.exists(full) and os.path.getsize(full) > 0:
-                    break
-                time.sleep(0.1)
-            if os.path.exists(full) and os.path.getsize(full) > 0:
+            if _wait_stable(full):
                 break
             if attempt == 1:
                 time.sleep(1.0)                       # let the previous instance exit
-        if not (os.path.exists(full) and os.path.getsize(full) > 0):
+        if not _wait_stable(full, tries=4):
             print("  grab failed: spectacle produced no file at", full)
             return False
         try:
