@@ -677,6 +677,7 @@ ApplicationWindow {
         // Content
         StackLayout {
             id: nav
+            objectName: "managerTabs"        // test seam: the 5-tab content stack
             Layout.fillWidth: true
             Layout.fillHeight: true
             currentIndex: backend.startTab()
