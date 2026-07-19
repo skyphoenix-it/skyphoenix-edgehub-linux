@@ -750,6 +750,54 @@ mod tests {
     }
 
     #[test]
+    fn owners_real_pro_key_unlocks_pro_against_the_shipped_issuer_key() {
+        // The 40 other tests mint with TEST_SEED and verify against a TEST issuer,
+        // so none of them proves that a key minted with the OWNER's real secret
+        // seed unlocks Pro against the issuer key that actually SHIPS in the binary
+        // (armed 2026-07-19). This test closes that release-critical gap.
+        //
+        // The key is read from the environment and is NEVER written to the repo.
+        // Set XENEON_TEST_LICENSE_KEY to a real Pro key to run it; without it the
+        // test SKIPS (so CI, which has no key, still passes). `verify()` uses the
+        // embedded ISSUER_PUBLIC_KEY — the real one.
+        let key = match std::env::var("XENEON_TEST_LICENSE_KEY") {
+            Ok(k) if !k.trim().is_empty() => k,
+            _ => {
+                eprintln!("SKIP owners_real_pro_key: XENEON_TEST_LICENSE_KEY unset");
+                return;
+            }
+        };
+        assert_eq!(
+            verify(&key).tier(),
+            Tier::Pro,
+            "the owner's real key must unlock Pro against the shipped issuer key \
+             — if this fails, the armed public key does not match the seed that \
+             mints the keys, and no customer's key would work"
+        );
+        // Tamper the signature: a single flipped character must drop it to Free.
+        // Proves the shipped verifier rejects a doctored copy of a genuine key.
+        let mut c: Vec<char> = key.chars().collect();
+        let last = c.len() - 1;
+        c[last] = if c[last] == 'A' { 'B' } else { 'A' };
+        let tampered: String = c.into_iter().collect();
+        assert_eq!(
+            verify(&tampered).tier(),
+            Tier::Free,
+            "a tampered copy of the owner's key must not unlock Pro"
+        );
+        // And a payload swap: change the tier claim inside a real key and the
+        // signature no longer covers it -> Free (defence against self-upgrade).
+        if let Some(dot) = key.find('.') {
+            let forged = format!("{}.{}", &key[..dot], "eyJ0aWVyIjoicHJvIn0");
+            assert_eq!(
+                verify(&forged).tier(),
+                Tier::Free,
+                "a hand-crafted payload on the owner's prefix must not unlock Pro"
+            );
+        }
+    }
+
+    #[test]
     fn verify_reads_the_clock_without_panicking() {
         // verify() is the only path that touches SystemTime; make sure the real
         // clock path is exercised, not just verify_at.
