@@ -366,9 +366,12 @@ Item {
         // landscape page draws wide instead of overflowing a fixed portrait frame.
         width: screen.width + 16
         height: screen.height + 16
-        // Scale the entire device so the full page is visible at once. Capped so a
-        // short page doesn't upscale to blurriness.
-        scale: Math.min(clone.width / width, clone.height / height, 1.6)
+        // Scale the entire device so the full page is visible at once. Grows and
+        // shrinks with the Manager window (the fit ratio tracks clone.width/height),
+        // capped at 1.6x so a short page doesn't upscale to blur, and floored so a
+        // narrow window can't shrink the preview toward nothing — a minimum
+        // readable size (~0.42 => ~170px short axis on the 404px reference).
+        scale: Math.max(0.42, Math.min(clone.width / width, clone.height / height, 1.6))
         radius: 26; color: "#050507"; border.width: 2; border.color: "#000000"
         Behavior on scale { NumberAnimation { duration: 150 } }
 
@@ -406,10 +409,19 @@ Item {
             // Flickable.moving, so a static backdrop is more robust than pausing.)
             BackdropLayer {
                 anchors.fill: parent
-                visible: clone.wallpaperSource === "" && theme.decorative
+                // Mirror the hub exactly: show the animated backdrop only when the
+                // page has no wallpaper, the theme is decorative, AND the animated
+                // background is on (the hub gates on animatedBg too — calm by
+                // default, so a default config is legitimately still here).
+                visible: clone.wallpaperSource === "" && theme.decorative && clone.animatedBg
                 style: clone.pageBg.style
                 accent: theme.accent
-                running: false
+                // ACTUALLY ANIMATE, like the hub — this was hard-coded false, which
+                // made every style a still image in the preview (not WYSIWYG). Gate
+                // on previewLive (already false while the tab is hidden or the helper
+                // column is scrolling, which was the original scroll-lag concern) and
+                // on reduceMotion, so it stills exactly when the hub would.
+                running: clone.previewLive && clone.animatedBg && !clone.reduceMotion
             }
             Image {
                 id: cloneWall
@@ -735,7 +747,16 @@ Item {
                                         var pxW = tile.width + (c.x - sx), pxH = tile.height + (c.y - sy)
                                         var pxShort = clone.landscape ? pxH : pxW
                                         var pxLong = clone.landscape ? pxW : pxH
-                                        var snapped = packer.snap(catalog.sizesFor(tile.tileType),
+                                        // Snap only among sizes that FIT the page, so the
+                                        // preview can never grow the widget past the space
+                                        // left — no transient overflow/scroll during the
+                                        // drag, and "make bigger with no room" simply does
+                                        // not move. Falls back to all declared sizes if the
+                                        // store can't answer (defensive).
+                                        var fitting = store.fittingSizesFor(clone.pageIndex, tile.tileId)
+                                        if (!fitting || fitting.length === 0)
+                                            fitting = catalog.sizesFor(tile.tileType)
+                                        var snapped = packer.snap(fitting,
                                                                   pxShort, pxLong,
                                                                   screen.cellShort, screen.cellLong)
                                         if (snapped !== "") tile.pvSize = snapped

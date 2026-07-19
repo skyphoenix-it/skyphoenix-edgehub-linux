@@ -694,6 +694,34 @@ Item {
     // size the widget type does not support, so the picker/drag UI cannot put a
     // tile into a shape its widget was never built to render. Returns whether the
     // size was applied.
+    // The subset of a tile's DECLARED sizes that would actually FIT the page
+    // (i.e. that setTileSize would accept). The resize drag preview uses this so
+    // it can only ever offer a size that fits — you can never drag a widget
+    // bigger than the space left, which is exactly what makes "a screen always
+    // stays one screen" true DURING the drag, not just on release. Always
+    // includes the tile's current size so the preview never snaps to nothing.
+    function fittingSizesFor(pageIdx, tileId) {
+        if (pageIdx < 0 || pageIdx >= data.pages.length) return []
+        var tiles = data.pages[pageIdx].tiles
+        var target = null
+        for (var i = 0; i < tiles.length; i++)
+            if (tiles[i].id === tileId) { target = tiles[i]; break }
+        if (!target) return []
+        var fn = store._catalogFn("sizesFor")
+        var all = fn ? (fn(target.type) || []) : []
+        var out = []
+        for (var s = 0; s < all.length; s++) {
+            var probe = tiles.map(function (t) {
+                return { "id": t.id, "type": t.type,
+                         "size": (t.id === tileId ? all[s] : t.size) }
+            })
+            if (all[s] === target.size
+                    || store._packer.longExtent(store._packer.pack(probe)) <= store._sizes.longHalves)
+                out.push(all[s])
+        }
+        return out
+    }
+
     function setTileSize(pageIdx, tileId, size) {
         if (pageIdx < 0 || pageIdx >= data.pages.length) return false
         var tiles = data.pages[pageIdx].tiles
