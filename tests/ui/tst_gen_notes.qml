@@ -57,14 +57,24 @@ Item {
     // ── Visual-tree helpers ──────────────────────────────────────────────────
     // Recurse over children AND a Flickable's contentItem (which is where its
     // declared children — e.g. the editor — actually live).
-    function walk(node, fn) {
-        if (!node) return
+    // The `seen` set is a correctness requirement, not an optimisation: a
+    // Control's `contentItem` is ALSO one of its `children`, so every
+    // contentItem subtree is reachable by two paths. Without memoing, each such
+    // subtree is re-walked once per path — 2^k for k nested contentItem-bearing
+    // ancestors (Pane > ScrollView > Flickable > TextArea nests several here).
+    // Two sibling copies of this bug reached 18.8 GB and 20 GB RSS and caused a
+    // system-wide OOM on 2026-07-19. It also inflated collect() results, so any
+    // count assertion below was measuring duplicates. Keep the set.
+    function walk(node, fn) { _walkSeen(node, fn, new Set()) }
+    function _walkSeen(node, fn, seen) {
+        if (!node || seen.has(node)) return
+        seen.add(node)
         fn(node)
         var kids = node.children
-        for (var i = 0; kids && i < kids.length; i++) walk(kids[i], fn)
+        for (var i = 0; kids && i < kids.length; i++) _walkSeen(kids[i], fn, seen)
         if (node.contentItem && node.contentItem !== node) {
             var ck = node.contentItem.children
-            for (var j = 0; ck && j < ck.length; j++) walk(ck[j], fn)
+            for (var j = 0; ck && j < ck.length; j++) _walkSeen(ck[j], fn, seen)
         }
     }
     function findOne(node, test) {

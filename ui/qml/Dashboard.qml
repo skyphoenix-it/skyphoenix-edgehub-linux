@@ -822,9 +822,45 @@ Item {
                         for (var r = 0; r < placementModel.count; r++)
                             if (placementModel.get(r).tileId === id && placementModel.get(r).dying) {
                                 placementModel.remove(r)
+                                delete pageItem._dyingSince[id]
                                 return true
                             }
                         return false
+                    }
+
+                    // When each tileId started fading out. Not a model role: the sweep
+                    // below is bookkeeping about rows, not state a delegate binds to.
+                    property var _dyingSince: ({})
+
+                    // Reap rows whose exit fade can never finish.
+                    //
+                    // A `dying` row is normally removed by _reapRow from the cell's
+                    // exitFade.onFinished. If the delegate is destroyed before that
+                    // callback runs — page teardown, a model reset, a sync racing the
+                    // fade — the row is STRANDED: it matches no placement, so the
+                    // removal loop skips it (already dying) and the survivor loop
+                    // `continue`s past it. Nothing else can reach it, so it stays in
+                    // placementModel for the process lifetime and the model grows
+                    // without bound on repeated add/remove. (manager/qml/EdgeClone.qml
+                    // avoids this by clearing the model on a page switch; the hub's
+                    // per-page models never get that reseed, so they need this instead.)
+                    //
+                    // The margin is deliberately wide — 4x the fade, floor 2s — so this
+                    // can never race a fade that is merely slow. It is a backstop for
+                    // fades that are GONE, not a second reaper.
+                    function _sweepStaleDying() {
+                        var now = Date.now()
+                        var grace = Math.max((theme.motionRemove || 0) * 4, 2000)
+                        for (var r = placementModel.count - 1; r >= 0; r--) {
+                            var row = placementModel.get(r)
+                            if (!row.dying) continue
+                            var since = pageItem._dyingSince[row.tileId]
+                            if (since === undefined) { pageItem._dyingSince[row.tileId] = now; continue }
+                            if (now - since > grace) {
+                                placementModel.remove(r)
+                                delete pageItem._dyingSince[row.tileId]
+                            }
+                        }
                     }
                     // Returns how many rows the model ended up with — one per placed
                     // tile, plus any still fading out. (Same shape as _loadUserWidgets
@@ -848,13 +884,21 @@ Item {
                         // statement of intent, and to skip marking, animating and reaping
                         // a row for a fade that cannot be seen — not as the mechanism.
                         // Smooth is not more motion.
+                        // Stranded rows from fades that never completed. Runs first so a
+                        // swept row cannot be counted as a survivor below.
+                        pageItem._sweepStaleDying()
+
                         for (var r = placementModel.count - 1; r >= 0; r--) {
-                            if (byId[placementModel.get(r).tileId] !== undefined) continue
+                            var goneId = placementModel.get(r).tileId
+                            if (byId[goneId] !== undefined) continue
                             if (theme.motionRemove > 0) {
-                                if (!placementModel.get(r).dying)
+                                if (!placementModel.get(r).dying) {
                                     placementModel.setProperty(r, "dying", true)
+                                    pageItem._dyingSince[goneId] = Date.now()
+                                }
                             } else {
                                 placementModel.remove(r)   // backwards: remove() shifts the tail
+                                delete pageItem._dyingSince[goneId]
                             }
                         }
 
@@ -875,7 +919,10 @@ Item {
                             // or a live push that re-adds it). Cancel the exit — the tile
                             // exists, so it must not vanish when a fade nobody is watching
                             // any more happens to finish.
-                            if (row.dying) placementModel.setProperty(r2, "dying", false)
+                            if (row.dying) {
+                                placementModel.setProperty(r2, "dying", false)
+                                delete pageItem._dyingSince[row.tileId]
+                            }
                             if (row.ps !== p.s || row.pl !== p.l || row.pes !== p.es
                                 || row.pel !== p.el || row.tileIdx !== p.idx
                                 || row.tileSize !== p.size || row.tileType !== p.type)

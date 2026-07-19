@@ -78,17 +78,28 @@ Item {
     property var win: null
 
     // ── tree helpers ─────────────────────────────────────────────────────────
-    function eachItem(node, fn) {
-        if (!node) return
-        fn(node)
+    // Walk every node under `node` exactly ONCE. The `seen` set is a correctness
+    // requirement, not an optimisation: a node is reachable through BOTH
+    // `children` and `data`, so without memoing every node's subtree is re-walked
+    // once per path — exponential in depth. Unmemoised, the six findPred() calls
+    // in initTestCase below drove this file from 7 MB to 20 GB in 25 seconds
+    // (2026-07-19), the same failure that caused a system-wide OOM. Keep the set.
+    function eachItem(node, fn) { _walkSeen(node, fn, new Set()) }
+    function _walkSeen(node, fn, seen) {
+        if (!node || seen.has(node)) return false
+        seen.add(node)
+        if (fn(node) === true) return true
         var kids = node.children
-        if (kids) for (var i = 0; i < kids.length; i++) eachItem(kids[i], fn)
+        if (kids) for (var i = 0; i < kids.length; i++)
+            if (_walkSeen(kids[i], fn, seen)) return true
         var res = node.data          // catch non-visual (Dialog/ListModel) children
-        if (res && res !== kids) for (var j = 0; j < res.length; j++) eachItem(res[j], fn)
+        if (res && res !== kids) for (var j = 0; j < res.length; j++)
+            if (_walkSeen(res[j], fn, seen)) return true
+        return false
     }
     function findPred(n, pred) {
         var f = null
-        eachItem(n, function (x) { if (!f && pred(x)) f = x })
+        eachItem(n, function (x) { if (pred(x)) { f = x; return true } })
         return f
     }
     function findAll(n, pred) {
