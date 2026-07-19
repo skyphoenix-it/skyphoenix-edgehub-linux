@@ -7,7 +7,14 @@
 # evidence into gui-evidence/. A per-run video is stitched from the frames.
 #
 # Usage:
-#   tests/gui/run_gui_tests.sh [--fast] [--record] [-jN] [pattern]
+#   tests/gui/run_gui_tests.sh [--visible] [--fast] [--record] [-jN] [pattern]
+#     --visible  : run the nested compositor in WINDOWED mode, so the whole suite
+#                  is VISIBLE on your desktop and you can watch every click.
+#                  Implies -j1 (one window to watch) and keeps the watchable
+#                  input speed. WITHOUT this flag the compositor uses
+#                  `--virtual`, which renders to an off-screen framebuffer — the
+#                  tests are just as real, but you cannot see them. That
+#                  distinction cost a review cycle; hence the flag.
 #     --fast     : mousedelay 0 (confirmation re-runs); default is visible speed
 #     --record   : also ffmpeg-record the nested XWayland display to a video
 #                  (implies -j1 — there is one display to capture)
@@ -51,7 +58,7 @@ if [ "${1:-}" = "__slot" ]; then
   # `slot` was a monotonic counter, so 20 files meant displays :71..:91.)
   sock="wayland-gui$$-$(( SLOT_N % SLOT_J ))"
   xdisp=":$(( 70 + SLOT_N % SLOT_J ))"
-  kwin_wayland --virtual --xwayland --xwayland-display "$xdisp" \
+  kwin_wayland ${SLOT_KWIN_MODE:---virtual} --xwayland --xwayland-display "$xdisp" \
     --width 2560 --height 720 --no-lockscreen --no-global-shortcuts \
     --socket "$sock" > "$SLOT_LOGDIR/kwin-$base.log" 2>&1 &
   kpid=$!
@@ -73,9 +80,10 @@ if [ "${1:-}" = "__slot" ]; then
   exit $qrc
 fi
 
-FAST=0; RECORD=0; PAT=""; J=1
+FAST=0; RECORD=0; PAT=""; J=1; VISIBLE=0
 for a in "$@"; do
   case "$a" in
+    --visible) VISIBLE=1 ;;
     --fast) FAST=1 ;;
     --record) RECORD=1 ;;
     -j*) J="${a#-j}" ;;
@@ -90,6 +98,18 @@ if [ "$RECORD" = 1 ] && [ "$J" -gt 1 ]; then
   echo "==> --record implies -j1 (one display to capture); ignoring -j$J"
   J=1
 fi
+
+if [ "$VISIBLE" = 1 ] && [ "$J" -gt 1 ]; then
+  echo "==> --visible implies -j1 (one window to watch); ignoring -j$J"
+  J=1
+fi
+
+# The compositor mode. `--virtual` renders to an OFF-SCREEN framebuffer: real
+# compositor, real input, real pixels — but invisible. Omitting it puts KWin in
+# windowed mode, nested on your desktop, where you can watch the suite drive the
+# real Manager and Hub.
+KWIN_MODE="--virtual"
+[ "$VISIBLE" = 1 ] && KWIN_MODE=""
 
 MOUSEDELAY=250; KEYDELAY=120
 [ "$FAST" = 1 ] && MOUSEDELAY=0 && KEYDELAY=0
@@ -129,7 +149,7 @@ trap cleanup EXIT INT TERM
 # start_kwin <socket> <xdisplay> <logfile> -> echoes pid, or empty on failure
 start_kwin() {
   local sock="$1" xdisp="$2" log="$3" pid i
-  kwin_wayland --virtual --xwayland --xwayland-display "$xdisp" \
+  kwin_wayland $KWIN_MODE --xwayland --xwayland-display "$xdisp" \
     --width 2560 --height 720 --no-lockscreen --no-global-shortcuts \
     --socket "$sock" > "$log" 2>&1 &
   pid=$!
@@ -160,7 +180,7 @@ run_one() {
     # script in __slot mode as the bounded child, so KWin is a descendant.
     run_bounded SLOT_F="$f" SLOT_N="$slot" SLOT_J="$J" SLOT_QT="$QT" \
       SLOT_IMPORTS="$IMPORTS" SLOT_MD="$MOUSEDELAY" SLOT_KD="$KEYDELAY" \
-      SLOT_LOGDIR="$LOGDIR" SLOT_XDG="$XDG_RUNTIME_DIR" \
+      SLOT_LOGDIR="$LOGDIR" SLOT_XDG="$XDG_RUNTIME_DIR" SLOT_KWIN_MODE="$KWIN_MODE" \
       bash "$SELF" __slot > "$LOGDIR/$base.log" 2>&1
     rc=$?
   else
