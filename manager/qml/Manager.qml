@@ -249,21 +249,54 @@ ApplicationWindow {
         radius: m.radius; color: Qt.rgba(0, 0, 0, 0.28)
         border.width: 1; border.color: m.border; clip: true
         WidgetPacker { id: miniPacker }
+        // A widget's category colour, so the preview reads like the real screen —
+        // System tiles blue, Focus purple, Media pink, etc. — instead of every
+        // tile being an identical accent block. Lets you tell "big focus timer +
+        // small clock" from "three system gauges" at a glance, before adding it.
+        function catColor(type) {
+            var d = catalog.def(type)
+            switch (d ? d.category : "") {
+            case "System":  return theme.catSystem
+            case "Focus":
+            case "focus":   return theme.catProductivity
+            case "Media":   return theme.catEntertainment
+            case "Info":    return theme.catInfo
+            case "Data":    return theme.catServices
+            case "Time":    return theme.catGaming
+            default:        return theme.accent
+            }
+        }
         Repeater {
             model: mini.placements
             delegate: Rectangle {
                 required property var modelData
                 readonly property var r: miniPacker.rect(modelData, true, mini.height / 2, mini.width / 6, 3)
+                readonly property color cc: mini.catColor(modelData.type)
                 x: r.x; y: r.y; width: r.width; height: r.height
                 radius: 3
-                color: Qt.rgba(m.accent.r, m.accent.g, m.accent.b, 0.16)
-                border.width: 1; border.color: Qt.rgba(m.accent.r, m.accent.g, m.accent.b, 0.40)
-                AppIcon {
+                color: Qt.rgba(cc.r, cc.g, cc.b, 0.18)
+                border.width: 1; border.color: Qt.rgba(cc.r, cc.g, cc.b, 0.45)
+                Column {
                     anchors.centerIn: parent
-                    readonly property var ic: catalog.iconFor(modelData.type)
-                    name: ic.name; iconSource: ic.source
-                    size: Math.max(10, Math.min(20, Math.min(parent.width, parent.height) * 0.6))
-                    color: m.accent
+                    spacing: 1
+                    AppIcon {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        readonly property var ic: catalog.iconFor(modelData.type)
+                        name: ic.name; iconSource: ic.source
+                        size: Math.max(9, Math.min(18, Math.min(parent.parent.width, parent.parent.height) * 0.42))
+                        color: cc
+                    }
+                    // The widget's name, shown when the cell is big enough to read
+                    // it — so the preview names what you get, not just its shape.
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        visible: parent.parent.width > 42 && parent.parent.height > 34
+                        text: catalog.title(modelData.type)
+                        color: cc; font.pixelSize: 8; font.bold: true
+                        elide: Text.ElideRight
+                        width: Math.min(implicitWidth, parent.parent.width - 6)
+                        horizontalAlignment: Text.AlignHCenter
+                    }
                 }
             }
         }
