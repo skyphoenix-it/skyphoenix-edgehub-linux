@@ -299,6 +299,27 @@ int main(int argc, char *argv[]) {
     const int     qaAddPages = 0;
 #endif
 
+    // --version must answer BEFORE the single-instance guard below. It used to
+    // sit after it, so asking a version while a hub was running printed
+    // "Another Xeneon Edge Hub is already running - exiting" and exited 0 — an
+    // identity question answered with an unrelated status. That breaks
+    // tests/hardware/e2e_harness.assert_binaries_current(), which refuses to
+    // test a binary it cannot identify, on the developer's own machine where a
+    // hub is normally up. Asking a binary what it is must never depend on
+    // whether another copy is running.
+    for (int vi = 1; vi < argc; ++vi) {
+        const QByteArray va(argv[vi]);
+        if (va == "--version" || va == "-v") {
+#ifdef XENEON_VERSION
+            std::printf("Xeneon Edge Linux Hub %s\n", XENEON_VERSION);
+#else
+            std::printf("Xeneon Edge Linux Hub 0.1.0\n");
+#endif
+            std::fflush(stdout);
+            return 0;
+        }
+    }
+
     // Single-instance guard — two hubs racing the shared config.toml corrupt it.
     // Skipped in grab mode so headless QA captures run alongside a real instance.
     auto instanceLock = xeneon::acquireSingleInstance(
