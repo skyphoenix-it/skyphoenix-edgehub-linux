@@ -765,20 +765,29 @@ ApplicationWindow {
                     // beside the clone: it is a per-page appearance choice, and in
                     // the audit it dominated the tab and buried the layout tool.
 
-                    // Tiles on the current page
-                    RowLayout {
-                        Layout.fillWidth: true; Layout.fillHeight: true; spacing: 16
+                    // Tiles on the current page. Orientation-adaptive (O2): a
+                    // PORTRAIT Edge preview is tall+narrow, so it sits BESIDE the
+                    // config helper (2 columns). A LANDSCAPE preview is wide+short —
+                    // beside the config it collapsed to a squeezed strip floating in
+                    // a tall empty pane — so it moves ABOVE the config, full width
+                    // (1 column), where it gets the whole content width and reads at
+                    // a correct aspect. The column count flips on the preview's
+                    // orientation, which the hub drives (backend.hubRotation).
+                    GridLayout {
+                        Layout.fillWidth: true; Layout.fillHeight: true
+                        columns: edgeClone.landscape ? 1 : 2
+                        columnSpacing: 16; rowSpacing: 16
 
                         // Live WYSIWYG clone of the Edge — drag tiles to reorder,
                         // drag the bottom handle to resize, ⚙ to configure, ✕ to remove.
                         EdgeClone {
                             id: edgeClone
-                            Layout.fillHeight: true
-                            // A landscape Edge is wide+short, so a 440px portrait pane
-                            // would scale it down to a tiny strip — give it more width
-                            // when the preview is landscape (the helper column keeps the
-                            // rest). Portrait stays 440.
-                            Layout.preferredWidth: edgeClone.landscape ? 780 : 440
+                            // Landscape: full content width, bounded height, ABOVE the
+                            // config. Portrait: a fixed 440 pane BESIDE it (tall).
+                            Layout.fillWidth: edgeClone.landscape
+                            Layout.fillHeight: !edgeClone.landscape
+                            Layout.preferredWidth: edgeClone.landscape ? -1 : 440
+                            Layout.preferredHeight: edgeClone.landscape ? 380 : -1
                             pageIndex: win.currentPageIndex
                             // Pause the live preview while the helper column scrolls, so an
                             // animated preview doesn't repaint every scroll frame.
