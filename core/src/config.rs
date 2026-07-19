@@ -124,8 +124,23 @@ pub struct WidgetInstance {
 
 // --- Defaults ---
 
+/// The shipped default theme.
+///
+/// `nord`, not `dark` (owner decision D1, 2026-07-19 — "Calm as the default").
+/// The Edge sits in peripheral vision beside a main monitor all day, which in
+/// Weiser & Brown's sense makes it a calm-technology surface: it must be
+/// attunable WITHOUT being attended to. The measurable lever for that is chroma,
+/// not hue or brightness — saturation dominates self-rated arousal (Wilms &
+/// Oberfeld 2018, partial eta-squared 0.69 vs 0.46 for brightness; Valdez &
+/// Mehrabian 1994 load saturation ~2x brightness with opposite sign).
+///
+/// Nord is picked rather than a new palette because it already satisfies the
+/// convergent rules of every shipping calm theme (bg L* 12-22, fg L* 80-86,
+/// contrast 7-9:1, accent chroma mean ~33): "dimmed pastel colors for an
+/// eye-comfortable, but yet colorful ambiance" -- nordtheme.com. Inventing a
+/// palette would have added an untested surface for no measured benefit.
 fn default_theme_mode() -> String {
-    "dark".to_string()
+    "nord".to_string()
 }
 
 fn default_accent_color() -> String {
@@ -445,7 +460,7 @@ mod tests {
         let config = AppConfig::default();
         assert_eq!(config.schema_version, 1);
         assert!(!config.first_run_complete);
-        assert_eq!(config.theme.mode, "dark");
+        assert_eq!(config.theme.mode, "nord", "shipped default is the calm palette (D1)");
     }
 
     #[test]

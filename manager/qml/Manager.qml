@@ -421,7 +421,7 @@ ApplicationWindow {
         var sig = JSON.stringify(a)
         if (sig === _appearanceSig) return
         _appearanceSig = sig
-        theme.applyTheme(a.themeMode || "dark")
+        theme.applyTheme(a.themeMode || theme.defaultThemeKey)
         if (a.accent) theme.applyAccent(a.accent)
         theme.glassOpacity = a.glass !== undefined ? a.glass : 0.55
         theme.showWidgetGlow = a.glow !== undefined ? a.glow : true
@@ -944,7 +944,7 @@ ApplicationWindow {
                         Layout.fillWidth: true; implicitHeight: 46; radius: m.radius
                         color: themeFieldMA.containsMouse ? m.panelAlt : m.panel
                         border.width: 1; border.color: themePopup.visible ? m.accent : m.border
-                        readonly property string curKey: (store.revision, store.appearance().themeMode || "dark")
+                        readonly property string curKey: (store.revision, store.appearance().themeMode || theme.defaultThemeKey)
                         readonly property var curDef: win._themeDef(themeField.curKey)
                         RowLayout {
                             anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 12; spacing: 10
@@ -1007,7 +1007,7 @@ ApplicationWindow {
                                 delegate: Rectangle {
                                     required property var modelData
                                     readonly property bool locked: (modelData.pro === true) && !win.isPro
-                                    readonly property bool sel: (store.revision, (store.appearance().themeMode || "dark") === modelData.k)
+                                    readonly property bool sel: (store.revision, (store.appearance().themeMode || theme.defaultThemeKey) === modelData.k)
                                     width: ListView.view ? ListView.view.width : 0
                                     height: 44; radius: 8
                                     color: rowMA.containsMouse ? m.panelAlt : "transparent"

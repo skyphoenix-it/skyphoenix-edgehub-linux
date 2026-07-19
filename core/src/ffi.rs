@@ -1813,7 +1813,8 @@ mod tests {
         assert_eq!(xeneon_config_is_first_run(p), 0);
 
         let mode = unsafe { take(xeneon_config_get_theme_mode(p)) };
-        assert_eq!(mode, "dark");
+        // Tracks default_theme_mode() in config.rs — the calm default (D1).
+        assert_eq!(mode, "nord");
 
         // config_dir does not require a handle and always returns a non-empty path.
         let dir = unsafe { take(xeneon_config_dir()) };

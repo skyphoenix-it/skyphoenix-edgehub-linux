@@ -300,6 +300,13 @@ QtObject {
         { k: "high_contrast", n: "Contrast",   c1: "#1A1A1A", c2: "#000000", group: "Accessibility" }
     ]
     // Group order for the pickers (only groups that exist are shown).
+    // The shipped default theme key. MUST track default_theme_mode() in
+    // core/src/config.rs — the Rust side is authoritative for a fresh config;
+    // this is the fallback for an appearance blob that predates the key or has
+    // it missing. Two hardcoded "dark" fallbacks in Manager.qml used to drift
+    // from it, which showed the Manager a different theme than the Hub.
+    readonly property string defaultThemeKey: "nord"
+
     readonly property var themeGroupOrder: ["Standard", "Premium", "Inspired", "Accessibility"]
     function themeDef(key) {
         for (var i = 0; i < themeCatalog.length; i++)

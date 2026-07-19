@@ -507,7 +507,7 @@ Item {
             screen ? (screen.name || "") : "",
             screen ? (screen.model || "") : "",
             layout,
-            root.themeMode || "dark",
+            root.themeMode || theme.defaultThemeKey,
             (theme.accentPresets[root.accentName] ? theme.accentPresets[root.accentName].a : "#58A6FF"),
             autostart,
             reconnectCheck.checked,
