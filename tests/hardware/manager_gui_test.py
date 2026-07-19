@@ -161,10 +161,18 @@ def main():
         # tabs whose clicks missed the sidebar entirely and produced byte-
         # identical frames. A GUI test that cannot tell "the UI changed" from
         # "I took a picture of the same UI" is worse than no test.
+        # Fractions MEASURED from a real 1440x1300 capture (not guessed): the
+        # five sidebar rows sit at y = 164/220/276/332/388 px, i.e. 0.126 with a
+        # 0.043 step, at x = 85 px (0.059). The first version used
+        # 0.18 + i*0.07, which put entries 2-4 BELOW the menu entirely — they
+        # clicked dead space, the screen never changed, and the frames came back
+        # byte-identical. Derive coordinates from a capture; do not estimate.
         tabs = ["Screens", "Look", "Images", "Device", "About"]
+        SIDEBAR_X = 0.059
+        SIDEBAR_Y0, SIDEBAR_DY = 0.126, 0.043
         sigs = {}
         for i, name in enumerate(tabs):
-            gui.click_rel(0.06, 0.18 + i * 0.07)
+            gui.click_rel(SIDEBAR_X, SIDEBAR_Y0 + i * SIDEBAR_DY)
             p = gui.shot("tab-%d-%s" % (i, name.lower()))
             if not p:
                 h.check("manager-tab-%s" % name.lower(), False, "no grab")
