@@ -148,10 +148,25 @@ fi
 #    rename that updated one and not the other would leave the hub polling a
 #    repo that no longer publishes the artifact it points users at.
 # ─────────────────────────────────────────────────────────────────────────────
-if grep -q "api.github.com/repos/$SLUG/releases/latest" "$CHECKER_QML"; then
+# The invariant is the REPO, not the exact endpoint: the checker moved from
+# /releases/latest to the LIST endpoint because GitHub's "latest" excludes
+# pre-releases and 404s when every release is one (the whole alpha/beta period).
+# Accept either, but keep pinning the slug — that is what must never drift.
+if grep -qE "api\.github\.com/repos/$SLUG/releases" "$CHECKER_QML"; then
     pass "UpdateChecker polls $SLUG"
 else
     fail "UpdateChecker.qml's releasesUrl does not match $SLUG — the check and the release flow disagree"
+fi
+
+# 5b. And it must NOT go back to /releases/latest: that endpoint excludes
+#     pre-releases, so during alpha/beta it 404s and the in-app check reports an
+#     error instead of a version. Regressing this is silent from the outside.
+# Match the URL STRING LITERAL, not prose: the file's own comment explains why
+# /releases/latest is avoided, and a naive grep matched that explanation.
+if grep -qE '"https://api\.github\.com/repos/[^"]*/releases/latest"' "$CHECKER_QML"; then
+    fail "UpdateChecker uses /releases/latest — it EXCLUDES pre-releases and 404s when every release is one (alpha/beta); use the list endpoint"
+else
+    pass "UpdateChecker avoids /releases/latest (works during alpha/beta)"
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────

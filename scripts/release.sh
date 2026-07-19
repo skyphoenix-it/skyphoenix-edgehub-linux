@@ -154,6 +154,33 @@ Install it (Arch/CachyOS: 'zsync' [AUR]; Debian/Ubuntu: 'zsync'; Fedora: 'zsync'
 or drop the AppImage from this release. Refusing to publish an AppImage without
 its .zsync — that breaks delta updates for existing users."
 fi
+
+# The other half of the same contract, and the one that actually bit: publishing
+# a release with NO AppImage at all. Every release so far shipped tarballs only,
+# because attaching the AppImage is a manual --extra and nobody remembered — so
+# `X-AppImage-UpdateInformation` points at "latest", finds no AppImage asset, and
+# every AppImage user silently never sees an update. That is indistinguishable
+# from "there are no updates", which is why it went unnoticed through two
+# releases. Make it an explicit DECISION rather than an omission.
+if [ "$HAVE_APPIMAGE" -eq 0 ] && [ "${ALLOW_NO_APPIMAGE:-0}" != "1" ]; then
+    die "no .AppImage passed via --extra.
+
+Publishing without one means AppImage users get NO update from this release —
+their embedded update-information resolves to a release with no AppImage asset,
+which looks exactly like 'you are up to date'. Two releases have already shipped
+this way.
+
+Either:
+  • build it and attach it:
+        packaging/appimage/build-appimage.sh
+        scripts/release.sh --version <tag> --extra <path>.AppImage …
+    (the AppImage build needs a CI-era toolchain — linuxdeploy's bundled strip
+     cannot read .relr.dyn on a modern host — so in practice take the artifact
+     from the distro.yml 'appimage' job)
+  • or acknowledge the gap deliberately:
+        ALLOW_NO_APPIMAGE=1 scripts/release.sh …
+    and say so in the release notes, so AppImage users are not left guessing."
+fi
 note "all present"
 
 # ─────────────────────────────────────────────────────────────────────────────
