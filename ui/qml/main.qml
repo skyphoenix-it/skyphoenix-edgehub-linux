@@ -46,6 +46,21 @@ ApplicationWindow {
         if (target) target.applyExternalState(externalUiState)
     }
 
+    // ── Manager screen mirroring (O1) ─────────────────────────────────────────
+    // The Manager tells the hub which screen the user has selected, so the panel
+    // shows the screen being edited instead of always snapping back to the first.
+    // Both are invoked from C++ (ControlServer): requestHubPage on setActivePage,
+    // hubCurrentPage from the getUiState provider. Routed through the stack so it
+    // works even when Diagnostics/the wizard is on top of the Dashboard.
+    function requestHubPage(idx) {
+        var t = stackView.find(function (item) { return item && item.goToPageExternal })
+        if (t) t.goToPageExternal(idx)
+    }
+    function hubCurrentPage() {
+        var t = stackView.find(function (item) { return item && item.currentPageIndex !== undefined })
+        return t ? t.currentPageIndex : -1
+    }
+
     // React to screen hotplug events
     onScreenAddedChanged: function(name) {
         if (name) console.log("Screen added:", name);

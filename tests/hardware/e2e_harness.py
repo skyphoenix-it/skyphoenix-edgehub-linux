@@ -285,6 +285,13 @@ class E2E:
     def get_state(self):
         return json.loads(self._ipc({"type": "getUiState"})["state"])
 
+    def hub_current_page(self):
+        """The 0-based screen the panel is currently SHOWING (or -1 if the hub
+        does not report it). A sibling field of the getUiState reply, like
+        `rotation` — NOT inside `state`. Used to verify the hub mirrors the
+        Manager's selected screen (O1)."""
+        return self._ipc({"type": "getUiState"}).get("currentPage", -1)
+
     def set_state(self, obj):
         self._ipc({"type": "setUiState", "state": json.dumps(obj)})
         time.sleep(0.5)   # let the hub apply + render

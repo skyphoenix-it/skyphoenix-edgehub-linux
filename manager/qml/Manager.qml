@@ -410,6 +410,13 @@ ApplicationWindow {
         commitRename()                       // save the previous page's edit first
         pageName.forIndex = currentPageIndex
         pageName.text = currentPageName()
+        // Mirror the selection onto the panel: show, on the Edge, the screen the
+        // user is editing (O1). No-op when the hub is offline. Guarded so a
+        // non-backend test harness (ManagerHarness stub without this method) does
+        // not throw.
+        if (typeof backend !== "undefined" && backend
+                && typeof backend.setHubActivePage === "function")
+            backend.setHubActivePage(currentPageIndex)
     }
 
     // Guard against re-applying the whole theme on every store bump: the store

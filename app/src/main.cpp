@@ -641,6 +641,25 @@ int main(int argc, char *argv[]) {
         return orientation->rotation();
     });
 
+    // O1 — Manager screen mirroring. The getUiState reply reports the page the
+    // panel is showing (hubCurrentPage), and setActivePage asks the panel to show
+    // the screen the Manager selected (requestHubPage). Both invoke QML functions
+    // on the root, on the GUI thread (ControlServer is engine-parented, never
+    // moved), so reading/driving the SwipeView here is safe.
+    controlServer->setPageProvider([&engine]() -> int {
+        for (auto* obj : engine.rootObjects()) {
+            QVariant ret;
+            if (QMetaObject::invokeMethod(obj, "hubCurrentPage",
+                                          Q_RETURN_ARG(QVariant, ret)))
+                return ret.toInt();
+        }
+        return -1;
+    });
+    controlServer->setActivePageHandler([&engine](int page) {
+        for (auto* obj : engine.rootObjects())
+            QMetaObject::invokeMethod(obj, "requestHubPage", Q_ARG(QVariant, page));
+    });
+
     // Metrics on a dedicated worker thread (every 2s), so the Rust FFI collection
     // + JSON serialization never janks the GUI event loop. Results arrive on the
     // GUI thread via a queued signal and are pushed onto the QML roots. `metricsThread`

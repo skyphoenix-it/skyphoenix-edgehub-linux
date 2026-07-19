@@ -118,7 +118,19 @@ void ControlServer::handleLine(QLocalSocket* sock, const QByteArray& line) {
         // the reply is byte-identical for callers that don't wire one.
         if (m_rotationProvider)
             reply["rotation"] = m_rotationProvider();
+        // The page the panel is currently showing, so the Manager can confirm the
+        // hub mirrored its selected screen (and a test can assert it).
+        if (m_pageProvider)
+            reply["currentPage"] = m_pageProvider();
         writeJson(sock, QJsonDocument(reply).toJson(QJsonDocument::Compact));
+    } else if (type == "setActivePage") {
+        // The Manager selected a screen; show it on the panel so the device
+        // mirrors what the user is editing. Fire-and-forget: acks ok even with no
+        // handler wired (a headless/mock hub), and clamps happen on the QML side.
+        const int p = obj.value("page").toInt(-1);
+        if (m_activePageHandler)
+            m_activePageHandler(p);
+        writeJson(sock, QJsonDocument(QJsonObject{{"type", "ok"}}).toJson(QJsonDocument::Compact));
     } else if (type == "setUiState") {
         const QString state = obj.value("state").toString();
         if (state.isEmpty()) {

@@ -489,6 +489,21 @@ Item {
 
     // Apply a UI-state document pushed live from the companion Manager app.
     // Called by main.qml when the C++ ControlServer receives a new layout.
+    // The screen the panel is currently showing (0-based). Read by main.qml so
+    // the hub can report it over the control socket (getUiState -> currentPage),
+    // letting the Manager confirm the panel mirrored its selected screen.
+    readonly property int currentPageIndex: swipeView.currentIndex
+
+    // Show a specific screen, on request from the Manager (setActivePage). Uses
+    // the same robust landing as preset/append (goToPage re-asserts once the
+    // SwipeView has grown to fit), so a page request that arrives right after a
+    // structure change — e.g. the Manager added a screen and selected it — still
+    // lands instead of being clobbered by the model reset to page 0.
+    function goToPageExternal(idx) {
+        if (idx >= 0)
+            swipeView.goToPage(idx)
+    }
+
     function applyExternalState(json) {
         if (store.applyExternal(json)) {
             applyAppearance()

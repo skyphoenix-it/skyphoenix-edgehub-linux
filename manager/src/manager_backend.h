@@ -183,6 +183,15 @@ public:
         // GCOVR_EXCL_STOP
     }
 
+    // O1 — tell the hub which screen the Manager has selected, so the panel
+    // mirrors what the user is editing instead of always showing the first page.
+    // Fire-and-forget over the live socket; a no-op when the hub is offline (the
+    // Manager still works standalone). The hub clamps out-of-range indices.
+    Q_INVOKABLE void setHubActivePage(int page) {
+        if (m_sock->state() != QLocalSocket::ConnectedState) return;
+        writeMsg(QJsonObject{{"type", "setActivePage"}, {"page", page}});
+    }
+
     // Ask a running hub to quit cleanly over the control socket. Returns false if
     // no hub is reachable to stop.
     Q_INVOKABLE bool stopHub() {

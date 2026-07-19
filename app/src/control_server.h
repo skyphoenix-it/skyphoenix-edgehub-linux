@@ -55,6 +55,14 @@ public:
     // orientation in its preview. Optional: with no provider the field is omitted
     // and the reply is unchanged (older/other clients ignore it).
     void setRotationProvider(const std::function<int()>& provider) { m_rotationProvider = provider; }
+    // The page the hub is currently DISPLAYING (0-based, or -1 unknown). Carried
+    // in the getUiState reply so the Manager — and a test — can confirm the hub
+    // is showing the screen the Manager selected. Optional; field omitted if unset.
+    void setPageProvider(const std::function<int()>& provider) { m_pageProvider = provider; }
+    // Called when a client sends setActivePage: the Manager telling the hub which
+    // screen it has selected, so the panel mirrors what the user is editing. main
+    // wires this to the Dashboard's page-landing. Optional; message acks ok/no-op.
+    void setActivePageHandler(const std::function<void(int)>& handler) { m_activePageHandler = handler; }
 
 signals:
     // A client pushed a new UI-state document; main persists + reloads it and
@@ -89,6 +97,8 @@ private:
     QHash<QLocalSocket*, QByteArray> m_buffers;   // per-connection read buffer
     std::function<QString()> m_provider;
     std::function<int()> m_rotationProvider;
+    std::function<int()> m_pageProvider;
+    std::function<void(int)> m_activePageHandler;
 };
 
 #endif // CONTROL_SERVER_H
