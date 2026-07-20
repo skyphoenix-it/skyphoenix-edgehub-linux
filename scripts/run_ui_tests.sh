@@ -53,7 +53,12 @@ for t in tests/ui/tst_*.qml; do
     base=$(basename "$t" .qml)
     # `set -e` must not skip the bookkeeping below, so capture rc explicitly.
     rc=0
-    run_bounded "$QMLTESTRUNNER" -input "$t" "${IMPORTS[@]}" \
+    # -maxwarnings 0 = unlimited. QtTest caps messages at 2000 and then prints
+    # "Maximum amount of warnings exceeded", DROPPING everything after it —
+    # including the QWARN lines check_qml_diagnostics.sh counts. A gate blinded
+    # by the noise it exists to measure will silently undercount, which is the
+    # exact failure family this suite keeps hitting.
+    run_bounded "$QMLTESTRUNNER" -input "$t" "${IMPORTS[@]}" -maxwarnings 0 \
         > >(tee "$QLOGDIR/$base.log") 2>&1 || rc=$?
     case "$rc" in
         0)  ;;

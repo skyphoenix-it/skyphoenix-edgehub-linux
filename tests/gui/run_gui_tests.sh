@@ -73,7 +73,7 @@ if [ "${1:-}" = "__slot" ]; then
   [ -S "$XDG_RUNTIME_DIR/$sock" ] || { echo "!! nested KWin never came up for $base"; exit 3; }
   sleep 1
   WAYLAND_DISPLAY="$sock" QT_QPA_PLATFORM=wayland QT_LOGGING_RULES="qt.qpa.*=false" \
-    "$SLOT_QT" -input "$SLOT_F" $SLOT_IMPORTS \
+    "$SLOT_QT" -input "$SLOT_F" $SLOT_IMPORTS -maxwarnings 0 \
     -mousedelay "$SLOT_MD" -keydelay "$SLOT_KD"
   qrc=$?
   kill -9 "$kpid" 2>/dev/null
@@ -185,7 +185,7 @@ run_one() {
     rc=$?
   else
     run_bounded WAYLAND_DISPLAY="$SOCK" QT_QPA_PLATFORM=wayland QT_LOGGING_RULES="qt.qpa.*=false" \
-      "$QT" -input "$f" $IMPORTS -mousedelay "$MOUSEDELAY" -keydelay "$KEYDELAY" \
+      "$QT" -input "$f" $IMPORTS -maxwarnings 0 -mousedelay "$MOUSEDELAY" -keydelay "$KEYDELAY" \
       > "$LOGDIR/$base.log" 2>&1
     rc=$?
   fi

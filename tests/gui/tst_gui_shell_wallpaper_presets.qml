@@ -90,11 +90,28 @@ Item {
         return G.findPred(win.contentItem, function (n) {
             return n && n.pendingId !== undefined && n.shown !== undefined && n.locked !== undefined })
     }
+    // The PAGE backdrop, not a widget's card backdrop.
+    //
+    // The old predicate (style + running + sourceComponent) matches EIGHT objects
+    // in a populated dashboard: the page's BackdropLayer and one per widget tile
+    // (measured 2026-07-20: FocusWidget, TasksWidget, CpuWidget, GpuWidget,
+    // RamWidget, ClockWidget, WeatherWidget). It returned whichever the tree walk
+    // reached first, so which object the whole TestCase asserted on depended on
+    // walk order — i.e. on how many tiles the page happened to have.
+    //
+    // The page backdrop is the one parented directly into the Dashboard rather
+    // than inside a widget: the card backdrops sit under a Loader inside their
+    // widget, so requiring a Dashboard-ish ancestor within one hop separates them.
     function findBackdrop(dash) {
-        return G.findPred(dash, function (n) {
+        var cands = G.collectPred(dash, function (n) {
             try { return n && typeof n.style === "string" && n.running !== undefined
                          && n.sourceComponent !== undefined } catch (e) { return false }
         })
+        for (var i = 0; i < cands.length; i++) {
+            var p = cands[i].parent
+            if (p && ("" + p).indexOf("Dashboard") === 0) return cands[i]
+        }
+        return cands.length ? cands[0] : null
     }
     function findBarButton(win, icon) {
         return G.findPred(win.contentItem, function (n) {
@@ -142,6 +159,7 @@ Item {
         property var dash: null
         property var store: null
         property var bd: null
+        property var shellTheme: null
 
         function snap(item, n) { var i = G.grabItem(this, item, win.contentItem); i.save("gui-evidence/shellbg_" + n + ".png"); return i }
 
@@ -151,6 +169,22 @@ Item {
             compare(c.status, Component.Ready, "main.qml compiles: " + c.errorString())
             win = c.createObject(root)
             verify(win !== null, "shell instantiated")
+            // Use `visibility`, NOT `visible`. ui/qml/main.qml:11 declares
+            // `visibility: Window.Hidden` (C++ positions the window before showing
+            // it). Setting `visible` alongside it yields QQC2 "Conflicting properties
+            // 'visible' and 'visibility'" and the window is NEVER exposed: measured
+            // 2026-07-20 this file ran with win=0x0 visibility=0, so the Dashboard,
+            // its BackdropLayer and every tile were zero-sized and nothing rendered.
+            // Every pixel assertion here was therefore comparing blank to blank.
+            // tst_gui_shell_nav_edit and _orient_settings got this fix on 2026-07-19;
+            // this file was missed.
+            // The Edge is 2560x720. Without an explicit size the windowed shell
+            // came up 500x500, so every tile, the BackdropLayer and the page
+            // gradient rendered at a shape the product never has — and the orb
+            // tint became subtle enough to fall under pxDiff's threshold, which
+            // is why the wallpaper rows failed their pixel proof with diff=0.
+            win.width = 2560; win.height = 720
+            win.visibility = Window.Windowed
             win.orientationMode = "landscape"
             win.reduceMotion = true            // static backdrop → deterministic grabs
             win.animatedBackground = true      // so the backdrop can render at all
@@ -177,9 +211,66 @@ Item {
             // updated then; this runtime assignment was missed, so every test in
             // this TestCase died in initTestCase on "Cannot assign to non-existent
             // property". tests/ui was fixed in a3f94ca; tests/gui was not.
+            shellTheme = G.findPred(win.contentItem, function (n) {
+                try { return n && n.themeCatalog !== undefined
+                             && typeof n.applyTheme === "function" } catch (e) { return false } })
+            verify(shellTheme !== null, "found the SHELL's Theme (not this file's)")
             bpick.st = store                   // wire the picker to the shell store
         }
         function cleanupTestCase() { if (win) win.destroy() }
+
+        // Reset the SHARED picker before every test. This TestCase had no init()
+        // and paid for it: several tests set `bpick.pageIndex = 1` and restore it
+        // to -1 on their LAST line, so a test that fails part-way never restores
+        // it. `BackgroundPicker.pickStyle()` branches on exactly that property —
+        // pageIndex < 0 writes the GLOBAL appearance, >= 0 writes a per-page
+        // override — so one failure silently redirected every later write to
+        // page 1's background.
+        //
+        // Measured 2026-07-20: test_perpage_style_overrides_global fails and
+        // leaks pageIndex=1; QtTest runs alphabetically, so the 6 rows of
+        // test_style_changes_backdrop and the 18 of
+        // test_wallpaper_changes_background all then asserted a global key that
+        // nothing was writing. 24 of this file's 39 failures were that cascade,
+        // not 24 defects. Per-test isolation is not tidiness here; without it the
+        // failure count is meaningless.
+        // A PER-PAGE background override also leaks, and it OUTRANKS the global
+        // style — EdgeClone/Dashboard read `page.bg` first and only fall back to
+        // appearance.bgStyle. So after test_perpage_style_overrides_global left
+        // page 0 pinned to "waves", every later test could set the global style
+        // successfully and still render "waves": the store assertion passed and
+        // the BackdropLayer assertion failed, which reads exactly like a product
+        // bug in the style→backdrop binding. It is not; it is stale test state.
+        // THE THEME LEAK — this is what made Group B unsolvable for three rounds.
+        //
+        // `BackdropLayer.visible` (Dashboard.qml:165) requires theme.decorative,
+        // and `high_contrast` is deliberately NOT decorative. test_highcontrast_*
+        // sets it and never restores it; QtTest runs alphabetically, so
+        // "highcontrast" lands before "wallpaper" and all 18 rows of
+        // test_wallpaper_changes_background then failed their
+        // `verify(bd.visible)` precondition with the backdrop correctly hidden.
+        //
+        // Every earlier hypothesis (animatedBg not applied, the store→root sync,
+        // findBackdrop returning the wrong object) was chasing the two terms that
+        // were already true. The reason nobody caught the third: this file has a
+        // Theme of its own for the wizard, so instrumenting `_theme.decorative`
+        // reads the TEST's theme and reports true, while the binding reads the
+        // SHELL's theme. Assert against the object the product actually binds to.
+        function init() {
+            bpick.pageIndex = -1
+            // Drive the SHELL's Theme directly. Setting win.themeMode does NOT
+            // reach it: the store->root->theme sync only runs inside
+            // applyAppearance() at load (see baselineBackdrop below), so the
+            // window property changed while theme.decorative stayed false and
+            // the backdrop stayed correctly hidden.
+            win.themeMode = "midnight"
+            store.setAppearance("themeMode", "midnight")
+            if (shellTheme) shellTheme.applyTheme("midnight")
+            for (var i = 0; i < store.pageCount(); i++) {
+                store.setPageBackground(i, "style", "")
+                store.setPageBackground(i, "wallpaper", "")
+            }
+        }
 
         // Return the page to a KNOWN animated-backdrop baseline (orbs, no wallpaper).
         function baselineBackdrop() {
@@ -399,6 +490,22 @@ Item {
             compare(c.status, Component.Ready, "main.qml compiles: " + c.errorString())
             win = c.createObject(root)
             verify(win !== null, "shell instantiated")
+            // Use `visibility`, NOT `visible`. ui/qml/main.qml:11 declares
+            // `visibility: Window.Hidden` (C++ positions the window before showing
+            // it). Setting `visible` alongside it yields QQC2 "Conflicting properties
+            // 'visible' and 'visibility'" and the window is NEVER exposed: measured
+            // 2026-07-20 this file ran with win=0x0 visibility=0, so the Dashboard,
+            // its BackdropLayer and every tile were zero-sized and nothing rendered.
+            // Every pixel assertion here was therefore comparing blank to blank.
+            // tst_gui_shell_nav_edit and _orient_settings got this fix on 2026-07-19;
+            // this file was missed.
+            // The Edge is 2560x720. Without an explicit size the windowed shell
+            // came up 500x500, so every tile, the BackdropLayer and the page
+            // gradient rendered at a shape the product never has — and the orb
+            // tint became subtle enough to fall under pxDiff's threshold, which
+            // is why the wallpaper rows failed their pixel proof with diff=0.
+            win.width = 2560; win.height = 720
+            win.visibility = Window.Windowed
             win.orientationMode = "portrait"
             var sv = G.findPred(win.contentItem, function (n) {
                 return n && typeof n.push === "function" && n.currentItem !== undefined })
@@ -814,6 +921,15 @@ Item {
             tryVerify(function () { return c.status !== Component.Loading }, 6000)
             compare(c.status, Component.Ready, "main.qml compiles: " + c.errorString())
             win = c.createObject(root)
+            // See the note in tcWall.initTestCase: `visibility`, not `visible`,
+            // or the window is never exposed and everything inside is 0x0.
+            // The Edge is 2560x720. Without an explicit size the windowed shell
+            // came up 500x500, so every tile, the BackdropLayer and the page
+            // gradient rendered at a shape the product never has — and the orb
+            // tint became subtle enough to fall under pxDiff's threshold, which
+            // is why the wallpaper rows failed their pixel proof with diff=0.
+            win.width = 2560; win.height = 720
+            win.visibility = Window.Windowed
             win.orientationMode = "portrait"
             var sv = G.findPred(win.contentItem, function (n) {
                 return n && typeof n.push === "function" && n.currentItem !== undefined })
