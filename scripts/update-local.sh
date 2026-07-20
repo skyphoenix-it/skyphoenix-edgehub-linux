@@ -37,6 +37,22 @@ if ! git -C "$REPO" diff --quiet || ! git -C "$REPO" diff --cached --quiet; then
     echo "    (the UI version will carry a -dirty suffix so this is visible later)."
 fi
 
+# Pre-flight the sudo credential BEFORE the multi-minute build. Under
+# `set -euo pipefail` a password prompt that goes unanswered makes `sudo
+# pacman -U` exit non-zero and kills the script instantly — after the package is
+# built, before it is installed. That failure mode is near-silent: you are left
+# with a fresh .pkg.tar.zst, an untouched system, and no obvious reason why.
+# It has now happened for real (r234 built 02:51, last install r229 at 01:57).
+if [ "$DO_INSTALL" -eq 1 ] && ! sudo -n true 2>/dev/null; then
+    echo "==> pacman needs your password to install. Priming sudo first so the"
+    echo "    build is not thrown away by an unanswered prompt at the end."
+    if ! sudo -v; then
+        echo "!! Could not obtain sudo credentials — aborting BEFORE the build." >&2
+        echo "   Run this from an interactive terminal, or pass --no-install." >&2
+        exit 2
+    fi
+fi
+
 cd "$PKGDIR"
 makepkg -f
 
@@ -128,5 +144,17 @@ if [ "$MGR_WAS_OPEN" -eq 1 ]; then
     else
         echo "    Manager did not come back up — launch xeneon-edge-manager yourself." >&2
     fi
+fi
+# Anti-vacuity: assert the DB actually moved to what we just built. Without
+# this the script's final line reports whatever is installed, which reads as
+# success even when the install never happened.
+BUILT_VER="$(basename "$PKG" | sed -E 's/^xeneon-edge-hub-(.*)-x86_64\.pkg\.tar\.zst$/\1/')"
+INSTALLED_VER="$(pacman -Q xeneon-edge-hub 2>/dev/null | awk '{print $2}')"
+if [ "$BUILT_VER" != "$INSTALLED_VER" ]; then
+    echo "!! INSTALL DID NOT LAND." >&2
+    echo "   built:     $BUILT_VER" >&2
+    echo "   installed: ${INSTALLED_VER:-<not installed>}" >&2
+    echo "   The package was produced but pacman is still on the old version." >&2
+    exit 1
 fi
 echo "==> Done: $(pacman -Q xeneon-edge-hub) — hub and (if it was open) Manager both on the new build"
