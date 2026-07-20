@@ -71,13 +71,42 @@ class ManagerGui:
         self.p = u.VPointer(cw, ch, (self.x, self.y, self.w, self.hgt),
                             guard=self.guard)
 
-    def click_rel(self, fx, fy, settle=0.8):
+    def in_front(self):
+        """Cheap pre-click check: is the Manager still the window in its rect?
+
+        The Manager always has exactly one sidebar row filled with the accent,
+        so "no accent row anywhere" means we are looking at something else.
+        Checked immediately BEFORE each click, not only after: the post-click
+        check catches an occlusion one click too late, and that one click lands
+        in whatever raised itself. Costs one grab per click; a stray click into
+        the owner's browser costs more.
+        """
+        p = self.shot("frontcheck")
+        if not p:
+            return False
+        ok = self.active_row(p) is not None
+        try:
+            os.unlink(p)          # a check, not evidence — do not litter
+        except OSError:
+            pass
+        return ok
+
+    def click_rel(self, fx, fy, settle=0.8, require_front=True):
         """Click at a FRACTION of the Manager window (0..1), so the test does
-        not hardcode pixel positions that drift with window size."""
+        not hardcode pixel positions that drift with window size.
+
+        Refuses to emit if the Manager is not the window in its own rect.
+        Returns True if the click was emitted.
+        """
+        if require_front and not self.in_front():
+            print("  REFUSED click at (%.3f, %.3f): the Manager is not in front"
+                  % (fx, fy), flush=True)
+            return False
         cx = self.x + int(self.w * fx)
         cy = self.y + int(self.hgt * fy)
         self.p.tap(cx, cy)
         time.sleep(settle)
+        return True
 
     # Sidebar row centres, measured on a real 1440x1300 capture.
     ROW_Y = {"Screens": 164, "Look": 220, "Images": 276, "Device": 332, "About": 388}
@@ -107,6 +136,74 @@ class ManagerGui:
         from PIL import Image
         import hashlib
         return hashlib.md5(Image.open(path).convert("RGB").tobytes()).hexdigest()
+
+    def verify_owns_its_rect(self, settle=1.2):
+        """Prove the MANAGER is the window actually showing in its own rect,
+        before a single event is emitted. Returns True/False.
+
+        WHY THIS EXISTS (2026-07-20). The clamp confines every event to the
+        Manager's window RECT. It does NOT establish that the Manager is the
+        window RECEIVING events there. On this box the owner's browser was
+        stacked above the Manager on DP-2, so all five sidebar clicks went into
+        a documentation page: four checks failed as "the click did not change
+        tabs", the frames were byte-identical because the browser never moved,
+        and the run reported Manager bugs that did not exist. Worse than the
+        false result, we injected six clicks into an unrelated application.
+
+        `manager-rect-verified` could not catch this — it only asserts the rect
+        lies on a real non-Edge screen. A stale-but-plausible rect, an occluded
+        window and a correct one all look identical to it.
+
+        The technique is the one e2e_harness already uses for the Edge: change
+        the app's state from OUTSIDE and require the pixels to move. The Manager
+        is live-connected to the hub, so pushing an appearance change through
+        the hub repaints its Edge preview. If those pixels do not move, either
+        the Manager is occluded, or it is not connected, or it is not rendering
+        — and in all three cases injecting would be firing blind. Refuse.
+        """
+        from PIL import Image
+        before = self.shot("verify-a")
+        if not before:
+            return False
+        st = self.h.get_state() or {}
+        ap = dict(st.get("appearance") or {})
+        was = ap.get("themeMode", "dark")
+        flipped = "light" if was != "light" else "dark"
+        try:
+            ap["themeMode"] = flipped
+            st["appearance"] = ap
+            self.h.set_state(st)
+            time.sleep(settle)
+            after = self.shot("verify-b")
+            if not after:
+                return False
+            a = Image.open(before).convert("RGB").resize((32, 32))
+            b = Image.open(after).convert("RGB").resize((32, 32))
+            pa, pb = list(a.getdata()), list(b.getdata())
+            worst = max(sum((x - y) ** 2 for x, y in zip(p, q)) ** 0.5
+                        for p, q in zip(pa, pb))
+            ok = worst > 25
+            print("  VERIFY-MANAGER %s: themeMode %s->%s moved its pixels by %.0f "
+                  "(need >25) at %s %dx%d+%d+%d"
+                  % ("OK" if ok else "FAILED", was, flipped, worst,
+                     self.name, self.w, self.hgt, self.x, self.y), flush=True)
+            if not ok:
+                print("     The Manager is not the window rendering in that rect "
+                      "(occluded by another window?), or it is not connected to "
+                      "the hub. Refusing to inject — see verify_owns_its_rect().",
+                      flush=True)
+            return ok
+        finally:
+            # Always put the theme back, whatever happened above.
+            try:
+                st2 = self.h.get_state() or {}
+                ap2 = dict(st2.get("appearance") or {})
+                ap2["themeMode"] = was
+                st2["appearance"] = ap2
+                self.h.set_state(st2)
+                time.sleep(0.4)
+            except Exception:
+                pass
 
     def shot(self, tag):
         self.n += 1
@@ -176,6 +273,19 @@ def main():
         gui = ManagerGui(h, rect, work)
         gui.shot("00-manager-open")
 
+        # NOTHING may be clicked until the Manager is proven to be the window
+        # rendering in its own rect. Without this the clamp happily fires into
+        # whatever is stacked on top of it — it did, into the owner's browser.
+        if not gui.verify_owns_its_rect():
+            h.check("manager-window-owns-its-rect", False,
+                    "occluded or not repainting — refused to inject")
+            print("\n!! Bring the Manager to the front (or close windows covering "
+                  "it on that screen) and re-run. No events were emitted.",
+                  flush=True)
+            return 1
+        h.check("manager-window-owns-its-rect", True,
+                "the Manager repaints in its own rect")
+
         # ── drive the five tabs, screenshotting each ─────────────────────────
         # The sidebar is the left ~12% of the window; the five entries are
         # evenly spaced down its upper half.
@@ -195,7 +305,10 @@ def main():
         SIDEBAR_Y0, SIDEBAR_DY = 0.126, 0.043
         sigs = {}
         for i, name in enumerate(tabs):
-            gui.click_rel(SIDEBAR_X, SIDEBAR_Y0 + i * SIDEBAR_DY)
+            if not gui.click_rel(SIDEBAR_X, SIDEBAR_Y0 + i * SIDEBAR_DY):
+                h.check("manager-window-stayed-in-front", False,
+                        "lost the window before clicking '%s' — no event emitted" % name)
+                break
             p = gui.shot("tab-%d-%s" % (i, name.lower()))
             if not p:
                 h.check("manager-tab-%s" % name.lower(), False, "no grab")
@@ -203,6 +316,29 @@ def main():
             sig = gui._sig(p)
             dup = sigs.get(sig)
             active = gui.active_row(p)
+
+            # OCCLUSION IS NOT A PRODUCT FAILURE. `active_row` returning None
+            # means NO row carries the accent fill — the Manager always has
+            # exactly one selected, so None means we are not looking at the
+            # Manager at all. On 2026-07-20 the owner's browser raised itself
+            # over the Manager MID-RUN: rows 2-5 reported "the click did not
+            # change tabs" and "SELECTED row is None", which reads as four
+            # product bugs and was really four clicks into a documentation
+            # page. Distinguish "wrong row highlighted" (a real failure) from
+            # "no row highlighted" (we lost the window) and stop, because every
+            # further click would land in someone else's application.
+            if active is None:
+                print("\n!! OCCLUDED: no sidebar row carries the accent in %s —"
+                      " the Manager is no longer the window in its own rect."
+                      % os.path.basename(p), flush=True)
+                print("!! Aborting before the next click. This is an environment"
+                      " problem (another window raised itself over the Manager),"
+                      " NOT a Manager defect. Re-run with that screen clear.",
+                      flush=True)
+                h.check("manager-window-stayed-in-front", False,
+                        "lost the window at tab '%s' — remaining clicks skipped" % name)
+                break
+
             ok = (dup is None) and (active == name)
             if dup is not None:
                 why = "IDENTICAL to '%s' — the click did not change tabs" % dup
@@ -212,6 +348,9 @@ def main():
                 why = "selected row is '%s'" % name
             h.check("manager-tab-%s" % name.lower(), ok, why)
             sigs.setdefault(sig, name)
+        else:
+            h.check("manager-window-stayed-in-front", True,
+                    "the Manager stayed in front for every tab")
 
         # ── the integration assertion: Manager click -> hub state ────────────
         # This is the leg nothing else covers. We do NOT assert a specific
