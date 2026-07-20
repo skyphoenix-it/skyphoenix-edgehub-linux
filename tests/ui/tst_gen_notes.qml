@@ -31,11 +31,30 @@ Item {
     // widget item exactly the way Dashboard.closeExpanded() destroys the shared
     // overlay Loader item (active → false). The store lives OUTSIDE the Loader,
     // so it survives the destruction and can be inspected afterwards.
+    // `theme` lives on the FILE ROOT, not on destroyHost.
+    //
+    // The two deliberate-destroy tests below deactivate a Loader, and every
+    // binding in the dying NotesWidget/WidgetChrome subtree re-evaluates once
+    // during teardown. When `theme` was resolved through destroyHost's scope,
+    // those late re-evaluations hit an invalidated context and produced 52
+    // "TypeError: Cannot read property 'X' of undefined" diagnostics per run —
+    // enough to fail the whole offscreen tier on a gate that exists to catch
+    // real product errors.
+    //
+    // It is a harness artifact, not a product defect, and the discriminator is
+    // measurable: tst_dashboard exercises the PRODUCT's real destroy path
+    // (Dashboard.closeExpanded -> overlay Loader inactive) and reports fatal=0.
+    // The product resolves `theme` from the window-level scope in main.qml,
+    // which outlives the Loader's context. Matching that here removes the noise
+    // WITHOUT masking anything: no allowlist, no filter, and no defensive
+    // guards sprayed across WidgetChrome's bindings for a case the shipped app
+    // never hits.
+    property alias theme: rootTheme
+    App.Theme { id: rootTheme }
+
     Item {
         id: destroyHost
         anchors.fill: parent
-        property alias theme: dTheme
-        App.Theme { id: dTheme }
         App.DashboardStore { id: dStore }
         property bool hostActive: true
         Component.onCompleted: dStore.load("blank")
