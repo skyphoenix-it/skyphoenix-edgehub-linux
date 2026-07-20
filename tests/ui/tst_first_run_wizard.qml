@@ -32,7 +32,11 @@ Item {
         }
     }
 
-    App.FirstRunWizard { id: wiz }
+    // Anchored HERE, at the use site: the component no longer anchors itself
+    // (it is a StackView page in the product, and self-anchoring conflicted
+    // with StackView's own sizing). This root is a plain Item, so it must
+    // give the item a size or every click lands on a 0x0 target.
+    App.FirstRunWizard { id: wiz; anchors.fill: parent }
 
     // ── tree helpers ─────────────────────────────────────────────────────────
     function eachItem(node, fn) {

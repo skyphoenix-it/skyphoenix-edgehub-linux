@@ -733,6 +733,11 @@ Item {
             compare(c.status, Component.Ready, "FirstRunWizard compiles: " + c.errorString())
             wiz = c.createObject(root)
             verify(wiz !== null, "wizard instantiated")
+            // FirstRunWizard is a StackView PAGE in the product, so it no longer
+            // anchors itself (that conflicted with StackView's own sizing). This
+            // is the one host that neither anchors nor is a Loader, so it must
+            // give the wizard a size or it renders 0x0.
+            wiz.width = 2560; wiz.height = 720
         }
         function cleanupTestCase() { if (wiz) wiz.destroy() }
 

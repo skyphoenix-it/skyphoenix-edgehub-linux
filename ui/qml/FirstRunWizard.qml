@@ -4,7 +4,15 @@ import QtQuick.Layouts
 
 Item {
     id: wizard
-    anchors.fill: parent
+    // NO `anchors.fill: parent` here. This item is a StackView PAGE (main.qml
+    // pushes it), and StackView sets its pages' x/y/width/height itself. Anchoring
+    // as well produced, on every launch:
+    //     QML StackView: StackView has detected conflicting anchors.
+    //     Transitions may not execute properly.
+    // i.e. Qt telling us the push/pop transitions may not run. Every other host
+    // sizes this item too: the tests' Loaders are `anchors.fill: parent`, and a
+    // Loader resizes its loaded item to itself. A host that does NEITHER must set
+    // width/height explicitly.
 
     property int currentStep: 0
     property var selectedScreen: null
