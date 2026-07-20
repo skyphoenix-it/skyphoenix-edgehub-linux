@@ -43,6 +43,7 @@ jobs:
   rust:
     name: Rust (fmt + clippy + test)
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -70,6 +71,7 @@ jobs:
   build:
     name: Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
     strategy:
       matrix:
         os: [ubuntu-24.04]
@@ -102,6 +104,7 @@ jobs:
   qml-test:
     name: QML Tests + Behavior Matrix
     runs-on: ubuntu-24.04
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       # Full Qt >= 6.5: the apt qt6-declarative is 6.4.2 and lacks bundled QML
@@ -138,6 +141,15 @@ jobs:
         run: bash scripts/check_ui_links.sh
       - name: Icon lint (every widget type has a bundled, registered icon)
         run: bash scripts/check_widget_icons.sh
+      # Guards the scene-graph walk bug that OOMed the developer's machine
+      # (18.8 GB / 20 GB RSS, three independent copies). It lived only in
+      # run_all_tests.sh — i.e. it gated nothing anyone was forced to run.
+      - name: Tree-walk memory guard (the 18.8 GB OOM class)
+        run: python3 scripts/check_tree_walks.py
+      # Cross-file zsync delta-update invariants. Every one of the four files it
+      # spans was independently broken while the rest of the suite stayed green.
+      - name: AppImage update contract
+        run: bash scripts/check_appimage_update_contract.sh
       - name: Upload uncovered-behavior list
         if: always()
         uses: actions/upload-artifact@v4
@@ -149,6 +161,7 @@ jobs:
   cpp-test:
     name: C++ Tests + Coverage
     runs-on: ubuntu-24.04
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -182,6 +195,19 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: ctest --test-dir build --output-on-failure
+      # Nine scenarios driving the REAL hub binary and asserting the persisted
+      # config.toml. This tier existed only in run_all_tests.sh and ran in no
+      # workflow. Exit 77 = SKIP (no binary), which the script reports honestly.
+      - name: Runtime E2E battery (real hub binary)
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          rc=0
+          for f in tests/runtime/run_*.sh; do
+            echo "==> $f"
+            bash "$f" || { c=$?; [ "$c" = 77 ] && echo "   SKIP (no binary)" || { echo "   FAIL ($c)"; rc=1; }; }
+          done
+          exit $rc
       - name: Capture C++ coverage (lcov)
         run: |
           mkdir -p coverage
@@ -200,6 +226,7 @@ jobs:
   coverage:
     name: Coverage Gate (Rust + C++ >= 95%)
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     needs: [rust, cpp-test]
     defaults:
       run:
@@ -257,3 +284,49 @@ jobs:
         with:
           name: coverage
           path: coverage/
+
+  # --- QML compositor suite (tests/gui) — NON-BLOCKING ---
+  # 20 files, 739 test functions, 2137 assertions under a real kwin_wayland at
+  # 2560x720 with real input and real pixels. It holds the ONLY aspect-ratio
+  # assertions in the repo, and until 2026-07-20 it was orphaned (referenced by
+  # no script or workflow) AND structurally unable to fail (it ended in an
+  # `echo`, so it printed RESULT: FAILURE and exited 0).
+  #
+  # continue-on-error is DELIBERATE and TEMPORARY: the suite carries ~210 known
+  # failures, and a permanently-red required gate is exactly how a suite gets
+  # ignored — the disease this whole effort is treating. Phase 1 of
+  # docs/agent-memory/TEST-STRATEGY-v2.md drives it green.
+  #
+  # >>> REMOVE continue-on-error AT THE END OF PHASE 1. <<<
+  #
+  # Viability on a hosted runner is UNPROVEN — the suite was written for a real
+  # desktop session. If nested KWin does not come up here, the honest outcome is
+  # to keep this tier on the local/hardware runs rather than fake it in CI.
+  gui-test:
+    name: QML Compositor Suite (non-blocking, known-red)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Qt 6.7 (+ qmltestrunner)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.7.3'
+          modules: 'qtvirtualkeyboard'
+          cache: true
+      - name: Install compositor + runtime libs
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y kwin-wayland xwayland libxkbcommon0 libgl1 \
+            fonts-dejavu-core fontconfig ffmpeg
+          sudo fc-cache -f
+      - name: Run compositor suite
+        run: bash tests/gui/run_gui_tests.sh
+      - name: Upload GUI evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gui-evidence
+          path: gui-evidence/
+          if-no-files-found: ignore

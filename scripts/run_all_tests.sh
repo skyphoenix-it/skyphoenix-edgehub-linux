@@ -49,6 +49,27 @@ run_suite "QML GUI (run_ui_tests.sh)" bash "$PROJECT_DIR/scripts/run_ui_tests.sh
 
 # 3. C++ ctest — only when a build tree with tests exists.
 if [ -d "$PROJECT_DIR/build" ] && [ -f "$PROJECT_DIR/build/CTestTestfile.cmake" ]; then
+    # The two smoke tests QSKIP unless the tree was configured with
+    # -DXENEON_QA_HOOKS=ON, because XENEON_GRAB is compiled out otherwise. A
+    # default build therefore reports 21/21 green having launched NEITHER real
+    # binary. Silent skips are how a suite rots, so say it out loud.
+    if ! grep -q '^XENEON_QA_HOOKS:BOOL=ON' "$PROJECT_DIR/build/CMakeCache.txt" 2>/dev/null; then
+        echo ""
+        echo "!! WARNING: build/ configured WITHOUT -DXENEON_QA_HOOKS=ON."
+        echo "!! tst_smoke_hub and tst_smoke_manager will QSKIP — ctest will report"
+        echo "!! green having never launched the real hub or manager binary."
+        echo "!! Reconfigure: cmake -B build -DXENEON_BUILD_TESTS=ON -DXENEON_QA_HOOKS=ON"
+        echo ""
+        names+=("C++ smoke hooks (XENEON_QA_HOOKS)")
+        if [ "${XENEON_ALLOW_SMOKE_SKIP:-0}" = "1" ]; then
+            results+=("SKIP")
+        else
+            results+=("FAIL")
+        fi
+    else
+        names+=("C++ smoke hooks (XENEON_QA_HOOKS)")
+        results+=("PASS")
+    fi
     run_suite "C++ (ctest)" ctest --test-dir "$PROJECT_DIR/build" --output-on-failure
 else
     echo ""
@@ -112,6 +133,36 @@ for entry in "${runtime_scenarios[@]}"; do
         results+=("FAIL"); echo "--- Runtime E2E ($rt_name): FAIL"
     fi
 done
+
+# 6. QML compositor suite (tests/gui) — real KWin, real input, real pixels, and
+#    the ONLY aspect-ratio assertions in the repo. It was orphaned for months
+#    AND could not fail (it exited 0 unconditionally; fixed 2026-07-20).
+#
+#    NON-BLOCKING for now: it carries ~210 known failures. A permanently-red
+#    gate is how a suite gets ignored, which is the disease being treated here.
+#    Phase 1 of docs/agent-memory/TEST-STRATEGY-v2.md drives it green; FLIP THIS
+#    TO BLOCKING at the end of Phase 1 by removing the `|| true` and the
+#    NONBLOCKING label.
+if [ "${XENEON_SKIP_GUI_SUITE:-0}" = "1" ]; then
+    echo ""; echo "==> QML compositor suite: SKIPPED (XENEON_SKIP_GUI_SUITE=1)"
+    names+=("QML compositor (tests/gui) [NONBLOCKING]"); results+=("SKIP")
+elif ! command -v kwin_wayland >/dev/null 2>&1; then
+    echo ""; echo "==> QML compositor suite: SKIPPED (no kwin_wayland)"
+    names+=("QML compositor (tests/gui) [NONBLOCKING]"); results+=("SKIP")
+else
+    echo ""
+    echo "==================================================================="
+    echo "==> QML compositor suite (tests/gui)  [NON-BLOCKING until Phase 1]"
+    echo "==================================================================="
+    names+=("QML compositor (tests/gui) [NONBLOCKING]")
+    if bash "$PROJECT_DIR/tests/gui/run_gui_tests.sh"; then
+        results+=("PASS")
+    else
+        # Recorded, not fatal — see the comment above.
+        results+=("KNOWN-RED")
+        echo "--- QML compositor suite: KNOWN-RED (not failing the run; Phase 1 owns this)"
+    fi
+fi
 
 # --- Summary ---
 echo ""
