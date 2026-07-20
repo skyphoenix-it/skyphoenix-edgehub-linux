@@ -117,8 +117,19 @@ Item {
         // ── wsrc ──────────────────────────────────────────────────────────────
         function test_wsrc_rewrites_known_and_blanks_unknown() {
             var c = ld.item
-            compare(catalog.source("cpu"), "qrc:/qml/CpuWidget.qml", "precondition: hub path")
-            compare(c.wsrc("cpu"), "qrc:/manager/CpuWidget.qml", "rewritten to the manager alias")
+            var hub = catalog.source("cpu")
+            var mgr = c.wsrc("cpu")
+            verify(hub.length > 0, "precondition: the catalog resolves cpu")
+            verify(/CpuWidget\.qml$/.test(hub), "hub path points at CpuWidget.qml: " + hub)
+            verify(/CpuWidget\.qml$/.test(mgr), "manager path points at CpuWidget.qml: " + mgr)
+            // Bundled, the Manager has its OWN alias for the same bytes, and the
+            // rewrite must produce it. Run from the source tree there is only one
+            // copy of the file, so the rewrite is correctly a no-op — asserting
+            // the qrc literal there would pin the harness, not the behaviour.
+            if (hub.indexOf("qrc:") === 0)
+                compare(mgr, "qrc:/manager/CpuWidget.qml", "rewritten to the manager alias")
+            else
+                compare(mgr, hub, "source-tree run: both apps load the same file")
             compare(c.wsrc("does-not-exist"), "", "unknown type yields empty source")
         }
 

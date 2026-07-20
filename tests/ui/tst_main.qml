@@ -113,6 +113,28 @@ Item {
         // start; here the StackView is empty) the page's netHub must STAY null
         // — the Network tab then shows its honest "not available" state.
         function test_bindStackItem_leaves_netHub_null_without_a_dashboard() {
+            // The stack must ACTUALLY be empty for this to mean anything. It used
+            // to be empty by accident — main.qml's initialItem was a qrc: URL that
+            // could not resolve under qmltestrunner, so no Dashboard ever loaded
+            // and this assertion passed without exercising the branch. Now that
+            // the Dashboard does load, empty the stack deliberately.
+            // Single axis (`children` only) — no visited set needed, and
+            // scripts/check_tree_walks.py only flags multi-axis descents.
+            function findStack(n) {
+                if (!n) return null
+                if (n.objectName === "mainStack") return n
+                var kids = n.children || []
+                for (var i = 0; i < kids.length; i++) {
+                    var hit = findStack(kids[i])
+                    if (hit) return hit
+                }
+                return null
+            }
+            var stack = findStack(win.contentItem)
+            verify(stack !== null, "found the StackView")
+            stack.clear()
+            wait(50)
+            compare(stack.depth, 0, "precondition: the stack really is empty")
             var pg = Qt.createQmlObject(
                 'import QtQuick; QtObject { property var netHub: null; property string metricsJson: "" }',
                 root, "netpg")

@@ -62,7 +62,7 @@ Item {
         function test_lookup_helpers() {
             var d = catalog.def("cpu")
             verify(d !== null && d.type === "cpu", "def returns the cpu entry")
-            compare(catalog.source("cpu"), "qrc:/qml/CpuWidget.qml", "source() resolves")
+            verify(/CpuWidget\.qml$/.test(catalog.source("cpu")), "source() resolves" + " -> " + catalog.source("cpu"))
             compare(catalog.title("cpu"), "CPU", "title() resolves")
             verify(catalog.desc("cpu").length > 0, "desc() returns a description")
             compare(catalog.def("nonexistent"), null, "def of an unknown type is null")

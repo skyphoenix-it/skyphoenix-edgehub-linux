@@ -218,7 +218,8 @@ Item {
 
         function test_def_helpers() {
             compare(catalog.title("cpu"), "CPU")
-            compare(catalog.source("cpu"), "qrc:/qml/CpuWidget.qml")
+            verify(/CpuWidget\.qml$/.test(catalog.source("cpu")),
+                   "source() resolves to CpuWidget (bundle or tree): " + catalog.source("cpu"))
             compare(catalog.def("nope"), null, "unknown type → null")
             compare(catalog.title("nope"), "nope", "title falls back to the type")
         }

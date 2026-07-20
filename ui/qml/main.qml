@@ -221,10 +221,18 @@ ApplicationWindow {
         // Navigation stack for main ↔ diagnostics
         StackView {
             id: stackView
+            objectName: "mainStack"
             anchors.fill: parent
-            initialItem: isFirstRun ? "qrc:/qml/FirstRunWizard.qml" :
-                         startInDiagnostics ? "qrc:/qml/Diagnostics.qml" :
-                         "qrc:/qml/Dashboard.qml"
+            // Bundle when bundled, source tree under qmltestrunner — same rule as
+            // Theme._fontsDir and WidgetCatalog._fromBundle. Without this the shell
+            // tests could not load the Dashboard at all ("initialItem:
+            // qrc:/qml/Dashboard.qml: No such file or directory").
+            readonly property string _qmlDir:
+                Qt.resolvedUrl(".").toString().indexOf("qrc:") === 0
+                    ? "qrc:/qml/" : Qt.resolvedUrl(".").toString()
+            initialItem: isFirstRun ? _qmlDir + "FirstRunWizard.qml" :
+                         startInDiagnostics ? _qmlDir + "Diagnostics.qml" :
+                         _qmlDir + "Dashboard.qml"
 
             // The initial page is instantiated from a URL, so no properties get
             // passed in — inject the live bindings once it exists. Without this,
@@ -282,7 +290,7 @@ ApplicationWindow {
                 // Bind live (metrics/screens/config) so the Diagnostics overview
                 // keeps updating, rather than freezing at the snapshot taken when
                 // Ctrl+D was pressed.
-                var diag = stackView.push("qrc:/qml/Diagnostics.qml");
+                var diag = stackView.push(stackView._qmlDir + "Diagnostics.qml");
                 root.bindStackItem(diag);
             }
         }

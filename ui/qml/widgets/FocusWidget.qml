@@ -174,8 +174,18 @@ WidgetChrome {
     // the new phase length. Guarded so it's a no-op when already correct, and
     // deferred to avoid a binding loop with `p`.
     onPChanged: Qt.callLater(_syncIdleDuration)
+    // Liveness flag for the deferred callback below. A tile that is replaced
+    // (apply-preset, reset-layout, page rebuild) can be torn down between the
+    // Qt.callLater() and its invocation, and the callback then runs against a
+    // half-destroyed object: "Property 'phaseSeconds' ... is not a function
+    // (exception occurred during delayed function evaluation)". Harmless in
+    // effect — the save it was going to do is moot for a dying tile — but it is
+    // a real uncaught exception, and now that widgets actually load in the test
+    // suites the diagnostics gate fails on it.
+    property bool _alive: true
+    Component.onDestruction: _alive = false
     function _syncIdleDuration() {
-        if (running) return
+        if (!_alive || running) return
         var secs = phaseSeconds(phase)
         if (cfg.pausedRemaining !== secs || cfg.endEpoch)
             save({ pausedRemaining: secs, endEpoch: 0 })

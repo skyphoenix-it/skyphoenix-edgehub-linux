@@ -216,7 +216,33 @@ QtObject {
             if (userItems[u].type === type) return userItems[u]
         return null
     }
-    function source(type) { var d = def(type); return d ? d.source : "" }
+    // Widget QML lives at ui/qml/widgets/ in the tree, but qml.qrc aliases it
+    // FLAT into the bundle (alias="qml/CpuWidget.qml" -> qml/widgets/CpuWidget.qml).
+    // Under qmltestrunner there is no bundle at all, so every "qrc:/qml/*.qml"
+    // in the table above resolved to nothing and EVERY TILE SILENTLY FAILED TO
+    // LOAD. Both QML suites were asserting over empty Loaders: the offscreen
+    // tier could not see widget rendering, and tst_gui_shell_nav_edit.qml says
+    // so outright ("Widget TILES do not render ... never widget pixels").
+    //
+    // Consequence: widgets were tested ONLY in isolation, at a sizeClass the
+    // test supplied by hand, and the shell was tested with NO widgets in it.
+    // Nothing rendered a widget inside the real shell at a size the real layout
+    // computed — which is exactly the seam the Manager/hub sizeClassFor
+    // divergence lived in, and why it could only ever be found by eye.
+    //
+    // Same resolution rule as Theme._fontsDir: bundle when bundled, tree when
+    // running from the tree. Same bytes either way.
+    readonly property bool _fromBundle:
+        Qt.resolvedUrl(".").toString().indexOf("qrc:") === 0
+
+    function source(type) {
+        var d = def(type)
+        if (!d || !d.source) return ""
+        var s = "" + d.source
+        // User widgets carry their own file: URL — never rewrite those.
+        if (_fromBundle || s.indexOf("qrc:/qml/") !== 0) return s
+        return Qt.resolvedUrl("widgets/" + s.substring(s.lastIndexOf("/") + 1)).toString()
+    }
     function title(type)  { var d = def(type); return d ? d.title : type }
     function desc(type) {
         // typeof guard (not truthiness): a hostile/odd type like "constructor"

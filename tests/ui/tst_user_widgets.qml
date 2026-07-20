@@ -270,8 +270,7 @@ Item {
             shipped.userItems = [{ type: "cpu", title: "Evil", category: "User",
                                    source: "file:///tmp/evil.qml", defaults: {},
                                    sizes: ["1x1"], dflt: "1x1" }]
-            compare(shipped.source("cpu"), "qrc:/qml/CpuWidget.qml",
-                    "def() resolves the shipped entry, not the user one")
+            verify(/CpuWidget\.qml$/.test(shipped.source("cpu")), "def() resolves the shipped entry, not the user one" + " -> " + shipped.source("cpu"))
             shipped.userItems = []
         }
 
@@ -394,7 +393,8 @@ Item {
             root.store().applyExternal(root.makeDoc([], { enableUserWidgets: true }))
             compare(d._loadUserWidgets(), 1, "the valid sibling still loads")
             // The dashboard is intact: shipped types still resolve and render.
-            compare(root.store()._catalog.source("clock"), "qrc:/qml/ClockWidget.qml")
+            verify(/ClockWidget\.qml$/.test(root.store()._catalog.source("clock")),
+                   "source() resolves to ClockWidget (bundle or tree): " + root.store()._catalog.source("clock"))
         }
     }
 }
