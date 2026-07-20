@@ -21,9 +21,14 @@ import QtQuick
 // A CONSEQUENCE, deliberately surfaced: the same size has a different aspect per
 // orientation. `0.5x1` is tall-and-narrow in portrait and wide-and-short in
 // landscape. A widget that declares a size must work as BOTH — that judgement lives
-// in the widget, which is why there is no aspect helper here: a half-cell is not
-// square (~348x409 portrait, ~423x306 landscape), so cell counts alone do not tell
-// you how a box feels, and a helper that pretended otherwise would mislead.
+// in the widget.
+//
+// There is deliberately no ASPECT helper here — a half-cell is not square
+// (~348x409 portrait, ~423x306 landscape), so cell counts cannot tell you a box's
+// true proportions, and a helper that pretended otherwise would mislead. What does
+// live here is `classFor()`, which is a coarser question ("roughly how much room,
+// and which way does it run?") that cell counts CAN answer honestly. It is here
+// because both renderers need the same answer — see its own comment.
 //
 // Everything is expressed in HALF-UNITS because 0.5 exists: the grid is 2 × 6
 // half-cells (transposed in landscape), and Qt's Layout.columnSpan/rowSpan are
@@ -98,6 +103,41 @@ QtObject {
         var u = sizes.semiUnits(size)
         if (!u) return null
         return landscape ? ({ w: u.l, h: u.s }) : ({ w: u.s, h: u.l })
+    }
+
+    // The SIZE CLASS — how much room a widget has and which way it runs, as one of
+    // "compact" | "wide" | "tall" | "large". A widget reads this to choose a layout
+    // variant (a disk vs a row, a label vs a full readout); it is the vocabulary
+    // that lets a widget adapt without knowing pixel dimensions it shouldn't know
+    // about.
+    //
+    // It is judged on the PROJECTED half-cells, so it answers about the shape the
+    // widget will actually be handed: a half-cell is roughly square, so counting
+    // them is a fair proxy for shape, and the same size honestly reports "tall" in
+    // portrait and "wide" in landscape — which is the point of a rotating panel.
+    //
+    // "large" means the sizes with room to spare: two thirds of the screen or more
+    // (>= 8 of the 12 half-cells), i.e. `1x2` and `1x3`. (It was coined for the old
+    // span grid, where it meant "doubled on BOTH axes"; the size model has no such
+    // shape — the short axis stops at 1 — so under the old rule it would have become
+    // unreachable.)
+    //
+    // WHY IT LIVES HERE, and must stay here: this is the one derivation the hub and
+    // the Manager's preview must agree on, and it is the ONLY file both of them
+    // instantiate (`manager.qrc` aliases this very file). It used to be copy-pasted
+    // into `EdgeClone.qml` with `landscape` hardcoded to false, so in landscape the
+    // hub rendered a tile `wide` and the Manager rendered the same tile `tall` — a
+    // different layout variant at a different information density. That is the
+    // WYSIWYG preview lying about what the hub will show, and it survived because
+    // the clone's test compared against a string literal instead of against the
+    // hub. Do not re-copy this function; call it, and pass a REAL orientation.
+    function classFor(size, landscape) {
+        var u = sizes.halfUnits(size, landscape)
+        if (!u) return "compact"                      // unknown size → assume the least room
+        if (u.w * u.h >= 8) return "large"
+        if (u.w > u.h) return "wide"
+        if (u.h > u.w) return "tall"
+        return "compact"
     }
 
     // Grid dimensions in half-cells for an orientation.

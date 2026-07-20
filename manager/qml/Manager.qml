@@ -951,13 +951,33 @@ ApplicationWindow {
             // glass picks gave zero visible feedback. Now they repaint the preview
             // as you hover, before anything is committed.
             Item {
-              RowLayout {
+              // Orientation-adaptive, matching the Screens tab exactly (see the
+              // GridLayout there). A PORTRAIT preview is tall+narrow and sits BESIDE
+              // the controls (2 columns); a LANDSCAPE preview is wide+short, so
+              // beside the controls it collapsed into a squeezed strip floating in a
+              // tall empty pane — it moves ABOVE them, full width (1 column), where
+              // it reads at a correct aspect.
+              //
+              // This tab used to be a plain RowLayout with the preview pinned beside
+              // the controls at a hardcoded 760/400, so the two tabs laid the SAME
+              // component out differently for the same panel. Both now flip on the
+              // same signal, so a preview cannot look right on one tab and wrong on
+              // the other.
+              GridLayout {
                 anchors.fill: parent
                 anchors.margins: 24
-                spacing: 20
+                columns: lookClone.landscape ? 1 : 2
+                columnSpacing: 20; rowSpacing: 16
 
                MScroll {
                 id: apScroll
+                objectName: "lookControls"       // test seam: the Look tab's control pane
+                // Explicit cell rather than declaration order: the preview must come
+                // FIRST (left in portrait, above in landscape) to match Screens, and
+                // saying so here is cheaper and far less error-prone than relocating
+                // ~370 lines of controls to sit below it in the file.
+                Layout.row: lookClone.landscape ? 1 : 0
+                Layout.column: lookClone.landscape ? 0 : 1
                 Layout.fillWidth: true; Layout.fillHeight: true; clip: true
                 contentWidth: availableWidth
                 ColumnLayout {
@@ -1325,11 +1345,24 @@ ApplicationWindow {
                 }
                }
 
-                // ── Live preview pane (the same WYSIWYG clone as Layout, read-only) ──
+                // ── Live preview pane (the same WYSIWYG clone as Screens, read-only) ──
                 ColumnLayout {
-                    // Wider when the Edge preview is landscape, so it isn't a thin strip.
-                    readonly property int _pw: lookClone.landscape ? 760 : 400
-                    Layout.preferredWidth: _pw; Layout.maximumWidth: _pw; Layout.fillHeight: true
+                    objectName: "lookPreviewPane"   // test seam: the Look tab's preview column
+                    Layout.row: 0; Layout.column: 0
+                    // Same sizing rule as the Screens tab's EdgeClone: landscape gets
+                    // the full content width and a bounded height (it is the top row);
+                    // portrait gets a fixed pane beside the controls. It used to be a
+                    // hardcoded 760/400 wide in BOTH orientations, which is how a
+                    // landscape preview ended up a squeezed strip here while the same
+                    // component read correctly on Screens.
+                    Layout.fillWidth: lookClone.landscape
+                    Layout.fillHeight: !lookClone.landscape
+                    Layout.preferredWidth: lookClone.landscape ? -1 : 400
+                    // POSITIVE_INFINITY, not -1: -1 is the documented reset for
+                    // *preferred* sizes only. maximumWidth defaults to infinity and
+                    // takes -1 literally, which would clamp this pane to nothing in
+                    // landscape — the preview would simply vanish.
+                    Layout.maximumWidth: lookClone.landscape ? Number.POSITIVE_INFINITY : 400
                     spacing: 8
                     Text { text: "Live preview"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
                     // Page chips so "which page am I looking at?" has an answer —
@@ -1357,7 +1390,12 @@ ApplicationWindow {
                     EdgeClone {
                         id: lookClone
                         editable: false
-                        Layout.fillWidth: true; Layout.fillHeight: true
+                        Layout.fillWidth: true
+                        // Landscape: a bounded height, as on Screens — the pane is the
+                        // top row of a 1-column grid, so an unbounded fillHeight would
+                        // let it eat the controls below it.
+                        Layout.fillHeight: !lookClone.landscape
+                        Layout.preferredHeight: lookClone.landscape ? 380 : -1
                         pageIndex: win.currentPageIndex
                         // Pause the live preview while the Appearance controls scroll.
                         scrolling: apScroll.contentItem ? apScroll.contentItem.moving : false

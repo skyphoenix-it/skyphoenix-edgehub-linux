@@ -584,25 +584,11 @@ Item {
     // widget asks "have I got room?" instead of re-deriving it from geometry it
     // shouldn't know about.
     //
-    // It is judged on the PROJECTED half-cells, so it answers about the shape the
-    // widget will actually be handed: a half-cell is roughly square (~348x409
-    // portrait, ~423x306 landscape), so counting them is a fair proxy for shape, and
-    // the same size honestly reports "tall" in portrait and "wide" in landscape —
-    // which is the point of a rotating panel.
-    //
-    // "large" had to be redefined. It was coined for the old span grid, where it
-    // meant "doubled on BOTH axes"; the size model has no such shape (the short axis
-    // stops at 1), so under the old rule it would have become unreachable. It now
-    // means what it always implied — the sizes with room to spare: two thirds of the
-    // screen or more (>= 8 of the 12 half-cells), i.e. `1x2` and `1x3`.
-    function sizeClassFor(size, landscape) {
-        var u = sizes.halfUnits(size, landscape)
-        if (!u) return "compact"                      // unknown size → assume the least room
-        if (u.w * u.h >= 8) return "large"
-        if (u.w > u.h) return "wide"
-        if (u.h > u.w) return "tall"
-        return "compact"
-    }
+    // The derivation itself lives in WidgetSizes.classFor — it is shared with the
+    // Manager's preview, which MUST answer identically or the preview lies. This
+    // stays as a named seam because the dashboard is where the rest of the file
+    // (and its tests) ask the question.
+    function sizeClassFor(size, landscape) { return sizes.classFor(size, landscape) }
 
     // The next size in this type's own legal list, wrapping around — the edit-mode
     // resize button. The old fixed 1x1→2x1→1x2→2x2 cycle has NO equivalent: those

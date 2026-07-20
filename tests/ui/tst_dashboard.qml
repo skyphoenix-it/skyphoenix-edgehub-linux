@@ -340,6 +340,25 @@ Item {
             compare(d.sizeClassFor(undefined, false), "compact", "and neither is nothing at all")
         }
 
+        // The hub's half of the WYSIWYG parity contract. `sizeClassFor` is a named
+        // seam, but the DERIVATION must stay in WidgetSizes.classFor — that is the
+        // only file the Manager's preview also instantiates, and therefore the only
+        // place the two can be made to agree. The clone once carried its own copy
+        // with `landscape` hardcoded false; this fails if the hub grows one back.
+        // (tests/ui/tst_edgeclone.qml holds the preview's half.)
+        function test_sizeClassFor_delegates_to_the_shared_derivation() {
+            var d = ld.item
+            var all = _sizes.all()
+            verify(all.length >= 7, "precondition: the size vocabulary is populated")
+            for (var o = 0; o < 2; o++) {
+                var land = (o === 1)
+                for (var i = 0; i < all.length; i++)
+                    compare(d.sizeClassFor(all[i], land), _sizes.classFor(all[i], land),
+                            (land ? "landscape " : "portrait ") + all[i] + ": hub delegates, never re-derives")
+            }
+            compare(d.sizeClassFor("2x2", true), _sizes.classFor("2x2", true), "including the unknown-size path")
+        }
+
         // COVERS: fn:Dashboard.nextSize
         // The edit-mode resize button. The old fixed 1x1->2x1->1x2->2x2 cycle has NO
         // equivalent — those spans aren't sizes — so the cycle is the widget TYPE's own

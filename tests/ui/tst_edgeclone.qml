@@ -26,6 +26,10 @@ Item {
     App.Theme { id: theme }
     App.DashboardStore { id: store }
     App.WidgetCatalog { id: catalog }
+    App.WidgetSizes { id: hubSizes }   // the HUB's copy — the parity reference
+    // Drives the live-binding test below. A real QML property, so a Qt.binding over
+    // it genuinely re-evaluates (a closure over a JS local would not).
+    property string previewSize: "1x1"
     MockMedia { id: media }
 
     QtObject {
@@ -97,6 +101,27 @@ Item {
         })
     }
 
+    // The widget instance the clone ACTUALLY loaded for a tile, reached through the
+    // delegate's own Loader (`wId`). Going through the real Loader is the point: a
+    // test that supplies its own sizeFn to injectInto proves only that injectInto
+    // binds what it is handed — it cannot see the clone passing the WRONG thing,
+    // which is precisely how the hardcoded-portrait size class survived.
+    // Ghosts are skipped for the SAME reason tileAtIdx skips them: a dying row is
+    // held open for its exit fade, and since this suite re-seeds per case the store
+    // hands out the same tile id again — so an earlier case's ghost answers to the
+    // new id and returns ITS class. That cost a real debugging round: the landscape
+    // pass read the portrait pass's fading tile and reported "tall" for a fix that
+    // was correctly in place.
+    function loadedWidget(tileId) {
+        var ds = tileDelegates()
+        for (var d = 0; d < ds.length; d++) {
+            if (ds[d].dying || ds[d].tileId !== tileId) continue
+            var ls = findAll(ds[d], function (x) { return x && x.wId !== undefined })
+            for (var i = 0; i < ls.length; i++) if (ls[i].item) return ls[i].item
+        }
+        return null
+    }
+
     function seed(tileList) {
         store.load("blank")
         for (var i = 0; i < tileList.length; i++)
@@ -157,27 +182,116 @@ Item {
             w.destroy()
         }
 
-        // COVERS: fn:EdgeClone.sizeClassFor
-        // The preview must render the SAME size class the hub would — before this,
-        // the clone fell back to the chrome's height heuristic and a 1x1 disk
-        // previewed as the tall layout. Bound live so a resize PREVIEW reflows.
-        function test_injectInto_binds_the_real_size_class() {
+        // COVERS: fn:WidgetSizes.classFor
+        //
+        // THE WYSIWYG PARITY PIN. The clone used to own a copy-paste of the hub's
+        // derivation with `landscape` hardcoded to false. In landscape the hub
+        // rendered a tile `wide` and the Manager rendered the SAME tile `tall` — a
+        // different layout variant at a different information density, which is what
+        // "widgets are not WYSIWYG in the Manager" meant.
+        //
+        // The old test could not see it: it compared the clone's answer to STRING
+        // LITERALS ("1x1" is "compact", …), never to the hub, and only ever in
+        // portrait — where the two agree. Two implementations could drift arbitrarily
+        // and stay green. They did.
+        //
+        // What this asserts instead: the class the clone ACTUALLY hands a rendered
+        // widget equals the hub's answer for the same size at the same orientation,
+        // over the full size × orientation cross product. The reference is the hub's
+        // own WidgetSizes instance, not a literal — so if the hub's derivation
+        // changes, this fails until the preview follows.
+        function test_size_class_matches_the_hub_in_BOTH_orientations() {
             var c = ld.item
-            compare(c.sizeClassFor("1x1"), "compact", "1x1 is the baseline class")
-            compare(c.sizeClassFor("1x1.5"), "tall", "1x1.5 has vertical room")
-            compare(c.sizeClassFor("1x2"), "large", ">=2/3 of the screen is large — same as the hub")
-            compare(c.sizeClassFor("1x0.5"), "wide", "a full-width sliver is wide")
-            compare(c.sizeClassFor("1x3"), "large", "full screen is large")
-            compare(c.sizeClassFor("bogus"), "compact", "unknown size assumes least room")
+            var all = hubSizes.all()
+            verify(all.length >= 7, "precondition: the size vocabulary is populated")
 
+            var orientations = [
+                { mode: "portrait",  landscape: false },
+                { mode: "landscape", landscape: true  }
+            ]
+            var checked = 0
+            for (var o = 0; o < orientations.length; o++) {
+                for (var i = 0; i < all.length; i++) {
+                    var sz = all[i]
+                    // cpu declares only a subset of the vocabulary; skip what it
+                    // cannot honestly render rather than asserting on a rejected set.
+                    if (catalog.sizesFor("cpu").indexOf(sz) < 0) continue
+
+                    // Order matters: `load` replaces the whole document, appearance
+                    // included, so the orientation has to be set AFTER it. Setting it
+                    // first silently reverted every case to portrait — which is the
+                    // very answer this test exists to distinguish from, so the test
+                    // would have agreed with the bug it is meant to catch.
+                    store.load("blank")
+                    store.setAppearance("orientation", orientations[o].mode)
+                    compare(c.landscape, orientations[o].landscape,
+                            orientations[o].mode + ": the clone mirrors the panel's orientation")
+
+                    store.addTile(0, "cpu")
+                    var id = tile0().id
+                    store.setTileSize(0, id, sz)
+                    compare(tile0().size, sz, "precondition: the store took the size " + sz)
+
+                    // The REAL rendered widget, classed by the clone's OWN call site.
+                    var w = null
+                    tryVerify(function () { w = loadedWidget(id); return w !== null }, 3000,
+                              orientations[o].mode + " " + sz + ": the tile's widget loaded")
+                    compare(w.sizeClass, hubSizes.classFor(sz, orientations[o].landscape),
+                            orientations[o].mode + " " + sz + ": preview class matches the hub")
+                    checked++
+                }
+            }
+            // Anti-vacuity: a `continue` that skipped everything would otherwise
+            // report a green cross-product over zero cases.
+            verify(checked >= 8, "cross product actually ran (" + checked + " cases)")
+            store.load("blank")
+        }
+
+        // The same size is a DIFFERENT class per orientation — that asymmetry is the
+        // whole point of a rotating panel, and it is the specific thing the hardcode
+        // erased. Stated as its own case so a regression names itself.
+        function test_orientation_actually_changes_the_class() {
+            compare(hubSizes.classFor("1x0.5", false), "wide",  "portrait: a full-width sliver is wide")
+            compare(hubSizes.classFor("1x0.5", true),  "tall",  "landscape: the SAME size is tall")
+            compare(hubSizes.classFor("0.5x1", false), "tall",  "portrait: half-width is tall")
+            compare(hubSizes.classFor("0.5x1", true),  "wide",  "landscape: and now it is wide")
+            compare(hubSizes.classFor("bogus", false), "compact", "unknown size assumes least room")
+        }
+
+        // ANTI-RE-COPY. The bug was not a wrong constant, it was a SECOND copy of a
+        // derivation that must have exactly one. If someone reintroduces a private
+        // `sizeClassFor` on the clone, this fails immediately rather than waiting for
+        // the orientations to disagree again.
+        function test_the_clone_has_no_private_size_class_derivation() {
+            compare(typeof ld.item.sizeClassFor, "undefined",
+                    "EdgeClone must call WidgetSizes.classFor, never own a copy")
+        }
+
+        // The injected class is BOUND, not read once — on BOTH its inputs. A live
+        // resize PREVIEW (pvSize) must reflow the widget exactly as committing the
+        // size would on the hub, and a rotation must re-class it in place.
+        //
+        // `previewSize` is a real QML property, not a JS local: a Qt.binding tracks
+        // QML properties, so a closure over a plain `var` would silently never
+        // re-evaluate and the test would be asserting nothing.
+        function test_injected_size_class_is_live_on_size_and_rotation() {
+            var c = ld.item
+            store.setAppearance("orientation", "portrait")
+            root.previewSize = "1x1.5"
             var w = fakeWidget.createObject(root)
-            var sz = "1x1.5"
-            c.injectInto(w, "e2", "cpu", function () { return c.sizeClassFor(sz) })
+            c.injectInto(w, "e_live", "cpu",
+                         function () { return hubSizes.classFor(root.previewSize, c.landscape) })
             compare(w.sizeClass, "tall", "the loaded widget gets the real class")
-            sz = "1x1"
-            // Re-evaluate: the binding must track, as a live resize preview does.
-            c.tick++   // nudge — bindings on plain closures re-evaluate on access
-            compare(c.sizeClassFor(sz), "compact", "derivation follows the new size")
+
+            root.previewSize = "1x1"
+            compare(w.sizeClass, "compact", "and it follows the previewed size")
+
+            root.previewSize = "1x0.5"
+            compare(w.sizeClass, "wide", "portrait: a full-width sliver is wide")
+            store.setAppearance("orientation", "landscape")
+            compare(w.sizeClass, "tall", "and rotating the panel re-classes it in place")
+
+            store.setAppearance("orientation", "auto")
             w.destroy()
         }
 

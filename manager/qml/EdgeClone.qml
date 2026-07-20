@@ -282,19 +282,17 @@ Item {
         var s = catalog.source(type)
         return s ? s.replace("qrc:/qml/", "qrc:/manager/") : ""
     }
-    // Same derivation as Dashboard.sizeClassFor, portrait projection — the clone
-    // is a portrait mirror of the panel. Without this the preview fell back to
-    // WidgetChrome's height heuristic, so a 1x1 disk showed the TALL layout in
-    // the Manager but the compact one on the hub: the preview lied.
-    function sizeClassFor(size) {
-        var u = sizes.halfUnits(size, false)
-        if (!u) return "compact"
-        if (u.w * u.h >= 8) return "large"
-        if (u.w > u.h) return "wide"
-        if (u.h > u.w) return "tall"
-        return "compact"
-    }
-
+    // The size class comes from WidgetSizes.classFor — the SAME function the hub's
+    // Dashboard calls, evaluated at THIS clone's live orientation.
+    //
+    // This used to be a copy of the derivation with `landscape` hardcoded to false,
+    // on the reasoning that "the clone is a portrait mirror of the panel". That
+    // reasoning stopped being true when the frame learned to draw landscape pages
+    // wide (see `_shortPx` below, and the `clone.landscape` already threaded into
+    // `packer.rect`), and the copy was left behind. The result: in landscape the hub
+    // rendered a tile `wide` and the Manager rendered the same tile `tall` — a
+    // different layout variant with different information density, which is exactly
+    // the "widgets are not WYSIWYG in the Manager" report. Call it; never copy it.
     function injectInto(item, id, type, sizeFn) {
         if (!item) return
         store.ensureSettings(id, catalog.defaults(type))
@@ -477,11 +475,14 @@ Item {
                             // The hub eases the EXTENT here too, and separates the ease
                             // from ROTATION that way (a turn re-projects the slot, so it
                             // stays instant). Neither half of that carries over:
-                            //   • the clone is always upright (`landscape: false`) and
-                            //     the cell grid is a CONSTANT — the frame is a fixed 420
-                            //     wide and fits to view by scaling as a whole, so
-                            //     cellShort/cellLong never change. There is no
-                            //     projection change to keep instant.
+                            //   • the clone's cell grid is a CONSTANT — the frame is a
+                            //     fixed 420 on the short axis and fits to view by
+                            //     scaling as a whole, so cellShort/cellLong never
+                            //     change even when `clone.landscape` flips the frame's
+                            //     proportions. There is no projection change to keep
+                            //     instant. (This bullet once read "the clone is always
+                            //     upright"; it is not, and that stale claim is what
+                            //     licensed the hardcoded-portrait size class.)
                             //   • the thing that must stay instant here is the resize
                             //     PREVIEW. A reorder never changes an extent; only a
                             //     resize does, and here a resize is a live corner DRAG
@@ -631,8 +632,11 @@ Item {
                                 anchors.fill: parent
                                 property string wId: tile.tileId
                                 source: clone.wsrc(tile.tileType)
+                                // Bound on BOTH the previewed size and the live
+                                // orientation, so a rotation re-classes the tile
+                                // exactly as it does on the hub.
                                 onLoaded: clone.injectInto(item, tile.tileId, tile.tileType,
-                                                           function () { return clone.sizeClassFor(tile.effSize) })
+                                                           function () { return sizes.classFor(tile.effSize, clone.landscape) })
                             }
 
                             // Drop-target highlight.

@@ -745,6 +745,48 @@ Item {
             _store.setAppearance("themeMode", "dark")
         }
 
+        // ── The Look tab must lay its preview out the SAME way Screens does.
+        //
+        // Look was a plain RowLayout that pinned the preview beside the controls at a
+        // hardcoded width in BOTH orientations, while Screens flips to a 1-column
+        // stack in landscape. Same component, same panel, two different layouts —
+        // which is half of "the Look configsection has a different layout than
+        // Screens". Asserting the RULE (beside in portrait, above in landscape) rather
+        // than pixel values, so a re-tuned width does not fail this.
+        //
+        // The width assertion is not decoration: `Layout.maximumWidth: -1` looks like
+        // the documented "reset" it is for *preferred* sizes, but maximumWidth takes
+        // it literally and collapses the pane to nothing. That is invisible to every
+        // other test here — the tab still loads, every control still answers.
+        function test_look_tab_lays_out_like_the_screens_tab() {
+            _nav.currentIndex = 1
+            var pane = findPred(win, function (x) { return x && x.objectName === "lookPreviewPane" })
+            var ctrls = findPred(win, function (x) { return x && x.objectName === "lookControls" })
+            verify(pane, "the Look preview pane is present")
+            verify(ctrls, "the Look control pane is present")
+
+            // A GridLayout re-arranges on the polish phase, not on the property
+            // write, so every geometry read here has to be a tryVerify — a plain
+            // verify() straight after setAppearance reads the PREVIOUS arrangement
+            // and passes or fails for the wrong reason.
+            _store.setAppearance("orientation", "portrait")
+            tryVerify(function () { return pane.x < ctrls.x }, 2000,
+                      "portrait: the preview sits BESIDE the controls, first")
+            verify(pane.width > 100, "portrait: the preview pane has real width (" + pane.width + ")")
+            verify(pane.height > 100, "portrait: and real height (" + pane.height + ")")
+
+            _store.setAppearance("orientation", "landscape")
+            tryVerify(function () { return pane.y < ctrls.y }, 2000,
+                      "landscape: the preview moves ABOVE the controls")
+            verify(pane.width > 100, "landscape: the preview pane has real width (" + pane.width + ")")
+            verify(pane.height > 100, "landscape: and real height (" + pane.height + ")")
+            verify(pane.width > ctrls.width * 0.9,
+                   "landscape: and takes the full content width, not a pinned strip"
+                   + " (pane " + pane.width + " vs controls " + ctrls.width + ")")
+
+            _store.setAppearance("orientation", "auto")
+        }
+
         // ── C: hovering a background style previews it live (audit F2) without
         // committing to the store.
         function test_background_style_hover_previews_without_committing() {
