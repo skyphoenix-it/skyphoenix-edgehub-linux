@@ -155,7 +155,11 @@ else
     echo "==> QML compositor suite (tests/gui)  [NON-BLOCKING until Phase 1]"
     echo "==================================================================="
     names+=("QML compositor (tests/gui) [NONBLOCKING]")
-    if bash "$PROJECT_DIR/tests/gui/run_gui_tests.sh"; then
+    # -j8 deliberately: run_gui_tests.sh defaults to J=1, which its own header
+    # says takes "hours"; -j8 brings the tier under half an hour. Each file gets
+    # its OWN nested KWin, and run_bounded caps every slot at RUN_MEM_MAX_MB, so
+    # the ceiling is bounded rather than trusting the kernel OOM killer.
+    if bash "$PROJECT_DIR/tests/gui/run_gui_tests.sh" -j"${XENEON_GUI_JOBS:-8}"; then
         results+=("PASS")
     else
         # Recorded, not fatal — see the comment above.
