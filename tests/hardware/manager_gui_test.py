@@ -48,7 +48,8 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-import desktop_target as dt          # noqa: E402
+import desktop_target as dt
+import manager_window as mw          # noqa: E402
 import input_guard                   # noqa: E402
 import uinput_touch as u             # noqa: E402
 from e2e_harness import (E2E, MANAGER, assert_binaries_current,  # noqa: E402
@@ -108,28 +109,13 @@ class ManagerGui:
         time.sleep(settle)
         return True
 
-    # Sidebar row centres, measured on a real 1440x1300 capture.
-    ROW_Y = {"Screens": 164, "Look": 220, "Images": 276, "Device": 332, "About": 388}
-    ROW_X = 120
-
+    # The accent-row detector lives in manager_window.py — ONE implementation,
+    # shared with the four other Manager suites. It was briefly duplicated here;
+    # two copies of the one thing that decides "am I even looking at the
+    # Manager?" is exactly the drift this repo keeps paying for.
     @classmethod
     def active_row(cls, path):
-        """Which sidebar row is selected, read from the accent fill.
-
-        The selected row is filled with the accent (~rgb(237,109,31)); the rest
-        are the cream page background (~rgb(255,253,250)). Distinctness alone
-        proved the screen CHANGED but not that it changed to the tab we asked
-        for — and the labels were provably wrong once already (a frame saved as
-        tab-1-look actually showed Device). This asserts identity, not novelty.
-        """
-        from PIL import Image
-        im = Image.open(path).convert("RGB")
-        hits = []
-        for name, y in cls.ROW_Y.items():
-            r, g, b = im.getpixel((cls.ROW_X, y))
-            if r > 180 and g < 160 and b < 130:
-                hits.append(name)
-        return hits[0] if len(hits) == 1 else (hits or None)
+        return mw.active_row(path)
 
     @staticmethod
     def _sig(path):

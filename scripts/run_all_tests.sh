@@ -137,6 +137,30 @@ for entry in "${runtime_scenarios[@]}"; do
     fi
 done
 
+# 5b. Manager suites — the REAL Manager binary driven with REAL input against
+#     the REAL hub over the control socket. These replaced the deleted
+#     tests/gui Manager tests, which ran against a stubbed backend inside a
+#     nested compositor and whose pixel assertions were provably false.
+#
+#     Desktop input is opt-in twice over (XENEON_HW_INPUT + _DESKTOP), because
+#     the cursor moves on the owner's screen. Without both, this SKIPs loudly.
+echo ""
+echo "==================================================================="
+echo "==> Manager (real binaries, real hub)"
+echo "==================================================================="
+names+=("Manager (real Manager + real hub)")
+if bash "$PROJECT_DIR/scripts/run_manager_tests.sh"; then
+    results+=("PASS")
+else
+    mgr_rc=$?
+    if [ "$mgr_rc" -eq 77 ]; then
+        results+=("SKIP")
+        echo "--- Manager suites: SKIPPED (desktop input not opted in)"
+    else
+        results+=("FAIL")
+    fi
+fi
+
 # 6. QML compositor suite (tests/gui) — real KWin, real input, real pixels, and
 #    the ONLY aspect-ratio assertions in the repo. It was orphaned for months
 #    AND could not fail (it exited 0 unconditionally; fixed 2026-07-20).
