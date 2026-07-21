@@ -41,14 +41,14 @@ string(MD5 _build_hash "${CMAKE_CURRENT_BINARY_DIR}")
 string(SUBSTRING "${_build_hash}" 0 8 _build_hash)
 set(SOCK_ROOT "${_tmp_root}/xe-ctest-${_build_hash}")
 
-# add_qt_test(<name>
+# add_qt_test(<name> [DBUS_SESSION]
 #     SOURCES  <extra .cpp/.h compiled into the test, beyond tst_<name>.cpp>
 #     LINK     <extra Qt6::* / libraries to link>)
 # Always links Qt6::Test + the real Rust core, enables AUTOMOC, registers a ctest
 # with the offscreen/temp-dir ENVIRONMENT, and (under XENEON_COVERAGE) instruments
 # the test exe + the logic it pulls in.
 function(add_qt_test name)
-    cmake_parse_arguments(T "" "" "SOURCES;LINK" ${ARGN})
+    cmake_parse_arguments(T "DBUS_SESSION" "" "SOURCES;LINK" ${ARGN})
 
     add_executable(${name} tst_${name}.cpp ${T_SOURCES})
     set_target_properties(${name} PROPERTIES AUTOMOC ON)
@@ -78,10 +78,27 @@ function(add_qt_test name)
     # TIMEOUT: without it these inherit CTest's 1500 s default, so a test that
     # wedges an event loop (config_bridge, control_server) hangs a run for 25
     # minutes. 120 s is ~40x the slowest of these in practice.
-    add_test(NAME ${name} COMMAND ${name})
+    if(T_DBUS_SESSION)
+        # A private bus makes transport-level QtDBus coverage deterministic while
+        # keeping the test isolated from the developer's real desktop session.
+        # There is deliberately no portal service on this bus: start() must issue
+        # both async reads and handle their errors without blocking or changing the
+        # default. Ubuntu's QtDBus runtime depends on dbus-daemon, which supplies
+        # dbus-run-session on the CI image and supported package-build hosts.
+        find_program(DBUS_RUN_SESSION_EXECUTABLE dbus-run-session REQUIRED)
+        add_test(NAME ${name}
+                 COMMAND "${DBUS_RUN_SESSION_EXECUTABLE}" -- "$<TARGET_FILE:${name}>")
+    else()
+        add_test(NAME ${name} COMMAND ${name})
+    endif()
+    set(_test_environment
+        "QT_QPA_PLATFORM=offscreen;XDG_CONFIG_HOME=${_tmp}/config;XDG_RUNTIME_DIR=${_run};HOME=${_tmp}")
+    if(T_DBUS_SESSION)
+        list(APPEND _test_environment "XENEON_TEST_PRIVATE_DBUS=1")
+    endif()
     set_tests_properties(${name} PROPERTIES
         TIMEOUT 120
-        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;XDG_CONFIG_HOME=${_tmp}/config;XDG_RUNTIME_DIR=${_run};HOME=${_tmp}")
+        ENVIRONMENT "${_test_environment}")
 endfunction()
 
 # ── Unit (pure logic) ──
@@ -132,7 +149,8 @@ add_qt_test(distro_bridge SOURCES "${APP_SRC}/distro_bridge.h" LINK Qt6::Gui)
 # OS reduce-motion probe (XDG settings portal). Q_OBJECT header as a SOURCE for
 # AUTOMOC (vtable rule above). Tests drive the parsing seam with crafted
 # variants; the one real-bus case QSKIPs when the sandbox has no session bus.
-add_qt_test(system_settings_probe SOURCES "${APP_SRC}/system_settings_probe.h" LINK Qt6::DBus)
+add_qt_test(system_settings_probe DBUS_SESSION
+            SOURCES "${APP_SRC}/system_settings_probe.h" LINK Qt6::DBus)
 
 # MPRIS player-choice policy + metadata/availability rules (mpris_state.cpp), and
 # the member-state fold that stayed in the bridge (MprisBridge::applyProps).

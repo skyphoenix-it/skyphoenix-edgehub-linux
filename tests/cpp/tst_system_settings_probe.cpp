@@ -5,8 +5,9 @@
 // actual desktop settings — the exact values the portal would deliver are
 // reproduced here as literals (shapes verified against a live KDE Plasma
 // portal, Settings v2: ReadOne returns v(x), legacy Read returns v(v(x)),
-// SettingChanged carries v(x)). One integration case exercises start() against
-// the real bus and QSKIPs when there is none (CI offscreen runners).
+// SettingChanged carries v(x)). CTest runs this executable under its own
+// dbus-run-session, so the integration case exercises the real async transport
+// without reading from or subscribing to the user's desktop bus.
 #include <QtTest>
 #include <QDBusConnection>
 #include <QDBusVariant>
@@ -158,18 +159,24 @@ private slots:
         QCOMPARE(spy.count(), 1);
     }
 
-    // Integration: start() against whatever bus this environment has. The
-    // VALUE is host state and is deliberately not asserted — the contract
-    // under test is "never crashes, never blocks, stays false without a
-    // portal answer saying otherwise".
+    // Integration: CTest supplies a private bus. Claim the portal service name
+    // without exporting an object so calls fail locally as UnknownObject instead
+    // of activating the host's xdg-desktop-portal service (which can inherit the
+    // test's output pipe and keep CTest waiting after the executable exits). A raw
+    // developer invocation skips: only the marked private bus is safe to claim.
+    // The contract is "both async reads are safe and a missing portal object leaves
+    // the conservative default unchanged".
     void startAgainstRealBusIsSafe() {
-        if (!QDBusConnection::sessionBus().isConnected())
-            QSKIP("no D-Bus session bus in this environment");
+        if (qEnvironmentVariable("XENEON_TEST_PRIVATE_DBUS") != QLatin1String("1"))
+            QSKIP("run through CTest to exercise the private D-Bus session");
+        QDBusConnection bus = QDBusConnection::sessionBus();
+        QVERIFY(bus.isConnected());
+        QVERIFY(bus.registerService(QStringLiteral("org.freedesktop.portal.Desktop")));
         SystemSettingsProbe probe;
         probe.start();
         QTest::qWait(1500);  // let the async ReadOne round-trips complete
-        qInfo() << "portal reduce-motion on this host:" << probe.reduceMotion();
-        QVERIFY(probe.reduceMotion() == true || probe.reduceMotion() == false);
+        QCOMPARE(probe.reduceMotion(), false);
+        QVERIFY(bus.unregisterService(QStringLiteral("org.freedesktop.portal.Desktop")));
     }
 };
 
