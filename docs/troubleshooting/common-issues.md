@@ -22,6 +22,12 @@
 
 **Symptom:** Dashboard appears on primary monitor instead of Xeneon Edge.
 
+With a saved target display, current builds ordinarily stay hidden when that
+display is absent and wait for its reconnect; they never move the fullscreen
+dashboard to the primary monitor. Primary-screen fallback is limited to an
+unconfigured first run where no Edge-like display can be auto-detected. An
+explicit `--reset-wizard` opens only a windowed recovery wizard on primary.
+
 **Fixes:**
 1. Open Settings → Display → reselect target display.
 2. If display not listed, check cable connections.
@@ -45,11 +51,18 @@
 
 **Symptom:** After disconnecting/reconnecting display, dashboard stays hidden.
 
+The Hub always hides immediately when its target display is removed, including
+for `notify` and `ask` fallback policies. This prevents the compositor from
+moving the fullscreen dashboard onto the primary monitor. A matching display is
+shown again only when reconnect is enabled; `ask` also records that display
+selection is required in the Manager.
+
 **Fixes:**
 1. Check if display is detected: open Settings from primary monitor.
 2. If display is listed but dashboard hidden: toggle "Reopen on reconnect" off and on.
-3. Force reopen from terminal: `xeneon-edge-hub --force-show`
-4. Reset display config: `xeneon-edge-hub --reset-display`
+3. Open the Manager's Display settings and reselect the attached target.
+4. Run `xeneon-edge-hub --reset-wizard` to open the windowed recovery wizard on
+   the primary display while keeping the rest of the configuration.
 
 ---
 
@@ -58,10 +71,14 @@
 **Symptom:** Application uses more than 5% CPU at idle.
 
 **Checks:**
-1. Reduce sensor polling intervals in Settings → Performance.
-2. Disable widgets one by one to identify the culprit.
-3. Check logs for widget timeout warnings.
-4. Enable safe mode: `xeneon-edge-hub --safe-mode`
+1. Turn off animated backgrounds and widget glow.
+2. Remove updating widgets one by one to identify the workload.
+3. Run from a terminal with `RUST_LOG=debug` and inspect the output.
+4. Compare with a session-only safe-mode launch: `xeneon-edge-hub --safe-mode`.
+
+The current development build does not meet its formal RSS release limits; do
+not treat the published thresholds as a troubleshooting promise until a candidate
+passes them.
 
 ---
 
@@ -85,7 +102,8 @@
 1. Try safe mode: `xeneon-edge-hub --safe-mode`
 2. Reset all configuration: `xeneon-edge-hub --reset`
 3. Check for corrupted config: `cat ~/.config/xeneon-edge-hub/config.toml`
-4. Delete config and restart: `rm -rf ~/.config/xeneon-edge-hub/`
+4. If resetting, keep the `config.toml.bak` path printed by `--reset`; it is the
+   recovery copy of the discarded configuration.
 
 ---
 
@@ -95,8 +113,10 @@
 
 **Fixes:**
 1. Restart the application.
-2. Toggle dashboard visibility in Settings.
-3. This may be a compositor/GPU driver issue — try switching between Wayland and X11.
+2. Re-run display recovery with `xeneon-edge-hub --reset-wizard` if the target is
+   no longer matched.
+3. Record the compositor, GPU driver and session type when reporting the issue;
+   GNOME and X11 are not currently advertised without candidate evidence.
 
 ---
 
@@ -109,24 +129,22 @@ xeneon-edge-hub --version
 # Show diagnostic info
 xeneon-edge-hub --diagnostics
 
-# Export diagnostics bundle
-xeneon-edge-hub --export-diagnostics
-
 # Reset all settings
 xeneon-edge-hub --reset
-
-# Reset only display settings
-xeneon-edge-hub --reset-display
 
 # Start in safe mode
 xeneon-edge-hub --safe-mode
 
-# Force show dashboard on primary monitor (emergency)
-xeneon-edge-hub --force-show
-
 # Run first-run wizard again
 xeneon-edge-hub --reset-wizard
+
+# Open a decorated recovery/debug window
+xeneon-edge-hub --windowed
 ```
+
+`--diagnostics` opens the diagnostics view; it does not create an export bundle.
+Copy the relevant configuration or terminal output manually after checking it for
+secrets.
 
 ---
 
@@ -134,13 +152,13 @@ xeneon-edge-hub --reset-wizard
 
 If the above steps don't resolve your issue:
 
-1. Export diagnostics: `xeneon-edge-hub --export-diagnostics`
-2. Check existing [GitHub Issues](https://github.com/your-org/xeneon-edge-linux-hub/issues)
+1. Capture terminal output from `RUST_LOG=debug xeneon-edge-hub --diagnostics` and
+   remove any private paths or configured feed URLs before sharing it.
+2. Check existing [GitHub Issues](https://github.com/skyphoenix-it/XeneonEdge_Linux/issues).
 3. Open a new issue with:
    - Distribution and version
    - Desktop environment and session type
    - Display configuration
    - Application version
    - Steps to reproduce
-   - Diagnostics bundle (if safe to share)
-
+   - Relevant redacted diagnostic/terminal output

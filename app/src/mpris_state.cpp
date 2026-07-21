@@ -53,13 +53,20 @@ TrackState resolveTrack(const QVariantMap& props, const QString& service) {
 
     s.album = meta.value(QStringLiteral("xesam:album")).toString();
     s.artUrl = meta.value(QStringLiteral("mpris:artUrl")).toString();
-    // Some players (e.g. Chromium) advertise a file:// art path that may be
-    // stale/unreadable. Validate local files so QML never tries a bad URL
-    // (which would emit an Image "Cannot open" warning); http(s) is passed through.
-    if (s.artUrl.startsWith(QStringLiteral("file://"))) {
-        const QString local = QUrl(s.artUrl).toLocalFile();
+    // Artwork is rendered by QML Image, outside the widget NetHub choke point.
+    // Accept only a readable local file (or our own qrc resource); otherwise a
+    // player-controlled http(s)/data/custom URL could bypass the Hub's offline and
+    // host-allowlist policy. Chromium also commonly advertises stale file URLs,
+    // which are cleared so QML does not emit a misleading "Cannot open" warning.
+    const QUrl art(s.artUrl);
+    if (art.scheme().compare(QStringLiteral("qrc"), Qt::CaseInsensitive) == 0) {
+        // Bundled application resource: no egress and Qt resolves it itself.
+    } else if (art.isLocalFile()) {
+        const QString local = art.toLocalFile();
         if (local.isEmpty() || !QFileInfo(local).isReadable())
             s.artUrl.clear();
+    } else {
+        s.artUrl.clear();
     }
     s.lengthUs = meta.value(QStringLiteral("mpris:length")).toLongLong();
     s.playerName = playerNameFromService(service);

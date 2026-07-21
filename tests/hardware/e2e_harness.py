@@ -64,6 +64,21 @@ from input_guard import UserActivityAbort  # noqa: E402  (re-exported for suites
 class InjectionRefused(RuntimeError):
     """A safety precondition failed — suites must skip loudly, not inject."""
 
+
+# Edge-local centres of the two compact controls used to prove that an injector
+# really lands on the verified Hub window. These are intentionally shared with
+# e2e_interaction.py: the safety probe and behavior assertions must exercise the
+# same real controls, rather than carrying two independently stale copies.
+# Re-measured from a real DP-3 grab on 2026-07-20 after the per-size widget
+# layouts landed (720x2560 KScreen geometry, current 1x1 tile layout).
+PROBE_FOCUS_START = (140, 392)
+PROBE_HYDRATION_PLUS = (320, 1314)
+# KScreen exposes the physically portrait panel as a rotated 720x2560 output.
+# The Hub's horizontal SwipeView axis therefore appears vertical in an output
+# grab: bottom-to-top advances, top-to-bottom returns.
+PAGE_SWIPE_NEXT = (360, 2100, 360, 500)
+PAGE_SWIPE_PREVIOUS = (360, 500, 360, 2100)
+
 HUB = os.path.join(REPO, "build", "xeneon-edge-hub")
 MANAGER = os.path.join(REPO, "build", "xeneon-edge-manager")
 
@@ -173,6 +188,10 @@ class E2E:
         self.input_aborted = False
         self.guard = None
         self._injector = None       # ("touch", VTouch) | ("pointer", VPointer)
+        # A pre-created fallback cannot be destroyed while the guard is armed:
+        # KWin reports virtual-device removal as activity, which would trip the
+        # next real-input check. Keep unused devices inert until final cleanup.
+        self._standby_injectors = []
         self.window_verified = False
         self.skips = []             # (name, reason)
 
@@ -345,13 +364,13 @@ class E2E:
 
     def _seed_probe_layout(self):
         """The pixel-verified control layout (same as e2e_interaction's) with
-        two independent probe controls: hydration '+' at Edge-local (394,1281)
-        and focus Start at (316,787) — grab-measured 2026-07-16 against the
-        current build (the store's {w,h}->size migration moved the layout)."""
+        two independent probe controls at the shared PROBE_* coordinates above.
+        A real-panel grab is required whenever the widget layouts move; the IPC
+        checks below make stale coordinates fail closed before general input."""
         self.set_state(doc([page("Probe", [
-            tile("focus-pr", "focus", 1, 1),
-            tile("hydration-pr", "hydration", 1, 1),
-            tile("tasks-pr", "tasks", 1, 2),
+            tile("focus-pr", "focus", "1x1"),
+            tile("hydration-pr", "hydration", "1x1"),
+            tile("tasks-pr", "tasks", "1x2"),
         ])], settings={
             "hydration-pr": {"count": 0, "goal": 8, "day": self.today},
             "focus-pr": {"preset": "classic", "phase": "work", "running": False,
@@ -366,13 +385,13 @@ class E2E:
         distinct pixels rule out both a mis-aimed injector and a lucky stray
         tap locking in a wrong axis transform."""
         self._seed_probe_layout()
-        tap_fn(394, 1281)
+        tap_fn(*PROBE_HYDRATION_PLUS)
         time.sleep(0.4)
         got = self.settings().get("hydration-pr", {}).get("count")
         print("  LANDING-PROBE %s [1/2]: hydration count=%s (want 1)" % (label, got), flush=True)
         if got != 1:
             return False
-        tap_fn(316, 787)
+        tap_fn(*PROBE_FOCUS_START)
         time.sleep(0.4)
         run = self.settings().get("focus-pr", {}).get("running")
         print("  LANDING-PROBE %s [2/2]: focus running=%s (want True)" % (label, run), flush=True)
@@ -398,41 +417,82 @@ class E2E:
         # 2. target-window verification (render probe), BEFORE the first event
         if not self.verify_target_window():
             raise InjectionRefused("hub window not verified at the Edge rect -> no injection")
-        self.guard.arm()                        # from here, any user event aborts
-        dev = None
+        # 3. Create/map the inert devices BEFORE arming. KWin may report device
+        # hot-plug itself as a resumed activity event; every UinputSink write is
+        # structurally forbidden while unarmed, so it is safe to let that settle
+        # and require owner-idle a second time. Creating a fallback now also means
+        # no device enumeration can occur after the guard is live.
+        vt = None
+        vp = None
         try:
             # 3a. preferred: ABS_MT touchscreen physically bound to the Edge output
             try:
-                dev = vt = u.VTouch((0, 0, self.ew, self.eh), guard=self.guard)
+                vt = u.VTouch((0, 0, self.ew, self.eh), guard=self.guard)
                 try:
                     vt.map_to_output(self.edge_name)   # KWin readback-verified
                     print("  VTouch bound to output %s (%s)" % (self.edge_name, vt.mapped_path), flush=True)
-                    # rot270 first: measured on this box 2026-07-16 (KWin maps the MT
-                    # device in the panel's NATIVE landscape axes, then applies the
-                    # output's 270-degree transform). Fewer stray probe taps this way.
-                    for tr in ("rot270", "identity", "rot90", "rot180"):
-                        vt.transform = tr
-                        if self._probe_landing(vt.tap, "touch/" + tr):
-                            self._injector = ("touch", vt)
-                            return "touch"
-                    print("  VTouch landing probe failed for all transforms; falling back", flush=True)
                 except u.OutputMappingError as e:
                     print("  VTouch output mapping unavailable (%s); falling back" % e, flush=True)
-                vt.close(); dev = None
+                    vt.close(); vt = None
             except OSError as e:
                 print("  VTouch device creation failed (%s); falling back" % e, flush=True)
-            # 3b. fallback: whole-canvas pointer, arithmetically clamped to the rect
-            dev = vp = u.VPointer(self.cw, self.ch, (self.ex, self.ey, self.ew, self.eh),
-                                  guard=self.guard)
+
+            # 3b. Prepare the whole-canvas pointer fallback before arming too.
+            try:
+                vp = u.VPointer(self.cw, self.ch, (self.ex, self.ey, self.ew, self.eh),
+                                guard=self.guard)
+            except OSError as e:
+                print("  VPointer device creation failed (%s)" % e, flush=True)
+                if vt is None:
+                    raise InjectionRefused("no confined injector could be created")
+
+            # Device enumeration and any real owner activity must now be quiet
+            # for the full idle interval. Only after that proof can emit() run.
+            self.guard.require_user_idle()
+            self.guard.arm()
+
+            if vt is not None:
+                # rot270 first: measured on this box 2026-07-16 (KWin maps the MT
+                # device in the panel's NATIVE landscape axes, then applies the
+                # output's 270-degree transform). Fewer stray probe taps this way.
+                for tr in ("rot270", "identity", "rot90", "rot180"):
+                    vt.transform = tr
+                    if self._probe_landing(vt.tap, "touch/" + tr):
+                        if vp is not None:
+                            self._standby_injectors.append(vp); vp = None
+                        self._injector = ("touch", vt)
+                        return "touch"
+                print("  VTouch landing probe failed for all transforms; falling back", flush=True)
+                self._standby_injectors.append(vt); vt = None
+
+            if vp is None:
+                raise InjectionRefused("touch landing failed and pointer fallback is unavailable")
             if self._probe_landing(lambda lx, ly: vp.tap(self.ex + lx, self.ey + ly),
                                    "pointer/clamped"):
                 self._injector = ("pointer", vp)
                 return "pointer"
-            vp.close(); dev = None
+            vp.close(); vp = None
             raise InjectionRefused("no injector passed the IPC landing probe -> refusing to inject blind")
         except UserActivityAbort:
             self.input_aborted = True           # kill switch mid-probe: stay off
-            if dev is not None:
+            for dev in (vt, vp):
+                if dev is None:
+                    continue
+                try:
+                    dev.close()
+                except Exception:
+                    pass
+            raise
+        except Exception:
+            # Do not leak a half-created uinput device when mapping, IPC, or a
+            # landing probe fails unexpectedly. If the guard was already armed,
+            # device teardown itself may be observed as activity, so this run
+            # must never attempt another injection after cleanup.
+            if self.guard is not None and self.guard.ledger.is_armed():
+                self.input_aborted = True
+            for dev in (vt, vp):
+                if dev is None:
+                    continue
                 try:
                     dev.close()
                 except Exception:
@@ -473,6 +533,12 @@ class E2E:
             except Exception:
                 pass
             self._injector = None
+        for dev in self._standby_injectors:
+            try:
+                dev.close()
+            except Exception:
+                pass
+        self._standby_injectors = []
 
     # ── screenshots ────────────────────────────────────────────────────────
     def grab(self, path):
@@ -523,8 +589,17 @@ class E2E:
 def page(name, tiles):
     return {"name": name, "tiles": tiles}
 
-def tile(tid, ttype, w=1, h=1):
-    return {"id": tid, "type": ttype, "w": w, "h": h}
+def tile(tid, ttype, size="1x1"):
+    """Build a tile using the current persisted size contract.
+
+    The dashboard migrated legacy numeric ``w``/``h`` spans to the semantic
+    ``size`` strings defined by WidgetSizes.qml.  Keeping this helper strict
+    makes stale hardware tests fail at construction time instead of appearing
+    to resize a tile whose legacy fields are immediately discarded.
+    """
+    if not isinstance(size, str):
+        raise TypeError("tile size must be a WidgetSizes string, got %r" % (size,))
+    return {"id": tid, "type": ttype, "size": size}
 
 def doc(pages, settings=None, appearance=None):
     return {"version": 1,

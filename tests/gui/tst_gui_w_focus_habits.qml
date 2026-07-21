@@ -3,13 +3,13 @@ import QtTest
 import "../ui" as UI
 import "GuiUtil.js" as G
 
-// Visible GUI suite — Focus/habit widgets: Quick Note, Habit Streak, Hydration,
-// Break Reminder. Each is hosted in a real KWin-composited window via
+// Visible GUI suite — Focus/habit widgets: Quick Note, Habit Streak and Break
+// Reminder. Each is hosted in a real KWin-composited window via
 // UI.WidgetHarness, sized to a concrete cell, driven with real mouse/keyboard
 // events, and asserted via item.visible / geometry / on-screen text / grabImage
 // pixels / a store setting reflected in the visible output. Deterministic day &
-// timer seams are seeded through store settings (checkins[], hydration day/count,
-// break endEpoch/running/due/intervalMin) — never by sleeping real time.
+// timer seams are seeded through store settings (checkins[], break
+// endEpoch/running/due/intervalMin) — never by sleeping real time.
 Item {
     id: root
     width: 1400; height: 760
@@ -100,13 +100,6 @@ Item {
                 try { return n && n.text !== undefined && n.visible
                              && /^\d{1,3}:\d\d$/.test("" + n.text) } catch (e) { return false }
             })
-        }
-        // Visible "💧" droplet glyph count (hydration tile grid).
-        function dropletCount() {
-            return G.collectPred(wh.item, function (n) {
-                try { return n && n.text !== undefined && n.visible && ("" + n.text) === "💧" }
-                catch (e) { return false }
-            }).length
         }
         // Live heatmap cells (Rectangles carrying a `dk` date key). GuiUtil's
         // walker visits an Item via both `children` and `data`, so a delegate can
@@ -535,199 +528,6 @@ Item {
             loadWidget("HabitWidget.qml", "heatCols"); resetInst()
             seed({ checkins: [wh.item.todayKey] })
             setSize("compact", 696, 612); backdropCheck("habit", r.style)
-        }
-
-        // ═══════════════════════════════════════════════════════════════════
-        // HYDRATION
-        // ═══════════════════════════════════════════════════════════════════
-        function test_hydration_sizes_data() {
-            return [
-                { tag: "0.5x0.5", cls: "compact", w: 348, h: 306 },
-                { tag: "0.5x1",   cls: "tall",    w: 348, h: 700 },
-                { tag: "1x0.5",   cls: "wide",    w: 760, h: 409 },
-                { tag: "1x1",     cls: "compact", w: 696, h: 612 }
-            ]
-        }
-        function test_hydration_sizes(r) {
-            loadWidget("HydrationWidget.qml", "glassCols")
-            resetInst()
-            seed({ goal: 8, count: 3, day: wh.item.todayKey })
-            setSize(r.cls, r.w, r.h)
-            var img = snap(wh, "hyd_size_" + r.tag)
-            verify(G.looksRendered(img), "hydration " + r.tag + " renders content")
-            compare(wh.item.width, r.w, "hydration " + r.tag + " width")
-            compare(wh.item.height, r.h, "hydration " + r.tag + " height")
-        }
-
-        function test_hydration_config_goal_data() {
-            return [ { tag: "6", goal: 6, expect: "of 6 glasses" },
-                     { tag: "3", goal: 3, expect: "of 3 glasses" } ]
-        }
-        function test_hydration_config_goal(r) {
-            loadWidget("HydrationWidget.qml", "glassCols")
-            resetInst()
-            seed({ goal: 8, count: 0, day: wh.item.todayKey })
-            setSize("compact", 696, 612)
-            wh.storeCtl.setSetting(wh.instanceId, "goal", r.goal)
-            wait(200)
-            compare(wh.item.goal, r.goal, "goal setting reaches widget")
-            verify(vtext(r.expect) !== null, "count line reflects '" + r.expect + "'")
-            snap(wh, "hyd_goal_" + r.tag)
-        }
-        function test_hydration_config_glassml_data() {
-            return [ { tag: "300", ml: 300, count: 2, expect: "600 ml" },
-                     { tag: "500", ml: 500, count: 2, expect: "1.0 L" } ]
-        }
-        function test_hydration_config_glassml(r) {
-            loadWidget("HydrationWidget.qml", "glassCols")
-            resetInst()
-            seed({ goal: 8, count: r.count, day: wh.item.todayKey, glassMl: r.ml })
-            setSize("compact", 696, 612)
-            wh.expanded = true; wait(220)
-            verify(vtext(r.expect) !== null, "overlay volume shows '" + r.expect + "'")
-            snap(wh, "hyd_glassml_" + r.tag)
-        }
-        function test_hydration_config_title() {
-            loadWidget("HydrationWidget.qml", "glassCols")
-            resetInst()
-            seed({ goal: 8, count: 0, day: wh.item.todayKey })
-            setSize("compact", 696, 612)
-            wh.item.titleOverride = "Water"
-            wait(160)
-            verify(vtext("Water") !== null, "custom title renders in header")
-            snap(wh, "hyd_title")
-        }
-
-        function test_hydration_body_plus() {
-            loadWidget("HydrationWidget.qml", "glassCols")
-            resetInst()
-            seed({ goal: 8, count: 2, day: wh.item.todayKey })
-            setSize("compact", 696, 612)
-            snap(wh, "hyd_plus_before")
-            clickPill("+1")
-            compare(settings().count, 3, "+1 raises count to 3")
-            snap(wh, "hyd_plus_after")
-        }
-        function test_hydration_body_minus() {
-            loadWidget("HydrationWidget.qml", "glassCols")
-            resetInst()
-            seed({ goal: 8, count: 2, day: wh.item.todayKey })
-            setSize("compact", 696, 612)
-            clickPill(minusSign, true)
-            compare(settings().count, 1, "−1 lowers count to 1")
-            snap(wh, "hyd_minus_after")
-        }
-        function test_hydration_body_overlay_glass() {
-            loadWidget("HydrationWidget.qml", "glassCols")
-            resetInst()
-            seed({ goal: 8, count: 0, day: wh.item.todayKey })
-            setSize("compact", 696, 612)
-            wh.expanded = true; wait(220)
-            var glasses = G.collectPred(wh.item, function (n) {
-                try { return n && n.bonus !== undefined && n.filled !== undefined && G.isLive(n) }
-                catch (e) { return false }
-            })
-            verify(glasses.length >= 4, "overlay renders tappable glasses (" + glasses.length + ")")
-            var g = glasses[3]
-            mouseClick(g, g.width / 2, g.height / 2)   // set(index+1) = set(4)
-            wait(220)
-            compare(settings().count, 4, "tapping the 4th glass sets count to 4")
-            snap(wh, "hyd_overlay_glass")
-        }
-        function test_hydration_body_overlay_goal_minus() {
-            loadWidget("HydrationWidget.qml", "glassCols")
-            resetInst()
-            seed({ goal: 8, count: 0, day: wh.item.todayKey })
-            setSize("compact", 696, 612)
-            wh.expanded = true; wait(220)
-            clickPill(minusSign, true)
-            compare(settings().goal, 7, "overlay goal − lowers goal to 7")
-            snap(wh, "hyd_overlay_goal_minus")
-        }
-        function test_hydration_body_overlay_goal_plus() {
-            loadWidget("HydrationWidget.qml", "glassCols")
-            resetInst()
-            seed({ goal: 8, count: 0, day: wh.item.todayKey })
-            setSize("compact", 696, 612)
-            wh.expanded = true; wait(220)
-            clickPill("+", true)
-            compare(settings().goal, 9, "overlay goal + raises goal to 9")
-            snap(wh, "hyd_overlay_goal_plus")
-        }
-
-        function test_hydration_state_count_readout() {
-            loadWidget("HydrationWidget.qml", "glassCols")
-            resetInst()
-            seed({ goal: 8, count: 3, day: wh.item.todayKey })
-            setSize("compact", 696, 612)
-            verify(vtext("3 of 8 glasses") !== null, "count/goal readout shown")
-            snap(wh, "hyd_st_readout")
-        }
-        function test_hydration_state_grid_fill() {
-            loadWidget("HydrationWidget.qml", "glassCols")
-            resetInst()
-            seed({ goal: 6, count: 3, day: wh.item.todayKey })
-            setSize("compact", 696, 612)
-            compare(dropletCount(), 3, "3 filled droplets for count 3")
-            snap(wh, "hyd_st_grid")
-        }
-        function test_hydration_state_goal_reached() {
-            loadWidget("HydrationWidget.qml", "glassCols")
-            resetInst()
-            seed({ goal: 2, count: 1, day: wh.item.todayKey })
-            setSize("compact", 696, 612)
-            snap(wh, "hyd_st_goal_before")
-            clickPill("+1")   // 1 -> 2 == goal
-            compare(settings().count, 2, "reached goal")
-            verify(vtext("Goal reached") !== null, "goal-reached celebration fires")
-            snap(wh, "hyd_st_goal_after")
-        }
-        function test_hydration_state_streak_line() {
-            loadWidget("HydrationWidget.qml", "glassCols")
-            resetInst()
-            seed({ goal: 8, count: 1, day: wh.item.todayKey, streak: 3, lastGoalDay: wh.item.todayKey })
-            setSize("compact", 696, 612)
-            compare(wh.item.streakDisplay, 3, "streak display resolves to 3")
-            verify(vtext("3-day streak") !== null, "streak line shown")
-            snap(wh, "hyd_st_streak")
-        }
-        function test_hydration_state_micro_number() {
-            loadWidget("HydrationWidget.qml", "glassCols")
-            resetInst()
-            seed({ goal: 8, count: 2, day: wh.item.todayKey })
-            setSize("compact", 348, 306)
-            verify(wh.item.micro === true, "micro at 0.5x0.5")
-            verify(vtext("2/8") !== null, "micro shows compact count/goal")
-            compare(dropletCount(), 0, "micro drops the glass grid")
-            snap(wh, "hyd_st_micro")
-        }
-        function test_hydration_state_overfill() {
-            loadWidget("HydrationWidget.qml", "glassCols")
-            resetInst()
-            seed({ goal: 2, count: 3, day: wh.item.todayKey })
-            setSize("compact", 696, 612)
-            wh.expanded = true; wait(220)
-            verify(vtext("Overachiever") !== null, "overfill bonus message shown")
-            snap(wh, "hyd_st_overfill")
-        }
-
-        function test_hydration_chrome_accent_override() {
-            loadWidget("HydrationWidget.qml", "glassCols"); resetInst()
-            seed({ goal: 8, count: 3, day: wh.item.todayKey })
-            setSize("compact", 696, 612); accentCheck("hyd", "override")
-        }
-        function test_hydration_chrome_accent_auto() {
-            loadWidget("HydrationWidget.qml", "glassCols"); resetInst()
-            seed({ goal: 8, count: 3, day: wh.item.todayKey })
-            setSize("compact", 696, 612); accentCheck("hyd", "auto")
-        }
-        function test_hydration_chrome_backdrop_data() {
-            return backdropStyles.map(function (s) { return { tag: s, style: s } })
-        }
-        function test_hydration_chrome_backdrop(r) {
-            loadWidget("HydrationWidget.qml", "glassCols"); resetInst()
-            seed({ goal: 8, count: 3, day: wh.item.todayKey })
-            setSize("compact", 696, 612); backdropCheck("hyd", r.style)
         }
 
         // ═══════════════════════════════════════════════════════════════════

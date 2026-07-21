@@ -1887,7 +1887,7 @@ ApplicationWindow {
                                 Layout.fillWidth: true; spacing: 8
                                 AppIcon { name: "ui-settings"; size: 18; color: m.textSecondary; Layout.alignment: Qt.AlignVCenter }
                                 Text { text: "Diagnostics"; color: m.textPrimary; font.pixelSize: 16; font.bold: true; Layout.fillWidth: true }
-                                MButton { text: diagBox.visible ? "Hide config" : "Show config"
+                                MButton { text: diagBox.visible ? "Hide summary" : "Show redacted summary"
                                     onClicked: diagBox.visible = !diagBox.visible }
                             }
                             Text { text: (backend.hubConnected ? "Hub connected (live)" : "Hub offline (saved)")
@@ -1905,9 +1905,8 @@ ApplicationWindow {
                                     contentWidth: availableWidth
                                     Text {
                                         width: diagBox.width - 16
-                                        // Only fetch the config when the box is actually
-                                        // shown, and guard the method (the QML test mock
-                                        // backend doesn't implement configJson()).
+                                        // Only fetch the Rust-produced redacted summary
+                                        // when shown. The QML test mock may omit the API.
                                         text: {
                                             if (!diagBox.visible) return ""
                                             var _ = store.revision

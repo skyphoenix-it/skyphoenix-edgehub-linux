@@ -1,7 +1,9 @@
 import QtQuick
 import QtTest
 
-// COVERS: fn:main.bindStackItem, fn:main.onContentRotationChanged
+// COVERS: fn:main.bindStackItem, fn:main.onContentRotationChanged,
+//         fn:main.onDisplayDisconnectedChanged,
+//         fn:main.onDisplaySelectionRequestedChanged
 //
 // ui/qml/main.qml — bindStackItem (binds/rebinds cleanly, skips null +
 // items without the shell properties) and the readonly `contentRotation`
@@ -152,6 +154,21 @@ Item {
             verify(!bare.hasOwnProperty("metricsJson"), "no property was injected")
             bare.destroy()
             verify(true, "null + bare items handled without error")
+        }
+
+        function test_display_disconnect_events_are_declared_and_observable() {
+            compare(win.displayDisconnected, "")
+            compare(win.displaySelectionRequested, "")
+            win.displayDisconnected = "DP-3"
+            compare(win.lastDisplayEventText,
+                    "Dashboard display DP-3 disconnected. Waiting for reconnection.")
+            win.displaySelectionRequested = "DP-3"
+            compare(win.lastDisplayEventText,
+                    "Dashboard display DP-3 is unavailable. Open Xeneon Edge Manager to select a display.")
+            // C++ clears both markers when the configured target reconnects.
+            win.displaySelectionRequested = ""
+            win.displayDisconnected = ""
+            compare(win.lastDisplayEventText, "")
         }
 
         // ── contentRotation (fixed modes) ─────────────────────────────────────

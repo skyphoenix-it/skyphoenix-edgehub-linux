@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import QtTest
 import "GuiUtil.js" as G
 
@@ -13,10 +14,10 @@ import "GuiUtil.js" as G
 //     per-tile config overlay, per-page background, toolbar visibility, and
 //     SwipeView.interactive === !editMode.
 //
-// Widget TILES do not render (their sources are qrc: paths that don't resolve
-// under qmltestrunner), so every assertion is on GUI-observable STRUCTURE:
-// currentIndex, counts, item geometry/visible, store facts reflected in the
-// visible output, and grabImage pixels for backgrounds — never widget pixels.
+// The repository QuickTest runner embeds the shipped icon/wallpaper resources,
+// while WidgetCatalog resolves widget sources from this source tree. Assertions
+// cover GUI-observable structure, real input, rendered geometry and background
+// pixels; the dedicated widget files own detailed per-widget pixel behaviour.
 Item {
     id: root
     width: 2560; height: 720
@@ -39,11 +40,12 @@ Item {
     property int _targetScreenHeight: 720
 
     property var win: null
+    property var dashboardPage: null
 
     // ── Finders (pure; no mouseClick) ────────────────────────────────────────
-    function swipe() { return G.byObjName(win.contentItem, "pageSwipe") }
-    function dash()  { return G.findPred(win.contentItem, function (n) { return n && n.appendPreset !== undefined && n.netGate !== undefined }) }
-    function store() { return G.findPred(win.contentItem, function (n) { return n && n.applyExternal !== undefined && n.structureRevision !== undefined }) }
+    function swipe() { return G.byObjName(dashboardPage, "pageSwipe") }
+    function dash()  { return dashboardPage }
+    function store() { return G.findPred(dashboardPage, function (n) { return n && n.applyExternal !== undefined && n.structureRevision !== undefined }) }
     function picker(){ return G.findPred(win.contentItem, function (n) { try { return n && n.shown !== undefined && n.pageIndex !== undefined } catch (e) { return false } }) }
     function overlayItem() { return G.findPred(win.contentItem, function (n) { try { return n && n.ovlWide !== undefined } catch (e) { return false } }) }
     function barBtn(icon) { return G.findPred(win.contentItem, function (n) { try { return n && n.iconName !== undefined && n.iconName === icon } catch (e) { return false } }) }
@@ -56,8 +58,13 @@ Item {
     function ancestorFlick(node) { return ancestor(node, function (n) { try { return n && n.flickableDirection !== undefined && n.boundsBehavior !== undefined } catch (e) { return false } }) }
     function pageInd() {
         var s = swipe()
-        return G.findPred(win.contentItem, function (n) {
-            try { return n && n !== s && n.currentIndex !== undefined && n.count !== undefined && n.delegate !== undefined && typeof n.goToPage !== "function" }
+        return G.findPred(dashboardPage, function (n) {
+            // SwipeView's private content ListView has the same currentIndex/count/
+            // delegate shape as PageIndicator.  Matching only those properties made
+            // the tests inspect page delegates instead of the visible indicator.
+            try { return n && n !== s && ("" + n).indexOf("PageIndicator") >= 0
+                         && n.currentIndex !== undefined && n.count !== undefined
+                         && n.delegate !== undefined }
             catch (e) { return false }
         })
     }
@@ -97,11 +104,23 @@ Item {
             var y = sw.height / 2
             var x0 = dir < 0 ? sw.width * 0.82 : sw.width * 0.18
             var x1 = dir < 0 ? sw.width * 0.18 : sw.width * 0.82
-            mousePress(sw, x0, y)
-            mouseMove(sw, (x0 + x1) / 2, y)
-            mouseMove(sw, x1, y)
-            mouseMove(sw, x1, y)
-            mouseRelease(sw, x1, y)
+            // A swipe is one continuous held-button gesture.  Omitting `buttons`
+            // made mouseMove synthesize Qt.NoButton hover events; inheriting the
+            // runner's watchable 250ms delay also turned three moves into a slow
+            // pointer stroll.  Use several frame-like held moves so --fast and the
+            // default watchable mode exercise the same human-scale gesture.
+            mousePress(sw, x0, y, Qt.LeftButton, Qt.NoModifier, 0)
+            for (var i = 1; i <= 8; i++)
+                mouseMove(sw, x0 + (x1 - x0) * i / 8, y, 16,
+                          Qt.LeftButton, Qt.NoModifier)
+            mouseRelease(sw, x1, y, Qt.LeftButton, Qt.NoModifier, 16)
+        }
+        function settleLanding(sw) {
+            // goToPage deliberately holds its target through deferred ListView
+            // relayout.  Test setup must finish that transaction before exercising
+            // an unrelated user swipe, otherwise the setup timer (not the UI) wins.
+            tryVerify(function () { return sw._wantIndex === -1 }, 3000,
+                      "programmatic page landing settled before user input")
         }
         function resetShell(orient) {
             var d = dash(), s = store(), sw = swipe()
@@ -114,7 +133,7 @@ Item {
             s.load("blank")
             tryVerify(function () { return sw.count === s.pageCount() }, 5000, "SwipeView synced to blank doc")
             sw.goToPage(0)
-            wait(120)
+            tryVerify(function () { return sw.currentIndex === 0 }, 3000)
         }
 
         // ── One-time real-shell hosting ──────────────────────────────────────
@@ -137,15 +156,15 @@ Item {
             win.orientationMode = "portrait"
             var sv = G.findPred(win.contentItem, function (n) { return n && typeof n.push === "function" && n.currentItem !== undefined })
             verify(sv, "found the StackView")
-            // Exactly ONE Dashboard on the stack. This used to be guaranteed by a BUG:
-            // main.qml's initialItem was "qrc:/qml/Dashboard.qml", which cannot resolve
-            // under qmltestrunner, so the stack was empty and this push produced the only
-            // instance. Now that initialItem resolves from the source tree, pushing
-            // without clearing leaves TWO stacked Dashboards — the test then drives the
-            // one underneath, so every "is it hidden?" assertion passes and every click
-            // silently lands on the wrong instance.
-            sv.clear()
-            sv.clear(); sv.push(Qt.resolvedUrl("../../ui/qml/Dashboard.qml"))
+            // main.qml resolves its initial Dashboard in both the product and this
+            // source-tree runner. Keep exactly one deterministic test page: pushing
+            // without clearing would leave two trees, and an animated clear would
+            // leave the outgoing tree live long enough for finders to mix instances.
+            sv.clear(StackView.Immediate)
+            sv.push(Qt.resolvedUrl("../../ui/qml/Dashboard.qml"))
+            tryVerify(function () { return sv.depth === 1 && sv.currentItem !== null }, 5000,
+                      "exactly one current Dashboard page")
+            dashboardPage = sv.currentItem
             tryVerify(function () { return dash() !== null && swipe() !== null && store() !== null }, 8000,
                       "real Dashboard + SwipeView + store loaded in the shell")
             tryVerify(function () { return store().loaded }, 5000, "store finished loading")
@@ -221,7 +240,7 @@ Item {
             tryVerify(function () { return sw.count === 4 }, 4000)
             sw.goToPage(d.start)
             tryVerify(function () { return sw.currentIndex === d.start }, 4000)
-            wait(300)
+            settleLanding(sw)
             swipeDrag(sw, d.dir)
             tryVerify(function () { return sw.currentIndex === d.expect }, 4000, "swiped to " + d.expect)
             wait(900)
@@ -234,6 +253,7 @@ Item {
             var s = store(), sw = swipe(), db = dash()
             s.addPage(""); s.addPage(""); tryVerify(function () { return sw.count === 3 }, 4000)
             sw.goToPage(1); tryVerify(function () { return sw.currentIndex === 1 }, 4000); wait(300)
+            settleLanding(sw)
             db.editMode = true; wait(150)
             verify(sw.interactive === false, "SwipeView not interactive in edit mode")
             swipeDrag(sw, -1); wait(400)
@@ -245,6 +265,7 @@ Item {
             resetShell("portrait")
             var s = store(), sw = swipe()
             s.addPage(""); s.addPage(""); tryVerify(function () { return sw.count === 3 }, 4000)
+            settleLanding(sw)
             swipeDrag(sw, -1)
             tryVerify(function () { return sw.currentIndex === 1 }, 4000, "swiped to page 1")
             wait(900)
@@ -256,6 +277,7 @@ Item {
             resetShell("portrait")
             var s = store(), sw = swipe()
             s.addPage("Ops"); tryVerify(function () { return sw.count === 2 }, 4000)
+            settleLanding(sw)
             swipeDrag(sw, -1)
             tryVerify(function () { return sw.currentIndex === 1 }, 4000, "swiped to page 1")
             wait(300)
@@ -397,6 +419,7 @@ Item {
             resetShell("portrait")
             var s = store(), sw = swipe(); s.addPage(""); s.addPage(""); s.addPage("")
             var pi = pageInd(); tryVerify(function () { return pi.count === 4 }, 4000); wait(200)
+            settleLanding(sw)
             var del = indicatorDelegate(pi, 3); verify(del, "chip 3 delegate present")
             mouseClick(del, del.width / 2, del.height / 2)
             tryVerify(function () { return sw.currentIndex === 3 }, 4000, "tapped chip navigated")
@@ -750,10 +773,20 @@ Item {
             var s = store(), db = dash()
             var id = s.addTile(0, "cpu"); wait(150); db.editMode = true; wait(150)
             var cell = cellFor(id)
-            var h0 = cell.height
+            var w0 = cell.width, h0 = cell.height
             for (var k = 0; k < d.clicks; k++) { verify(clickIcon(cell, "ui-resize"), "resize click " + k); wait(200) }
             tryVerify(function () { return s.pages()[0].tiles[0].size === d.expect }, 4000, "size cycled to " + d.expect)
-            if (d.expect === "1x1.5") verify(Math.abs(cell.height - h0) > 1, "cell geometry changed on resize")
+            if (d.expect === "1x1.5") {
+                // 1x1.5 grows the semantic long axis: width in a landscape
+                // projection, height in portrait.  The old height-only check
+                // rejected the correctly rendered landscape geometry.
+                var page = swipe().currentItem
+                verify(page && page.landscape !== undefined, "page projection available")
+                tryVerify(function () {
+                    return page.landscape ? Math.abs(cell.width - w0) > 1
+                                          : Math.abs(cell.height - h0) > 1
+                }, 3000, "cell long-axis geometry changed on resize")
+            }
         }
 
         // EDIT-38 — resize refused when it would overflow the screen.

@@ -140,11 +140,14 @@ Item {
             verify(!threw, "malformed screensData does not throw (guarded to [])")
         }
 
-        // ── Config JSON page ─────────────────────────────────────────────────
-        function test_config_json_rendered() {
-            diag.configJson = '{"version":1}'
+        // ── Redacted config-summary page ─────────────────────────────────────
+        function test_redacted_config_summary_rendered_and_labelled() {
+            diag.configJson = '{"format":"xeneon-config-diagnostics-v1","redaction":{"sensitive_values_omitted":true}}'
             diag.currentPage = 1
-            verify(findText(diag, '{"version":1}') !== null, "the config page shows the raw config JSON")
+            verify(findText(diag, "Redacted configuration summary") !== null,
+                   "the page states that it is not raw config")
+            verify(findText(diag, diag.configJson) !== null,
+                   "the page renders the core-produced redacted summary")
         }
 
         // ── Network tab (W5 finding 6): the NetHub attestation surface ──────

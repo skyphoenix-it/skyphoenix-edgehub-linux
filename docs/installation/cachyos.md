@@ -1,54 +1,82 @@
-# Installation Guide — CachyOS / Arch Linux
+# CachyOS / Arch Linux installation
 
-**Work in progress** — This guide will be completed in Phase 5 (Hardening).
+## Install from the AUR
 
-## Quick Install
+The `xeneon-edge-hub` AUR package builds the signed release source and includes
+both the Hub and Manager:
 
-### From AUR (once published)
-
-```bash
+```sh
 yay -S xeneon-edge-hub
 ```
 
-### From Release Package
+The release signing key is not currently published to a keyserver. If makepkg
+reports an unknown public key, import the pinned maintainer key first and verify
+its full fingerprint:
 
-```bash
-# Download the latest release
-wget https://github.com/your-org/xeneon-edge-linux-hub/releases/latest/download/xeneon-edge-hub-0.1.0-1-x86_64.pkg.tar.zst
-
-# Install
-sudo pacman -U xeneon-edge-hub-0.1.0-1-x86_64.pkg.tar.zst
+```sh
+curl -sL https://github.com/SimonKreitmayer.gpg | gpg --import
+gpg --fingerprint 2F0CAD36DC1D46F3347B7EF293CDC77EACF98990
 ```
 
-## Prerequisites
+Expected fingerprint:
 
-The package will automatically pull these dependencies:
-- `qt6-base`
-- `qt6-declarative`
-- `qt6-wayland`
-- `qt6-tools`
-- `glibc`
-
-## Post-Install
-
-1. Launch from application menu: "Xeneon Edge Linux Hub"
-2. Or from terminal: `xeneon-edge-hub`
-3. Follow the first-run wizard to select your display.
-
-## Uninstall
-
-```bash
-sudo pacman -R xeneon-edge-hub
+```text
+2F0C AD36 DC1D 46F3 347B  7EF2 93CD C77E ACF9 8990
 ```
 
-Configuration files in `~/.config/xeneon-edge-hub/` are preserved. Remove them manually if desired:
+The package depends on `qt6-base`, `qt6-declarative`, `qt6-svg`,
+`qt6-virtualkeyboard`, `qt6-wayland` and `hicolor-icon-theme`; makepkg pulls the
+build dependencies `cmake` and `rust`.
 
-```bash
-rm -rf ~/.config/xeneon-edge-hub/
-rm -rf ~/.local/share/xeneon-edge-hub/
+## Build the current source
+
+```sh
+sudo pacman -S --needed base-devel git cmake rust \
+  qt6-base qt6-declarative qt6-svg qt6-virtualkeyboard qt6-wayland \
+  hicolor-icon-theme
+git clone https://github.com/skyphoenix-it/XeneonEdge_Linux.git
+cd XeneonEdge_Linux
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j"$(nproc)"
+./build/xeneon-edge-hub
+./build/xeneon-edge-manager
 ```
 
-## Troubleshooting
+For local development/dogfood package upgrades, `scripts/update-local.sh` builds
+the local PKGBUILD, installs it through pacman and restarts the applications. It
+requires sudo and is not part of the public release flow.
 
-See [Troubleshooting Guide](../troubleshooting/common-issues.md).
+## Launch
 
+- Dashboard: `xeneon-edge-hub`
+- Companion configuration app: `xeneon-edge-manager`
+
+The package installs both desktop-menu entries and the udev rule needed for
+automatic orientation. If auto-rotate remains unavailable, confirm that your
+user is in the `users` group, reload the rule, and reconnect the display:
+
+```sh
+groups | grep -qw users || sudo gpasswd -a "$USER" users
+sudo udevadm control --reload
+sudo udevadm trigger --action=change --subsystem-match=hidraw
+```
+
+Log out and back in after changing group membership. Manual orientation works
+without sensor access.
+
+## Upgrade and uninstall
+
+Upgrade through the same AUR helper used for installation. Restart a running Hub
+or Manager after pacman replaces the package; a root package transaction cannot
+restart applications inside the user's graphical session.
+
+```sh
+sudo pacman -Rns xeneon-edge-hub
+```
+
+Uninstalling the package removes package-owned binaries and metadata but
+preserves `~/.config/xeneon-edge-hub/config.toml`. Remove that directory only
+when you explicitly want to discard the saved layout and settings.
+
+See [common issues](../troubleshooting/common-issues.md) for display and
+orientation troubleshooting.

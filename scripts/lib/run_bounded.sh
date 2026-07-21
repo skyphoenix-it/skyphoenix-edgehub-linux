@@ -81,8 +81,7 @@ _rb_kill_tree() {
 run_bounded() {
   # RLIMIT_AS is inherited by every descendant — the hard guarantee.
   ( ulimit -v $((RUN_AS_MAX_MB * 1024)) 2>/dev/null; exec env "$@" ) &
-  local pid=$! rss=0 ticks=0 maxticks
-  maxticks=$(awk -v t="$RUN_TIMEOUT" -v p="$RUN_POLL" 'BEGIN{printf "%d", t/p}')
+  local pid=$! rss=0 started=$SECONDS
 
   while kill -0 "$pid" 2>/dev/null; do
     rss=$(_rb_tree_rss_mb "$pid")
@@ -91,13 +90,15 @@ run_bounded() {
       echo "MEMKILL: process tree exceeded ${RUN_MEM_MAX_MB} MiB RSS (reached ${rss} MiB)" >&2
       return 97
     fi
-    if [ "$ticks" -ge "$maxticks" ]; then
+    # Compare actual elapsed wall-clock time. Counting polling iterations makes
+    # a nominal 900-second limit stretch under load because the process scan is
+    # additional time on top of each sleep.
+    if [ $((SECONDS - started)) -ge "$RUN_TIMEOUT" ]; then
       _rb_kill_tree "$pid"; wait "$pid" 2>/dev/null
       echo "TIMEKILL: process tree exceeded ${RUN_TIMEOUT}s" >&2
       return 98
     fi
     sleep "$RUN_POLL"
-    ticks=$((ticks + 1))
   done
   wait "$pid"
 }

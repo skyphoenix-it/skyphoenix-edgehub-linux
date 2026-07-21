@@ -1,8 +1,13 @@
 # Xeneon Edge Linux Hub — Product Vision
 
 **Version:** 0.1.0-draft  
-**Status:** Phase 0 — Discovery  
+**Status:** Historical Phase-0 discovery draft — superseded
 **Last Updated:** 2026-07-11  
+
+> **Historical document.** The goals below explain the original direction, but
+> its platform, packaging, performance and feature statements are not current
+> support or release claims. The authoritative requirements and evidence status
+> are in [MVP scope and evidence status](mvp-scope.md).
 
 ---
 
@@ -90,4 +95,3 @@ This project is independently developed. It is not produced, endorsed, or suppor
 ## License
 
 To be determined — likely MIT or Apache 2.0 for the application core, with consideration for LGPL if Qt dependencies require it.
-

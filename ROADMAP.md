@@ -1,113 +1,57 @@
-# EdgeHub — Roadmap
+# EdgeHub roadmap
 
-**Last updated:** 2026-07-14
+**Last updated:** 2026-07-21
+**Public baseline:** `v1.0.0-alpha.2`
+**Development status:** unreleased; no feature freeze or code freeze declared
 
-EdgeHub is already a complete, shipping-quality application. This roadmap reflects
-that: the foundation is **done**, and the work ahead is a focused path to a tagged
-**v1.0** followed by optional post-1.0 packs. It is deliberately realistic — nothing
-here is a promise dressed up as a feature.
+The current branch is a release candidate work area, not a released beta. A
+milestone changes only when its evidence is complete and an actual tag is
+published.
 
----
+## Current implementation
 
-## Foundations — DONE ✅
+- Native Rust core with a hand-written C ABI and Qt 6/QML Hub and Manager.
+- Multi-page, touch-first dashboards with display targeting, hot-plug handling,
+  orientation support, local TOML state and Manager-to-Hub live updates.
+- **30** first-party widgets registered in `ui/qml/WidgetCatalog.qml`.
+- **19** ready-made screens registered in `ui/qml/PresetCatalog.qml`.
+- **29** themes and **29** accents in `ui/qml/Theme.qml`.
+- **10** animated backgrounds plus the static Gradient style in
+  `ui/qml/BackgroundCatalog.qml`, and 18 bundled wallpapers.
+- Rust, C++, QML, compositor-backed GUI, runtime, Manager and physical-hardware
+  test layers, with release-gate and package-contract tooling.
 
-The core product exists, is tested, and runs on real hardware today.
+These are implementation facts, not a statement that every release requirement
+has passed.
 
-### Application
-- [x] Native Rust core (config, EDID display identity, system metrics) exposed over a stable C ABI
-- [x] Qt 6/QML hub: multi-page swipe dashboard, edit mode (add/remove/move/resize tiles & pages)
-- [x] Schema-driven per-widget configuration with in-widget controls
-- [x] On-device Settings, first-run wizard, and Diagnostics screen
-- [x] EDID-based display auto-detect; real HID auto-rotate on the Xeneon Edge
-- [x] Control-socket IPC and single-instance behavior
-- [x] Local TOML configuration (no account, no telemetry)
+## Gate to the next public milestone
 
-### 22 widgets
-- [x] **System:** CPU, GPU (AMD Radeon), Memory, Network, Disk, Sensors
-- [x] **Time & ambient:** Clock, Analog Clock, Moon Phase
-- [x] **Focus & life:** Focus Timer (Pomodoro), Tasks, Right Now, Quick Note, Habit Streak, Hydration, Break Reminder
-- [x] **Media:** Now Playing (MPRIS)
-- [x] **Info:** Calendar (ICS), Weather (Open-Meteo), Countdown, End of Day, Daily Quote
+- [ ] Resolve every P0/P1 and every release-blocking requirement finding.
+- [ ] Complete the final Manager, Hub and integrated physical-Edge suites with
+      zero failures and zero hidden skips.
+- [ ] Run required Fedora/Ubuntu native-package jobs for the exact candidate.
+- [ ] Exercise AppImage discovery and zsync update against published artifacts.
+- [ ] Record reproducible idle/active CPU, RSS, startup and growth measurements.
+- [ ] Complete the required 48–72-hour physical-hardware soak.
+- [ ] Close the product-default, legal/trademark and payment/delivery decisions.
+- [ ] Enter feature freeze only after all feature criteria above are complete.
+- [ ] Fix release-blocking defects found during the freeze and re-run the gate.
+- [ ] Enter code freeze only with a clean, reviewed, immutable candidate.
+- [ ] Run the final strict suite from that candidate, then sign, publish and
+      verify the release assets.
 
-### Design system
-- [x] 22 themes, 14 accent colors, 7 animated backgrounds, static wallpapers
-- [x] Glass / glow and a reduced-motion mode, shared across every widget
+Until every item is complete, marketing copy must say **alpha/development
+preview**, must not advertise unsupported distro/store availability, and must not
+quote unverified performance numbers.
 
-### Companion — EdgeHub Manager
-- [x] Live WYSIWYG clone of the Edge (drag / reorder / resize)
-- [x] Layout, Appearance, Images, Display, and About tabs
-- [x] Themeable chrome (Dark / Light / Default)
+## After a verified 1.0
 
-### Quality & delivery
-- [x] Rust unit suite (~96% line coverage)
-- [x] C++ QtTest suite (~97% filtered line coverage)
-- [x] QML behavior-matrix harness (~99% of tracked behaviors)
-- [x] Runtime E2E suite + real-hardware E2E suite (`tests/hardware/edge_e2e.py`)
-- [x] Live, green CI gated at ≥95% coverage
-- [x] AUR package (build-tested); AppImage / Flatpak / CPack DEB/RPM recipes authored
+Potential, demand-driven work includes OBS/MangoHud/Prometheus/smart-home
+integrations, a sandboxed widget SDK, marketplace governance and localization.
+None has a committed delivery date.
 
----
-
-## v1.0 — in development 🔄
-
-The goal of v1.0 is to turn "a great dashboard for me" into "a dashboard anyone can
-make their own in minutes," with accessibility and privacy as first-class concerns.
-Approved epics:
-
-### Preset library
-- A curated set of **12–15 ready-made screens** (focus, ambient, system, media, etc.)
-  users can apply and tweak, so a fresh install looks great without edit-mode work.
-
-### Generic primitive widgets
-- **HTTP/JSON** widget (poll an endpoint, map fields to a display)
-- **KPI** widget (single big number + trend)
-- **Command** widget (run a local command, show its output)
-- **Webhook** widget (react to inbound events)
-
-These make EdgeHub extensible without a plugin system.
-
-### Calm / accessibility foundation
-- Accessible typefaces (**Atkinson Hyperlegible**, **Lexend**)
-- Color-blind-safe **Okabe–Ito** palette option
-- A **Calm ↔ Energized** intensity control
-- Honor the OS **reduce-motion** preference automatically
-
-### New wellness widgets
-- Medication reminder
-- Brain-dump (fast capture)
-- Visual timer
-- Now / Next
-
-### Trust & control
-- **Encrypted secrets** for widget credentials (e.g. API tokens)
-- **Egress / offline control** — per-widget network allow-listing and a global offline mode
-- **Enterprise compliance pack** — packaging and documentation for managed deployments
-
-### Release blockers
-- Harden AppImage / Flatpak / DEB / RPM into published, verified artifacts
-- Finalize install/upgrade/uninstall paths and release notes
-
-### Release train
-**alpha → beta → RC → GA.** Each stage tightens scope and stability; GA is the tagged
-1.0 with signed artifacts and published packages.
-
----
-
-## Post-1.0 packs
-
-Optional, demand-driven additions layered on the stable 1.0 core. Not committed
-timelines — direction.
-
-### Segment integration packs
-- **Streamer:** OBS / streaming controls
-- **Gaming:** MangoHud telemetry
-- **Ops / dev:** Prometheus, CI status
-- **Home:** smart-home controls
-- **Finance:** market data
-
-### Platform
-- **WASM widget SDK + marketplace** — sandboxed third-party widgets with a stable manifest and a review/distribution flow
-- **Internationalization (i18n)** — multi-language UI
+See [the beta/release gate](docs/BETA_PLAN.md), [distribution status](docs/DISTRIBUTION.md)
+and [the changelog](CHANGELOG.md).
 
 ---
 

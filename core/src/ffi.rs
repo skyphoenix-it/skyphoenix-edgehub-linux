@@ -289,14 +289,16 @@ pub extern "C" fn xeneon_config_get_theme_mode(handle: *const ConfigHandle) -> *
     to_c_string(h.config.theme.mode.as_str())
 }
 
-/// Get config in JSON format (for diagnostics/QML). Caller must free.
+/// Get a structured, redacted config summary for diagnostics/QML. Arbitrary
+/// config strings, bearer keys, holder identity and opaque UI state are omitted.
+/// Caller must free.
 #[no_mangle]
 pub extern "C" fn xeneon_config_to_json(handle: *const ConfigHandle) -> *mut c_char {
     if handle.is_null() {
         return std::ptr::null_mut();
     }
     let h = unsafe { &*handle };
-    match serde_json::to_string_pretty(&h.config) {
+    match serde_json::to_string_pretty(&config::diagnostics_summary(&h.config)) {
         Ok(json) => to_c_string(json),
         Err(_) => std::ptr::null_mut(),
     }
@@ -345,7 +347,7 @@ pub extern "C" fn xeneon_config_set_autostart(handle: *mut ConfigHandle, enabled
 }
 
 /// Get the stored licence key, or NULL if none is set. Caller must free with
-/// `xeneon_string_free`. The key is a signed token, not a secret.
+/// `xeneon_string_free`. The key is a sensitive, transferable bearer entitlement.
 #[no_mangle]
 pub extern "C" fn xeneon_config_get_license_key(handle: *const ConfigHandle) -> *mut c_char {
     if handle.is_null() {
@@ -1385,6 +1387,88 @@ mod tests {
     }
 
     #[test]
+    fn diagnostics_json_omits_every_arbitrary_or_private_config_value() {
+        let mut h = ConfigHandle {
+            config: AppConfig::default(),
+        };
+        h.config.license_key = Some("XE1.LICENSE_KEY_CANARY.HOLDER_IDENTITY".to_string());
+        h.config.display.target_edid_hash = Some("DISPLAY_IDENTITY_CANARY".to_string());
+        h.config.display.target_connector = Some("PRIVATE_CONNECTOR_CANARY".to_string());
+        h.config.display.target_model = Some("PRIVATE_MODEL_CANARY".to_string());
+        h.config.display.starter_layout = Some("PRIVATE_LAYOUT_CANARY".to_string());
+        h.config.theme.mode = "PRIVATE_THEME_CANARY".to_string();
+        h.config.theme.accent_color = "PRIVATE_ACCENT_CANARY".to_string();
+        h.config.widgets.instances.push(WidgetInstance {
+            id: "PRIVATE_WIDGET_ID_CANARY".to_string(),
+            widget_type: "PRIVATE_WIDGET_TYPE_CANARY".to_string(),
+            enabled: true,
+            settings: serde_json::json!({
+                "authToken": "LEGACY_AUTH_CANARY",
+                "url": "https://user:PRIVATE_URL_CANARY@example.invalid/private"
+            }),
+        });
+        h.config.ui_state = Some(
+            serde_json::json!({
+                "version": 7,
+                "appearance": { "wallpaper": "https://PRIVATE_WALLPAPER_CANARY" },
+                "pages": [{
+                    "name": "PRIVATE_PAGE_NAME_CANARY",
+                    "tiles": [{ "id": "PRIVATE_TILE_ID_CANARY", "type": "notes" }]
+                }],
+                "settings": {
+                    "notes-1": { "notes": "PRIVATE_NOTES_CANARY" },
+                    "tasks-1": { "tasks": ["PRIVATE_TASK_CANARY"] },
+                    "meds-1": { "medication": "PRIVATE_MEDICATION_CANARY" },
+                    "calendar-1": { "url": "https://PRIVATE_CALENDAR_URL_CANARY" },
+                    "http-1": { "authToken": "PRIVATE_AUTH_CANARY" },
+                    "license": { "issued_to": "PRIVATE_HOLDER_IDENTITY_CANARY" }
+                }
+            })
+            .to_string(),
+        );
+
+        let rendered = unsafe { take(xeneon_config_to_json(&h)) };
+        for canary in [
+            "LICENSE_KEY_CANARY",
+            "HOLDER_IDENTITY",
+            "DISPLAY_IDENTITY_CANARY",
+            "PRIVATE_CONNECTOR_CANARY",
+            "PRIVATE_MODEL_CANARY",
+            "PRIVATE_LAYOUT_CANARY",
+            "PRIVATE_THEME_CANARY",
+            "PRIVATE_ACCENT_CANARY",
+            "PRIVATE_WIDGET_ID_CANARY",
+            "PRIVATE_WIDGET_TYPE_CANARY",
+            "LEGACY_AUTH_CANARY",
+            "PRIVATE_URL_CANARY",
+            "PRIVATE_WALLPAPER_CANARY",
+            "PRIVATE_PAGE_NAME_CANARY",
+            "PRIVATE_TILE_ID_CANARY",
+            "PRIVATE_NOTES_CANARY",
+            "PRIVATE_TASK_CANARY",
+            "PRIVATE_MEDICATION_CANARY",
+            "PRIVATE_CALENDAR_URL_CANARY",
+            "PRIVATE_AUTH_CANARY",
+            "PRIVATE_HOLDER_IDENTITY_CANARY",
+        ] {
+            assert!(!rendered.contains(canary), "diagnostics leaked {canary}");
+        }
+
+        let summary: serde_json::Value = serde_json::from_str(&rendered).unwrap();
+        assert_eq!(summary["format"], "xeneon-config-diagnostics-v1");
+        assert_eq!(summary["redaction"]["sensitive_values_omitted"], true);
+        assert_eq!(summary["redaction"]["raw_config_available"], false);
+        assert_eq!(summary["display"]["target_configured"], true);
+        assert_eq!(summary["license"]["configured"], true);
+        assert_eq!(summary["widgets"]["configured_instances"], 1);
+        assert_eq!(summary["ui_state"]["valid_json"], true);
+        assert_eq!(summary["ui_state"]["version"], 7);
+        assert_eq!(summary["ui_state"]["page_count"], 1);
+        assert_eq!(summary["ui_state"]["tile_count"], 1);
+        assert_eq!(summary["ui_state"]["private_content_omitted"], true);
+    }
+
+    #[test]
     fn free_null_pointers_is_a_noop() {
         // Freeing null must never crash.
         xeneon_string_free(std::ptr::null_mut());
@@ -1472,16 +1556,18 @@ mod tests {
         let got_layout = unsafe { take(xeneon_config_get_starter_layout(p)) };
         assert_eq!(got_layout, "gaming");
 
-        // Everything else observable via to_json.
+        // Everything else observable via the redacted diagnostics summary.
         let json = unsafe { take(xeneon_config_to_json(p)) };
         let v: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert_eq!(v["first_run_complete"], true);
         assert_eq!(v["startup"]["autostart"], true);
         assert_eq!(v["startup"]["reconnect_on_hotplug"], false);
         assert_eq!(v["startup"]["notify_on_disconnect"], true);
-        assert_eq!(v["theme"]["mode"], "light");
-        assert_eq!(v["theme"]["accent_color"], "#FF0000");
-        assert_eq!(v["ui_state"], r#"{"pages":[1]}"#);
+        assert_eq!(v["theme"]["mode_configured"], true);
+        assert_eq!(v["theme"]["accent_configured"], true);
+        assert_eq!(v["ui_state"]["present"], true);
+        assert_eq!(v["ui_state"]["valid_json"], true);
+        assert_eq!(v["ui_state"]["page_count"], 1);
     }
 
     // --- BUG: no FFI setter for fallback_behavior ---
@@ -1545,11 +1631,9 @@ mod tests {
         assert_eq!(xeneon_config_widget_count(p), 1);
         let json = unsafe { take(xeneon_config_to_json(p)) };
         let v: serde_json::Value = serde_json::from_str(&json).unwrap();
-        let instances = v["widgets"]["instances"].as_array().unwrap();
-        assert!(
-            !instances.is_empty(),
-            "BUG: no FFI accessor for typed widgets; widgets.instances is permanently empty"
-        );
+        assert_eq!(v["widgets"]["configured_instances"], 1);
+        assert_eq!(v["widgets"]["enabled_instances"], 1);
+        assert_eq!(v["widgets"]["private_settings_omitted"], true);
     }
 
     // --- BUG: -1.0 'unavailable' sentinel collides with a real -1.0 reading ---

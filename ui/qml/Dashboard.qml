@@ -131,7 +131,9 @@ Item {
         // No per-page override → inherit the global choice.
         return { wallpaper: a.wallpaper || "", style: a.bgStyle || "orbs" }
     }
-    // Wallpaper image path. Remote/scheme URLs pass through untouched; a local
+    // Wallpaper image path. Only bundled resources and local files are renderable:
+    // handing an http(s)/data/custom URL to Image.source would create a second,
+    // uncounted egress path that bypasses NetHub's offline/allowlist policy. A local
     // file (absolute path or bare name in the images dir) is resolved through the
     // C++ configBridge.imageUrl() helper so paths containing spaces or '#' are
     // percent-encoded — naive "file://"+path concatenation produces a malformed
@@ -139,9 +141,11 @@ Item {
     // not the Manager's `backend`.) Falls back to concatenation if absent.
     property string wallpaperSource: {
         var wp = dashboard.pageBg.wallpaper
-        if (!wp || !wp.length) return ""
+        if (wp === null || wp === undefined) return ""
         wp = String(wp)
-        if (wp.indexOf("://") >= 0) return wp
+        if (!wp.length) return ""
+        if (/^qrc:\//i.test(wp) || /^file:\//i.test(wp)) return wp
+        if (/^[a-z][a-z0-9+.-]*:/i.test(wp) || wp.indexOf("//") === 0) return ""
         if (typeof configBridge !== "undefined" && configBridge && configBridge.imageUrl)
             return configBridge.imageUrl(wp)
         return wp.charAt(0) === "/" ? "file://" + wp : wp
@@ -1211,7 +1215,13 @@ Item {
                                     active: tileLd.wId !== ""
                                             && (catalog.source(tileLd.wType) === ""
                                                 || !dashboard.policyAllowsWidget(tileLd.wType))
-                                    sourceComponent: dashboard.fallbackTile
+                                    // `fallbackTile` is an id in the Dashboard's
+                                    // lexical scope, not a QObject property on
+                                    // `dashboard`. Qualifying it produced an
+                                    // undefined Component: the Loader was active
+                                    // but stayed Null, leaving unknown widgets as
+                                    // a silent blank tile.
+                                    sourceComponent: fallbackTile
                                 }
 
                                 // Expand affordance + explicit hit-target. Full-bleed
@@ -1513,7 +1523,7 @@ Item {
             BarButton {
                 iconName: "ui-settings"
                 // Guard against stacking multiple Diagnostics pages on repeat taps.
-                onClicked: if (dashboard.host && dashboard.host.depth <= 1) dashboard.host.push("qrc:/qml/Diagnostics.qml", {
+                onClicked: if (dashboard.host && dashboard.host.depth <= 1) dashboard.host.push(Qt.resolvedUrl("Diagnostics.qml").toString(), {
                     "metricsJson": Qt.binding(function () { return metricsJson }),
                     "screensData": screensData,
                     // The egress gate for the Network tab (W5 finding 6).

@@ -16,18 +16,19 @@ Qt6 dev packages. See `docs/installation/` for per-distro package lists
 (`cachyos.md`, `ubuntu.md`, `generic-linux.md`), and
 `.github/workflows/distro.yml` for the exact, CI-executed Fedora/Ubuntu lists.
 
-### Distro support (what CI actually proves)
+### Distro support (workflow targets, not current-candidate proof)
 
-`.github/workflows/distro.yml` builds against each distro's **own** Qt packages,
-then installs the resulting package into a **clean** container (no Qt, no
-`-devel`) and launches it offscreen. Verified:
+`.github/workflows/distro.yml` is designed to build against each distro's **own**
+Qt packages, install the package into a clean container, and launch it offscreen.
+The workflow must pass for the exact release candidate before any row becomes a
+public support claim. At this audit point that candidate run is still required:
 
 | Distro | Distro's Qt | Status |
 |---|---|---|
-| **Fedora 43** | 6.10.3 | ✅ builds, RPM installs clean, launches |
-| **Ubuntu 26.04 LTS** | 6.10.2 | ✅ builds, DEB installs clean, launches |
-| **Arch / CachyOS** | rolling | ✅ dev box + AUR (`makepkg`) |
-| **Ubuntu 24.04 LTS** | 6.4.2 | ❌ Qt too old for `QtQuick.Effects` — use the AppImage |
+| **Fedora 43** | 6.10.3 | RPM workflow exists; exact-candidate result pending |
+| **Ubuntu 26.04 LTS** | 6.10.2 | DEB workflow exists; exact-candidate result pending |
+| **Arch / CachyOS** | rolling | Local staged lifecycle tested; AUR publication/current package not verified |
+| **Ubuntu 24.04 LTS** | 6.4.2 | Native distro Qt is below the 6.5 floor; no native support claim |
 
 Both Fedora 43 and Ubuntu 26.04 now ship Qt ≥ 6.5 themselves, so building from
 source on either needs nothing beyond the distro's own packages. (`ci.yml` still
@@ -49,8 +50,9 @@ come from the host. Every normal desktop already has these; a bare container doe
 not, which is why `appimage-smoke` installs exactly that set (and nothing from Qt)
 before running.
 
-Verified in a bare `ubuntu:24.04` container with **no Qt and no Rust**: launches
-offscreen and all nine imported QML modules are present inside the AppImage.
+The AppImage workflow checks a bare `ubuntu:24.04` container with no Qt or Rust,
+an offscreen launch, and all imported QML modules. That check must be rerun for
+the exact candidate; it does not exercise a published zsync update.
 
 The AppImage cannot install the auto-rotate udev rule (no package manager hooks) —
 users install `packaging/udev/99-xeneon-edge.rules` by hand. Everything else works.
@@ -110,13 +112,13 @@ Ranked by effort-vs-reach for this app:
 
 | Format | Best for | Notes |
 |---|---|---|
-| **AppImage** | Widest reach, zero install | One portable file that bundles Qt. Ship the udev rule + a helper script alongside. Easiest for non-technical users. Recommended first target. |
-| **AUR (PKGBUILD)** | Arch / CachyOS (your distro) | Cheap to maintain; installs the udev rule as part of the package. Great starting point since you're on CachyOS. |
-| **.deb / .rpm** | Ubuntu 26.04+ & Fedora | `cpack` generates these from CMake; the udev rule ships under `/usr/lib/udev/rules.d`. Both are CI-verified end to end (build → install on a clean image → launch). Note the `.deb` must list every `qml6-module-*` by hand — `dpkg-shlibdeps` cannot see dlopen'd QML plugins. See `packaging/README.md`. |
-| **Flatpak / Flathub** | Discoverability + auto-update + a built-in donation link | Sandboxed — you must grant `--device=all` (or specific hidraw) and `/proc`/`/sys` access, and the udev rule still has to be installed on the host. More work; do it after AppImage/AUR. |
+| **AppImage** | Portable candidate | Recipe exists; target-host smoke and published zsync round trip are release gates |
+| **AUR (PKGBUILD)** | Arch / CachyOS | Recipe exists; do not infer AUR publication or freshness from the file |
+| **.deb / .rpm** | Ubuntu 26.04+ & Fedora | CPack recipes exist; exact-candidate clean install/launch/uninstall jobs are required |
+| **Flatpak / Flathub** | Sandboxed distribution | Recipe exists; no Flathub publication or support claim |
 
-Practical rollout: **AUR first** (you, today) → **AppImage** (everyone) →
-**Flathub** (reach + donations) later.
+No rollout order is committed. Publish only formats whose exact artifact lifecycle
+has passed and whose maintenance/update path is documented.
 
 The CMake install already places the binaries, the `.desktop` entry, and the udev
 rule (`-DUDEV_RULES_DIR=/etc/udev/rules.d` for a real system path). `cpack` on top
@@ -173,20 +175,13 @@ which only the release flow knows). Properties worth knowing:
   `release.sh` checks this in preflight and **refuses the release** rather
   than publishing an AppImage without its `.zsync` — a missing `.zsync`
   silently breaks delta updates for everyone on the previous release.
-- The AppImage embeds **no** `X-AppImage-UpdateInformation`. This is a real
-  functional limit, not just a missing nicety, and it is worth stating plainly:
-  - `AppImageUpdate` / `appimaged` **cannot** update the AppImage. Both read
-    the update-information string out of the binary; with none present they
-    have nothing to act on, and the file is inert to them.
-  - There is **no discovery path** from an installed AppImage to the next
-    release's `.zsync` URL. The `-u` URL is pinned per tag, so release N's
-    `.zsync` says nothing about release N+1. `UpdateChecker.qml` reports that a
-    newer tag exists but hands the user no URL — so "update via its .zsync" is
-    a wholly manual copy-the-URL-from-the-release-page-and-run-zsync flow.
-  - Embedding `gh-releases-zsync|skyphoenix-it|XeneonEdge_Linux|latest|xeneon-edge-hub-*-x86_64.AppImage.zsync`
-    (via linuxdeploy-plugin-appimage's `LDAI_UPDATE_INFORMATION`) is what would
-    close this. It is a public URL contract, so it is a deliberate decision
-    rather than a cleanup — it is **not** currently made.
+- The AppImage embeds
+  `gh-releases-zsync|skyphoenix-it|XeneonEdge_Linux|latest|xeneon-edge-hub-*-x86_64.AppImage.zsync`
+  as `X-AppImage-UpdateInformation` (via linuxdeploy-plugin-appimage's
+  `LDAI_UPDATE_INFORMATION`). `AppImageUpdate` / `appimaged` can therefore
+  discover the newest matching release and its `.zsync` without a manually
+  copied URL. The `.zsync` itself still pins its versioned `-u` target: discovery
+  follows `latest`, while the block map always describes one immutable artifact.
 
 ### The in-app update check (opt-in, and why it is off)
 
@@ -200,13 +195,15 @@ preference:
   Settings → "Software updates" and persists as the `updateCheck` appearance
   flag.
 - **One request, through the gate.** When (and only when) opted in, the check
-  is a single GET of
-  `https://api.github.com/repos/skyphoenix-it/XeneonEdge_Linux/releases/latest`
-  through `NetHub.request()` — the same audited choke point as every widget,
-  so the global offline kill switch and host allowlist govern it and the
-  attestation counters count it. No token, no machine identifier, no
-  telemetry; nothing beyond what a GET carries. It re-checks daily while
-  enabled, plus a manual "Check now".
+  performs one GET of
+  `https://api.github.com/repos/skyphoenix-it/XeneonEdge_Linux/releases` through
+  `NetHub.request()`. The list endpoint is deliberate: GitHub's `latest`
+  endpoint excludes pre-releases, so it cannot represent the alpha/beta/RC
+  train. The same audited choke point as every widget applies the global
+  offline kill switch and host allowlist, and its attestation counters count the
+  request. No token, machine identifier, or telemetry is sent beyond what a GET
+  inherently carries. It re-checks daily while enabled, plus a manual "Check
+  now".
 - **Install-type honest.** An AppImage sets `$APPIMAGE` in the environment
   (read via the audited `${env:}` resolver on ConfigBridge — QML cannot read
   the environment itself); only then does the result line point at the
@@ -240,7 +237,8 @@ preference:
 |---|---|
 | `v0.1.0` | ❌ predates the key |
 | `v1.0.0-alpha.1` | ❌ predates the key — checksum-only, and its release notes say so |
-| beta onward | ✅ `SHA256SUMS.asc` + a `.sig` on the source tarball |
+| `v1.0.0-alpha.2` | ✅ signed tag; release page documents signed checksums |
+| later releases | Must pass the signing/release gate; never assume |
 
 `v1.0.0-alpha.1` is **not** retroactively signed. Signing an old artifact today
 would attest that it was vouched for at publication, which isn't true; the honest
@@ -273,6 +271,14 @@ step, and must not grow one.
 Consequences worth stating plainly:
 
 - **Releases are cut by hand.** No tag-triggered publishing.
+- **Release provenance must be exact.** `release.sh` requires a completely clean
+  worktree, requires the requested signed tag to resolve to `HEAD`, and verifies
+  that the tag was signed by the pinned release-key fingerprint before running
+  the mandatory strict release gate. A gate failure aborts before `dist/`, the
+  shipping build, signing, or publishing can begin; there is no skip option.
+  After the gate, provenance is checked again and the shipping build uses a fresh
+  tree extracted from the verified commit archive, not the mutable checkout or a
+  reusable CMake cache.
 - **A compromised CI cannot forge a release.** It can forge an *unsigned* one, so
   users must check the signature — which is why the verification steps are in the
   README and not buried here.
@@ -289,9 +295,9 @@ Consequences worth stating plainly:
   ```sh
   gpg --send-keys --keyserver keys.openpgp.org 2F0CAD36DC1D46F3347B7EF293CDC77EACF98990
   ```
-- **`packaging/aur/PKGBUILD` is staged, not buildable.** It points at signed
-  release assets, and no signed release exists yet. Bump `pkgver`/`_tag` at the
-  first signed release.
+- **AUR status is not release evidence.** The recipe must be checked against the
+  exact published tag and assets, and the package's public availability/freshness
+  must be verified separately.
 - **No revocation certificate is published.** If the key is lost, there is no way
   to tell users to stop trusting it. Generate one (`gpg --gen-revoke`) and store
   it offline, separately from the key.
@@ -326,7 +332,8 @@ Calendar note: **check the expiry at the 2028 GA planning point**, not on
 
 ## 3. Licensing (the part that decides your money options)
 
-- **This project is MIT** (`LICENSE`) — the most permissive license. You may sell
+- **This project is MIT OR Apache-2.0** (`LICENSE-MIT`, `LICENSE-APACHE`) — both
+  are permissive licenses. You may sell
   it, ship binaries, and build a business on it. So can everyone else (MIT lets
   others redistribute too), which is why the usual model here is **goodwill +
   donations + paid extras**, not locked-down sales.
@@ -379,21 +386,19 @@ behind a paywall (kills the community that makes it valuable).
 
 ---
 
-## 5. Checklist to go public
+## 5. Release distribution checklist
 
-- [ ] Fill in the real repo URL/badges in `README.md` (currently `your-org`).
-- [ ] Confirm per-distro build docs in `docs/installation/` are current.
-- [ ] Add `.github/FUNDING.yml` + a Support section in the README.
-- [ ] Write an AUR `PKGBUILD` (installs binaries + udev rule).
-- [x] Produce an AppImage (bundles Qt; builds + runs on a host with no Qt).
-      Still open: ship an install helper for the udev rule alongside it.
-- [x] `.deb`/`.rpm` build + install + launch verified in CI (`distro.yml`).
-- [ ] Tag a release; attach the AppImage + `.deb`/`.rpm` from `cpack`.
-- [x] Release signing key exists + published (`packaging/edgehub-signing.pub`),
-      signing flow in `scripts/release.sh`, verify steps in the README.
-      Still open: publish the key to a keyserver, generate a revocation
-      certificate, and cut the first actually-signed release (see
-      [Release signing](#release-signing)).
-- [ ] (Later) Flathub submission.
+- [ ] Exact-candidate Fedora RPM and Ubuntu DEB lifecycle jobs pass.
+- [ ] Exact-candidate AppImage builds and launches on the minimum target host.
+- [ ] Published AppImage N discovers and zsync-updates to published N+1.
+- [ ] AUR recipe matches the signed tag/assets and its public status is verified.
+- [ ] Upgrade, reinstall and uninstall preserve user config and remove owned files.
+- [ ] Release key is available to the maintainer; tag and artifacts are signed and
+      verify from a clean consumer environment.
+- [ ] Revocation certificate is generated and stored offline; public-key
+      distribution instructions are current.
+- [ ] Every advertised download URL is live and its platform boundary is stated.
+- [ ] Flatpak/Flathub remains unadvertised until its own lifecycle and publication
+      are complete.
 
 See also: [authoring widgets](widgets/authoring.md) · [installation](installation/).

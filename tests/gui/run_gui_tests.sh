@@ -16,8 +16,8 @@
 #                  tests are just as real, but you cannot see them. That
 #                  distinction cost a review cycle; hence the flag.
 #     --fast     : mousedelay 0 (confirmation re-runs); default is visible speed
-#     --record   : also ffmpeg-record the nested XWayland display to a video
-#                  (implies -j1 — there is one display to capture)
+#     --record   : also ffmpeg-record each file's bounded nested XWayland display
+#                  (implies -j1 for a watchable ordered capture)
 #     -jN        : run N files concurrently, each in its OWN nested KWin
 #                  (default 1). The suite is ~1000 test functions and takes
 #                  hours sequentially; -j8 brings it under half an hour. Files
@@ -30,6 +30,21 @@ SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 cd "$(dirname "$0")/../.." || exit 2
 ROOT="$PWD"
 export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
+# Developer runs keep the historical build/ runner. The strict release gate
+# points XENEON_TEST_BUILD_DIR at its freshly configured candidate tree so the
+# compositor suite exercises the same QRCs and executable that passed CTest.
+TEST_BUILD_DIR="${XENEON_TEST_BUILD_DIR:-$ROOT/build}"
+
+# This runner recreates the shared gui-evidence/ and build/gui-logs/
+# directories. Two parent runs in parallel therefore corrupt each other's
+# evidence and can turn a valid result into a no-Totals failure. Slot children
+# are part of one parent run and must not take the lock themselves.
+if [ "${1:-}" != "__slot" ]; then
+  command -v flock >/dev/null 2>&1 || { echo "!! flock is required for the GUI-suite lock"; exit 2; }
+  mkdir -p "$ROOT/build"
+  exec 9>"$ROOT/build/.xeneon-gui-tests.lock"
+  flock -n 9 || { echo "!! another tests/gui run owns the shared evidence/log directories"; exit 75; }
+fi
 
 # Both shipped binaries pin the Controls style (app/src/main.cpp:271 and
 # manager/src/main.cpp:116 call QQuickStyle::setStyle("Fusion")). Without this
@@ -53,18 +68,28 @@ export QT_QUICK_CONTROLS_STYLE=Fusion
 if [ "${1:-}" = "__slot" ]; then
   export XDG_RUNTIME_DIR="$SLOT_XDG"
   base=$(basename "$SLOT_F" .qml)
-  # slot % J: displays and socket names are REUSED, so N concurrent files never
-  # claim more than J displays however many files the suite has. (Previously
-  # `slot` was a monotonic counter, so 20 files meant displays :71..:91.)
-  sock="wayland-gui$$-$(( SLOT_N % SLOT_J ))"
-  xdisp=":$(( 70 + SLOT_N % SLOT_J ))"
-  kwin_wayland ${SLOT_KWIN_MODE:---virtual} --xwayland --xwayland-display "$xdisp" \
+  # Give every file a unique Wayland socket and X display for the lifetime of
+  # this parent run. Reusing `slot % J` is racy: the launcher starts a replacement
+  # whenever *any* worker finishes, so file J+1 can overlap the still-running
+  # file 1 and make both KWin instances contend for the same X display.
+  sock="wayland-gui$$-$SLOT_N"
+  xdisp=":$(( 70 + SLOT_N ))"
+  slot_kwin_args=()
+  [ "${SLOT_VIRTUAL:-1}" = "1" ] && slot_kwin_args+=(--virtual)
+  kwin_wayland "${slot_kwin_args[@]}" --xwayland --xwayland-display "$xdisp" \
     --width 2560 --height 720 --no-lockscreen --no-global-shortcuts \
     --socket "$sock" > "$SLOT_LOGDIR/kwin-$base.log" 2>&1 &
   kpid=$!
-  # SIGKILL and INT/TERM, matching this script's stated policy below: a wedged
-  # compositor ignores SIGTERM, and these are throwaway sessions.
-  trap 'kill -9 "$kpid" 2>/dev/null' EXIT INT TERM
+  slot_ffpid=""
+  cleanup_slot() {
+    [ -n "$slot_ffpid" ] && kill -9 "$slot_ffpid" 2>/dev/null
+    kill -9 "$kpid" 2>/dev/null
+  }
+  # INT/TERM must exit after cleanup; a trap that only kills KWin lets the shell
+  # continue and can outlive the outer timeout.
+  trap cleanup_slot EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
   for i in $(seq 1 60); do
     [ -S "$XDG_RUNTIME_DIR/$sock" ] && break
     kill -0 "$kpid" 2>/dev/null || { echo "!! nested KWin died for $base"; exit 3; }
@@ -72,11 +97,23 @@ if [ "${1:-}" = "__slot" ]; then
   done
   [ -S "$XDG_RUNTIME_DIR/$sock" ] || { echo "!! nested KWin never came up for $base"; exit 3; }
   sleep 1
+  if [ "${SLOT_RECORD:-0}" = "1" ]; then
+    mkdir -p "$SLOT_EVID"
+    DISPLAY="$xdisp" ffmpeg -hide_banner -loglevel error -y -f x11grab \
+      -video_size 2560x720 -framerate 8 -i "$xdisp" \
+      "$SLOT_EVID/${base}-continuous.mp4" 2>/dev/null &
+    slot_ffpid=$!
+  fi
   WAYLAND_DISPLAY="$sock" QT_QPA_PLATFORM=wayland QT_LOGGING_RULES="qt.qpa.*=false" \
     "$SLOT_QT" -input "$SLOT_F" $SLOT_IMPORTS -maxwarnings 0 \
     -mousedelay "$SLOT_MD" -keydelay "$SLOT_KD"
   qrc=$?
+  if [ -n "$slot_ffpid" ]; then
+    kill -9 "$slot_ffpid" 2>/dev/null
+    wait "$slot_ffpid" 2>/dev/null
+  fi
   kill -9 "$kpid" 2>/dev/null
+  trap - EXIT INT TERM
   exit $qrc
 fi
 
@@ -104,24 +141,31 @@ if [ "$VISIBLE" = 1 ] && [ "$J" -gt 1 ]; then
   J=1
 fi
 
-# The compositor mode. `--virtual` renders to an OFF-SCREEN framebuffer: real
-# compositor, real input, real pixels — but invisible. Omitting it puts KWin in
-# windowed mode, nested on your desktop, where you can watch the suite drive the
-# real Manager and Hub.
-KWIN_MODE="--virtual"
-[ "$VISIBLE" = 1 ] && KWIN_MODE=""
+# `SLOT_VIRTUAL` below selects an off-screen framebuffer by default. Visible
+# mode omits --virtual so each bounded slot is nested as a desktop window.
 
 MOUSEDELAY=250; KEYDELAY=120
 [ "$FAST" = 1 ] && MOUSEDELAY=0 && KEYDELAY=0
 
-QT=/usr/lib/qt6/bin/qmltestrunner
-
-command -v qmltestrunner >/dev/null 2>&1 && QT=qmltestrunner
+# Prefer the repository's resource-aware QuickTest runner. It embeds the same
+# asset QRCs as the products, so qrc:/ icons, fonts and wallpapers are real
+# pixels in this suite. Product QML remains loaded from source-tree imports;
+# the real-binary smoke tests cover qrc:/qml packaging. Keep the stock fallback;
+# the strict release gate builds C++ tests first and therefore always has it.
+QT="$TEST_BUILD_DIR/xeneon-qmltestrunner"
+if [ ! -x "$QT" ]; then
+  if [ "${XENEON_RELEASE_GATE:-0}" = "1" ]; then
+    echo "!! strict release candidate runner is missing: $QT"
+    exit 1
+  fi
+  QT=/usr/lib/qt6/bin/qmltestrunner
+  command -v qmltestrunner >/dev/null 2>&1 && QT=qmltestrunner
+  echo "!! resource-aware $TEST_BUILD_DIR/xeneon-qmltestrunner missing; qrc pixel checks may fail"
+fi
 
 EVID="$ROOT/gui-evidence"
 LOGDIR="$ROOT/build/gui-logs"
 rm -rf "$EVID" "$LOGDIR"; mkdir -p "$EVID" "$LOGDIR"
-PIDFILE="$LOGDIR/kwin.pids"; : > "$PIDFILE"
 
 IMPORTS="-import ui/qml -import ui/qml/widgets -import manager/qml -import tests/ui -import tests/gui"
 FILES=$(ls tests/gui/tst_gui_*.qml 2>/dev/null | sort)
@@ -135,35 +179,27 @@ RUN_TIMEOUT=${RUN_TIMEOUT:-900}
 RUN_MEM_MAX_MB=${RUN_MEM_MAX_MB:-2048}
 RUN_AS_MAX_MB=${RUN_AS_MAX_MB:-12288}
 
-# Kill every nested KWin we started (never a stray one from another run).
-# SIGKILL, not SIGTERM: a wedged compositor or Qt client can ignore a polite
-# signal, and these are throwaway nested sessions with no state worth flushing.
-# Trap TERM/INT too — an EXIT-only trap does not run when a CI harness or an
-# agent times the script out with SIGTERM, which is exactly when it matters.
-cleanup() {
-  [ -n "${FFPID:-}" ] && kill -9 "$FFPID" 2>/dev/null
-  while read -r p; do [ -n "$p" ] && kill -9 "$p" 2>/dev/null; done < "$PIDFILE" 2>/dev/null
-}
-trap cleanup EXIT INT TERM
-
-# start_kwin <socket> <xdisplay> <logfile> -> echoes pid, or empty on failure
-start_kwin() {
-  local sock="$1" xdisp="$2" log="$3" pid i
-  kwin_wayland $KWIN_MODE --xwayland --xwayland-display "$xdisp" \
-    --width 2560 --height 720 --no-lockscreen --no-global-shortcuts \
-    --socket "$sock" > "$log" 2>&1 &
-  pid=$!
-  echo "$pid" >> "$PIDFILE"
-  # Wait for the Wayland socket to actually appear (robust under parallel load).
-  for i in $(seq 1 60); do
-    [ -S "$XDG_RUNTIME_DIR/$sock" ] && break
-    kill -0 "$pid" 2>/dev/null || return 1
-    sleep 0.5
-  done
-  [ -S "$XDG_RUNTIME_DIR/$sock" ] || return 1
-  sleep 1
-  echo "$pid"
-}
+# A per-slot ceiling is insufficient if J slots can collectively reserve more
+# resident memory than the machine can spare. Keep at least 25% (and never less
+# than 2 GiB) of the currently available RAM outside the suite, then reduce J so
+# even every slot sitting exactly at its kill threshold stays inside the rest.
+# This is evaluated immediately before launch, so CI and developer machines get
+# a bound derived from their real headroom rather than a workstation-specific
+# constant.
+if [ "$J" -gt 1 ] && [ -r /proc/meminfo ]; then
+  mem_available_mb=$(awk '/^MemAvailable:/{print int($2/1024)}' /proc/meminfo)
+  reserve_mb=$((mem_available_mb / 4))
+  [ "$reserve_mb" -lt 2048 ] && reserve_mb=2048
+  suite_budget_mb=$((mem_available_mb - reserve_mb))
+  max_safe_jobs=$((suite_budget_mb / RUN_MEM_MAX_MB))
+  [ "$max_safe_jobs" -lt 1 ] && max_safe_jobs=1
+  if [ "$J" -gt "$max_safe_jobs" ]; then
+    echo "==> memory budget: reducing -j$J to -j$max_safe_jobs (${mem_available_mb} MiB available, ${reserve_mb} MiB reserved)"
+    J=$max_safe_jobs
+  else
+    echo "==> memory budget: -j$J bounded to $((J * RUN_MEM_MAX_MB)) MiB (${mem_available_mb} MiB available, ${reserve_mb} MiB reserved)"
+  fi
+fi
 
 # run_one <file> <slot> — runs one test file, writes $LOGDIR/<base>.log.
 # In parallel mode each file gets a private compositor so a crash in one cannot
@@ -175,24 +211,24 @@ run_one() {
   # walk drove one qmltestrunner to 18.8 GB RSS; the kernel OOM killer fired and took
   # the developer's IDE down with it. An unbounded GUI runner is never acceptable —
   # a test that needs more than $RUN_MEM_MAX_MB or $RUN_TIMEOUT is a broken test.
-  if [ "$J" -gt 1 ]; then
-    # Compositor + runner together inside ONE bounded tree: re-invoke this same
-    # script in __slot mode as the bounded child, so KWin is a descendant.
-    run_bounded SLOT_F="$f" SLOT_N="$slot" SLOT_J="$J" SLOT_QT="$QT" \
-      SLOT_IMPORTS="$IMPORTS" SLOT_MD="$MOUSEDELAY" SLOT_KD="$KEYDELAY" \
-      SLOT_LOGDIR="$LOGDIR" SLOT_XDG="$XDG_RUNTIME_DIR" SLOT_KWIN_MODE="$KWIN_MODE" \
-      bash "$SELF" __slot > "$LOGDIR/$base.log" 2>&1
-    rc=$?
-  else
-    run_bounded WAYLAND_DISPLAY="$SOCK" QT_QPA_PLATFORM=wayland QT_LOGGING_RULES="qt.qpa.*=false" \
-      "$QT" -input "$f" $IMPORTS -maxwarnings 0 -mousedelay "$MOUSEDELAY" -keydelay "$KEYDELAY" \
-      > "$LOGDIR/$base.log" 2>&1
-    rc=$?
-  fi
+  # Compositor + runner together inside ONE bounded tree for every job count,
+  # including J=1. The memory-budget reducer can turn a requested -j8 into -j1;
+  # keeping a separate sequential path there used to put KWin outside both the
+  # RSS watchdog and RLIMIT_AS, recreating the exact OOM hole this runner fixes.
+  run_bounded SLOT_F="$f" SLOT_N="$slot" SLOT_QT="$QT" \
+    SLOT_IMPORTS="$IMPORTS" SLOT_MD="$MOUSEDELAY" SLOT_KD="$KEYDELAY" \
+    SLOT_LOGDIR="$LOGDIR" SLOT_XDG="$XDG_RUNTIME_DIR" \
+    SLOT_VIRTUAL="$((1 - VISIBLE))" SLOT_RECORD="$RECORD" SLOT_EVID="$EVID" \
+    bash "$SELF" __slot > "$LOGDIR/$base.log" 2>&1
+  rc=$?
   case "$rc" in
     97) echo "!! $base was MEMKILLed (>${RUN_MEM_MAX_MB} MiB RSS)" >> "$LOGDIR/$base.log" ;;
     98) echo "!! $base was TIMEKILLed (>${RUN_TIMEOUT}s)" >> "$LOGDIR/$base.log" ;;
   esac
+  # Parallel workers must return zero so the parent can wait for every file, but
+  # the real bounded-runner status must not disappear. Aggregate these status
+  # files together with QtTest's textual totals below.
+  printf '%s\n' "$rc" > "$LOGDIR/$base.rc"
   return 0
 }
 
@@ -207,28 +243,17 @@ if [ "$J" -gt 1 ]; then
   done
   wait
 else
-  SOCK="wayland-gui$$"
-  XDISP=":9$(( $$ % 90 ))"
-  echo "==> starting nested KWin (socket=$SOCK xwayland=$XDISP) ..."
-  start_kwin "$SOCK" "$XDISP" "$LOGDIR/kwin.log" > /dev/null || {
-    echo "!! nested KWin failed to start"; tail "$LOGDIR/kwin.log"; exit 3; }
-
-  if [ "$RECORD" = 1 ]; then
-    # Best-effort continuous capture of the nested XWayland root.
-    DISPLAY="$XDISP" ffmpeg -hide_banner -loglevel error -y -f x11grab \
-       -video_size 2560x720 -framerate 8 -i "$XDISP" "$EVID/session.mp4" 2>/dev/null &
-    FFPID=$!
-  fi
-
+  slot=0
   for f in $FILES; do
+    slot=$((slot+1))
     echo "==> $(basename "$f" .qml)"
-    run_one "$f" 0
+    run_one "$f" "$slot"
   done
 fi
 
 # Aggregate AFTER the run, walking FILES in sorted order, so the summary reads
 # the same whether the files ran sequentially or finished out of order.
-TOTAL_PASS=0; TOTAL_FAIL=0; TOTAL_SKIP=0; FILECOUNT=0; FAILFILES=""
+TOTAL_PASS=0; TOTAL_FAIL=0; TOTAL_SKIP=0; FILECOUNT=0; FAILFILES=""; DIAGFAIL=0; RUNNERFAIL=0
 SUMMARY="$LOGDIR/summary.txt"; : > "$SUMMARY"
 FAILLOG="$LOGDIR/failures.txt"; : > "$FAILLOG"
 
@@ -241,7 +266,33 @@ for f in $FILES; do
   m=$(echo "$line" | sed -nE 's/.* ([0-9]+) failed.*/\1/p'); m=${m:-0}
   k=$(echo "$line" | sed -nE 's/.* ([0-9]+) skipped.*/\1/p'); k=${k:-0}
   TOTAL_PASS=$((TOTAL_PASS+p)); TOTAL_FAIL=$((TOTAL_FAIL+m)); TOTAL_SKIP=$((TOTAL_SKIP+k))
-  printf "%-44s pass=%-4s fail=%-4s skip=%-4s\n" "$base" "$p" "$m" "$k" >> "$SUMMARY"
+  runner_rc="missing"
+  if [ -f "$LOGDIR/$base.rc" ]; then
+    IFS= read -r runner_rc < "$LOGDIR/$base.rc" || runner_rc="invalid"
+  fi
+  printf "%-44s pass=%-4s fail=%-4s skip=%-4s rc=%s\n" \
+    "$base" "$p" "$m" "$k" "$runner_rc" >> "$SUMMARY"
+  case "$runner_rc" in
+    0) ;;
+    *)
+      RUNNERFAIL=1
+      FAILFILES="$FAILFILES $base"
+      echo "===== $base runner status =====" >> "$FAILLOG"
+      echo "  bounded compositor/test process exited rc=$runner_rc" >> "$FAILLOG"
+      ;;
+  esac
+  # QtTest can exit zero while QML reports a TypeError, binding loop, or a
+  # missing qrc asset. The composed runner embeds the product assets, so every
+  # such resource miss is real and must fail the file.
+  diag_rc=0
+  diag_out=$("$ROOT/scripts/check_qml_diagnostics.sh" "$LOGDIR/$base.log" --tier composed 2>&1) || diag_rc=$?
+  printf '%s\n' "$diag_out" >> "$SUMMARY"
+  if [ "$diag_rc" -ne 0 ]; then
+    DIAGFAIL=1
+    FAILFILES="$FAILFILES $base"
+    echo "===== $base QML diagnostics =====" >> "$FAILLOG"
+    printf '%s\n' "$diag_out" >> "$FAILLOG"
+  fi
   if [ "${m:-0}" != "0" ] || [ -z "$line" ]; then
     FAILFILES="$FAILFILES $base"
     echo "===== $base =====" >> "$FAILLOG"
@@ -249,6 +300,11 @@ for f in $FILES; do
     # A file that fails to LOAD prints no Totals line and contributes 0/0/0 —
     # indistinguishable from a clean pass in the totals unless it is called out.
     [ -z "$line" ] && echo "  (no Totals line — file crashed/failed to load; see $base.log)" >> "$FAILLOG"
+  fi
+  if [ "${k:-0}" != "0" ]; then
+    FAILFILES="$FAILFILES $base"
+    echo "===== $base skipped tests =====" >> "$FAILLOG"
+    echo "  QtTest reported $k skipped test(s); release/CI runs require zero" >> "$FAILLOG"
   fi
 done
 
@@ -274,8 +330,13 @@ if [ "$FILECOUNT" -eq 0 ]; then
   echo "RESULT: FAILURE (no test files were executed — refusing to report success)"
   exit 1
 fi
+if [ "$TOTAL_PASS" -eq 0 ]; then
+  echo "RESULT: FAILURE (no passing checks were executed)"
+  exit 1
+fi
 
-if [ "$TOTAL_FAIL" = 0 ] && [ -z "$FAILFILES" ]; then
+if [ "$TOTAL_FAIL" = 0 ] && [ "$TOTAL_SKIP" = 0 ] && \
+   [ "$DIAGFAIL" = 0 ] && [ "$RUNNERFAIL" = 0 ] && [ -z "$FAILFILES" ]; then
   echo "RESULT: SUCCESS"
   exit 0
 fi

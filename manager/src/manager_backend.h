@@ -267,6 +267,7 @@ public:
     }
     Q_INVOKABLE QString configJson() const {
         if (!m_config) return QString();
+        // Rust returns a non-reversible diagnostics summary, never raw config.
         XeneonString s(xeneon_config_to_json(m_config));
         return s.qstring();
     }

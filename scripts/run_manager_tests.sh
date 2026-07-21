@@ -63,7 +63,9 @@ for entry in "${SUITES[@]}"; do
     sleep 2
 
     names+=("$label")
-    if timeout "${XENEON_MGR_TIMEOUT:-900}" python3 "tests/hardware/$script"; then
+    if timeout "${XENEON_MGR_TIMEOUT:-900}" python3 \
+            "$PROJECT_DIR/scripts/run_hardware_python.py" \
+            "$PROJECT_DIR/tests/hardware/$script"; then
         results+=("PASS")
     else
         rc=$?

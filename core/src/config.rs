@@ -23,10 +23,11 @@ pub struct AppConfig {
     pub startup: StartupConfig,
     /// Widget configurations.
     pub widgets: WidgetsConfig,
-    /// The user's Pro licence key, if they have entered one. This is a SIGNED
-    /// token (`XE1.<payload>.<sig>`), not a secret: it is safe to store in plain
-    /// config, it grants nothing on its own, and verification is offline against
-    /// the compiled-in issuer key (see `license.rs`). `None` = the free tier.
+    /// The user's Pro licence key, if they have entered one. This is a signed,
+    /// transferable bearer entitlement (`XE1.<payload>.<sig>`) whose payload also
+    /// contains holder identity. It is stored in the owner-only config but must
+    /// never be logged or included in diagnostics. Verification remains offline
+    /// against the compiled-in issuer key (see `license.rs`). `None` = free tier.
     #[serde(default)]
     pub license_key: Option<String>,
     /// Opaque UI-state document (JSON) owned by the QML layer: the full dashboard
@@ -175,6 +176,103 @@ impl Default for AppConfig {
     }
 }
 
+/// Build the deliberately non-reversible configuration view shown by Hub and
+/// Manager diagnostics.
+///
+/// Config contains bearer entitlements, holder identity, private URLs, legacy
+/// authorization values and personal widget content. A denylist cannot safely
+/// keep pace with the opaque QML schema, so this summary copies no arbitrary
+/// string from either typed widget settings or `ui_state`: it exposes only fixed
+/// labels, booleans, numeric counts and the typed fallback enum.
+pub fn diagnostics_summary(config: &AppConfig) -> serde_json::Value {
+    let (ui_valid, ui_version, page_count, tile_count, has_appearance, has_settings) =
+        match config.ui_state.as_deref() {
+            None => (None, None, 0, 0, false, false),
+            Some(raw) => match serde_json::from_str::<serde_json::Value>(raw) {
+                Ok(value) => {
+                    let pages = value.get("pages").and_then(serde_json::Value::as_array);
+                    let page_count = pages.map_or(0, Vec::len);
+                    let tile_count = pages.map_or(0, |pages| {
+                        pages
+                            .iter()
+                            .map(|page| {
+                                page.get("tiles")
+                                    .or_else(|| page.get("slots"))
+                                    .and_then(serde_json::Value::as_array)
+                                    .map_or(0, Vec::len)
+                            })
+                            .sum()
+                    });
+                    (
+                        Some(true),
+                        value.get("version").and_then(serde_json::Value::as_u64),
+                        page_count,
+                        tile_count,
+                        value
+                            .get("appearance")
+                            .is_some_and(serde_json::Value::is_object),
+                        value
+                            .get("settings")
+                            .is_some_and(serde_json::Value::is_object),
+                    )
+                }
+                Err(_) => (Some(false), None, 0, 0, false, false),
+            },
+        };
+
+    let fallback = match config.display.fallback_behavior {
+        FallbackBehavior::Hide => "hide",
+        FallbackBehavior::Notify => "notify",
+        FallbackBehavior::Ask => "ask",
+    };
+
+    serde_json::json!({
+        "format": "xeneon-config-diagnostics-v1",
+        "redaction": {
+            "sensitive_values_omitted": true,
+            "raw_config_available": false
+        },
+        "schema_version": config.schema_version,
+        "first_run_complete": config.first_run_complete,
+        "display": {
+            "target_configured": config.display.target_edid_hash.is_some()
+                || config.display.target_connector.is_some()
+                || config.display.target_model.is_some(),
+            "fallback_behavior": fallback,
+            "starter_layout_configured": config.display.starter_layout.is_some()
+        },
+        "theme": {
+            "mode_configured": !config.theme.mode.is_empty(),
+            "accent_configured": !config.theme.accent_color.is_empty(),
+            "reduced_motion": config.theme.reduced_motion
+        },
+        "startup": {
+            "autostart": config.startup.autostart,
+            "reconnect_on_hotplug": config.startup.reconnect_on_hotplug,
+            "notify_on_disconnect": config.startup.notify_on_disconnect
+        },
+        "widgets": {
+            "configured_instances": config.widgets.instances.len(),
+            "enabled_instances": config.widgets.instances.iter().filter(|item| item.enabled).count(),
+            "private_settings_omitted": true
+        },
+        "license": {
+            "configured": config.license_key.is_some(),
+            "key_and_holder_identity_omitted": true
+        },
+        "ui_state": {
+            "present": config.ui_state.is_some(),
+            "valid_json": ui_valid,
+            "version": ui_version,
+            "page_count": page_count,
+            "tile_count": tile_count,
+            "appearance_present": has_appearance,
+            "private_settings_present": has_settings,
+            "private_content_omitted": true
+        }
+    })
+}
+
 // --- Config path ---
 
 pub fn config_dir() -> PathBuf {
@@ -217,9 +315,14 @@ fn load_config_from(path: &std::path::Path) -> Result<AppConfig, ConfigError> {
             // dashboard layout. Preserve the corrupt file under a *timestamped*
             // backup (so a good `.bak` is never clobbered), then salvage any
             // recoverable fields instead of returning bare defaults.
+            // toml::de::Error's full Display includes the offending source line
+            // and may quote its value. Config values include licence keys,
+            // authorization headers, private calendar URLs and personal widget
+            // content, so only retain the parser's first, positional line.
+            let position = sanitized_toml_error_position(&e);
             tracing::error!(
                 path = %path.display(),
-                error = %e,
+                position = %position,
                 "Config parse failed; backing up and salvaging recoverable state"
             );
             if let Err(be) = backup_corrupt_config(path) {
@@ -230,6 +333,18 @@ fn load_config_from(path: &std::path::Path) -> Result<AppConfig, ConfigError> {
     };
 
     Ok(migrate_config(config))
+}
+
+/// Return only the parser's source-free location summary. Never return the full
+/// TOML error: its Display contains source snippets and offending values.
+fn sanitized_toml_error_position(error: &toml::de::Error) -> String {
+    error
+        .to_string()
+        .lines()
+        .next()
+        .filter(|line| !line.is_empty())
+        .unwrap_or("TOML parse error at an unknown position")
+        .to_string()
 }
 
 /// Normalize a parsed config to the schema version this build supports.
@@ -362,6 +477,44 @@ pub fn backup_config() -> Result<(), ConfigError> {
     backup_config_of(&config_path())
 }
 
+/// Copy a config into an owner-only backup. `fs::copy` reproduces the source
+/// mode, so importing or upgrading a legacy 0644 config would otherwise create
+/// another locally-readable copy containing the same secrets.
+fn copy_config_owner_only(
+    source: &std::path::Path,
+    destination: &std::path::Path,
+) -> io::Result<u64> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+
+        // Tighten an old regular backup before truncating it, closing the window
+        // where newly copied content could inherit its legacy loose mode.
+        if let Ok(metadata) = fs::symlink_metadata(destination) {
+            if metadata.file_type().is_file() {
+                fs::set_permissions(destination, fs::Permissions::from_mode(0o600))?;
+            }
+        }
+
+        let mut input = fs::File::open(source)?;
+        let mut output = fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o600)
+            .custom_flags(libc::O_NOFOLLOW)
+            .open(destination)?;
+        // `.mode` only applies at creation; reassert it for an existing backup.
+        output.set_permissions(fs::Permissions::from_mode(0o600))?;
+        io::copy(&mut input, &mut output)
+    }
+
+    #[cfg(not(unix))]
+    {
+        fs::copy(source, destination)
+    }
+}
+
 /// Back up `path` to a fixed `<name>.toml.bak` beside it. Extracted for testing.
 ///
 /// This is the *canonical* good-config backup (single, overwritten each time a
@@ -372,7 +525,7 @@ fn backup_config_of(path: &std::path::Path) -> Result<(), ConfigError> {
         return Ok(());
     }
     let backup = path.with_extension("toml.bak");
-    fs::copy(path, &backup).map_err(|e| ConfigError::Io {
+    copy_config_owner_only(path, &backup).map_err(|e| ConfigError::Io {
         path: backup,
         source: e,
     })?;
@@ -400,7 +553,7 @@ fn backup_corrupt_config(path: &std::path::Path) -> Result<PathBuf, ConfigError>
         counter += 1;
     }
 
-    fs::copy(path, &backup).map_err(|e| ConfigError::Io {
+    copy_config_owner_only(path, &backup).map_err(|e| ConfigError::Io {
         path: backup.clone(),
         source: e,
     })?;
@@ -460,7 +613,10 @@ mod tests {
         let config = AppConfig::default();
         assert_eq!(config.schema_version, 1);
         assert!(!config.first_run_complete);
-        assert_eq!(config.theme.mode, "nord", "shipped default is the calm palette (D1)");
+        assert_eq!(
+            config.theme.mode, "nord",
+            "shipped default is the calm palette (D1)"
+        );
     }
 
     #[test]
@@ -710,6 +866,52 @@ broken = = toml
         // Nothing to back up → Ok and no file created.
         assert!(backup_config_of(&path).is_ok());
         assert!(!path.with_extension("toml.bak").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn all_config_backups_are_owner_only_even_for_a_legacy_loose_source() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        fs::write(&path, "license_key = \"SENSITIVE\"\n").unwrap();
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o644)).unwrap();
+
+        // Exercise both the overwritten canonical backup and a newly-created
+        // timestamped corrupt backup. Neither may copy the source's 0644 mode.
+        let canonical = path.with_extension("toml.bak");
+        fs::write(&canonical, "old").unwrap();
+        fs::set_permissions(&canonical, fs::Permissions::from_mode(0o666)).unwrap();
+        backup_config_of(&path).unwrap();
+        let corrupt = backup_corrupt_config(&path).unwrap();
+
+        for backup in [canonical, corrupt] {
+            let mode = fs::metadata(&backup).unwrap().permissions().mode() & 0o777;
+            assert_eq!(
+                mode,
+                0o600,
+                "{} must be owner-only (was {mode:o})",
+                backup.display()
+            );
+        }
+    }
+
+    #[test]
+    fn config_parse_log_summary_never_contains_source_values() {
+        let canary = "PRIVATE_TOKEN_MUST_NOT_REACH_LOGS";
+        let source = format!("schema_version = \"{canary}\"\n");
+        let error = toml::from_str::<AppConfig>(&source).unwrap_err();
+        let summary = sanitized_toml_error_position(&error);
+
+        assert!(summary.starts_with("TOML parse error"), "{summary}");
+        assert_eq!(
+            summary.lines().count(),
+            1,
+            "summary must be positional only"
+        );
+        assert!(!summary.contains(canary));
+        assert!(!summary.contains("schema_version"));
     }
 
     // --- Global-path functions (save/load/reset/backup/dir) via XDG override ---

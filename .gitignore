@@ -100,6 +100,7 @@ build-appimage/
 __pycache__/
 *.pyc
 build-qa/
+build-cov-agent/
 
 # Claude Code local state: settings.local.json is personal, and worktrees/ holds
 # agent git worktrees — 37 of them once reached 26GB here. Neither is shared.

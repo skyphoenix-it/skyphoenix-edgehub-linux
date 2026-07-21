@@ -1,16 +1,24 @@
 # Xeneon Edge — Development & Test Plan (Hub + Manager)
 
-**Status:** Active · **Created:** 2026-07-13 · **Owner:** engineering
-**Goal:** finish debugging the hub and manager, then bring the whole project to a
-verifiable **≥95% test coverage** with automated tests for every feature.
+**Status:** Historical execution plan · **Created:** 2026-07-13 · **Owner:** engineering
+**Goal at creation:** finish debugging the hub and manager, then bring the project
+to a verifiable **≥95% aggregate coverage gate**.
+
+> **Superseded as a current status document.** The baseline, waves, counts and
+> results below are a point-in-time engineering record. They must not be used as
+> evidence for the current candidate. Use
+> [MVP scope and evidence status](product/mvp-scope.md) for current requirements,
+> [the strict release gate](testing/release-gate.md) for the executable manifest,
+> and `scripts/run_all_tests.sh` for the current development aggregate.
 
 ---
 
-## Context — why this plan exists
+## Historical context — why this plan existed
 
-The hub (`xeneon-edge-hub`) and companion (`xeneon-edge-manager`) have had a large
-bug-fix sweep (see `docs/BUG_FIX_PLAN.md`, commits `a5a742a…e62aa68`), but three gaps
-remain before the project can be called "ready":
+At the 2026-07-13 baseline, the hub (`xeneon-edge-hub`) and companion
+(`xeneon-edge-manager`) had received a large bug-fix sweep, but four gaps remained.
+The present-tense statements below describe that old baseline and were later
+resolved; the historical fix plan is preserved in `docs/BUG_FIX_PLAN.md`.
 
 1. **The C++ layer has zero automated tests.** `control_server`, `orientation_sensor`,
    `ManagerBackend`, `ConfigBridge`, `mpris_bridge` — including the IPC protocol, the
@@ -52,7 +60,7 @@ Baseline (verified 2026-07-13):
   headers/free functions + `control_server.cpp`), gated ≥95%. Un-unit-testable glue
   (`main()`, live-`QScreen` matching, hardware ioctl loops, D-Bus fan-out) is **excluded
   from the denominator** and covered instead by offscreen smoke + the hardware E2E.
-- **QML:** **behavior-matrix** coverage — enumerated behaviors covered ÷ total ≥95%,
+- **QML:** **behavior-matrix** coverage — enumerated behaviors covered ÷ total 100%,
   enforced by `scripts/qml_coverage.py`. Not presented as line coverage.
 - **Genuinely unmeasurable (assert driving props, never output):** Canvas pixels
   (Sparkline/RingProgress/AnalogClock/Net/backgrounds), `MultiEffect` (AppIcon), real
@@ -174,7 +182,7 @@ New headers/free functions (production + tests compile identical code):
 
 ---
 
-## Part 4 — QML tests to ≥95% behavior matrix
+## Part 4 — QML tests to 100% behavior matrix
 
 New `tst_*.qml` (pattern: `import QtTest` + `WidgetHarness`, `findPred` tree helpers,
 `tick`/store-epoch for time, props-not-pixels for Canvas):
@@ -255,21 +263,26 @@ frequently; shared files (`CMakeLists.txt`, `ci.yml`, `main.cpp`) are single-own
 
 ---
 
-## Verification (end-to-end acceptance)
+## Current verification entry points
 
-1. `cd core && cargo test` — all green; `cargo clippy --all-targets -- -D warnings`; `cargo fmt --check`.
-2. `./scripts/run_ui_tests.sh` — ALL UI TESTS PASSED.
-3. `cmake -B build -DXENEON_BUILD_TESTS=ON -DXENEON_COVERAGE=ON && cmake --build build && ctest --test-dir build --output-on-failure` — all green.
-4. `./scripts/coverage.sh` — prints `Rust: ≥95% | C++: ≥95% | merged: ≥95% | QML behaviors: ≥95%`, exits 0.
-5. On-device (real Edge, DP-3): `tests/hardware/edge_hw_test.py` passes; `XENEON_GRAB`
-   captures of hub + manager render correctly (back up/restore `config.toml` around IPC).
-6. CI actually runs on `master` and all jobs are green.
-```
-```
+The old six-step acceptance list has been replaced by maintained runners:
+
+1. `./scripts/run_all_tests.sh` runs the development aggregate, including Rust,
+   offscreen QML, C++, behavior coverage, runtime, Manager and compositor tiers.
+2. `./scripts/coverage.sh` runs the maintained Rust/C++/merged/QML coverage gates.
+3. Current real-device suites are `tests/hardware/edge_e2e.py`,
+   `tests/hardware/e2e_buildup.py` and `tests/hardware/widget_render_matrix.py`;
+   `edge_hw_test.py` is deprecated legacy coverage.
+4. `./scripts/run_release_tests.sh` is the only complete strict pre-release entry
+   point. It rejects missing prerequisites and hidden skips and adds exact-candidate
+   hardware, performance and long-soak requirements.
+
+A command existing or passing once does not certify a later candidate. Current
+results belong in the release evidence, not in this historical plan.
 
 ---
 
-## Results (executed 2026-07-13)
+## Historical results (executed 2026-07-13)
 
 Delivered via a multi-agent fleet (7 builders → 6 assurance/remediation → 3 hardening →
 coverage-wiring), each wave adversarially reviewed by "outstander" + rubber-duck agents.
@@ -305,7 +318,7 @@ coverage-wiring), each wave adversarially reviewed by "outstander" + rubber-duck
   (genuinely needs a bus; its logic was extracted to `mpris_state.*` and is now 100% covered
   — see below) — all documented, none blocking.
 
-## Risks / open items
+## Historical residual notes
 
 - The XHR factory seam and `level_filter`/`screenIdentityHash` extractions are small
   **production** changes made solely for testability — behavior-neutral, verified by the

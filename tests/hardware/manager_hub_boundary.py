@@ -125,6 +125,11 @@ def main():
         guard.require_user_idle()
         cw, ch = dt.canvas_size()
         p = u.VPointer(cw, ch, (x, y, w, hgt), guard=guard)
+        # Device enumeration itself may wake KWin's idle monitor.  No event is
+        # allowed until a second quiet period has completed and the kill switch
+        # is explicitly armed.
+        guard.require_user_idle()
+        guard.arm()
         # OCCLUSION GUARD: the clamp confines events to the Manager's
         # rect but does not prove the Manager is the window receiving
         # them there. It was not, once: a browser raised itself over the

@@ -30,12 +30,15 @@ export QT_QUICK_CONTROLS_STYLE=Fusion
 # Every runner is bounded in time and memory. A QML test that leaks must fail
 # ITSELF, never the machine — on 2026-07-19 an unbounded qmltestrunner reached
 # 18.8 GB and the resulting system-wide OOM killed the developer's IDE.
-# tst_manager.qml is the heaviest file here (observed peaks of ~6 GB), so the
-# ceiling is set above that but far below anything that endangers the host.
+# The repaired suite is comfortably below 2 GiB.  Keep the ceiling low enough
+# that a reintroduced scene-graph explosion is killed before it can pressure
+# the developer's desktop.
 # shellcheck source=lib/run_bounded.sh
-. "$PROJECT_DIR/scripts/lib/run_bounded.sh"
 RUN_TIMEOUT=${RUN_TIMEOUT:-600}
-RUN_MEM_MAX_MB=${RUN_MEM_MAX_MB:-8192}
+RUN_MEM_MAX_MB=${RUN_MEM_MAX_MB:-2048}
+. "$PROJECT_DIR/scripts/lib/run_bounded.sh"
+# shellcheck source=lib/qml_test_result.sh
+. "$PROJECT_DIR/scripts/lib/qml_test_result.sh"
 
 fail=0
 filecount=0
@@ -68,6 +71,10 @@ for t in tests/ui/tst_*.qml; do
     esac
     # A QML runtime diagnostic fails the file even when every assertion passed.
     "$PROJECT_DIR/scripts/check_qml_diagnostics.sh" "$QLOGDIR/$base.log" || fail=1
+    # Exit zero is not proof of execution: an accidentally overridden runner
+    # such as /bin/true produces no QtTest output at all.  Require a real Totals
+    # record with at least one pass and no omitted/blacklisted checks per file.
+    xeneon_qml_require_live_totals "$QLOGDIR/$base.log" "$t" || fail=1
 done
 
 # Anti-vacuity floor: a glob that matched nothing must not report success.

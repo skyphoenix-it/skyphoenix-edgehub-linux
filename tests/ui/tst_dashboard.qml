@@ -5,6 +5,7 @@ import "../../ui/qml" as App
 // COVERS: fn:Dashboard._tileExists, fn:Dashboard.applyAppearance, fn:Dashboard.applyExternalState, fn:Dashboard.cfgAction, fn:Dashboard.closeExpanded, fn:Dashboard.injectWidget
 // COVERS: fn:Dashboard.onAccentNameChanged, fn:Dashboard.onAnimatedBackgroundChanged, fn:Dashboard.onGlassOpacityChanged, fn:Dashboard.onOrientationModeChanged, fn:Dashboard.onReduceMotionChanged, fn:Dashboard.onShowWidgetGlowChanged
 // COVERS: fn:Dashboard.onThemeModeChanged, fn:Dashboard.applyPreset, fn:Dashboard.appendPreset
+// COVERS: fn:Dashboard._sweepStaleDying
 //
 // ui/qml/Dashboard.qml —
 //   • cfgAction: geocode-with-place, empty-place, non-geocode action, no overlay
@@ -187,6 +188,22 @@ Item {
             root.store().load("blank")
             d.closeExpanded()
             d.cfgStatus = ""
+        }
+
+        // Wallpaper rendering must not become an uncounted network client. Remote,
+        // protocol-relative, data and custom schemes are rejected; local and qrc
+        // sources remain available.
+        function test_wallpaper_source_is_local_only() {
+            var d = ld.item
+            root.store().setAppearance("wallpaper", "https://tracker.example/pixel.png")
+            compare(d.wallpaperSource, "", "https wallpaper cannot bypass NetHub")
+            root.store().setAppearance("wallpaper", "//tracker.example/pixel.png")
+            compare(d.wallpaperSource, "", "protocol-relative wallpaper is remote too")
+            root.store().setAppearance("wallpaper", "data:image/png;base64,AAAA")
+            compare(d.wallpaperSource, "", "data URLs are not accepted from config")
+            var local = Qt.resolvedUrl("../../assets/wallpapers/aurora.png")
+            root.store().setAppearance("wallpaper", local)
+            compare(d.wallpaperSource, local, "an existing local file remains valid")
         }
 
         // ── cfgAction ─────────────────────────────────────────────────────────
@@ -1039,6 +1056,29 @@ Item {
             verify(root.cellFor("b") !== null, "b is STILL there once the old fade's window has passed")
             compare(root.store().pages()[0].tiles.length, 3, "…and the store agrees it exists")
             compare(root.tileCells().length, 3, "three tiles — the resurrected id did not fork a second row")
+        }
+
+        // A destroyed/interrupted exit animation cannot strand its model row
+        // forever. Age a real dying row beyond the generous grace period, then
+        // drive the watchdog directly and prove only the two live rows remain.
+        function test_stale_dying_sweep_reaps_a_stranded_exit_row() {
+            _theme.reduceMotionPreference = "off"
+            _threeTilePage()
+            var p = root.pageItem()
+            var b = root.cellFor("b")
+
+            root.store().removeTile(0, "b")
+            compare(b.dying, true, "precondition: b is held as a dying presentation row")
+            p._dyingSince["b"] = Date.now() - 10000
+
+            compare(p._sweepStaleDying(), undefined,
+                    "_sweepStaleDying completes after removing an over-age dying row")
+            tryVerify(function () { return root.cellFor("b") === null }, 3000,
+                      "the stale presentation row was destroyed")
+            compare(root.tileCells().length, 2, "only the two live store tiles remain")
+            compare(root.store().pages()[0].tiles.length, 2,
+                    "the watchdog changed presentation bookkeeping, not store data")
+            _theme.reduceMotionPreference = "auto"
         }
 
         // THE ENTRANCE. An added tile is the one thing on screen the user just

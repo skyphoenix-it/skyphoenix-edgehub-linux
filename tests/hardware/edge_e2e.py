@@ -18,16 +18,12 @@ import os, sys, time, json, socket, subprocess, tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-from e2e_harness import E2E, MANAGER, REPO, doc, page, tile, UserActivityAbort   # noqa: E402
+from e2e_harness import (E2E, MANAGER, REPO, assert_binaries_current, doc,
+                         page, tile, UserActivityAbort,
+                         PAGE_SWIPE_NEXT)  # noqa: E402
 import e2e_interaction  # noqa: E402
-try:
-    import e2e_widgets
-except Exception as e:
-    e2e_widgets = None; print("WARN: e2e_widgets not available:", e)
-try:
-    import e2e_theming
-except Exception as e:
-    e2e_theming = None; print("WARN: e2e_theming not available:", e)
+import e2e_widgets  # noqa: E402
+import e2e_theming  # noqa: E402
 
 
 def _kill_stale():
@@ -92,21 +88,22 @@ def soak(h, seconds=120):
     section("Soak (%ds sustained mixed operations)" % seconds)
     # Rotate through the FULL catalogs, derived from the same drift-checked
     # lists the theming suite asserts against Theme.qml / BackgroundCatalog.qml
-    # — a new theme or background style is soak-tested automatically. The
-    # fallback only exists because e2e_theming is an optional import above.
-    if e2e_theming is not None:
-        themes, bgs = list(e2e_theming.THEMES), list(e2e_theming.BG_STYLES)
-    else:
-        themes = ["midnight", "nebula", "synthwave", "nord", "aurora", "gruvbox", "light", "oled", "matrix"]
-        bgs = ["orbs", "waves", "stars", "mesh", "bokeh", "grid", "aurora", "none"]
+    # — a new theme or background style is soak-tested automatically.
+    themes, bgs = list(e2e_theming.THEMES), list(e2e_theming.BG_STYLES)
     types = ["cpu", "gpu", "ram", "clock", "focus", "weather", "moon", "quote", "habit", "media"]
     end = time.time() + seconds
     n, crashed, err = 0, False, ""
+    touch_swipes = 0
     while time.time() < end:
         try:
             k = n % len(types)
-            pages = [page("A", [tile("cpu-1", "cpu"), tile(types[k] + "-x", types[k],
-                                     1 + (n % 2), 1 + ((n // 2) % 2))]),
+            sizes = e2e_widgets.WIDGET_SPECS[types[k]]["sizes"]
+            resize_choices = [s for s in sizes
+                              if s != e2e_widgets.WIDGET_SPECS[types[k]]["default"]]
+            chosen_size = (resize_choices[n % len(resize_choices)]
+                           if resize_choices else "1x1")
+            pages = [page("A", [tile("cpu-1", "cpu"),
+                                 tile(types[k] + "-x", types[k], chosen_size)]),
                      page("B", [tile("clock-1", "clock"), tile("focus-1", "focus")])]
             st = doc(pages, settings={"weather-x": {"lat": 52.52, "lon": 13.405, "place": "Berlin"}},
                      appearance={"mode": "dark", "themeMode": themes[n % len(themes)],
@@ -119,16 +116,27 @@ def soak(h, seconds=120):
             # itself is IPC-driven and stays fully useful without it.
             if n % 40 == 0 and h.input_allowed and not h.input_aborted:
                 try:
-                    h.swipe(600, 1280, 120, 1280, settle=0.2)
+                    h.swipe(*PAGE_SWIPE_NEXT, settle=0.2)
+                    touch_swipes += 1
                 except UserActivityAbort as e:
-                    print("  KILL SWITCH during soak swipe (soak continues via IPC):", e, flush=True)
+                    h.skip("soak_touch_remainder",
+                           "KILL SWITCH aborted touch under load: %s; IPC soak continued" % e)
                 except Exception as e:
-                    print("  soak swipe skipped:", e, flush=True)
+                    # A broken gesture must not disappear behind a healthy IPC
+                    # endurance result. Disable further input and make the
+                    # incomplete hardware path first-class in the summary.
+                    h.input_aborted = True
+                    h.skip("soak_touch_remainder",
+                           "touch under load failed: %s; IPC soak continued" % e)
         except Exception as e:
             crashed = True; err = str(e); break
         time.sleep(0.03)
     h.check("soak_no_crash", (not crashed) and h.ping(),
             "%d mixed cycles in %ds, hub alive=%s %s" % (n, seconds, h.ping(), err))
+    if h.input_allowed:
+        h.check("soak_touch_continuity", touch_swipes > 0 and not h.input_aborted,
+                "%d successful touch swipes under load, aborted=%s" %
+                (touch_swipes, h.input_aborted))
 
 
 def manager_chrome(h):
@@ -157,6 +165,11 @@ def manager_chrome(h):
 
 
 def main():
+    try:
+        print("  binaries under test: %s" % assert_binaries_current())
+    except RuntimeError as e:
+        print("!!", e)
+        return 2
     _kill_stale()
     work = tempfile.mkdtemp(prefix="edge-e2e-")
     print("EdgeHub E2E — workdir:", work, flush=True)
@@ -168,12 +181,11 @@ def main():
 
     t0 = time.time()
     try:
-        if e2e_widgets:
-            section("Widget lifecycle (add / render / resize / remove — all 22 types)")
-            e2e_widgets.run(h)
-        if e2e_theming:
-            section("Theming (all themes / backgrounds / accents / per-widget style)")
-            e2e_theming.run(h)
+        section("Widget lifecycle (add / render / resize / remove — all %d types)"
+                % len(e2e_widgets.WIDGETS))
+        e2e_widgets.run(h)
+        section("Theming (all themes / backgrounds / accents / per-widget style)")
+        e2e_theming.run(h)
         section("Interaction (synthetic touch: compact controls + page swipe)")
         e2e_interaction.run(h)
         ipc_robustness_and_perf(h)
@@ -187,8 +199,9 @@ def main():
 
     p, total = h.summary()
     print("\nElapsed: %.1f min" % ((time.time() - t0) / 60.0), flush=True)
-    print("RESULT:", "SUCCESS" if p == total else "FAILURE", flush=True)
-    return 0 if p == total else 1
+    complete = p == total and not h.skips
+    print("RESULT:", "SUCCESS" if complete else "FAILURE", flush=True)
+    return 0 if complete else 1
 
 
 if __name__ == "__main__":

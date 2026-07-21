@@ -71,6 +71,11 @@ class ManagerGui:
         # THE clamp: the Manager window rect, nothing wider.
         self.p = u.VPointer(cw, ch, (self.x, self.y, self.w, self.hgt),
                             guard=self.guard)
+        # KWin can report creation of the virtual pointer as activity.  Let the
+        # device settle, prove the owner is idle again, and only then permit
+        # UinputSink.emit() to cross the structural arming boundary.
+        self.guard.require_user_idle()
+        self.guard.arm()
 
     def in_front(self):
         """Cheap pre-click check: is the Manager still the window in its rect?
@@ -165,7 +170,12 @@ class ManagerGui:
                 return False
             a = Image.open(before).convert("RGB").resize((32, 32))
             b = Image.open(after).convert("RGB").resize((32, 32))
-            pa, pb = list(a.getdata()), list(b.getdata())
+            # Pillow 14 removes Image.getdata(). Prefer its replacement while
+            # retaining compatibility with older distro Pillow releases.
+            def pixels(image):
+                flatten = getattr(image, "get_flattened_data", None)
+                return list(flatten() if flatten else image.getdata())
+            pa, pb = pixels(a), pixels(b)
             worst = max(sum((x - y) ** 2 for x, y in zip(p, q)) ** 0.5
                         for p, q in zip(pa, pb))
             ok = worst > 25

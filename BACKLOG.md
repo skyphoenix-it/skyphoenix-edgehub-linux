@@ -218,15 +218,11 @@ one line; just needs the "which items" decision.
 
 - Fedora support; Ubuntu 26.04 LTS support.
 
-- **C++-only line coverage is 91.70%** (measured honestly for the first time on
-  2026-07-17). `scripts/coverage.sh` now ratchets it at **91**, not the 95 it used
-  to claim — that 95 was never enforced because the gate was inert. CI is
-  unaffected: it gates Rust ≥95 AND merged ≥95, never C++-only. Two structural
-  reasons C++ trails Rust: the D-Bus/QScreen/QProcess glue is deliberately
-  `GCOVR_EXCL`-marked, and code compiling ONLY into the `xeneon-edge-hub` target
-  is not instrumented at all — `mpris_bridge.cpp`'s 279 uncovered lines were in
-  nobody's denominator until 2026-07-17. Raise the ratchet as coverage improves;
-  never lower it.
+- ~~C++-only line coverage was 91.70%.~~ **CLOSED 2026-07-20.** Meaningful
+  ConfigBridge, ControlServer and Manager-backend tests raised the clean filtered
+  result to **96.1%** (1118/1163 lines; 170/175 functions). The independently
+  enforced developer ratchet now matches the release requirement at **95%**;
+  no exclusions or threshold weakening were added.
 
 - ~~`scripts/gen_widgets.py` silently overwrites hand-written widgets~~ —
   **FIXED** (`58a65ee`). It wrote every file with `open(path,'w')` unconditionally;

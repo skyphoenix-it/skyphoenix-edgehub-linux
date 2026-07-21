@@ -12,14 +12,29 @@ Dialog {
     property string wType: ""
     property var schema: schemaReg.schemaFor(wType)
     property string geoStatus: ""
-    // The egress gate. The city lookup below is the only request the Manager makes,
-    // and it must be counted and gateable like any widget's, so it routes through
-    // NetHub rather than building an XHR here. The Manager has no app-global gate
-    // to inject (it does no polling), so the dialog owns one; `netHub` stays
-    // injectable so a Manager-global gate can take over without touching this file.
+    // The city lookup below is the Manager's only intentional egress. Keep it on a
+    // narrowly allow-listed gate: typing a city and pressing Search may contact the
+    // documented geocoder, but merely opening a live widget preview must never poll
+    // the network. The separate offline preview gate is injected into every loaded
+    // network widget below, before its debounce timer can fire.
     property var netHub: null
-    NetHub { id: _fallbackHub }
-    function _hub() { return netHub ? netHub : _fallbackHub }
+    NetHub {
+        id: _geocodeHub
+        objectName: "managerGeocodeNetHub"
+        allowHosts: ["geocoding-api.open-meteo.com"]
+    }
+    NetHub {
+        id: _previewHub
+        objectName: "managerPreviewNetHub"
+        offline: true
+    }
+    // Non-visual QtObjects are not guaranteed to appear below a Control in a
+    // children/data walk. Expose the two purpose-specific gates explicitly so
+    // diagnostics and tests can inspect the exact objects used by the dialog.
+    property alias geocodeNetHub: _geocodeHub
+    property alias previewNetHub: _previewHub
+    readonly property var previewItem: previewLoader.item
+    function _hub() { return netHub ? netHub : _geocodeHub }
     // Test seam: a per-request XHR factory handed to the gate, so a FakeXHR can be
     // injected. null in production → the gate builds the real XHR.
     property var xhrFactory: null
@@ -77,6 +92,7 @@ Dialog {
         item.instanceId = dlg.wId
         item.store = store
         item.expanded = true                       // show the full, interactive layout
+        if (item.hasOwnProperty("netHub")) item.netHub = _previewHub
         if (item.hasOwnProperty("showHeader")) item.showHeader = false
         if (item.hasOwnProperty("active")) item.active = true
         item.metrics = Qt.binding(function () { return dlg.metricsObj })

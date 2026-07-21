@@ -1,77 +1,52 @@
-# Beta plan — from alpha.2 to the public beta
+# Beta and release gate
 
-_Status baseline: `v1.0.0-alpha.2` (signed, published, AUR live). Every MUST epic
-(E1–E11) and blocker (B1–B7) from the v1.0 plan is done. E7 Phase B (keyring) is
-parked by decision; payments deferred to beta._
+**Baseline:** `v1.0.0-alpha.2` is the latest tag.
+**Current branch:** unreleased development work.
+**Freeze state:** no feature freeze and no code freeze.
 
-The beta gate from the release train is **feature freeze**: after it, only fixes.
-So the beta plan is exactly: the work that must be *inside* the freeze, the
-quality bar that work must clear, and the decisions that pick the defaults.
+There is no `v1.0.0-beta.1` tag in this repository. Earlier copy that described
+beta.1 as released or declared the project frozen was premature and has been
+removed.
 
-## Workstreams (in flight from 2026-07-16)
+## Implemented on the development branch
 
-### W1 — Sizing, part 2: per-widget optimization
-Part 1 (alpha.2) built the machinery: size vocabulary, per-widget declarations,
-absolute cells, rotation-stable packing. Part 2 is the payoff — each widget
-genuinely *designed* for each size it declares, in both orientations, instead of
-one layout stretched. Waves, cheapest first, so the pattern is proven before the
-expensive widgets consume it:
-- **Wave 1 (S):** analog, countdown, quote, rightnow, break, disk
-- **Wave 2 (M):** cpu, gpu, ram, net, sensors, moon, clock, tasks, notes, habit,
-  hydration, kpi, eod + the four E5 widgets
-- **Wave 3 (L):** focus, media, calendar, weather, httpjson
-Each wave: layout keyed off `sizeClass` (never `expanded`), real-device grabs at
-every declared size × both orientations, tests per size, full suite green.
+- Per-size widget layouts and Manager clarity/smoothness work.
+- 30 widgets, 19 presets, 29 themes, 29 accents, 10 animated backgrounds plus
+  Gradient.
+- Expanded Rust, C++, QML, compositor, runtime, Manager and real-hardware test
+  coverage, plus fail-closed release/package contracts.
 
-### W2 — Manager UX clarity (Design / Layout / Appearance)
-Owner feedback: it is not clear **which setting changes which behavior**, and the
-Design/Layout/Appearance split is muddled. Approach: audit first (walk the
-Manager as a new user, write down every point of confusion with a screenshot),
-then restructure — grouping by *what the user is trying to do*, plain-language
-labels, live-preview affordances that show the effect before committing, and a
-visible scope tag on every control (this page / this widget / everywhere).
+Implementation does not satisfy the release gate by itself.
 
-### W3 — Widget smoothness
-Owner feedback: some widgets feel "clunky". Diagnose before fixing: audit the
-interaction paths (tap, resize, expand/collapse, page swipe, config open) for
-missing eased transitions, abrupt property jumps, blocking work on the
-interaction thread, and layout pop-in. Fix in the shared layer (WidgetChrome,
-overlay open/close, edit mode, motion tokens) so every widget inherits it —
-per-widget fixes only where the widget itself is the problem. Respect
-reduce-motion throughout: smooth ≠ more animation.
+## Open release blockers
 
-### W4 — Test-suite growth (Hub + Manager)
-- Runtime E2E: from 1 scenario (focus goal bonus) to a battery — policy
-  enforcement, secrets refs, update-check-off-by-default, w/h→size migration on a
-  real persisted config, org-managed startup.
-- Manager: behavior tests for the reworked UX (after W2 lands, so tests assert
-  the new intended behavior, not the confusing old one).
-- Hardware E2E: per-size × orientation widget assertions once W1 waves land.
-- Gate stays ≥95% everywhere; the behavior matrix stays at 100%.
+- [ ] Final integrated Edge input/render/navigation run is green with no skip.
+- [ ] Exact-candidate Fedora and Ubuntu package lifecycle jobs are green.
+- [ ] AppImage zsync discovery and delta-update are exercised against a
+      published release pair.
+- [ ] Reproducible performance evidence meets the approved limits; prior
+      marketing estimates are not evidence.
+- [ ] A 48–72-hour physical-hardware soak completes without leak, crash or
+      compositor regression.
+- [ ] The exact default theme/font/motion choices are approved.
+- [ ] Legal/trademark review of paid Inspired themes is complete.
+- [ ] Any payment provider, product, price, refund, support and licence-delivery
+      path is real and tested. No store is currently represented as live.
+- [ ] All release requirements and defects are closed and documented.
 
-### W5 — End-user validation ("rubber duck" loops)
-After each major merge: a persona-driven walkthrough on the real device — a
-developer, a first-run user, a Manager-only user — executing real tasks
-("connect my CI status", "make the screen calmer", "resize the clock") and
-recording every hesitation. Findings feed W2/W3 as concrete items, not vibes.
-The bar: what Simon wanted, and what a stranger can use without a manual.
+## Freeze sequence
 
-## Decisions that pick the beta's face (Simon)
-- [ ] Calm as the default theme? (shipped default: dark)
-- [ ] Default font: system vs Atkinson Hyperlegible
-- [ ] Lawyer pass on distro theme naming (selling B2B)
-- [ ] Payment provider (deferred from alpha — needed before Pro sells)
+1. **Feature freeze:** only after feature/requirements scope and the product/legal
+   decisions above are complete. After this point, only release fixes and release
+   documentation may change.
+2. **Bug gate:** reproduce, fix and verify every release-blocking finding; re-run
+   affected suites and the full candidate suite.
+3. **Code freeze:** only after review shows a clean, immutable candidate with no
+   release-blocking defect.
+4. **Final gate:** run the strict suite, package lifecycle checks, performance
+   checks and required hardware evidence from the exact signed candidate.
+5. **Release:** sign and publish artifacts, verify them from a clean consumer
+   environment, then update public status and launch material.
 
-## Freeze criteria (entering beta)
-1. W1 waves complete: every widget honest at every declared size, both
-   orientations, on the real panel.
-2. W2 restructure landed + validated by a W5 loop with no critical confusion.
-3. W3: no known clunky interaction on the real device.
-4. Full suite + all 3 CI workflows green; hardware E2E ≥ current 212 checks,
-   extended for sizes.
-5. The two defaults decided; legal check done.
-
-## Beta exit → RC (unchanged from the release train)
-No P0/P1; packaging smoke green on all targets (incl. AppImage zsync update
-actually exercised once); egress + perf + a11y gates green; string/UX freeze;
-48–72h real-hardware soak; launch copy ready (r/linux, r/unixporn, AUR beta).
+A passing development run must never be relabelled as a freeze or release after
+the fact. Evidence belongs to the exact commit and artifact bytes it tested.

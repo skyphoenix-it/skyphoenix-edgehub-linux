@@ -16,8 +16,13 @@ name: Distro Packages
 
 on:
   push:
-    branches: [master]
+    branches: [main, master, 'v1.0-alpha']
     paths:
+      - 'core/**'
+      - 'app/**'
+      - 'manager/**'
+      - 'ui/**'
+      - 'assets/**'
       - 'packaging/**'
       - 'CMakeLists.txt'
       - '.github/workflows/distro.yml'

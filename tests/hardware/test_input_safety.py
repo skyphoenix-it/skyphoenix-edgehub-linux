@@ -19,6 +19,7 @@ import struct
 import sys
 import time
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import input_guard  # noqa: E402
@@ -122,20 +123,29 @@ class TestOptInGate(unittest.TestCase):
 
 class TestKillSwitch(unittest.TestCase):
     def test_our_events_do_not_abort(self):
-        led = input_guard.IdleLedger(attrib_window=0.15)
+        led = input_guard.IdleLedger(attrib_window=input_guard.ATTRIB_WINDOW)
         led.arm()
         t = 1000.0
         led.note_emit(ts=t)
-        led.on_resumed(ts=t + 0.05)     # compositor reacting to OUR write
+        # Exercise a delayed compositor echo beyond the old 150ms window.
+        led.on_resumed(ts=t + 0.25)     # compositor reacting to OUR write
         self.assertFalse(led.aborted)
 
     def test_user_event_aborts(self):
-        led = input_guard.IdleLedger(attrib_window=0.15)
+        led = input_guard.IdleLedger(attrib_window=input_guard.ATTRIB_WINDOW)
         led.arm()
         led.note_emit(ts=1000.0)
         led.on_resumed(ts=1002.0)       # 2s after our last write -> a human
         self.assertTrue(led.aborted)
         self.assertIn("real input-device activity", led.abort_reason)
+
+    def test_event_just_after_attribution_window_aborts(self):
+        led = input_guard.IdleLedger(attrib_window=input_guard.ATTRIB_WINDOW)
+        led.arm()
+        t = 1000.0
+        led.note_emit(ts=t)
+        led.on_resumed(ts=t + input_guard.ATTRIB_WINDOW + 0.001)
+        self.assertTrue(led.aborted)
 
     def test_unarmed_ledger_records_but_does_not_abort(self):
         led = input_guard.IdleLedger()
@@ -151,6 +161,22 @@ class TestKillSwitch(unittest.TestCase):
         g = input_guard.ActivityGuard(ledger=led)
         with self.assertRaises(input_guard.UserActivityAbort):
             g.check()
+
+    def test_real_sink_cannot_emit_before_guard_is_armed(self):
+        saved = os.environ.get(u.GATE_ENV)
+        try:
+            os.environ[u.GATE_ENV] = "1"
+            g = input_guard.ActivityGuard(ledger=input_guard.IdleLedger())
+            sink = u.UinputSink(g)
+            # emit() rejects before it reaches os.write, so no /dev/uinput fd is
+            # needed and this remains an injection-free unit test.
+            with self.assertRaises(input_guard.UserActivityAbort):
+                sink.emit(u.EV_KEY, u.BTN_LEFT, 1)
+        finally:
+            if saved is None:
+                os.environ.pop(u.GATE_ENV, None)
+            else:
+                os.environ[u.GATE_ENV] = saved
 
     def test_detection_path_bytes(self):
         """Feed a crafted `resumed` through the SAME byte-level ingest path
@@ -215,6 +241,26 @@ class TestGeometry(unittest.TestCase):
         self.assertEqual(outs, [("DP-2", 0, 0, 5120, 1440),
                                 ("DP-1", 0, 1440, 5120, 1440),
                                 ("DP-3", 5120, 2880, 720, 2560)])
+
+    def test_live_outputs_retries_transient_failure_without_guessing(self):
+        failed = mock.Mock(returncode=134, stdout="")
+        recovered = mock.Mock(returncode=0, stdout=self.KS_SAMPLE)
+        with mock.patch.object(u.subprocess, "run",
+                               side_effect=[failed, recovered]) as run, \
+             mock.patch.object(u.time, "sleep") as sleep:
+            self.assertEqual(u._live_outputs(attempts=2),
+                             [("DP-2", 0, 0, 5120, 1440),
+                              ("DP-1", 0, 1440, 5120, 1440),
+                              ("DP-3", 5120, 2880, 720, 2560)])
+        self.assertEqual(run.call_count, 2)
+        sleep.assert_called_once_with(0.25)
+
+    def test_live_outputs_fails_closed_after_retries(self):
+        failed = mock.Mock(returncode=0, stdout="not a display layout")
+        with mock.patch.object(u.subprocess, "run", return_value=failed) as run, \
+             mock.patch.object(u.time, "sleep"):
+            self.assertEqual(u._live_outputs(attempts=3), [])
+        self.assertEqual(run.call_count, 3)
 
     @unittest.skipUnless(shutil.which("kscreen-doctor"), "kscreen-doctor not present")
     def test_live_layout_matches_this_box(self):

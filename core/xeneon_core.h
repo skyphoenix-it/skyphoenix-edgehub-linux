@@ -42,6 +42,7 @@ int xeneon_config_set_target_model(ConfigHandle* handle, const char* model);
 
 char* xeneon_config_get_theme_mode(const ConfigHandle* handle);
 char* xeneon_config_dir(void);
+// Structured diagnostics summary. Sensitive/raw config values are omitted.
 char* xeneon_config_to_json(const ConfigHandle* handle);
 ConfigHandle* xeneon_config_reset(void);
 
@@ -159,8 +160,8 @@ char* xeneon_distro_probe_json(const char* root);
 // key is embedded in core/src/license.rs.
 char* xeneon_license_verify_json(const char* key);
 
-// Get the stored licence key (signed token, not a secret), or NULL if none.
-// Caller frees with xeneon_string_free.
+// Get the stored licence key (a sensitive bearer entitlement), or NULL if none.
+// Caller frees with xeneon_string_free; never log or include it in diagnostics.
 char* xeneon_config_get_license_key(ConfigHandle* handle);
 
 // Store (or clear) the licence key so the tier survives a restart. NULL or an
@@ -206,4 +207,3 @@ void xeneon_string_free(char* s);
 #endif
 
 #endif // XENEON_CORE_H
-

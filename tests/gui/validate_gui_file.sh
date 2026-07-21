@@ -41,9 +41,9 @@ sleep 1
 # day, on the developer's own desktop — the exact configuration whose unbounded
 # runner triggered the system-wide OOM that killed IntelliJ on 2026-07-19.
 # shellcheck source=../../scripts/lib/run_bounded.sh
-. "$PWD/scripts/lib/run_bounded.sh"
 RUN_TIMEOUT=${RUN_TIMEOUT:-600}
 RUN_MEM_MAX_MB=${RUN_MEM_MAX_MB:-2048}
+. "$PWD/scripts/lib/run_bounded.sh"
 rc=0
 run_bounded WAYLAND_DISPLAY="$SOCK" QT_QPA_PLATFORM=wayland QT_LOGGING_RULES="qt.qpa.*=false" \
   "$QT" -input "$F" \

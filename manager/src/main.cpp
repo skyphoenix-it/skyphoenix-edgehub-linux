@@ -28,6 +28,7 @@
 #include "../../app/src/timezone_bridge.h"
 #include "../../app/src/distro_bridge.h"
 #include "../../app/src/system_settings_probe.h"
+#include "../../app/src/network_access_policy.h"
 
 // Build a dark QPalette from the app's dark design tokens. Fusion (set below)
 // draws every Qt Quick control that ISN'T hand-restyled (Switch/Slider/Button/
@@ -181,7 +182,9 @@ int main(int argc, char* argv[]) {
     // Declare the backend BEFORE the engine so it outlives it (locals destroy in
     // reverse order; the engine holds context-property references to the backend).
     ManagerBackend backend;
+    XeneonNetworkAccessManagerFactory networkAccessFactory;
     QQmlApplicationEngine engine;
+    engine.setNetworkAccessManagerFactory(&networkAccessFactory);
     engine.rootContext()->setContextProperty("configBridge", &backend);
     engine.rootContext()->setContextProperty("backend", &backend);
 

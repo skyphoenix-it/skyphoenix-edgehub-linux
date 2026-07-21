@@ -38,7 +38,7 @@ structurally impossible for events to land outside the Edge:
    `XENEON_HW_IDLE_SECONDS` (default **3 s** — longer than any intra-burst
    typing/mousing gap, short enough not to stall the suite), and any real
    event mid-run raises `UserActivityAbort` and disables injection for the
-   rest of the run. Known limit: an event landing within ~150 ms right
+   rest of the run. Known limit: an event landing within ~350 ms right
    after one of our own writes is masked until the next idle cycle
    (~100 ms) — the per-event abort checks keep that exposure well under a
    second.
@@ -83,6 +83,10 @@ python3 tests/hardware/test_input_safety.py
 ```sh
 XENEON_HW_INPUT=1 python3 tests/hardware/edge_e2e.py        # the current suite
 
+# disruptive KDE/Wayland display lifecycle; no input, separate explicit gate:
+XENEON_HW_DISPLAY_LIFECYCLE=1 \
+    python3 tests/hardware/display_lifecycle_test.py
+
 # legacy, DEPRECATED (real config + runtime dir; double opt-in required):
 XENEON_HW_INPUT=1 XENEON_HW_LEGACY=1 python3 tests/hardware/edge_hw_test.py
 ```
@@ -115,6 +119,13 @@ Without both env vars it prints a deprecation banner and exits 2.
   geometry.
 - `edge_hw_test.py` — the consolidated legacy test above (DEPRECATED — prefer
   `edge_e2e.py`).
+- `display_lifecycle_test.py` — separately gated real KDE/Wayland output test:
+  restart, portrait/landscape, 125% scale, primary swap, disable/re-enable, and
+  missing-target startup. It captures the full KScreen baseline before changing
+  anything and restores enabled state, mode, position, rotation, scale, and
+  priority for every output in `finally`. It creates no synthetic input and uses
+  an isolated Hub config/runtime directory. The display will visibly rotate,
+  resize, and blank while it runs; use only on an attended session.
 
 ## Not covered (needs a human)
 

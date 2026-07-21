@@ -4,6 +4,54 @@
 #include <QString>
 #include <Qt>
 
+// Boot-time window placement policy. A positive match always wins. When no
+// display identity has ever been configured, the primary screen remains the
+// first-run fallback. Once the user has selected a target, a failed match must
+// keep the Hub hidden instead of silently taking over the primary screen. The
+// sole exception is an explicit --reset-wizard request, which gets a dedicated
+// windowed recovery placement.
+enum class StartupDisplayPlacement {
+    MatchedTarget,
+    PrimaryFallback,
+    PrimaryRecovery,
+    KeepHidden,
+};
+
+// Whether any persistent display identity field is configured. Empty strings
+// are treated like an absent field; non-empty malformed/manual values are still
+// explicit configuration and therefore fail safe (KeepHidden) when unmatched.
+bool hasConfiguredTargetIdentity(const QString& edidHash, const QString& model,
+                                 const QString& connector);
+
+// Pure startup-policy seam used by main.cpp after strict screen matching.
+StartupDisplayPlacement decideStartupDisplayPlacement(bool hasConfiguredTarget,
+                                                       bool targetMatched,
+                                                       bool recoveryRequested);
+
+// Live target-removal policy. Hiding is a non-negotiable safety invariant: a
+// compositor may otherwise relocate a fullscreen window from the removed panel
+// onto primary. Notification and selection guidance are independent signals.
+struct TargetRemovalSafetyDecision {
+    bool hideWindow = false;
+    bool notify = false;
+    bool requestSelection = false;
+};
+
+TargetRemovalSafetyDecision decideTargetRemovalSafety(bool wasTarget,
+                                                       const QString& fallbackBehavior,
+                                                       bool notifyDisconnect);
+
+// Human-facing desktop notification content for a lost target display.  Kept
+// pure so wording and the selection-guidance branch are testable without a
+// notification daemon or a live desktop session.
+struct DisplayDisconnectNotice {
+    QString summary;
+    QString body;
+};
+
+DisplayDisconnectNotice displayDisconnectNotice(const QString& screenName,
+                                                 bool requestSelection);
+
 // Compute the stable identity hash for a display from its four identity fields
 // (connector name + model + manufacturer + serial). The hub uses this both to
 // serialize a screen's `edidHash` and to match the configured target screen, so

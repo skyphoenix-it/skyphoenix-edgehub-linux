@@ -3,6 +3,9 @@
 #include <QtTest>
 #include <QFile>
 #include <QDir>
+#include <QHash>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QTemporaryDir>
 #include <QVariantMap>
 
@@ -56,9 +59,134 @@ private slots:
         QCOMPARE(b.imageUrl(in), out);
     }
 
-    void configJsonNonEmpty() {
+    void configJsonIsStructuredAndRedacted() {
+        const QByteArray key("XE1.HUB_LICENSE_CANARY.HUB_IDENTITY_CANARY");
+        const QByteArray state(
+            "{\"pages\":[{\"name\":\"HUB_PRIVATE_PAGE_CANARY\","
+            "\"tiles\":[{\"type\":\"notes\"}]}],\"settings\":{"
+            "\"notes-1\":{\"notes\":\"HUB_PRIVATE_NOTES_CANARY\"},"
+            "\"http-1\":{\"authToken\":\"HUB_PRIVATE_AUTH_CANARY\"},"
+            "\"calendar-1\":{\"url\":\"https://HUB_PRIVATE_URL_CANARY\"}}}");
+        QCOMPARE(xeneon_config_set_license_key(cfg_, key.constData()), 0);
+        QCOMPARE(xeneon_config_set_ui_state(cfg_, state.constData()), 0);
+
         ConfigBridge b(cfg_);
-        QVERIFY(!b.configJson().isEmpty());
+        const QString rendered = b.configJson();
+        QVERIFY(!rendered.isEmpty());
+        for (const QString& canary : {
+                 QStringLiteral("HUB_LICENSE_CANARY"),
+                 QStringLiteral("HUB_IDENTITY_CANARY"),
+                 QStringLiteral("HUB_PRIVATE_PAGE_CANARY"),
+                 QStringLiteral("HUB_PRIVATE_NOTES_CANARY"),
+                 QStringLiteral("HUB_PRIVATE_AUTH_CANARY"),
+                 QStringLiteral("HUB_PRIVATE_URL_CANARY")}) {
+            QVERIFY2(!rendered.contains(canary), qPrintable("diagnostics leaked " + canary));
+        }
+        const QJsonObject summary = QJsonDocument::fromJson(rendered.toUtf8()).object();
+        QCOMPARE(summary.value(QStringLiteral("format")).toString(),
+                 QStringLiteral("xeneon-config-diagnostics-v1"));
+        QCOMPARE(summary.value(QStringLiteral("redaction")).toObject()
+                     .value(QStringLiteral("sensitive_values_omitted")).toBool(), true);
+        QCOMPARE(summary.value(QStringLiteral("license")).toObject()
+                     .value(QStringLiteral("configured")).toBool(), true);
+    }
+
+    void versionAndStarterLayoutSurface() {
+        QCOMPARE(xeneon_config_set_starter_layout(cfg_, "gaming"), 0);
+        ConfigBridge b(cfg_);
+        QCOMPARE(b.starterLayout(), QStringLiteral("gaming"));
+        QVERIFY2(!b.appVersion().isEmpty(), "the QML version surface must never be blank");
+    }
+
+    // E3's native bridge intentionally does only the filesystem work QML cannot:
+    // enumerate one directory level, return raw manifests, and report each unsafe
+    // or unusable manifest without parsing/loading it. Exercise every outcome with
+    // a private XDG data root so this proves the real wire contract hermetically.
+    void userWidgetFilesystemContract() {
+        ConfigBridge b(cfg_);
+
+        const QByteArray savedDataHome = qgetenv("XDG_DATA_HOME");
+        const bool hadDataHome = qEnvironmentVariableIsSet("XDG_DATA_HOME");
+
+        // With no override the documented stable location is under ~/.local/share.
+        qunsetenv("XDG_DATA_HOME");
+        const QString defaultRoot = b.userWidgetsDir();
+        if (hadDataHome) qputenv("XDG_DATA_HOME", savedDataHome);
+        else qunsetenv("XDG_DATA_HOME");
+        QCOMPARE(defaultRoot,
+                 QDir::homePath() + QStringLiteral("/.local/share/xeneon-edge-hub/widgets"));
+
+        QTemporaryDir dataHome;
+        QVERIFY(dataHome.isValid());
+        const QString root = dataHome.path() + QStringLiteral("/xeneon-edge-hub/widgets");
+
+        // A missing root is a normal empty catalog, not an error object.
+        qputenv("XDG_DATA_HOME", QFile::encodeName(dataHome.path()));
+        const QStringList absent = b.listUserWidgets();
+        if (hadDataHome) qputenv("XDG_DATA_HOME", savedDataHome);
+        else qunsetenv("XDG_DATA_HOME");
+        QVERIFY(absent.isEmpty());
+
+        const QString valid = root + QStringLiteral("/a-valid");
+        const QString missing = root + QStringLiteral("/b-missing");
+        const QString large = root + QStringLiteral("/c-large");
+        const QString unreadable = root + QStringLiteral("/d-unreadable");
+        QVERIFY(QDir().mkpath(valid));
+        QVERIFY(QDir().mkpath(missing));
+        QVERIFY(QDir().mkpath(large));
+        QVERIFY(QDir().mkpath(unreadable));
+
+        const QByteArray manifest = R"({"id":"example","entry":"Main.qml"})";
+        QFile validManifest(valid + QStringLiteral("/manifest.json"));
+        QVERIFY(validManifest.open(QIODevice::WriteOnly));
+        QCOMPARE(validManifest.write(manifest), manifest.size());
+        validManifest.close();
+        QFile qml(valid + QStringLiteral("/Main.qml"));
+        QVERIFY(qml.open(QIODevice::WriteOnly));
+        QCOMPARE(qml.write("import QtQuick\nItem {}\n"), qint64(23));
+        qml.close();
+
+        QFile oversized(large + QStringLiteral("/manifest.json"));
+        QVERIFY(oversized.open(QIODevice::WriteOnly));
+        QVERIFY(oversized.resize(256 * 1024 + 1));
+        oversized.close();
+
+        // QFile refuses to open a directory as a regular file, which reaches the
+        // distinct "exists but unreadable" result without relying on permissions
+        // (the suite may legitimately run as a privileged CI/container user).
+        QVERIFY(QDir().mkpath(unreadable + QStringLiteral("/manifest.json")));
+
+        qputenv("XDG_DATA_HOME", QFile::encodeName(dataHome.path()));
+        const QString resolvedRoot = b.userWidgetsDir();
+        const QStringList rows = b.listUserWidgets();
+        if (hadDataHome) qputenv("XDG_DATA_HOME", savedDataHome);
+        else qunsetenv("XDG_DATA_HOME");
+
+        QCOMPARE(resolvedRoot, root);
+        QCOMPARE(rows.size(), 4);
+        QHash<QString, QJsonObject> byName;
+        for (const QString& row : rows) {
+            QJsonParseError err{};
+            const QJsonDocument doc = QJsonDocument::fromJson(row.toUtf8(), &err);
+            QCOMPARE(err.error, QJsonParseError::NoError);
+            QVERIFY(doc.isObject());
+            const QJsonObject object = doc.object();
+            byName.insert(object.value(QStringLiteral("dirName")).toString(), object);
+        }
+
+        QCOMPARE(byName.value(QStringLiteral("a-valid")).value(QStringLiteral("manifest")).toString(),
+                 QString::fromUtf8(manifest));
+        const QJsonArray validFiles =
+            byName.value(QStringLiteral("a-valid")).value(QStringLiteral("files")).toArray();
+        QCOMPARE(validFiles.size(), 2);
+        QCOMPARE(validFiles.at(0).toString(), QStringLiteral("Main.qml"));
+        QCOMPARE(validFiles.at(1).toString(), QStringLiteral("manifest.json"));
+        QCOMPARE(byName.value(QStringLiteral("b-missing")).value(QStringLiteral("error")).toString(),
+                 QStringLiteral("missing manifest.json"));
+        QCOMPARE(byName.value(QStringLiteral("c-large")).value(QStringLiteral("error")).toString(),
+                 QStringLiteral("manifest.json larger than 256 KiB"));
+        QCOMPARE(byName.value(QStringLiteral("d-unreadable")).value(QStringLiteral("error")).toString(),
+                 QStringLiteral("manifest.json is not readable"));
     }
 
     // --- E7 Phase A: credential-reference resolution -------------------------
@@ -156,30 +284,10 @@ private slots:
         QVERIFY(b.fallbackBehavior().isEmpty());
     }
 
-    // S10: the pure hotplug policy the hub's QScreen handlers delegate to.
-    void disconnectPolicyDecisionTable() {
-        // Non-target loss is always a no-op, regardless of the keys.
-        DisconnectDecision d = decideOnScreenRemoved(false, "hide", true);
-        QVERIFY(!d.hideWindow);
-        QVERIFY(!d.notify);
-
-        // Target loss + fallback "hide" → blank the window.
-        d = decideOnScreenRemoved(true, "hide", false);
-        QVERIFY(d.hideWindow);
-        QVERIFY(!d.notify);
-
-        // Target loss + notify_disconnect → surface a notice; "notify" fallback does
-        // not hide the window.
-        d = decideOnScreenRemoved(true, "notify", true);
-        QVERIFY(!d.hideWindow);
-        QVERIFY(d.notify);
-
-        // Both at once.
-        d = decideOnScreenRemoved(true, "hide", true);
-        QVERIFY(d.hideWindow);
-        QVERIFY(d.notify);
-
-        // Reconnect only migrates when enabled AND the added screen is the target.
+    // Reconnect only migrates when enabled AND the added screen is the target.
+    // The full removal policy lives in display_match.* and is covered by
+    // tst_display_match; a second copy here previously drifted out of sync.
+    void reconnectPolicyDecisionTable() {
         QVERIFY(shouldReconnectToScreen(true, true));
         QVERIFY(!shouldReconnectToScreen(false, true));
         QVERIFY(!shouldReconnectToScreen(true, false));
@@ -201,6 +309,26 @@ private slots:
         WizardBridge w(nullptr);
         QVERIFY(!w.completeWizard("h", "DP-3", "XENEON", "gaming", "dark", "#f00",
                                   false, true, true));
+    }
+
+    void wizardReportsSaveFailure() {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QString blockerPath = dir.filePath(QStringLiteral("not-a-directory"));
+        QFile blocker(blockerPath);
+        QVERIFY(blocker.open(QIODevice::WriteOnly));
+        blocker.write("x");
+        blocker.close();
+
+        const QByteArray savedConfigHome = qgetenv("XDG_CONFIG_HOME");
+        const bool hadConfigHome = qEnvironmentVariableIsSet("XDG_CONFIG_HOME");
+        qputenv("XDG_CONFIG_HOME", QFile::encodeName(blockerPath + QStringLiteral("/nested")));
+        WizardBridge w(cfg_);
+        const bool ok = w.completeWizard(QString(), QString(), QString(), QString(),
+                                         QString(), QString(), false, false, false);
+        if (hadConfigHome) qputenv("XDG_CONFIG_HOME", savedConfigHome);
+        else qunsetenv("XDG_CONFIG_HOME");
+        QVERIFY(!ok);
     }
 
     void wizardPersistsAndMarksFirstRunComplete() {

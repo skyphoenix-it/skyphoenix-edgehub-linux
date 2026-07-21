@@ -1,55 +1,89 @@
-# Generic Linux Installation Guide
+# Generic Linux installation
 
-**Work in progress** — This guide will be completed in Phase 5 (Hardening).
+Use this route when your distribution has Qt 6.5 or newer but no supported
+native Xeneon Edge package. Ubuntu and Arch/CachyOS users should prefer their
+distribution-specific guides.
 
-## Building from Source
+## Requirements
 
-If your distribution is not directly supported with packages, you can build from source.
+- Rust and Cargo
+- a C++17 compiler
+- CMake 3.22 or newer
+- Qt 6.5 or newer with Core, Gui, Quick, QML, Quick Controls 2, DBus, Network,
+  SVG, Virtual Keyboard and Wayland support
+- OpenGL and a working Linux compositor
 
-### Prerequisites
+The Qt 6.5 floor is required by `QtQuick.Effects`; a distribution with Qt 6.4
+cannot run a native system-Qt build of the current UI.
 
-- Rust 1.75+ (stable)
-- C++17 compiler (GCC 12+ or Clang 16+)
-- CMake 3.22+
-- Qt 6.5+ development headers (QtQuick, QtWayland, QtDBus, QtSvg)
-- libglib2.0
+## Build and run without installing
 
-### Build Steps
-
-```bash
-git clone https://github.com/your-org/xeneon-edge-linux-hub.git
-cd xeneon-edge-linux-hub
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build
-sudo cmake --install build
+```sh
+git clone https://github.com/skyphoenix-it/XeneonEdge_Linux.git
+cd XeneonEdge_Linux
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j"$(nproc)"
+./build/xeneon-edge-hub
+./build/xeneon-edge-manager
 ```
 
-### Distribution-Specific Dependencies
+The CMake build invokes the Rust release build first and then links both Qt
+applications against it.
 
-**Fedora:**
-```bash
-sudo dnf install rust cargo cmake gcc-c++ qt6-qtbase-devel \
-  qt6-qtdeclarative-devel qt6-qtwayland-devel qt6-qttools-devel
+## Install
+
+For an unprivileged per-user install:
+
+```sh
+cmake -S . -B build-user \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX="$HOME/.local"
+cmake --build build-user -j"$(nproc)"
+cmake --install build-user
 ```
 
-**openSUSE:**
-```bash
-sudo zypper install rust cargo cmake gcc-c++ qt6-base-devel \
-  qt6-declarative-devel qt6-wayland-devel qt6-tools-devel
+Ensure `$HOME/.local/bin` is on `PATH`. The launchers, AppStream metadata and
+icons are installed beneath `$HOME/.local/share`; no manual desktop-file copy is
+needed.
+
+For a system install, use `/usr` explicitly:
+
+```sh
+cmake -S . -B build-system \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX=/usr
+cmake --build build-system -j"$(nproc)"
+sudo cmake --install build-system
 ```
 
-**Debian 12:**
-```bash
-# Qt 6 may need backports on Debian 12
-sudo apt install cargo cmake g++ qt6-base-dev qt6-declarative-dev qt6-wayland-dev
+That installs both binaries, both desktop entries, AppStream metadata, hicolor
+icons, project and bundled-font licence texts, and the Xeneon orientation-sensor
+udev rule. Prefer a native package over a direct system install when available:
+the package manager then owns the files and provides a tracked clean uninstall.
+
+## Auto-rotate permission
+
+The dashboard works without privileged device access, but automatic orientation
+needs the packaged udev rule to be active. A per-user prefix does not activate a
+udev rule; install it separately if required:
+
+```sh
+sudo install -Dm644 packaging/udev/99-xeneon-edge.rules \
+  /etc/udev/rules.d/99-xeneon-edge.rules
+sudo udevadm control --reload
+sudo udevadm trigger --action=change --subsystem-match=hidraw
 ```
 
-### Post-Install
+The rule grants access through the `users` group and logind's `uaccess` tag.
+Manual orientation remains available if the rule or device is absent.
 
-The application installs to `/usr/local/bin/xeneon-edge-hub` by default.
+## Uninstall and user data
 
-To add a desktop entry manually:
-```bash
-cp assets/xeneon-edge-hub.desktop ~/.local/share/applications/
-```
+CMake does not provide an uninstall target. `build-user/install_manifest.txt` or
+`build-system/install_manifest.txt` is the authoritative list for a direct
+install; use a native package when you need package-manager uninstall and upgrade
+tracking.
 
+Removing installed files does not remove the per-user configuration at
+`~/.config/xeneon-edge-hub/config.toml`. Preserve that file for upgrades, or
+remove it deliberately when you want a completely fresh setup.

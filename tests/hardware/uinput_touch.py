@@ -90,13 +90,27 @@ def parse_kscreen(text):
     return outs
 
 
-def _live_outputs():
-    try:
-        out = subprocess.run(['kscreen-doctor', '-o'], capture_output=True,
-                             text=True, timeout=10).stdout
-    except (OSError, subprocess.TimeoutExpired):
-        return []
-    return parse_kscreen(out)
+def _live_outputs(attempts=4, retry_delay=0.25):
+    """Read a complete live layout, tolerating only transient KScreen faults.
+
+    KScreen can briefly abort while KWin is removing a just-destroyed virtual
+    input device.  A single empty/non-zero response is therefore retried, but
+    geometry is never inferred or accepted from a failed command: callers get
+    an empty list unless a later invocation exits successfully *and* parses at
+    least one output.
+    """
+    for attempt in range(attempts):
+        try:
+            result = subprocess.run(['kscreen-doctor', '-o'], capture_output=True,
+                                    text=True, timeout=10)
+            outputs = parse_kscreen(result.stdout) if result.returncode == 0 else []
+            if outputs:
+                return outputs
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+        if attempt + 1 < attempts:
+            time.sleep(retry_delay * (attempt + 1))
+    return []
 
 
 def detect_edge_ex():
@@ -169,8 +183,10 @@ class CaptureSink:
 
 class UinputSink:
     """The ONLY path to a real kernel device. Structurally gated: refuses to
-    exist without the opt-in env AND an armed ActivityGuard, and every write
-    goes through the guard's abort check."""
+    exist without the opt-in env AND an ActivityGuard, and every write is
+    structurally refused until that guard is armed. This lets KWin enumerate
+    the inert device before a second idle check without opening an emission
+    gap."""
     is_real = True
 
     def __init__(self, guard):
@@ -206,6 +222,7 @@ class UinputSink:
         time.sleep(1.2)  # let the compositor enumerate the new device
 
     def emit(self, t, c, v):
+        self.guard.require_armed()              # no kernel event before arming
         self.guard.check()                      # kill switch: abort BEFORE the write
         os.write(self.fd, struct.pack('=qqHHi', 0, 0, t, c, v))  # 24-byte input_event
         if t != EV_SYN:

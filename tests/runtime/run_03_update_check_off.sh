@@ -45,8 +45,13 @@ if ! grep -aq "Configuration saved" "$RT_ROOT/hub.log"; then
     echo "  [idle] FAIL: no save happened — the persisted-key assertion would be vacuous"
     fail=1
 else
-    upd="$(rt_json "$(rt_read_config "$RT_CFG")" 'd["ui_state"]["appearance"].get("updateCheck")')"
-    if [ "$upd" = "True" ] || [ "$upd" = "true" ]; then
+    config_json=""
+    upd=""
+    if ! config_json="$(rt_read_config "$RT_CFG")" || \
+       ! upd="$(rt_json "$config_json" 'd["ui_state"]["appearance"].get("updateCheck")')"; then
+        echo "  [idle] FAIL: could not read/parse the hub-authored config"
+        fail=1
+    elif [ "$upd" = "True" ] || [ "$upd" = "true" ]; then
         echo "  [idle] FAIL: hub persisted appearance.updateCheck=$upd on a default config"
         fail=1
     else
@@ -68,8 +73,16 @@ if [ -x "$NOEGRESS" ] || [ -f "$NOEGRESS" ]; then
     if command -v strace >/dev/null 2>&1 && unshare --net --mount --map-root-user true 2>/dev/null; then
         echo "Real assertion — packaging/ci/no-egress.sh default (netns + strace + DNS sink)"
         if XENEON_HUB="$HUB" XENEON_EGRESS_SECS="${XENEON_EGRESS_SECS:-10}" bash "$NOEGRESS" default > "$RT_WORK/no-egress.out" 2>&1; then
-            real_ran=yes
-            grep -E "^✓|ATTESTATION" "$RT_WORK/no-egress.out" | sed 's/^/  /'
+            if grep -qx 'NO-EGRESS ATTESTATION PASS' "$RT_WORK/no-egress.out" && \
+               grep -q '^✓ liveness:' "$RT_WORK/no-egress.out" && \
+               grep -q '^✓ ZERO egress:' "$RT_WORK/no-egress.out"; then
+                real_ran=yes
+                grep -E "^✓|ATTESTATION" "$RT_WORK/no-egress.out" | sed 's/^/  /'
+            else
+                echo "  FAIL: no-egress runner exited zero without complete attestation evidence:"
+                tail -25 "$RT_WORK/no-egress.out" | sed 's/^/    /'
+                fail=1
+            fi
         else
             rc=$?
             if [ "$rc" -eq 77 ]; then
@@ -89,5 +102,9 @@ fi
 
 echo
 echo "Assertion level: proxy=yes real-no-egress=$real_ran"
+if [ "${XENEON_RELEASE_GATE:-0}" = "1" ] && [ "$real_ran" != "yes" ]; then
+    echo "  FAIL: strict release gate requires the real netns + strace no-egress attestation"
+    fail=1
+fi
 if [ "$fail" -ne 0 ]; then echo "RESULT: FAILURE"; exit 1; fi
 echo "RESULT: SUCCESS — update check stays off and silent on a default config"

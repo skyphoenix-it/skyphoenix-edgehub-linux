@@ -3,7 +3,7 @@ import QtTest
 import "../../ui/qml" as App
 import "../../ui/qml/widgets" as Wg
 
-// COVERS: config-value → store → rendered-observable for the CPU widget.
+// COVERAGE NOTE: config-value → store → rendered-observable for the CPU widget.
 //
 // O4 (widget configuration coverage). WidgetConfigDialog.qml ships ~16 KB of
 // per-tile config UI, but no test drove a config VALUE through the store and

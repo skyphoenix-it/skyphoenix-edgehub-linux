@@ -42,5 +42,5 @@ modules:
     sources:
       - type: git
         url: https://github.com/skyphoenix-it/XeneonEdge_Linux.git
-        tag: v0.1.0
+        tag: v1.0.0-alpha.2
       # - cargo-sources.json      # generated; required for offline (Flathub) builds

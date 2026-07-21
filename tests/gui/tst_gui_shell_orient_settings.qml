@@ -1,13 +1,14 @@
 import QtQuick
+import QtQuick.Controls
 import QtTest
 import "GuiUtil.js" as G
 
 // ─────────────────────────────────────────────────────────────────────────
 // VISIBLE GUI tests for the Hub SHELL — Orientation + SettingsPanel.
 //
-// Hosts the REAL shell (ui/qml/main.qml → Dashboard.qml) ONCE in initTestCase
-// (per the cookbook: main.qml's qrc: initialItem never resolves under
-// qmltestrunner, so we push the real Dashboard by RELATIVE url). Every case
+// Hosts the REAL shell (ui/qml/main.qml → Dashboard.qml) ONCE in initTestCase,
+// replacing its resolved initial page with one deterministic source-tree
+// Dashboard. Every case
 // asserts an OBJECTIVE, GUI-observable outcome after a real interaction:
 //   • Orientation — win.contentRotation ∈ {0,90,180,270}, the contentRoot
 //     aspect swap, grabImage aspect, current-page PRESERVED across a rotation
@@ -18,9 +19,10 @@ import "GuiUtil.js" as G
 //     must NOT snap back after a wait AND after a churny store revision (the
 //     glass-slider regression, S2).
 //
-// ORIENTATION cases run with the shell window HIDDEN (grabImage works on the
-// hidden window per tst_gui_sample.qml, and a hidden toplevel can be resized
-// freely so the aspect grabs are deterministic). SETTINGS cases show the window
+// Pure ORIENTATION transform cases run with the shell window HIDDEN (grabImage
+// works on the hidden window per tst_gui_sample.qml, and a hidden toplevel can
+// be resized freely so aspect grabs are deterministic). The rendered grid case
+// maps the window so Qt polishes nested layouts. SETTINGS cases show the window
 // (ensureShown) so real mouse events deliver to the separate ApplicationWindow,
 // and force portrait (contentRotation 0) so the sheet is upright under the
 // cursor. Tests run alphabetically: every test_ori_* precedes every test_set_*.
@@ -186,23 +188,20 @@ Item {
             var sv0 = G.findPred(win.contentItem, function (n) {
                 return n && typeof n.push === "function" && n.currentItem !== undefined })
             verify(sv0, "found StackView")
-            // Exactly ONE Dashboard on the stack. This used to be guaranteed by a BUG:
-            // main.qml's initialItem was "qrc:/qml/Dashboard.qml", which cannot resolve
-            // under qmltestrunner, so the stack was empty and this push produced the only
-            // instance. Now that initialItem resolves from the source tree, pushing
-            // without clearing leaves TWO stacked Dashboards — the test then drives the
-            // one underneath, so every "is it hidden?" assertion passes and every click
-            // silently lands on the wrong instance.
-            sv0.clear()
-            sv0.clear(); sv0.push(Qt.resolvedUrl("../../ui/qml/Dashboard.qml"))
+            // main.qml already resolves an initial Dashboard. Remove it immediately
+            // before pushing the deterministic source-tree page; an animated clear
+            // leaves the outgoing tree alive long enough for finders to mix instances.
+            sv0.clear(StackView.Immediate)
+            sv0.push(Qt.resolvedUrl("../../ui/qml/Dashboard.qml"))
+            tryVerify(function () { return sv0.depth === 1 && sv0.currentItem !== null }, 5000,
+                      "exactly one current Dashboard page")
+            dash = sv0.currentItem
 
             tryVerify(function () {
-                swipe = G.byObjName(win.contentItem, "pageSwipe")
-                dash  = G.findPred(win.contentItem, function (n) {
-                    return n && n.appendPreset !== undefined && n.netGate !== undefined })
-                store = G.findPred(win.contentItem, function (n) {
+                swipe = G.byObjName(dash, "pageSwipe")
+                store = G.findPred(dash, function (n) {
                     return n && n.applyExternal !== undefined && n.structureRevision !== undefined })
-                panel = G.findPred(win.contentItem, function (n) {
+                panel = G.findPred(dash, function (n) {
                     return n && n.pickerCol !== undefined && n.presetsLocked !== undefined })
                 cr    = G.findPred(win.contentItem, function (n) {
                     return n && typeof n.swapped === "boolean" })
@@ -329,6 +328,12 @@ Item {
         // ORI-14 dashboard page re-projects (page delegate `landscape` bool flips).
         function test_ori_b_grid_reprojects() {
             win.reduceMotion = true
+            // A hidden QQuickWindow does not run layout polish for the nested
+            // ColumnLayout when only the rotated container's geometry changes.
+            // Map this rendered-layout case under the real nested compositor;
+            // the pure transform/aspect cases above deliberately stay hidden.
+            win.visibility = Window.Windowed
+            wait(400)
             win.width = 720; win.height = 1280
             seedPages(1)
             win.orientationMode = "portrait"; wait(120)
@@ -337,7 +342,11 @@ Item {
             compare(pageP.landscape, false, "portrait: page is not in landscape projection")
             win.orientationMode = "landscape"; wait(120)
             var pageL = swipe.currentItem
+            tryVerify(function () { return pageL && pageL.landscape === true }, 3000,
+                      "landscape page delegate completed its asynchronous re-layout")
             compare(pageL.landscape, true, "landscape: page re-projects to landscape (more columns)")
+            win.visibility = Window.Hidden
+            wait(120)
         }
 
         // 3c — current page PRESERVED across a rotation (8). The rotation analogue

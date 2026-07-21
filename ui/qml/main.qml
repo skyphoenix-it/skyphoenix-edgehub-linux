@@ -23,16 +23,22 @@ ApplicationWindow {
     property string targetModel: _targetModel
     property string configDir: _configDir
     property bool safeMode: _safeMode
-    property bool startInDiagnostics: _startInDiagnostics !== undefined ? _startInDiagnostics : false
-    property bool windowedMode: _windowedMode !== undefined ? _windowedMode : false
-    property int targetScreenX: _targetScreenX !== undefined ? _targetScreenX : 0
-    property int targetScreenY: _targetScreenY !== undefined ? _targetScreenY : 0
-    property int targetScreenWidth: _targetScreenWidth !== undefined ? _targetScreenWidth : 1920
-    property int targetScreenHeight: _targetScreenHeight !== undefined ? _targetScreenHeight : 1080
+    property bool startInDiagnostics: typeof _startInDiagnostics !== "undefined" ? _startInDiagnostics : false
+    property bool windowedMode: typeof _windowedMode !== "undefined" ? _windowedMode : false
+    property int targetScreenX: typeof _targetScreenX !== "undefined" ? _targetScreenX : 0
+    property int targetScreenY: typeof _targetScreenY !== "undefined" ? _targetScreenY : 0
+    property int targetScreenWidth: typeof _targetScreenWidth !== "undefined" ? _targetScreenWidth : 1920
+    property int targetScreenHeight: typeof _targetScreenHeight !== "undefined" ? _targetScreenHeight : 1080
 
     // Screen hotplug properties
     property string screenAddedChanged: ""
     property string screenRemovedChanged: ""
+    // C++ also sends a real org.freedesktop.Notifications desktop notice. These
+    // state markers make the event observable to QML/Diagnostics without trying
+    // to show a popup inside the safety-hidden Hub window.
+    property string displayDisconnected: ""
+    property string displaySelectionRequested: ""
+    property string lastDisplayEventText: ""
 
     // Live UI-state pushed from the companion Manager app via the C++
     // ControlServer. Forward it to the dashboard for an immediate reload.
@@ -62,11 +68,28 @@ ApplicationWindow {
     }
 
     // React to screen hotplug events
-    onScreenAddedChanged: function(name) {
-        if (name) console.log("Screen added:", name);
+    onScreenAddedChanged: {
+        if (screenAddedChanged) console.log("Screen added:", screenAddedChanged)
     }
-    onScreenRemovedChanged: function(name) {
-        if (name) console.log("Screen removed:", name);
+    onScreenRemovedChanged: {
+        if (screenRemovedChanged) console.log("Screen removed:", screenRemovedChanged)
+    }
+    onDisplayDisconnectedChanged: {
+        var name = displayDisconnected
+        if (!name) {
+            lastDisplayEventText = ""
+            return
+        }
+        lastDisplayEventText = "Dashboard display " + name
+            + " disconnected. Waiting for reconnection."
+        console.log(lastDisplayEventText)
+    }
+    onDisplaySelectionRequestedChanged: {
+        var name = displaySelectionRequested
+        if (!name) return
+        lastDisplayEventText = "Dashboard display " + name
+            + " is unavailable. Open Xeneon Edge Manager to select a display."
+        console.log(lastDisplayEventText)
     }
 
     // Reduced-motion preference (design system: all durations → 0ms).
@@ -223,16 +246,14 @@ ApplicationWindow {
             id: stackView
             objectName: "mainStack"
             anchors.fill: parent
-            // Bundle when bundled, source tree under qmltestrunner — same rule as
-            // Theme._fontsDir and WidgetCatalog._fromBundle. Without this the shell
-            // tests could not load the Dashboard at all ("initialItem:
-            // qrc:/qml/Dashboard.qml: No such file or directory").
-            readonly property string _qmlDir:
-                Qt.resolvedUrl(".").toString().indexOf("qrc:") === 0
-                    ? "qrc:/qml/" : Qt.resolvedUrl(".").toString()
-            initialItem: isFirstRun ? _qmlDir + "FirstRunWizard.qml" :
-                         startInDiagnostics ? _qmlDir + "Diagnostics.qml" :
-                         _qmlDir + "Dashboard.qml"
+            // Resolve each page relative to this file. In the shipped binary
+            // that naturally becomes qrc:/qml/<page>; when the composed GUI
+            // suite loads main.qml from the source tree it stays a file: URL.
+            // Inferring the scheme from resolvedUrl(".") was unreliable and
+            // made the source-loaded shell try to open a non-existent qrc page.
+            initialItem: isFirstRun ? Qt.resolvedUrl("FirstRunWizard.qml").toString() :
+                         startInDiagnostics ? Qt.resolvedUrl("Diagnostics.qml").toString() :
+                         Qt.resolvedUrl("Dashboard.qml").toString()
 
             // The initial page is instantiated from a URL, so no properties get
             // passed in — inject the live bindings once it exists. Without this,
@@ -290,7 +311,7 @@ ApplicationWindow {
                 // Bind live (metrics/screens/config) so the Diagnostics overview
                 // keeps updating, rather than freezing at the snapshot taken when
                 // Ctrl+D was pressed.
-                var diag = stackView.push(stackView._qmlDir + "Diagnostics.qml");
+                var diag = stackView.push(Qt.resolvedUrl("Diagnostics.qml").toString());
                 root.bindStackItem(diag);
             }
         }
@@ -311,7 +332,9 @@ ApplicationWindow {
     }
 
     Component.onCompleted: {
-        console.log("Xeneon Edge Linux Hub v0.1.0 started");
+        var version = (typeof configBridge !== "undefined" && configBridge && configBridge.appVersion)
+            ? configBridge.appVersion() : "dev"
+        console.log("Xeneon Edge Linux Hub " + version + " started");
         console.log("Config dir:", configDir);
         console.log("Theme mode:", themeMode);
         console.log("Is first run:", isFirstRun);

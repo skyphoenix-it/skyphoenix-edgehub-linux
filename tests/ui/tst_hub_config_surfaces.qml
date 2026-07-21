@@ -2,7 +2,7 @@ import QtQuick
 import QtTest
 import "../../ui/qml" as App
 
-// COVERS: the HUB's OWN on-panel configuration surfaces, end to end.
+// COVERAGE NOTE: the HUB's OWN on-panel configuration surfaces, end to end.
 //
 // The gap this closes. Two config surfaces exist in this product and only one
 // of them was covered at value level:

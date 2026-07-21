@@ -1,8 +1,14 @@
 # Test Strategy
 
 **Version:** 0.1.0-draft  
-**Status:** Phase 0 — Discovery  
+**Status:** Historical Phase-0 discovery draft — superseded
 **Last Updated:** 2026-07-11  
+
+> **Historical document.** The proposed locations, schedules, environment matrix
+> and test types below were never all implemented and must not be read as executed
+> release evidence. Current requirements live in
+> [MVP scope](../product/mvp-scope.md); the executable pre-release contract is
+> documented in [Strict release test gate](release-gate.md).
 
 ---
 
@@ -339,4 +345,3 @@ Mapping is maintained in `docs/testing/traceability.md` (generated from annotati
 - Flaky test rate <1%
 - Code coverage meets targets (>85% core, >80% integrations, >70% UI logic)
 - All supported distro+DE combinations tested before release
-

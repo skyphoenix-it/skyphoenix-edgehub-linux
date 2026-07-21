@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import QtTest
 import "../../ui/qml" as App
 import "../../ui/qml/widgets" as W
@@ -9,17 +10,15 @@ import "GuiUtil.js" as G
 // screens), the first-run wizard, and empty/error/diagnostics states.
 //
 // Recipes (see scratchpad/specs/04_instantiation_cookbook.md):
-//   • The REAL Hub shell is main.qml → Dashboard.qml pushed by RELATIVE url
-//     (its qrc: initialItem never resolves under qmltestrunner).
+//   • The REAL Hub shell is main.qml → Dashboard.qml. Each TestCase replaces
+//     the resolved initial page immediately so it owns one deterministic tree.
 //   • Wallpaper selection is driven by a REAL BackgroundPicker hosted in THIS
 //     (the test) window, bound to the shell's OWN store — clicking a thumbnail
 //     mutates the shell store, and the shell's page background re-renders. The
 //     picker and the shell are separate KWin surfaces, so grabbing the dashboard
 //     samples the live background without the picker bleeding into the frame.
-//   • Wallpaper qrc PNGs do NOT load under qmltestrunner, so a wallpaper's
-//     VISIBLE effect is that it SUPPRESSES the animated backdrop (backdrop
-//     visible→false) and the page reverts to the plain gradient — asserted both
-//     as an item.visible flip AND as a grabImage pixel change on an empty page.
+//   • The repository QuickTest runner embeds the shipped asset QRCs, so wallpaper
+//     and backdrop assertions exercise the same qrc:/ pixels as the products.
 // ─────────────────────────────────────────────────────────────────────────
 Item {
     id: root
@@ -77,13 +76,17 @@ Item {
     }
 
     // ── Tree helpers ─────────────────────────────────────────────────────────
-    function findSwipe(win) { return G.byObjName(win.contentItem, "pageSwipe") }
-    function findDash(win) {
-        return G.findPred(win.contentItem, function (n) {
+    function scopeRoot(scope) {
+        try { return scope && scope.contentItem ? scope.contentItem : scope }
+        catch (e) { return scope }
+    }
+    function findSwipe(scope) { return G.byObjName(scopeRoot(scope), "pageSwipe") }
+    function findDash(scope) {
+        return G.findPred(scopeRoot(scope), function (n) {
             return n && n.appendPreset !== undefined && n.netGate !== undefined })
     }
-    function findStore(win) {
-        return G.findPred(win.contentItem, function (n) {
+    function findStore(scope) {
+        return G.findPred(scopeRoot(scope), function (n) {
             return n && n.applyExternal !== undefined && n.structureRevision !== undefined })
     }
     function findPresetPicker(win) {
@@ -135,12 +138,16 @@ Item {
     }
 
     // ── Pixel diff over an interior grid (background change proof) ─────────────
-    function pxDiff(a, b) {
+    function pxDiff(a, b, steps) {
         if (!a || !b) return 0
+        steps = steps || 32
         var Wm = Math.min(a.width, b.width), Hm = Math.min(a.height, b.height), n = 0
-        for (var i = 1; i < 10; i++)
-            for (var j = 1; j < 10; j++) {
-                var x = Math.floor(Wm * i / 10), y = Math.floor(Hm * j / 10)
+        // Sparse styles such as Starfield legitimately leave most of the
+        // background untouched. A 9x9 grid can miss every star; the denser fixed
+        // grid is still cheap but makes the rendered-pixel proof deterministic.
+        for (var i = 1; i < steps; i++)
+            for (var j = 1; j < steps; j++) {
+                var x = Math.floor(Wm * i / steps), y = Math.floor(Hm * j / steps)
                 if (G.colorDist("" + a.pixel(x, y), "" + b.pixel(x, y)) > 12) n++
             }
         return n
@@ -161,7 +168,18 @@ Item {
         property var bd: null
         property var shellTheme: null
 
-        function snap(item, n) { var i = G.grabItem(this, item, win.contentItem); i.save("gui-evidence/shellbg_" + n + ".png"); return i }
+        function grabSurface() {
+            // Dashboard can rotate its content inside a landscape window. Capture
+            // the actual window surface at its stable origin; mapping the rotated
+            // Dashboard rectangle itself can legitimately produce an offset beyond
+            // the surface even though its rendered pixels fill that surface.
+            return G.grabItem(this, win.contentItem, win.contentItem)
+        }
+        function snap(item, n) {
+            var i = grabSurface()
+            i.save("gui-evidence/shellbg_" + n + ".png")
+            return i
+        }
 
         function initTestCase() {
             var c = Qt.createComponent("../../ui/qml/main.qml")
@@ -198,11 +216,21 @@ Item {
             // without clearing leaves TWO stacked Dashboards — the test then drives the
             // one underneath, so every "is it hidden?" assertion passes and every click
             // silently lands on the wrong instance.
-            sv.clear(); sv.push(Qt.resolvedUrl("../../ui/qml/Dashboard.qml"))
+            sv.clear(StackView.Immediate)
+            sv.push(Qt.resolvedUrl("../../ui/qml/Dashboard.qml"))
+            tryVerify(function () { return sv.depth === 1 && sv.currentItem !== null }, 5000,
+                      "exactly one current Dashboard page")
             tryVerify(function () {
-                dash = root.findDash(win); store = root.findStore(win)
+                dash = sv.currentItem; store = root.findStore(dash)
                 return dash !== null && store !== null
             }, 6000, "Dashboard + store loaded")
+            // Dashboard.applyAppearance() restores the persisted orientation as
+            // it loads, so the pre-push assignment above is intentionally
+            // repeated after creation. Otherwise the shipped portrait default
+            // rotates this landscape test surface and every item-relative pixel
+            // sample lands outside the grabbed frame.
+            win.orientationMode = "landscape"
+            wait(100)
             bd = root.findBackdrop(dash)
             verify(bd !== null, "found the BackdropLayer")
             // `st`, not `store`: c02c40f renamed BackgroundPicker's store property
@@ -336,7 +364,7 @@ Item {
             store.setAppearance("wallpaper", "")
             store.setAppearance("bgStyle", d.animated ? "none" : "orbs")
             wait(200)
-            var before = G.grabItem(this, dash, win.contentItem)
+            var before = grabSurface()
             var chip = root.chipFor(d.label)
             verify(chip !== null, "style chip present: " + d.label)
             mouseClick(chip, chip.width / 2, chip.height / 2)
@@ -344,7 +372,9 @@ Item {
             compare(store.appearance().bgStyle, d.v, "store records style " + d.tag)
             compare("" + bd.style, d.v, "BackdropLayer.style === " + d.tag)
             var after = snap(dash, "style_" + d.tag)
-            verify(root.pxDiff(before, after) >= 1,
+            // Starfield's motif is deliberately sparse (small points over the
+            // unchanged gradient), so sample it more densely than broad styles.
+            verify(root.pxDiff(before, after, d.v === "stars" ? 128 : 32) >= 1,
                    "backdrop pixels changed for style " + d.tag)
         }
 
@@ -391,7 +421,7 @@ Item {
             bpick.pageIndex = 1
             var g0
             sw.goToPage(0); tryVerify(function () { return sw.currentIndex === 0 }, 3000); wait(150)
-            g0 = G.grabItem(this, dash, win.contentItem)
+            g0 = grabSurface()
             var chip = root.chipFor("Waves")   // per-page override on page 1
             bpick.pageIndex = 1
             // apply the override via the per-page picker method (page 1) then verify store
@@ -443,7 +473,7 @@ Item {
             store.setPageBackground(1, "style", "grid")
             var sw = root.findSwipe(win)
             sw.goToPage(0); tryVerify(function () { return sw.currentIndex === 0 }, 3000); wait(150)
-            var g0 = G.grabItem(this, dash, win.contentItem)
+            var g0 = grabSurface()
             sw.goToPage(1); tryVerify(function () { return sw.currentIndex === 1 }, 3000); wait(150)
             var g1 = snap(dash, "switch_page1_grid")
             verify(root.pxDiff(g0, g1) >= 1, "the background follows the current page")
@@ -463,7 +493,7 @@ Item {
             var hc = snap(dash, "highcontrast")
             // restore a normal theme for cleanliness
             store.setAppearance("themeMode", "midnight"); dash.applyAppearance(); wait(150)
-            var normal = G.grabItem(this, dash, win.contentItem)
+            var normal = grabSurface()
             verify(root.pxDiff(hc, normal) >= 1, "the themed background differs from high-contrast")
         }
     }
@@ -481,6 +511,7 @@ Item {
         property var dash: null
         property var store: null
         property var swipe: null
+        property var sv: null
 
         function snap(item, n) { var i = G.grabItem(this, item, win.contentItem); i.save("gui-evidence/shellpreset_" + n + ".png"); return i }
 
@@ -507,11 +538,14 @@ Item {
             win.width = 2560; win.height = 720
             win.visibility = Window.Windowed
             win.orientationMode = "portrait"
-            var sv = G.findPred(win.contentItem, function (n) {
+            sv = G.findPred(win.contentItem, function (n) {
                 return n && typeof n.push === "function" && n.currentItem !== undefined })
-            sv.clear(); sv.push(Qt.resolvedUrl("../../ui/qml/Dashboard.qml"))
+            sv.clear(StackView.Immediate)
+            sv.push(Qt.resolvedUrl("../../ui/qml/Dashboard.qml"))
+            tryVerify(function () { return sv.depth === 1 && sv.currentItem !== null }, 5000,
+                      "exactly one current Dashboard page")
             tryVerify(function () {
-                dash = root.findDash(win); store = root.findStore(win); swipe = root.findSwipe(win)
+                dash = sv.currentItem; store = root.findStore(dash); swipe = root.findSwipe(dash)
                 return dash !== null && store !== null && swipe !== null
             }, 6000, "Dashboard + store + SwipeView loaded")
         }
@@ -717,6 +751,7 @@ Item {
         visible: true
 
         property var wiz: null
+        property var flick: null
 
         // This TestCase hosts the wizard directly on `root`, not in its own
         // Window — so `root` is the origin item the grab must be relative to.
@@ -727,6 +762,33 @@ Item {
                 try { return n && n.text === str && n.checkable !== undefined } catch (e) { return false } })
         }
 
+        function clickableForText(str) {
+            var textItem = G.byText(wiz, str)
+            if (!textItem) return null
+            var node = textItem.parent
+            while (node && node !== wiz) {
+                var kids = node.children || []
+                for (var i = 0; i < kids.length; i++)
+                    if (G.isClickable(kids[i]) && kids[i].width > 0 && kids[i].height > 0)
+                        return kids[i]
+                node = node.parent
+            }
+            return null
+        }
+
+        function reveal(item) {
+            verify(item !== null, "click target exists")
+            var p = item.mapToItem(flick.contentItem, 0, 0)
+            var centred = p.y + item.height / 2 - flick.height / 2
+            flick.contentY = Math.max(0, Math.min(flick.contentHeight - flick.height, centred))
+            wait(80)
+        }
+
+        function tap(item) {
+            reveal(item)
+            mouseClick(item, item.width / 2, item.height / 2)
+        }
+
         function initTestCase() {
             var c = Qt.createComponent("../../ui/qml/FirstRunWizard.qml")
             tryVerify(function () { return c.status !== Component.Loading }, 6000)
@@ -735,9 +797,15 @@ Item {
             verify(wiz !== null, "wizard instantiated")
             // FirstRunWizard is a StackView PAGE in the product, so it no longer
             // anchors itself (that conflicted with StackView's own sizing). This
-            // is the one host that neither anchors nor is a Loader, so it must
-            // give the wizard a size or it renders 0x0.
-            wiz.width = 2560; wiz.height = 720
+            // direct host must size it explicitly, and it must use the host's
+            // dimensions: a 2560-wide child inside this 1280-wide QuickTest
+            // window puts the right-hand controls outside the input surface.
+            wiz.width = root.width; wiz.height = root.height
+            flick = G.findPred(wiz, function (n) {
+                return n && n.contentY !== undefined && n.contentHeight !== undefined
+                       && n.flickableDirection !== undefined
+            })
+            verify(flick !== null, "wizard Flickable found")
         }
         function cleanupTestCase() { if (wiz) wiz.destroy() }
 
@@ -750,6 +818,7 @@ Item {
             root.themeMode = "midnight"; root.accentName = "blue"
             wizardBridge.calls = 0
             wizardBridge.nextResult = true
+            if (flick) flick.contentY = 0
         }
 
         // ── 7a. Step advance / back ───────────────────────────────────────────
@@ -759,26 +828,26 @@ Item {
             snap(wiz, "welcome")
         }
         function test_get_started_advances() {
-            mouseClick(findButton("Get Started →"))
+            tap(findButton("Get Started →"))
             compare(wiz.currentStep, 1, "Get Started advances to step 1")
         }
         function test_step1_to_2_with_display() {
             root._screens = JSON.stringify([ { name: "DP-1", model: "Generic",
                 size: { width: 1920, height: 1080 } } ])
             wiz.currentStep = 1; wait(80)
-            mouseClick(findButton("Select")); wait(60)
+            tap(findButton("Select")); wait(60)
             verify(wiz.selectedScreen !== null, "a display is picked")
-            mouseClick(findButton("Next →"))
+            tap(findButton("Next →"))
             compare(wiz.currentStep, 2, "advances to the layout step")
         }
         function test_step2_to_3() {
             wiz.currentStep = 2; wait(60)
-            mouseClick(findButton("Next →"))
+            tap(findButton("Next →"))
             compare(wiz.currentStep, 3, "advances to the options step")
         }
         function test_back_decrements() {
             wiz.currentStep = 2; wait(40)
-            mouseClick(findButton("← Back"))
+            tap(findButton("← Back"))
             compare(wiz.currentStep, 1, "Back returns to the previous step")
         }
         function test_back_hidden_on_step0() {
@@ -826,7 +895,7 @@ Item {
             root._screens = JSON.stringify([ { name: "DP-1", model: "Generic",
                 size: { width: 1920, height: 1080 } } ])
             wiz.currentStep = 1; wait(80)
-            mouseClick(findButton("Select")); wait(60)
+            tap(findButton("Select")); wait(60)
             verify(wiz.selectedScreen !== null, "Select picks the display")
             compare(wiz.canAdvance, true, "Next becomes enabled")
         }
@@ -834,7 +903,7 @@ Item {
             root._screens = JSON.stringify([ { name: "DP-1", model: "Generic",
                 size: { width: 1920, height: 1080 } } ])
             wiz.currentStep = 1; wait(80)
-            mouseClick(findButton("Select")); wait(60)
+            tap(findButton("Select")); wait(60)
             verify(findButton("✓ Selected") !== null, "the selected row's button reads ✓ Selected")
         }
         function test_detected_edge_highlighted() {
@@ -870,19 +939,19 @@ Item {
             wiz.currentStep = 2; wait(80)
             var card = G.byText(wiz, "Gaming Cockpit")
             verify(card !== null, "a preset card is present")
-            mouseClick(card, 4, 4); wait(60)
+            tap(clickableForText("Gaming Cockpit")); wait(60)
             compare(wiz.selectedLayout, "gaming", "picking a preset card selects it")
         }
         function test_pick_blank() {
             wiz.currentStep = 2; wait(80)
             var card = G.byText(wiz, "blank dashboard")
             verify(card !== null, "the blank option is present")
-            mouseClick(card, 4, 4); wait(60)
+            tap(clickableForText("blank dashboard")); wait(60)
             compare(wiz.selectedLayout, "blank", "picking blank selects it")
         }
         function test_finish_calls_bridge_with_choices() {
             wiz.currentStep = 3; wiz.selectedLayout = "gaming"; wait(60)
-            mouseClick(findButton("Finish Setup"))
+            tap(findButton("Finish Setup"))
             compare(wizardBridge.calls, 1, "completeWizard is called once")
             compare(wizardBridge.lastArgs.layout, "gaming", "the chosen layout is passed")
             compare(wizardBridge.lastArgs.autostart, true, "the autostart default is passed")
@@ -890,7 +959,7 @@ Item {
         function test_finish_success_seeds_reports_navigation() {
             wiz.currentStep = 3; wiz.selectedLayout = "starter"
             wizardBridge.nextResult = true; wiz.finishError = ""
-            mouseClick(findButton("Finish Setup"))
+            tap(findButton("Finish Setup"))
             compare(wizardBridge.lastArgs.layout, "starter", "the starter bundle is chosen")
             // Saved OK, but there is no StackView host in this test → the wizard
             // surfaces the open error rather than hanging silently.
@@ -899,7 +968,7 @@ Item {
         }
         function test_finish_failure_surfaces_error() {
             wiz.currentStep = 3; wizardBridge.nextResult = false; wiz.finishError = ""
-            mouseClick(findButton("Finish Setup"))
+            tap(findButton("Finish Setup"))
             verify(wiz.finishError.indexOf("Couldn't save") >= 0, "a failed save surfaces an error")
             verify(G.byText(wiz, "Couldn't save") !== null, "the error text is visible on screen")
         }
@@ -918,6 +987,7 @@ Item {
         property var dash: null
         property var store: null
         property var swipe: null
+        property var sv: null
 
         function snap(item, n) { var i = G.grabItem(this, item, win.contentItem); i.save("gui-evidence/shellempty_" + n + ".png"); return i }
 
@@ -936,15 +1006,29 @@ Item {
             win.width = 2560; win.height = 720
             win.visibility = Window.Windowed
             win.orientationMode = "portrait"
-            var sv = G.findPred(win.contentItem, function (n) {
+            sv = G.findPred(win.contentItem, function (n) {
                 return n && typeof n.push === "function" && n.currentItem !== undefined })
-            sv.clear(); sv.push(Qt.resolvedUrl("../../ui/qml/Dashboard.qml"))
+            sv.clear(StackView.Immediate)
+            sv.push(Qt.resolvedUrl("../../ui/qml/Dashboard.qml"))
+            tryVerify(function () { return sv.depth === 1 && sv.currentItem !== null }, 5000,
+                      "exactly one current Dashboard page")
             tryVerify(function () {
-                dash = root.findDash(win); store = root.findStore(win); swipe = root.findSwipe(win)
+                dash = sv.currentItem; store = root.findStore(dash); swipe = root.findSwipe(dash)
                 return dash !== null && store !== null && swipe !== null
             }, 6000, "Dashboard loaded")
         }
         function cleanupTestCase() { if (win) win.destroy() }
+
+        // The Diagnostics test pushes a real page onto this shared shell. Every
+        // following test must start back on the Dashboard; otherwise its Text
+        // nodes exist but are effectively invisible under Diagnostics, which
+        // made all empty/fallback assertions report zero visible content.
+        function init() {
+            if (sv && dash && sv.currentItem !== dash)
+                sv.pop(dash, StackView.Immediate)
+            if (dash) dash.editMode = false
+            wait(0)
+        }
 
         function emptyHints() {
             return G.collectPred(dash, function (n) {
@@ -998,17 +1082,17 @@ Item {
         function test_unknown_type_fallback() {
             var doc = { version: 1, appearance: {}, settings: {},
                 pages: [ { name: "Home", tiles: [ { id: "bogus-1", type: "bogus", size: "1x1" } ] } ] }
-            dash.applyExternalState(JSON.stringify(doc)); wait(200)
-            var fb = G.byText(dash, "isn't available")
-            verify(fb !== null && fb.visible, "an unknown widget type renders the Unavailable fallback card")
+            dash.applyExternalState(JSON.stringify(doc))
+            tryVerify(function () { return G.byText(dash, "isn't available") !== null }, 3000,
+                      "an unknown widget type renders the Unavailable fallback card")
             snap(dash, "fallback_unknown")
         }
         function test_typeless_tile_fallback() {
             var doc = { version: 1, appearance: {}, settings: {},
                 pages: [ { name: "Home", tiles: [ { id: "typeless-1", type: "", size: "1x1" } ] } ] }
-            dash.applyExternalState(JSON.stringify(doc)); wait(200)
-            var fb = G.byText(dash, "isn't available")
-            verify(fb !== null && fb.visible, "a typeless (but id-bearing) tile renders the fallback, not a silent blank")
+            dash.applyExternalState(JSON.stringify(doc))
+            tryVerify(function () { return G.byText(dash, "isn't available") !== null }, 3000,
+                      "a typeless (but id-bearing) tile renders the fallback, not a silent blank")
         }
         function test_corrupt_doc_healed_renders() {
             var doc = { version: 1, appearance: {}, settings: {},
@@ -1042,10 +1126,9 @@ Item {
         }
 
         // ── 8c. Diagnostics navigation ────────────────────────────────────────
-        // NB: Diagnostics is pushed by a qrc: url that does NOT resolve under
-        // qmltestrunner, so the push cannot complete here — these cases assert the
-        // GUARD (repeat taps never stack) and the button's presence/reachability,
-        // which hold regardless of whether the page itself materialises.
+        // The source-loaded shell must resolve Diagnostics relative to Dashboard,
+        // just as the bundled shell resolves it inside qrc:/qml. This used to
+        // produce a missing-resource warning while the shallow button test passed.
         function test_diagnostics_button_present_touch_sized() {
             store.load("blank")
             var b = root.findBarButton(win, "ui-settings")
@@ -1058,6 +1141,9 @@ Item {
             var b = root.findBarButton(win, "ui-settings")
             var depth0 = dash.host ? dash.host.depth : 1
             mouseClick(b); wait(200)
+            verify(dash.host.currentItem !== null, "Diagnostics push produced a page")
+            compare(dash.host.currentItem.objectName, "diagnosticsPage",
+                    "the real Diagnostics page materialised")
             mouseClick(b); wait(200)
             var depth1 = dash.host ? dash.host.depth : 1
             verify(depth1 <= depth0 + 1, "repeat diagnostics taps never stack more than one page")

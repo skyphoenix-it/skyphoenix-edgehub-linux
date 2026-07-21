@@ -13,6 +13,7 @@
 #include <QElapsedTimer>
 #include <QFile>
 #include <QImage>
+#include <QTemporaryFile>
 
 #include "autostart.h"
 #include "control_server.h"
@@ -57,6 +58,14 @@ public:
                     const bool fileOk = applyAutostart(enabled);
                     if (ok) *ok = fileOk && xeneon_config_save(cfg) == 0;
                 }, Qt::DirectConnection);
+        connect(&srv, &ControlServer::licenseKeyReceived, this,
+                [this](const QString& key, bool* ok) {
+                    if (failApply) { if (ok) *ok = false; return; }
+                    const QByteArray bytes = key.toUtf8();
+                    xeneon_config_set_license_key(
+                        cfg, key.isEmpty() ? nullptr : bytes.constData());
+                    if (ok) *ok = xeneon_config_save(cfg) == 0;
+                }, Qt::DirectConnection);
     }
     ~HubEmu() override { if (cfg) xeneon_config_free(cfg); }
 
@@ -76,6 +85,7 @@ public:
     QString getReply;                 // state returned for getUiState
     QStringList received;             // request types, in order
     QStringList setStates;            // states received via setUiState
+    QList<int> activePages;           // page payloads received via setActivePage
     bool holdGet = false;             // when true, DON'T auto-reply to getUiState…
     bool getPending = false;          // …record that one is owed, release it later
 
@@ -87,10 +97,12 @@ public:
         });
         return server.listen(kSock());
     }
-    void sendUiState(const QString& state) {
+    void sendUiState(const QString& state, int rotation = -1000) {
         if (!client) return;
-        client->write(QJsonDocument(QJsonObject{{"type", "uiState"}, {"state", state}})
-                          .toJson(QJsonDocument::Compact));
+        QJsonObject reply{{"type", "uiState"}, {"state", state}};
+        if (rotation != -1000)
+            reply.insert(QStringLiteral("rotation"), rotation);
+        client->write(QJsonDocument(reply).toJson(QJsonDocument::Compact));
         client->write("\n");
         client->flush();
     }
@@ -113,6 +125,8 @@ private slots:
                 else sendUiState(getReply);
             } else if (type == "setUiState") {
                 setStates << o.value("state").toString();
+            } else if (type == "setActivePage") {
+                activePages << o.value("page").toInt(-1);
             }
         }
     }
@@ -145,6 +159,13 @@ private slots:
 
         // Unreadable source → empty.
         QVERIFY(b.importImage("file:///no/such/file.png").isEmpty());
+
+        // A sparse source just over the synchronous-copy cap is rejected before
+        // QFile::copy, so a huge/network-backed file cannot freeze the UI thread.
+        QTemporaryFile oversized;
+        QVERIFY(oversized.open());
+        QVERIFY(oversized.resize((25LL << 20) + 1));
+        QVERIFY(b.importImage(oversized.fileName()).isEmpty());
     }
 
     void deleteImageAndTraversal() {
@@ -179,6 +200,10 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(!hub.setStates.isEmpty(), 5000);
         QCOMPARE(hub.setStates.last(), QStringLiteral("{\"pushed\":1}"));
 
+        b.setHubActivePage(3);
+        QTRY_VERIFY_WITH_TIMEOUT(!hub.activePages.isEmpty(), 5000);
+        QCOMPARE(hub.activePages.last(), 3);
+
         // startHub is a no-op success when a hub is already connected (no 2nd instance).
         QVERIFY(b.startHub());
         // stopHub over a connected socket asks the hub to quit (shutdown message).
@@ -194,6 +219,8 @@ private slots:
         // Metrics + config getters return well-formed, non-null JSON strings.
         QVERIFY(b.metricsJson().startsWith('{'));
         QVERIFY(!b.configJson().isEmpty());
+        QVERIFY(!b.appVersion().isEmpty());
+        QCOMPARE(b.hubRotation(), -1);
         b.saveUiState(QStringLiteral("{\"k\":1}"));            // offline persist
         QCOMPARE(b.uiState(), QStringLiteral("{\"k\":1}"));
         const QString starter = b.starterLayout();
@@ -222,7 +249,99 @@ private slots:
         QVERIFY(b.autoConfig().isEmpty());
 
         b.listImages();                 // returns without crashing (possibly empty)
+        b.setHubActivePage(7);          // offline is a safe no-op
         QVERIFY(!b.stopHub());          // no hub connected → honest false
+    }
+
+    void diagnosticsConfigIsStructuredAndRedacted() {
+        ManagerBackend b;
+        b.setClockForTest([this] { return clockMs_; });
+        const QString state = QString::fromUtf8(
+            "{\"pages\":[{\"name\":\"MANAGER_PRIVATE_PAGE_CANARY\","
+            "\"tiles\":[{\"type\":\"meds\"}]}],\"settings\":{"
+            "\"meds-1\":{\"medication\":\"MANAGER_MEDICATION_CANARY\"},"
+            "\"tasks-1\":{\"tasks\":[\"MANAGER_TASK_CANARY\"]},"
+            "\"calendar-1\":{\"url\":\"https://MANAGER_PRIVATE_URL_CANARY\"},"
+            "\"http-1\":{\"authToken\":\"MANAGER_AUTH_CANARY\"}}}");
+        QVERIFY(b.saveUiState(state));
+        QVERIFY(b.setLicenseKey(QStringLiteral("XE1.MANAGER_KEY_CANARY.MANAGER_IDENTITY_CANARY")));
+
+        const QString rendered = b.configJson();
+        for (const QString& canary : {
+                 QStringLiteral("MANAGER_PRIVATE_PAGE_CANARY"),
+                 QStringLiteral("MANAGER_MEDICATION_CANARY"),
+                 QStringLiteral("MANAGER_TASK_CANARY"),
+                 QStringLiteral("MANAGER_PRIVATE_URL_CANARY"),
+                 QStringLiteral("MANAGER_AUTH_CANARY"),
+                 QStringLiteral("MANAGER_KEY_CANARY"),
+                 QStringLiteral("MANAGER_IDENTITY_CANARY")}) {
+            QVERIFY2(!rendered.contains(canary), qPrintable("diagnostics leaked " + canary));
+        }
+        const QJsonObject summary = QJsonDocument::fromJson(rendered.toUtf8()).object();
+        QCOMPARE(summary.value(QStringLiteral("format")).toString(),
+                 QStringLiteral("xeneon-config-diagnostics-v1"));
+        QCOMPARE(summary.value(QStringLiteral("redaction")).toObject()
+                     .value(QStringLiteral("raw_config_available")).toBool(), false);
+
+        QVERIFY(b.clearLicenseKey());
+        QVERIFY(b.saveUiState(QStringLiteral("{}")));
+    }
+
+    // ── Licensing surface: candidate preview, stored status, offline persistence,
+    //    explicit clear, and change notifications all use the real Rust verifier. ──
+    void licenseOfflineSurface() {
+        ManagerBackend b;
+        b.setClockForTest([this] { return clockMs_; });
+        QVERIFY(!b.hubConnected());
+
+        const auto parse = [](const QString& json) {
+            QJsonParseError err{};
+            const QJsonDocument doc = QJsonDocument::fromJson(json.toUtf8(), &err);
+            [&] { QCOMPARE(err.error, QJsonParseError::NoError); QVERIFY(doc.isObject()); }();
+            return doc.object();
+        };
+
+        const QJsonObject candidate = parse(b.verifyLicenseCandidate(QStringLiteral("garbage")));
+        QCOMPARE(candidate.value(QStringLiteral("state")).toString(),
+                 QStringLiteral("unlicensed"));
+        QCOMPARE(candidate.value(QStringLiteral("tier")).toString(), QStringLiteral("free"));
+
+        const QJsonObject before = parse(b.licenseStatusJson());
+        QVERIFY(before.contains(QStringLiteral("state")));
+        QVERIFY(before.contains(QStringLiteral("tier")));
+
+        QSignalSpy changed(&b, &ManagerBackend::licenseChanged);
+        QSignalSpy errors(&b, &ManagerBackend::saveError);
+        QVERIFY(b.setLicenseKey(QStringLiteral("garbage")));
+        QCOMPARE(changed.count(), 1);
+        QCOMPARE(errors.count(), 0);
+        const QJsonObject stored = parse(b.licenseStatusJson());
+        QCOMPARE(stored.value(QStringLiteral("tier")).toString(), QStringLiteral("free"));
+
+        QVERIFY(b.clearLicenseKey());
+        QCOMPARE(changed.count(), 2);
+        QCOMPARE(errors.count(), 0);
+    }
+
+    // Connected writes must go through the Hub's ControlServer (the sole config
+    // writer), wait for its tagged ack, and support an explicit empty-string clear.
+    void licenseConnectedSingleWriter() {
+        HubEmu hub;
+        QVERIFY(hub.srv.start());
+        ManagerBackend b;
+        b.setClockForTest([this] { return clockMs_; });
+        QTRY_VERIFY_WITH_TIMEOUT(b.hubConnected(), 5000);
+
+        QSignalSpy changed(&b, &ManagerBackend::licenseChanged);
+        QVERIFY(b.setLicenseKey(QStringLiteral("XE1.invalid.signature")));
+        QCOMPARE(changed.count(), 1);
+        XeneonString setKey(xeneon_config_get_license_key(hub.cfg));
+        QCOMPARE(setKey.qstring(), QStringLiteral("XE1.invalid.signature"));
+
+        QVERIFY(b.clearLicenseKey());
+        QCOMPARE(changed.count(), 2);
+        XeneonString cleared(xeneon_config_get_license_key(hub.cfg));
+        QVERIFY(cleared.qstring().isEmpty());
     }
 
     // ── Autostart install/remove via the Manager surface (HOME = per-test temp). ──
@@ -254,9 +373,17 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(hub.client != nullptr, 5000);
 
         QSignalSpy spy(&b, &ManagerBackend::configChanged);
-        hub.sendUiState(QStringLiteral("{\"fromhub\":7}"));
+        QSignalSpy rotations(&b, &ManagerBackend::hubRotationChanged);
+        hub.sendUiState(QStringLiteral("{\"fromhub\":7}"), 90);
         QTRY_VERIFY_WITH_TIMEOUT(spy.count() >= 1, 5000);
         QCOMPARE(b.uiState(), QStringLiteral("{\"fromhub\":7}"));
+        QCOMPARE(b.hubRotation(), 90);
+        QCOMPARE(rotations.count(), 1);
+
+        // Repeating the same orientation must not churn the preview binding.
+        hub.sendUiState(QStringLiteral("{\"fromhub\":8}"), 90);
+        QTRY_COMPARE_WITH_TIMEOUT(b.uiState(), QStringLiteral("{\"fromhub\":8}"), 5000);
+        QCOMPARE(rotations.count(), 1);
     }
 
     // ── Suppression window: a stale hub reply right after our push is IGNORED, while

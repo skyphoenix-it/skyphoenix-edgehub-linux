@@ -1,13 +1,14 @@
 //! xeneon-license — the issuer's key tool. NOT shipped in the app.
 //!
 //!   keygen                          generate the issuer keypair (once, ever)
-//!   mint --seed <b64> --to <name> --id <id> [--expires <unix|never>] [--tier pro]
-//!                                   sign one licence key
+//!   mint --seed-stdin --to <name> --id <id> [--expires <unix|never>] [--tier pro]
+//!                                   sign one licence key; read seed from stdin
 //!
 //! All signing goes through the shared `xeneon_license_tool` lib, so the CLI, the
 //! purchase webhook, and the app's verifier can never disagree about the format.
 
 use ed25519_dalek::SigningKey;
+use std::io::{self, Read};
 use std::process::exit;
 use xeneon_core::license::b64url_encode;
 use xeneon_license_tool::{build_payload, seed_from_b64, sign_payload};
@@ -22,6 +23,29 @@ fn arg_val(args: &[String], name: &str) -> Option<String> {
         .position(|a| a == name)
         .and_then(|i| args.get(i + 1))
         .cloned()
+}
+
+const MAX_SEED_INPUT_BYTES: u64 = 256;
+
+/// Read one base64url signing seed without ever accepting it as an argument.
+/// The small cap also prevents an accidentally redirected file from being read
+/// wholesale into the issuer process.
+fn read_seed<R: Read>(reader: R) -> Result<String, String> {
+    let mut bytes = Vec::new();
+    reader
+        .take(MAX_SEED_INPUT_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|_| "could not read the signing seed from stdin".to_string())?;
+    if bytes.len() as u64 > MAX_SEED_INPUT_BYTES {
+        return Err("signing seed input is too large".to_string());
+    }
+    let text = String::from_utf8(bytes)
+        .map_err(|_| "signing seed input is not valid UTF-8".to_string())?;
+    let seed = text.trim();
+    if seed.is_empty() {
+        return Err("signing seed input is empty".to_string());
+    }
+    Ok(seed.to_string())
 }
 
 fn keygen() {
@@ -42,7 +66,7 @@ fn keygen() {
     }
     println!("\n];\n");
     println!("2) PRIVATE seed — the SECRET. Store it in your password manager and");
-    println!("   NEVER commit it. It is what `mint --seed` needs to sign keys.");
+    println!("   NEVER commit it. Feed it to `mint --seed-stdin` to sign keys.");
     println!("   Anyone with this seed can issue Pro licences:\n");
     println!("   {}\n", b64url_encode(&seed));
     println!("If this seed ever leaks: generate a new keypair, ship the new public");
@@ -51,7 +75,13 @@ fn keygen() {
 }
 
 fn mint(args: &[String]) {
-    let seed_b64 = arg_val(args, "--seed").unwrap_or_else(|| die("--seed <base64url> is required"));
+    if args.iter().any(|arg| arg == "--seed") {
+        die("--seed is disabled because process arguments are observable; use --seed-stdin");
+    }
+    if !args.iter().any(|arg| arg == "--seed-stdin") {
+        die("--seed-stdin is required");
+    }
+    let seed_b64 = read_seed(io::stdin().lock()).unwrap_or_else(|e| die(&e));
     let issued_to = arg_val(args, "--to").unwrap_or_else(|| die("--to <name/email> is required"));
     let id = arg_val(args, "--id").unwrap_or_else(|| die("--id <licence id> is required"));
     let tier = arg_val(args, "--tier").unwrap_or_else(|| "pro".to_string());
@@ -80,9 +110,27 @@ fn main() {
         _ => {
             eprintln!("usage:");
             eprintln!("  xeneon-license keygen");
-            eprintln!("  xeneon-license mint --seed <b64> --to <name> --id <id> \\");
+            eprintln!("  xeneon-license mint --seed-stdin --to <name> --id <id> \\");
             eprintln!("                      [--tier pro] [--expires <unix|never>]");
             exit(2);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn seed_reader_trims_one_line_without_echoing_it() {
+        let value = "A".repeat(43);
+        assert_eq!(read_seed(format!(" {value}\n").as_bytes()).unwrap(), value);
+    }
+
+    #[test]
+    fn seed_reader_rejects_empty_invalid_and_oversized_input() {
+        assert!(read_seed("  \n".as_bytes()).is_err());
+        assert!(read_seed([0xff].as_slice()).is_err());
+        assert!(read_seed(vec![b'A'; MAX_SEED_INPUT_BYTES as usize + 1].as_slice()).is_err());
     }
 }

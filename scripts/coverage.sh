@@ -2,12 +2,14 @@
 # coverage.sh — measure and gate test coverage across all layers.
 #
 #   Rust : cargo llvm-cov (LLVM source-based line coverage), gate >= 95%
-#   C++  : gcovr over build/  -> coverage/cpp-lcov.info,        gate >= 95%
+#   C++  : gcovr over the selected CMake test build,             gate >= 95%
+#          writing coverage/cpp-lcov.info
 #   merge: Rust + C++ lcov    -> coverage/merged-lcov.info
 #   QML  : scripts/qml_coverage.py (behavior matrix, reported; own gate)
 #
-# Skips a layer gracefully (with a clear message) when its tooling or build
-# artifacts are absent, but still fails if a layer that COULD run is below gate.
+# Developer mode skips a layer gracefully (with a clear message) when its
+# tooling or build artifacts are absent. XENEON_RELEASE_GATE=1 requires fresh
+# Rust and C++ reports and turns every such omission into a failure.
 # Final line: "Rust: X% | C++: Y% | merged: Z% | QML behaviors: N%".
 set -uo pipefail
 
@@ -19,27 +21,38 @@ mkdir -p "$COVERAGE_DIR"
 
 GATE=95
 
-# C++-only has its OWN floor, and it is not 95. This script said 95 for a long
-# time, but the C++ gate was INERT (see the gcovr note where CPP_PCT is
-# computed), so that number was never true and never enforced. The first honest
-# measurement, the day the gate was fixed (2026-07-17), was 91.70%.
-#
-# CI does not gate C++-only at all: it gates Rust >= 95 AND merged >= 95, which
-# is why none of this ever showed up as red. Two reasons C++ trails Rust: the
-# D-Bus/QScreen/QProcess glue is deliberately `// GCOVR_EXCL`-marked, and code
-# that compiles only into the `xeneon-edge-hub` target was not instrumented at
-# all (mpris_bridge.cpp contributed 279 uncovered lines to NOBODY's denominator
-# until it was covered on 2026-07-17).
-#
-# This is a RATCHET, not a target: raise it as coverage improves. Never lower it
-# to turn a red run green — that is how the gate got hollow in the first place.
-CPP_GATE=91
+# C++ has its own independently enforced floor. The gate was originally made
+# honest at a 91% baseline; meaningful ConfigBridge, ControlServer and Manager
+# backend tests raised the clean measurement to 96.1% on 2026-07-20, so the
+# developer ratchet can now match the release requirement. Never lower it to
+# turn a red run green.
+CPP_GATE=95
 
 RUST_PCT="n/a"
 CPP_PCT="n/a"
 MERGED_PCT="n/a"
 QML_PCT="n/a"
 fail=0
+RUST_READY=0
+CPP_READY=0
+STRICT_RELEASE=0
+case "${XENEON_RELEASE_GATE:-0}" in
+    0) ;;
+    1) STRICT_RELEASE=1; CPP_GATE="$GATE" ;;
+    *) echo "FAIL: XENEON_RELEASE_GATE must be 0 or 1"; exit 2 ;;
+esac
+
+DEVELOPER_BUILD_DIR="$PROJECT_DIR/build"
+STRICT_BUILD_DIR="$PROJECT_DIR/cmake-build-release-tests"
+if [ "$STRICT_RELEASE" -eq 1 ]; then
+    CPP_BUILD_DIR="${XENEON_TEST_BUILD_DIR:-$STRICT_BUILD_DIR}"
+    if [ "$CPP_BUILD_DIR" != "$STRICT_BUILD_DIR" ]; then
+        echo "FAIL: strict coverage must use the dedicated build directory: $STRICT_BUILD_DIR"
+        exit 2
+    fi
+else
+    CPP_BUILD_DIR="${XENEON_TEST_BUILD_DIR:-$DEVELOPER_BUILD_DIR}"
+fi
 
 # gcovr may live in ~/.local/bin rather than on PATH.
 GCOVR=""
@@ -57,12 +70,15 @@ pct_ge_gate() {
 # ---------------------------------------------------------------- Rust --------
 echo "==> Rust coverage (cargo llvm-cov)"
 if command -v cargo-llvm-cov >/dev/null 2>&1; then
+    rust_rc=0
     (
         cd "$PROJECT_DIR/core"
-        cargo llvm-cov --lib --lcov --output-path "$COVERAGE_DIR/rust-lcov.info"
+        cargo llvm-cov --lib --lcov --output-path "$COVERAGE_DIR/rust-lcov.info" &&
         cargo llvm-cov --lib --json --summary-only --output-path "$COVERAGE_DIR/rust-summary.json"
-    )
-    if [ -f "$COVERAGE_DIR/rust-summary.json" ]; then
+    ) || rust_rc=$?
+    if [ "$rust_rc" -eq 0 ] && [ -f "$COVERAGE_DIR/rust-lcov.info" ] && \
+       [ -f "$COVERAGE_DIR/rust-summary.json" ]; then
+        RUST_READY=1
         RUST_PCT="$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print("%.2f" % d["data"][0]["totals"]["lines"]["percent"])' "$COVERAGE_DIR/rust-summary.json")"
         echo "    Rust line coverage: ${RUST_PCT}%"
         if ! pct_ge_gate "$RUST_PCT"; then
@@ -70,32 +86,44 @@ if command -v cargo-llvm-cov >/dev/null 2>&1; then
             fail=1
         fi
     else
-        echo "    WARN: rust summary not produced"
+        echo "    FAIL: Rust coverage command failed or did not produce fresh reports"
         fail=1
     fi
 else
     echo "    SKIP: cargo-llvm-cov not installed (cargo install cargo-llvm-cov)"
+    [ "$STRICT_RELEASE" -eq 1 ] && fail=1
 fi
 
 # ---------------------------------------------------------------- C++ ---------
 echo "==> C++ coverage (gcovr)"
 HAVE_GCNO=0
-if [ -d "$PROJECT_DIR/build" ] && find "$PROJECT_DIR/build" -name '*.gcno' -print -quit 2>/dev/null | grep -q .; then
+FRESH_GCDA=0
+if [ -d "$CPP_BUILD_DIR" ] && find "$CPP_BUILD_DIR" -name '*.gcno' -print -quit 2>/dev/null | grep -q .; then
     HAVE_GCNO=1
+fi
+if [ -f "$CPP_BUILD_DIR/.xeneon-release-coverage-reset" ] && \
+   find "$CPP_BUILD_DIR" -name '*.gcda' \
+       -newer "$CPP_BUILD_DIR/.xeneon-release-coverage-reset" -print -quit 2>/dev/null | grep -q .; then
+    FRESH_GCDA=1
 fi
 if [ -z "$GCOVR" ]; then
     echo "    SKIP: gcovr not found (pip install --user gcovr; also checked ~/.local/bin)"
 elif [ "$HAVE_GCNO" -eq 0 ]; then
-    echo "    SKIP: no coverage build (cmake -B build -DXENEON_BUILD_TESTS=ON -DXENEON_COVERAGE=ON && cmake --build build && ctest --test-dir build)"
+    echo "    SKIP: no coverage build at $CPP_BUILD_DIR (run XENEON_COVERAGE=ON scripts/run_cpp_tests.sh)"
 else
+    cpp_export_rc=0
     "$GCOVR" --root "$PROJECT_DIR" \
         --filter 'app/src/' --filter 'manager/src/' \
         --exclude '.*main\.cpp' \
         --lcov "$COVERAGE_DIR/cpp-lcov.info" \
-        "$PROJECT_DIR/build" || echo "    WARN: gcovr lcov export reported an error"
+        "$CPP_BUILD_DIR" || cpp_export_rc=$?
+    if [ "$cpp_export_rc" -ne 0 ]; then
+        echo "    FAIL: gcovr lcov export reported an error"
+        fail=1
+    fi
     # The search path MUST come before --json-summary. gcovr 8's
     # `--json-summary [OUTPUT]` takes an OPTIONAL FILENAME, so
-    # `--json-summary "$PROJECT_DIR/build"` is parsed as "write the summary to
+    # `--json-summary "$CPP_BUILD_DIR"` is parsed as "write the summary to
     # the file build/" -> "Could not create output file 'build': Is a directory"
     # -> swallowed by 2>/dev/null -> CPP_PCT="n/a" -> the gate below skipped
     # ITSELF, silently. This gate had never once run. Same born-inert class as
@@ -103,7 +131,7 @@ else
     CPP_PCT="$("$GCOVR" --root "$PROJECT_DIR" \
         --filter 'app/src/' --filter 'manager/src/' \
         --exclude '.*main\.cpp' \
-        "$PROJECT_DIR/build" --json-summary 2>/dev/null \
+        "$CPP_BUILD_DIR" --json-summary 2>/dev/null \
         | python3 -c 'import json,sys; print("%.2f" % json.load(sys.stdin)["line_percent"])' 2>/dev/null || echo "n/a")"
     echo "    C++ line coverage: ${CPP_PCT}%"
     # An "n/a" here is now a FAILURE, not a shrug. It used to mean "the gate
@@ -111,8 +139,28 @@ else
     if [ "$CPP_PCT" = "n/a" ]; then
         echo "    FAIL: C++ coverage could not be measured (gcovr produced no summary)"
         fail=1
-    elif ! pct_ge_gate "$CPP_PCT" "$CPP_GATE"; then
-        echo "    FAIL: C++ ${CPP_PCT}% < ${CPP_GATE}%"
+    else
+        if [ "$cpp_export_rc" -eq 0 ] && [ -f "$COVERAGE_DIR/cpp-lcov.info" ]; then
+            CPP_READY=1
+        fi
+        if ! pct_ge_gate "$CPP_PCT" "$CPP_GATE"; then
+            echo "    FAIL: C++ ${CPP_PCT}% < ${CPP_GATE}%"
+            fail=1
+        fi
+    fi
+fi
+
+if [ "$STRICT_RELEASE" -eq 1 ]; then
+    if [ "$RUST_READY" -ne 1 ]; then
+        echo "    FAIL: strict release coverage requires a fresh Rust report"
+        fail=1
+    fi
+    if [ "$CPP_READY" -ne 1 ]; then
+        echo "    FAIL: strict release coverage requires a fresh C++ report"
+        fail=1
+    fi
+    if [ "$FRESH_GCDA" -ne 1 ]; then
+        echo "    FAIL: strict release coverage requires counters created after the release reset"
         fail=1
     fi
 fi
@@ -120,8 +168,8 @@ fi
 # --------------------------------------------------------------- merge --------
 echo "==> Merging lcov reports"
 MERGE_INPUTS=()
-[ -f "$COVERAGE_DIR/rust-lcov.info" ] && MERGE_INPUTS+=("$COVERAGE_DIR/rust-lcov.info")
-[ -f "$COVERAGE_DIR/cpp-lcov.info" ] && MERGE_INPUTS+=("$COVERAGE_DIR/cpp-lcov.info")
+[ "$RUST_READY" -eq 1 ] && MERGE_INPUTS+=("$COVERAGE_DIR/rust-lcov.info")
+[ "$CPP_READY" -eq 1 ] && MERGE_INPUTS+=("$COVERAGE_DIR/cpp-lcov.info")
 if [ "${#MERGE_INPUTS[@]}" -eq 0 ]; then
     echo "    SKIP: no lcov inputs to merge"
 else

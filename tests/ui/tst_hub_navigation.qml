@@ -9,7 +9,9 @@ import "../../ui/qml" as App
 // StackView and asserts the current page is REACHED AND SUSTAINED (a transient
 // tryVerify passes even if the view snaps back a moment later).
 //
-// COVERS: fn:Dashboard.appendPreset
+// COVERS: fn:Dashboard.appendPreset, fn:Dashboard.goToPageExternal
+// COVERS: fn:Dashboard.goToPage, fn:Dashboard._applyWant
+// COVERS: fn:main.requestHubPage, fn:main.hubCurrentPage
 //
 // Honest caveat: qmltestrunner runs offscreen with no Wayland compositor, so its
 // relayout timing differs from the device — this may not force the exact snap, but
@@ -67,16 +69,54 @@ Item {
             // width/height swap (the failing host on device).
             win.orientationMode = "landscape"
             compare(win.contentRotation, 90, "shell is in the landscape (swapped) orientation")
-            // main.qml's StackView initialItem is a qrc: URL that doesn't resolve under
-            // qmltestrunner, so push the REAL Dashboard by relative URL instead.
+            // main.qml resolves its initial page relative to itself, so the REAL
+            // Dashboard now loads under qmltestrunner too. Do not push a second one:
+            // StackView.find() would correctly find the older page while this test
+            // manipulated the newer page, making the Manager round-trip assertion
+            // measure two different dashboards.
             var sv = findPred(win.contentItem, function (n) {
                 return n && typeof n.push === "function" && n.currentItem !== undefined })
             verify(sv, "found the StackView")
-            sv.push(Qt.resolvedUrl("../../ui/qml/Dashboard.qml"))
             tryVerify(function () { return dash() !== null && swipe() !== null }, 6000,
                       "the real Dashboard + SwipeView loaded in the shell")
         }
         function cleanupTestCase() { if (win) win.destroy() }
+
+        // The Manager-facing shell API and Dashboard's landing helpers are one
+        // routing chain: C++ calls main.requestHubPage(), main finds the Dashboard,
+        // Dashboard forwards to the SwipeView, and getUiState reads the same index
+        // back through main.hubCurrentPage(). Pin every seam directly so a rename or
+        // a route that only works from the on-panel buttons cannot pass unnoticed.
+        function test_manager_page_api_routes_and_reports_the_same_page() {
+            var s = store(), sw = swipe(), d = dash()
+            verify(s && sw && d, "store, SwipeView, and Dashboard present")
+            s.load("blank")
+            s.addPage(""); s.addPage("")
+            tryVerify(function () { return sw.count === 3 }, 3000, "three pages instantiated")
+
+            // _applyWant is the low-level geometry commit used after deferred
+            // SwipeView relayouts. Drive it independently of the hold timer.
+            sw._wantIndex = 1
+            sw.currentIndex = 0
+            compare(sw._applyWant(), undefined, "_applyWant commits the remembered target")
+            tryCompare(sw, "currentIndex", 1, 3000)
+            sw._wantIndex = -1
+
+            compare(sw.goToPage(2), undefined, "goToPage starts a robust landing")
+            tryCompare(sw, "currentIndex", 2, 3000)
+
+            compare(d.goToPageExternal(1), undefined,
+                    "goToPageExternal forwards a Manager request to the SwipeView")
+            tryCompare(sw, "currentIndex", 1, 3000)
+            compare(win.hubCurrentPage(), 1,
+                    "hubCurrentPage reports the Dashboard page shown on the panel")
+
+            compare(win.requestHubPage(2), undefined,
+                    "requestHubPage routes through the real stack to the Dashboard")
+            tryCompare(sw, "currentIndex", 2, 3000)
+            compare(win.hubCurrentPage(), 2,
+                    "hubCurrentPage reports the page reached through the shell API")
+        }
 
         // The bug: after adding pages the view must LAND on the new page and STAY —
         // not snap back to page 0 a moment later.

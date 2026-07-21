@@ -2,15 +2,21 @@
 
 **Pick the screen for what you're doing, and it's built for you.**
 
-EdgeHub by [SKYPhoenix IT](https://skyphoenix-it.com) turns a Corsair Xeneon Edge — or any secondary/portrait touchscreen — into a native Linux widget dashboard. No browser, no Electron, no web server, no account, no telemetry.
+EdgeHub by [SKYPhoenix IT](https://skyphoenix-it.com) is a native Linux widget
+dashboard designed for the Corsair Xeneon Edge and selected secondary/portrait
+touchscreens. No browser, Electron, web server, account or telemetry implementation
+is required. Broad display and desktop support remains evidence-gated.
 
 [![CI](https://github.com/skyphoenix-it/XeneonEdge_Linux/actions/workflows/ci.yml/badge.svg)](https://github.com/skyphoenix-it/XeneonEdge_Linux/actions/workflows/ci.yml)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
-[![Release: v1.0.0-alpha.1](https://img.shields.io/badge/release-v1.0.0--alpha.1-orange.svg)](https://github.com/skyphoenix-it/XeneonEdge_Linux/releases/tag/v1.0.0-alpha.1)
+[![Release: v1.0.0-alpha.2](https://img.shields.io/badge/release-v1.0.0--alpha.2-orange.svg)](https://github.com/skyphoenix-it/XeneonEdge_Linux/releases/tag/v1.0.0-alpha.2)
 
 ![EdgeHub running on the Corsair Xeneon Edge with the animated orbs background](docs/marketing-site/assets/edge-dashboard-orbs.png)
 
-> **This is an alpha.** It runs, it's tested on real hardware, and it's built from a shipping-quality foundation — but the feature set is still fluid, the release is unsigned, and widget sizing is being reworked. See [Alpha status](#alpha-status) before you rely on it.
+> **Current public status: alpha.** `v1.0.0-alpha.2` is the latest tagged release.
+> The current branch contains substantial unreleased work, but no beta, feature
+> freeze, code freeze, or release-readiness declaration has been made. See
+> [Alpha status](#alpha-status) before relying on it.
 
 ---
 
@@ -20,21 +26,25 @@ The Corsair Xeneon Edge is a 2560×720 secondary touchscreen that works in eithe
 
 **Who it's for:** anyone with a second screen they don't want to waste. Developers watching a build. Homelab owners watching a rack. People who want a calm timer and the weather instead of another browser window.
 
-- **Native and light.** A Rust core handles metrics and configuration; Qt 6/QML draws the UI. No Chromium, no bundled runtime.
+- **Native, without Chromium.** A Rust core handles metrics and configuration;
+  Qt 6/QML draws the UI. Resource limits are measured separately and the current
+  development build does not yet meet its RSS gates.
 - **Designed for touch.** Large targets, swipe between pages, in-widget controls, on-device settings. You never need a keyboard to use it.
 - **It finds the right screen.** Display detection puts EdgeHub on your Edge (or a display you choose), and a real HID orientation sensor follows the panel when you flip it.
 - **Design it from your desk.** The companion **EdgeHub Manager** is a live clone of your Edge — drag, reorder, resize, and restyle from your main monitor.
 
 ---
 
-## 15 ready-made screens
+## 19 ready-made screens
 
 You don't start from a blank grid. Each preset is a designed layout — a small, purposeful set of widgets, with a fitting background and motion character.
 
 | Screen | For |
 |---|---|
 | **Calm Focus** | Deep work, quietly. A big timer, your one thing, and a place to dump distractions. |
-| **Home & Ambient** | A desk companion — time, weather, what's playing, and tonight's moon. |
+| **Notes & Streak** | A scratchpad and habit streak for keeping momentum visible. |
+| **Home** | Time, weather and media in one everyday screen. |
+| **Ambient** | A quiet clock, weather and moon view. |
 | **Remote Work** | The time, your calendar, today's tasks, and how much workday is left. |
 | **Developer** | Your build and your box, side by side — CI status, a number you watch, machine health. |
 | **Homelab Ops** | Service uptime and container health beside CPU, memory, network and disk. |
@@ -42,7 +52,9 @@ You don't start from a blank grid. Each preset is a designed layout — a small,
 | **Trading Desk** | Your time and the market's, two numbers that matter, and what's next. |
 | **Health & Routine** | Gentle nudges toward a good day — water, breaks, and a daily streak. |
 | **Creator / Media** | Now-playing front and centre, a focus timer, and a spark of inspiration. |
-| **System Monitor** | The classic — CPU, GPU, memory, network, disk, sensors. |
+| **System Core** | CPU, GPU and memory at a glance. |
+| **System I/O** | Network, disk and sensor detail. |
+| **Day Plan** | Agenda, tasks and the shape of the workday. |
 | **Minimalist** | Almost nothing. A clock, the weather, and the moon. |
 | **Analyst / Data** | Two headline numbers, a monitoring feed, the time and your tasks. |
 | **Student / Study** | A focus timer, your tasks, a countdown to the exam, and a streak. |
@@ -57,16 +69,16 @@ The data-connected presets (Developer, Homelab Ops, Trading Desk, Analyst, Enter
 
 ---
 
-## 24 widgets
+## 30 widgets
 
 | Category | Widgets |
 |----------|---------|
-| **System** (6) | CPU load & temp, GPU (AMD Radeon utilization & temp), Memory, Network throughput, Disk usage, combined Sensors |
+| **System** (8) | CPU load & temp, GPU (AMD Radeon utilization & temp), Memory, Network throughput, Disk usage, combined Sensors, installed Packages, System Age |
 | **Data** (2) | **HTTP / JSON** — poll any endpoint, pull a value out by path, show it as a number, gauge or list · **KPI** — one number that matters, from a URL *or a local file*, with colour-coded thresholds |
 | **Time** (3) | Clock (**real IANA time zones — daylight saving included**), Analog Clock, Moon Phase |
-| **Focus** (7) | Focus Timer (Pomodoro), Tasks, Right Now, Quick Note, Habit Streak, Hydration, Break Reminder |
+| **Focus** (10) | Focus Timer (Pomodoro), Tasks, Right Now, Quick Note, Habit Streak, Hydration, Break Reminder, Meds, Braindump, Routine |
 | **Media** (1) | Now Playing (MPRIS — Spotify, browsers, any player on the machine) |
-| **Info** (5) | Calendar (subscribe via ICS URL), Weather (Open-Meteo), Countdown, End of Day, Daily Quote |
+| **Info** (6) | Calendar (subscribe via ICS URL), Now / Next, Weather (Open-Meteo), Countdown, End of Day, Daily Quote |
 
 System metrics come from the Rust core and the kernel. Focus, task, note, habit and hydration widgets persist your data locally.
 
@@ -105,19 +117,24 @@ Most apps promise they don't phone home. EdgeHub's design makes the promise chec
 
 ### Performance
 
-| | |
-|---|---|
-| CPU, worst case (every animation running) | ~3.5% |
-| CPU, reduced motion | ~0.5% |
-| RSS, steady state | ~378 MB |
+No passing CPU or memory number is claimed for a release candidate. A formal
+2026-07-21 run measured the current dirty development binary with a reproducible
+target-panel profile: startup passed at 0.223 s and average CPU passed at 0.120%
+idle / 2.053% active, but peak RSS failed at 408.094 MiB idle (`<150 MiB` required)
+and 472.820 MiB with the exact 10-widget load (`<250 MiB` required). The aggregate
+result is **FAIL**, and the required 24/48-hour evidence is still incomplete.
 
 ---
 
 ## Make it yours
 
-- **22 themes** — dark, light, OLED, high-contrast, and Nord, Dracula, Gruvbox, Catppuccin, Tokyo Night, Solarized, Synthwave, Matrix and more.
-- **22 accent colors** — 14 named tones, plus the 8 published **Okabe–Ito** colors, chosen to stay mutually distinguishable under protanopia, deuteranopia and tritanopia.
-- **7 animated backgrounds** — orbs, waves, starfield, mesh gradient, aurora, bokeh, grid — plus static wallpapers, settable globally or per page.
+- **29 themes** — 20 free themes and 9 optional Pro themes, including dark,
+  light, OLED, high-contrast, Nord, Dracula, Gruvbox, Catppuccin, Synthwave and more.
+- **29 accent colors** — 14 standard tones, the 8 published **Okabe–Ito**
+  colors, and 7 theme-completing accents.
+- **10 animated backgrounds plus Gradient** — orbs, waves, starfield, mesh,
+  aurora, bokeh, grid, Arch Peaks, Fedora Loops and Aubergine Ribbons — plus
+  static wallpapers, settable globally or per page.
 - **Glass, glow, and a reduced-motion mode.** One shared design system keeps every widget consistent.
 - **Edit mode** to add, remove, move and resize tiles across multiple pages, with schema-driven per-widget configuration.
 - **First-run wizard**, on-device **Settings**, and a **Diagnostics** screen.
@@ -144,7 +161,7 @@ A companion desktop app (`xeneon-edge-manager`) that mirrors your Edge in real t
 
 The current release is **[v1.0.0-alpha.2](https://github.com/skyphoenix-it/XeneonEdge_Linux/releases/tag/v1.0.0-alpha.2)** — the first **signed** release.
 
-### Portable tarball (any distro)
+### Portable tarball (compatible x86-64 distributions)
 
 Download `xeneon-edge-hub_1.0.0-alpha.2_x86_64.tar.gz`, `SHA256SUMS` and `SHA256SUMS.asc` from the [release page](https://github.com/skyphoenix-it/XeneonEdge_Linux/releases/tag/v1.0.0-alpha.2), then:
 
@@ -154,17 +171,24 @@ sha256sum -c SHA256SUMS
 tar -xf xeneon-edge-hub_1.0.0-alpha.2_x86_64.tar.gz
 ```
 
-**Arch / CachyOS:**
+The tarball is a relocatable `/usr` payload, not a self-contained bundle: its
+binaries use the build host's glibc floor and the target system's Qt 6.5+
+libraries. The current maintainer build requires glibc 2.39 or newer. After
+extracting, run the Hub or Manager from the archive's `usr/bin/` directory, or
+use a native package on the supported distributions. An AppImage, when attached
+to a release, bundles Qt for systems that do not provide a compatible version.
 
-```sh
-yay -S xeneon-edge-hub
-```
-
-makepkg verifies the release signature automatically (`validpgpkeys`). (`v1.0.0-alpha.1` remains available but unsigned — it predates the release key, which is not retroactively fixable.)
+An AUR recipe exists in [`packaging/aur/PKGBUILD`](packaging/aur/PKGBUILD), but
+the presence of a recipe is not evidence that a current package is published or
+release-gated. Use the tagged release assets or build from source unless the AUR
+package's current status has been independently verified. (`v1.0.0-alpha.1`
+remains unsigned because it predates the release key.)
 
 ### Verifying your download
 
-Releases from `v1.0.0-alpha.2` onward ship `SHA256SUMS` alongside a detached signature `SHA256SUMS.asc`, made with the EdgeHub release key. (`v1.0.0-alpha.1` predates the key and is checksum-only — it has no `.asc`.)
+The `v1.0.0-alpha.2` release provides `SHA256SUMS` alongside a detached
+`SHA256SUMS.asc`, made with the EdgeHub release key. (`v1.0.0-alpha.1` predates
+the key and is checksum-only — it has no `.asc`.)
 
 **1. Import the key.** It is not on a keyserver yet, so `gpg --recv-keys` will not find it. Use either route:
 
@@ -229,8 +253,8 @@ cd XeneonEdge_Linux
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 
-./build/app/xeneon-edge-hub          # the on-device hub
-./build/manager/xeneon-edge-manager  # the companion Manager
+./build/xeneon-edge-hub          # the on-device hub
+./build/xeneon-edge-manager      # the companion Manager
 ```
 
 `--reset` loads fresh defaults; `--reset-wizard` re-triggers the first-run wizard.
@@ -263,18 +287,23 @@ Further reading: [architecture overview](docs/architecture/overview.md) · [ADR 
 
 ## Quality
 
-Verified on the **actual Corsair Xeneon Edge**, not just in CI:
+The repository includes all of these verification layers:
 
 | Layer | Result |
 |---|---|
-| **Real hardware** ([`tests/hardware/`](tests/hardware/README.md)) | **212/212 checks in 22.2 min** on a real Edge — every widget type added, rendered, resized and removed; every theme and background; synthetic touch via `/dev/uinput`; IPC latency p50 0.02 ms; and a 20-minute soak of **2,156 mixed operations** with no crash |
-| **Rust** | **116 tests**, **97.4%** line coverage (`cargo llvm-cov`) |
-| **C++** | **15/15** ctest (QtTest), ~97% filtered line coverage |
-| **QML** | GUI suite against a real `DashboardStore`, plus a behavior matrix at **100%** |
+| **Real hardware** ([`tests/hardware/`](tests/hardware/README.md)) | Widget/catalog drift, portrait/landscape rendering, Manager-to-Hub integration, guarded synthetic touch and soak scenarios on a physical Edge |
+| **Rust** | Unit tests, formatting, Clippy and coverage gate |
+| **C++** | QtTest suites against the real core plus a coverage gate |
+| **QML** | Offscreen and compositor-backed GUI suites plus a behavior matrix gated at 100% |
 | **Lints** | Egress lint (no raw request outside the gate) and a widget-icon lint |
 | **Runtime E2E** | Drives the real hub binary headless and asserts what it persists to `config.toml` |
 
-CI runs Rust format, clippy, tests, `cargo-audit`, a build, docs/link checking, the QML suite, C++ tests, and a **merged Rust + C++ coverage gate at ≥95%** — see [`.github/workflows/ci.yml`](.github/workflows/ci.yml). The hardware suite needs a physical Edge, so it runs locally rather than in CI. Full plan: [`docs/DEV_AND_TEST_PLAN.md`](docs/DEV_AND_TEST_PLAN.md).
+The intended CI gate runs Rust format, Clippy, tests and dependency checks; the
+build; docs/link checks; QML and C++ suites; and coverage at ≥95% — see
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml). The hardware suite needs a
+physical Edge and therefore runs locally. A working-tree run is development
+evidence, not a release certificate: the final release gate must run again from
+the immutable, signed candidate. Full plan: [`docs/DEV_AND_TEST_PLAN.md`](docs/DEV_AND_TEST_PLAN.md).
 
 The hardware suite asserts its widget list against `WidgetCatalog.qml`, so a new widget cannot go silently unexercised — a drift check added after the list had quietly omitted two widgets while still reporting green.
 
@@ -282,13 +311,25 @@ The hardware suite asserts its widget list against `WidgetCatalog.qml`, so a new
 
 ## Alpha status
 
-What works is tested. What isn't done yet:
+What is not yet established for the next release:
 
-- **Widget sizing is not final.** Widgets have two layouts (tile and full-screen overlay); a tall tile stretches the compact layout rather than using the room. A fixed, per-widget-optimized size system is the v1.1 headline. The foundation is in this build.
-- **This alpha release is unsigned.** Verify the checksum. The release key now exists and the signing flow is in place ([`scripts/release.sh`](scripts/release.sh)), so the beta is the first signed release — but nothing signs `v1.0.0-alpha.1` after the fact.
-- **Packaging is incomplete.** Only an Arch package is published. AppImage / Flatpak / `.deb` / `.rpm` are authored but unverified; Fedora and Ubuntu come in v1.1.
+- **No beta or freeze has been declared.** The development branch is ahead of
+  `v1.0.0-alpha.2`; it remains unreleased until the complete gate passes.
+- **Packaging is incomplete.** AppImage, Flatpak, `.deb` and `.rpm` recipes are
+  authored, but native distro jobs still need candidate evidence and the
+  AppImage zsync update round trip has never been exercised against a published
+  release.
+- **Performance currently fails.** The formal dirty-development run met startup
+  and CPU limits but exceeded both RSS limits; the required 24/48-hour resource
+  evidence and 48–72-hour physical-hardware soak are still outstanding.
+- **The current defaults are selected, not pending:** Nord, Atkinson Hyperlegible,
+  animated background and widget glow off, with normal transitions on and a
+  separate reduce-motion preference. Legal review of the Inspired themes and any
+  payment/store delivery route remain open before a public beta or paid offering.
 - **Weather and Calendar reach the network** for the feeds you configure — as designed, through the same audited gate as everything else.
-- **The Manager's display/autostart settings** write config directly; a narrow two-writer window with a running hub remains (tracked).
+- **The Manager follows a single-writer rule.** While the Hub is connected,
+  display/autostart changes go over the control socket and the Hub persists them;
+  the Manager writes directly only while it is the offline owner.
 - **Physical rotation** is wired and debounced from the HID sensor, but only a person can turn a panel — so it's verified by hand, not by the suite.
 - **GPU metrics are AMD Radeon only.**
 
@@ -296,7 +337,12 @@ What works is tested. What isn't done yet:
 
 ## Roadmap
 
-The foundations — 24 widgets, the Manager, the theme system, the test suite, and live CI — are done. v1.0 adds the preset library and generic primitive widgets (both shipped in this alpha), a calm/accessibility foundation, wellness widgets, and trust & control work, on an **alpha → beta → RC → GA** train. GA is the tagged 1.0 with signed artifacts and published packages.
+The current branch contains 30 widgets, 19 presets, the Manager, and the expanded
+test/release tooling. The next milestone is determined by evidence, not by the
+branch name: requirements audit, zero unresolved release blockers, candidate
+packaging, measured performance, the physical-hardware soak, then the immutable
+final gate. Only after those pass can a feature freeze, code freeze, or new tag be
+declared.
 
 Beyond 1.0: segment integration packs (OBS, MangoHud, Prometheus, smart home, market data), a WASM widget SDK, and internationalization.
 

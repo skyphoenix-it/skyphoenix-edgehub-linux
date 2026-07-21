@@ -1,8 +1,14 @@
 # Use Cases
 
 **Version:** 0.1.0-draft  
-**Status:** Phase 0 — Discovery  
+**Status:** Historical Phase-0 discovery draft — superseded
 **Last Updated:** 2026-07-11  
+
+> **Historical document.** This captures early product intent and is not the
+> current release contract. MVP labels and acceptance criteria below were written
+> before implementation and feasibility review. See the authoritative
+> [MVP scope and requirements disposition](mvp-scope.md) for what is required,
+> deferred or still blocking the next release.
 
 ---
 
@@ -411,4 +417,3 @@
 | UC-13 | Settings & diagnostics | P1 | Yes |
 | UC-14 | Widget failure handling | P1 | Yes |
 | UC-15 | Config import/export | P3 | No (v1.0) |
-

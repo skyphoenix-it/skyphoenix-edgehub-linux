@@ -115,6 +115,7 @@ add_qt_test(manager_backend_sync SOURCES "${MGR_SRC}/manager_backend.h" "${MGR_S
                                  LINK Qt6::Gui Qt6::Network)
 add_qt_test(rx_cap          SOURCES "${MGR_SRC}/manager_backend.h" "${MGR_SRC}/reconcile.cpp" LINK Qt6::Gui Qt6::Network)
 add_qt_test(single_instance)
+add_qt_test(network_access_policy LINK Qt6::Network Qt6::Qml)
 
 # ── Headless negative (crafted FIFO / closed fd, no hardware) ──
 add_qt_test(orientation_reopen SOURCES "${APP_SRC}/orientation_sensor.cpp")

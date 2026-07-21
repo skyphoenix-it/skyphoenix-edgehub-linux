@@ -1,8 +1,12 @@
 # Wireframe Descriptions — Xeneon Edge Linux Hub
 
 **Version:** 0.1.0-draft  
-**Status:** Phase 0 — Discovery  
+**Status:** Historical Phase-0 discovery draft — superseded
 **Last Updated:** 2026-07-11  
+
+> **Historical document.** These sketches preserve early interaction intent; they
+> do not describe the current UI pixel-for-pixel and are not a release checklist.
+> See the authoritative [MVP scope and requirements disposition](mvp-scope.md).
 
 > **Note:** These are textual wireframe descriptions. Visual mockups will be created in a design tool (Figma/Penpot) during Phase 0 design sprint. The descriptions below define layout, hierarchy, and interaction intent for the designer.
 
@@ -538,4 +542,3 @@ The dashboard window is hidden. On the primary display, a notification appears:
 - Portrait: height > width
 - Narrow portrait (≤800px width): single column
 - Wide landscape (≥2000px width): multi-column grid
-

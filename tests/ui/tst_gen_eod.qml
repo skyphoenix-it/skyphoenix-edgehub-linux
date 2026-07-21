@@ -140,54 +140,70 @@ Item {
         if (h.item && h.expanded) h.item.sizeClass = "full"
     }
 
-    // ── frac / remaining time math (real wall clock) ─────────────────────────
+    // ── frac / remaining time math (deterministic injected clock) ──────────────
     TestCase {
         name: "EodTimeMath"
         when: windowShown
-        function init() { tryVerify(function () { return hEod.ready }, 3000); clear(hEod) }
+        function init() {
+            tryVerify(function () { return hEod.ready }, 3000)
+            clear(hEod)
+            hEod.item.nowOverride = null
+        }
+        function cleanup() { hEod.item.nowOverride = null }
         function patch(o) { hEod.storeCtl.patchSettings("test-instance", o) }
+        function at(h, m) { return new Date(2026, 0, 15, h, m || 0, 0, 0) }
 
         function test_before_start_frac_zero_and_countdown() {
             var w = hEod.item
-            var h = new Date().getHours()
-            if (h > 21) { skip("no headroom before midnight to place a future start"); return }
-            patch({ startHour: h + 1, endHour: h + 2 })
+            patch({ startHour: 10, endHour: 18 })
+            w.nowOverride = at(8, 30)
             compare(w.frac, 0, "before the workday, frac is 0")
-            verify(w.remaining.indexOf("Starts in") === 0,
-                   "before start shows 'Starts in Hh Mm' (got '" + w.remaining + "')")
+            compare(w.remaining, "Starts in 1h 30m",
+                    "08:30 before a 10:00 start shows the exact countdown")
         }
 
         function test_after_end_frac_one_and_done() {
             var w = hEod.item
-            var h = new Date().getHours()
-            if (h < 1) { skip("cannot place a window that already ended before 01:00"); return }
-            patch({ startHour: 0, endHour: h })
+            patch({ startHour: 9, endHour: 17 })
+            w.nowOverride = at(18, 30)
             compare(w.frac, 1, "after the end, frac clamps to 1")
             compare(w.remaining, "Done! 🎉", "past the end shows the completion string")
         }
 
         function test_within_window_frac_and_live_remaining() {
             var w = hEod.item
-            var h = new Date().getHours()
-            if (h < 1 || h > 22) { skip("current hour leaves no symmetric window"); return }
-            patch({ startHour: h - 1, endHour: h + 1 })
-            verify(w.frac > 0 && w.frac < 1, "mid-window frac is in (0,1) (got " + w.frac + ")")
-            verify(w.remaining !== "Set hours" && w.remaining !== "Done! 🎉"
-                   && w.remaining.indexOf("Starts") !== 0,
-                   "within the window shows a live duration (got '" + w.remaining + "')")
+            patch({ startHour: 9, endHour: 17 })
+            w.nowOverride = at(13)
+            fuzzyCompare(w.frac, 0.5, 0.001, "13:00 is halfway through 09:00–17:00")
+            compare(w.remaining, "4h 0m", "within the window shows the exact live duration")
         }
 
         function test_tick_recomputes_frac_and_remaining() {
             var w = hEod.item
-            var h = new Date().getHours()
-            if (h < 1 || h > 22) { skip("no window available to observe the tick binding"); return }
-            patch({ startHour: h - 1, endHour: h + 1 })
-            var f0 = w.frac
-            var r0 = w.remaining
-            w.tick++            // the frac/remaining bindings reference w.tick
-            verify(!isNaN(w.frac) && w.frac >= 0 && w.frac <= 1,
-                   "frac stays valid after a tick (got " + w.frac + ")")
-            verify(w.remaining.length > 0, "remaining recomputed after tick (got '" + w.remaining + "')")
+            patch({ startHour: 9, endHour: 17 })
+            // A plain JS clock object remains mutable when stored in a QML `var`
+            // (a Date is converted to an immutable QVariant copy). Its fields have
+            // no notify signal, making `tick` the only recomputation trigger.
+            var clock = {
+                hour: 13,
+                getFullYear: function () { return 2026 },
+                getMonth: function () { return 0 },
+                getDate: function () { return 15 },
+                valueOf: function () {
+                    return new Date(2026, 0, 15, this.hour, 0, 0, 0).valueOf()
+                }
+            }
+            w.nowOverride = clock
+            fuzzyCompare(w.frac, 0.5, 0.001, "setup is halfway through the window")
+            compare(w.remaining, "4h 0m")
+
+            // Mutate the injected clock in place. That emits no property-change
+            // signal, so only the widget's real timer seam (`tick`) can invalidate
+            // and recompute these bindings.
+            clock.hour = 14
+            w.tick++
+            fuzzyCompare(w.frac, 5 / 8, 0.001, "tick recomputes progress at 14:00")
+            compare(w.remaining, "3h 0m", "tick recomputes the remaining duration")
         }
 
         function test_fmtDur_formats_hours_minutes() {
@@ -285,7 +301,12 @@ Item {
     TestCase {
         name: "EodFullDay"
         when: windowShown
-        function init() { tryVerify(function () { return hEod.ready }, 3000); clear(hEod) }
+        function init() {
+            tryVerify(function () { return hEod.ready }, 3000)
+            clear(hEod)
+            hEod.item.nowOverride = new Date(2026, 0, 15, 12, 0, 0, 0)
+        }
+        function cleanup() { hEod.item.nowOverride = null }
         function patch(o) { hEod.storeCtl.patchSettings("test-instance", o) }
 
         function test_full_day_window_is_valid() {
@@ -443,15 +464,19 @@ Item {
     TestCase {
         name: "EodOverflow"
         when: windowShown
-        function init() { tryVerify(function () { return hCollapsed.ready }, 3000); clear(hCollapsed) }
+        function init() {
+            tryVerify(function () { return hCollapsed.ready }, 3000)
+            clear(hCollapsed)
+            hCollapsed.item.nowOverride = null
+        }
+        function cleanup() { hCollapsed.item.nowOverride = null }
         function patch(o) { hCollapsed.storeCtl.patchSettings("test-instance", o) }
 
         function test_starts_in_string_fits_collapsed_tile() {
             var w = hCollapsed.item
-            var h = new Date().getHours()
-            if (h > 21) { skip("cannot place a future start to force a 'Starts in' string"); return }
-            patch({ startHour: h + 1, endHour: h + 2 })
-            verify(w.remaining.indexOf("Starts in") === 0, "setup produced a 'Starts in' string")
+            patch({ startHour: 23, endHour: 24 })
+            w.nowOverride = new Date(2026, 0, 15, 0, 0, 0, 0)
+            compare(w.remaining, "Starts in 23h 0m", "setup produces the longest same-day countdown")
             var t = visibleTextEq(w, w.remaining)
             verify(t !== null, "found the visible remaining text")
             verify(t.paintedWidth <= hCollapsed.width,
@@ -587,16 +612,59 @@ Item {
         }
     }
 
-    // ── DST: documented, not machine-testable without TZ control ─────────────
+    // ── Calendar/DST semantics ─────────────────────────────────────
     TestCase {
         name: "EodDST"
         when: windowShown
-        function init() { tryVerify(function () { return hEod.ready }, 3000); clear(hEod) }
-        function test_dst_skew_documented() {
-            // frac = (n - s)/(e - s) uses absolute ms against wall-clock endpoints,
-            // so on a DST transition day the percent is off by up to an hour. This
-            // cannot be reproduced deterministically inside qmltest (no TZ override).
-            skip("DST-day skew requires a controlled timezone/clock; covered by audit note")
+        function init() {
+            tryVerify(function () { return hEod.ready }, 3000)
+            clear(hEod)
+            hEod.item.nowOverride = null
+        }
+        function cleanup() { hEod.item.nowOverride = null }
+
+        function test_full_day_uses_calendar_endpoints_across_offset_changes() {
+            var w = hEod.item
+            hEod.storeCtl.patchSettings("test-instance", { startHour: 0, endHour: 24 })
+
+            // Discover a local UTC-offset transition instead of assuming a named
+            // timezone. Europe/Vienna exercises the 23/25-hour path; UTC and zones
+            // without DST exercise the same calendar-endpoint contract on 24 hours.
+            var day = null
+            for (var i = 0; i < 365; i++) {
+                var candidate = new Date(2026, 0, 1 + i, 0, 0, 0, 0)
+                var next = new Date(candidate.getFullYear(), candidate.getMonth(),
+                                    candidate.getDate() + 1, 0, 0, 0, 0)
+                if (candidate.getTimezoneOffset() !== next.getTimezoneOffset()) {
+                    day = candidate
+                    break
+                }
+            }
+            if (day === null)
+                day = new Date(2026, 0, 15, 0, 0, 0, 0)
+
+            var noon = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 12, 0, 0, 0)
+            w.nowOverride = noon
+            var bounds = w.windowBounds(noon)
+            var start = bounds[0], end = bounds[1]
+            var expectedStart = new Date(day.getFullYear(), day.getMonth(), day.getDate(),
+                                         0, 0, 0, 0)
+            var expectedEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate(),
+                                       24, 0, 0, 0)
+            compare(start.valueOf(), expectedStart.valueOf(),
+                    "start uses the configured local calendar endpoint")
+            compare(end.valueOf(), expectedEnd.valueOf(),
+                    "endHour=24 uses the following local calendar endpoint")
+
+            // Calendar construction naturally yields 23/25 hours over DST and
+            // also handles the rarer zones whose transition happens at midnight.
+            var expectedHours = (expectedEnd - expectedStart) / 3600000
+            verify(expectedHours >= 22 && expectedHours <= 26,
+                   "a local calendar day remains within a sane transition range")
+            compare((end - start) / 3600000, expectedHours,
+                    "absolute duration accounts for any local UTC-offset change")
+            fuzzyCompare(w.frac, (noon - start) / (end - start), 0.001,
+                         "progress uses the real calendar-day duration")
         }
     }
 

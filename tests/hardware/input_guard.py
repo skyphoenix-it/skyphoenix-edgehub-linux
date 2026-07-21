@@ -39,7 +39,11 @@ import struct
 import threading
 import time
 
-ATTRIB_WINDOW = 0.15     # s: `resumed` within this of our own write -> ours
+# KWin can deliver the compositor-side `resumed` notification noticeably after
+# the final uinput write under rendering load (0.173s observed on the Edge E2E).
+# Keep enough scheduling margin that our own input is not mislabeled as the
+# owner while still bounding the blind attribution interval well below a second.
+ATTRIB_WINDOW = 0.35     # s: `resumed` within this of our own write -> ours
 IDLE_PROBE_MS = 100      # ext-idle-notify timeout for the activity probe
 DEFAULT_IDLE_SECONDS = float(os.environ.get("XENEON_HW_IDLE_SECONDS", "3"))
 DEFAULT_IDLE_TIMEOUT = float(os.environ.get("XENEON_HW_IDLE_TIMEOUT", "90"))
@@ -102,6 +106,10 @@ class IdleLedger:
     def arm(self):
         with self._lock:
             self.armed = True
+
+    def is_armed(self):
+        with self._lock:
+            return self.armed
 
     def user_idle_for(self):
         """Seconds since the last known REAL user activity (0 while active)."""
@@ -302,6 +310,17 @@ class ActivityGuard:
     def check(self):
         if self.ledger.aborted:
             raise UserActivityAbort("KILL SWITCH: " + self.ledger.abort_reason)
+
+    def require_armed(self):
+        """Refuse a kernel write until the live kill switch is armed.
+
+        Device creation itself is deliberately allowed before arming so KWin's
+        device-hotplug activity can settle and pass a second idle gate. No input
+        event may cross that boundary.
+        """
+        if not self.ledger.is_armed():
+            raise UserActivityAbort(
+                "KILL SWITCH: synthetic event attempted before guard was armed")
 
     def note_emit(self):
         self.ledger.note_emit()

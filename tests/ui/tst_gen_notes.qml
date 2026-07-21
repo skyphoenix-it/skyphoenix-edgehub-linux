@@ -22,6 +22,26 @@ Item {
     id: root
     width: 480; height: 900
 
+    // Context surface required when the keyboard safety test instantiates the
+    // real main.qml shell. These mirror app/src/main.cpp, as in tst_main.qml.
+    // Load the lightweight wizard page rather than a whole dashboard: this test
+    // targets the shell transform, not widget/resource rendering.
+    property bool _isFirstRun: true
+    property string _screens: "[]"
+    property string _metricsJson: "{}"
+    property string _themeMode: "dark"
+    property string _targetEdidHash: ""
+    property string _targetConnector: ""
+    property string _targetModel: ""
+    property string _configDir: "/tmp"
+    property bool _safeMode: false
+    property bool _startInDiagnostics: false
+    property bool _windowedMode: true
+    property int _targetScreenX: 0
+    property int _targetScreenY: 0
+    property int _targetScreenWidth: 1920
+    property int _targetScreenHeight: 1080
+
     // Expanded editor instance.
     WidgetHarness { id: hNotes;   anchors.fill: parent; widgetFile: "NotesWidget.qml"; expanded: true }
     // Compact-tile instance (preview + placeholder logic).
@@ -378,24 +398,39 @@ Item {
             var flick = findFlickable(w)
             verify(ed !== null && flick !== null, "found editor + flickable")
             var lines = ""
-            for (var i = 0; i < 80; i++) lines += "line number " + i + "\n"
+            // Deliberately exceed even the tallest supported editor viewport so
+            // this remains an overflow test on every runner and screen geometry.
+            for (var i = 0; i < 500; i++) lines += "line number " + i + "\n"
             ed.text = lines
             ed.cursorPosition = ed.text.length          // caret at the very end
-            if (flick.contentHeight <= flick.height) {
-                skip("viewport is tall enough that the caret never leaves it")
-                return
-            }
+            tryVerify(function () { return flick.contentHeight > flick.height }, 2000,
+                      "the oversized fixture must overflow the editor viewport")
             var caretBottom = ed.cursorRectangle.y + ed.cursorRectangle.height
             verify(caretBottom - flick.contentY <= flick.height + 2,
                    "the Flickable should scroll so the caret stays visible (caretBottom=" +
                    caretBottom + " contentY=" + flick.contentY + " h=" + flick.height + ")")
         }
 
-        // Environment note: the on-screen-keyboard lift in main.qml relies on
-        // Qt.inputMethod.cursorRectangle, which is only meaningful with a real
-        // InputPanel + main.qml scene — not reproducible in this isolated harness.
-        function test_onscreen_keyboard_lift_env() {
-            skip("requires main.qml InputPanel scene; not exercisable in the widget harness")
+        // A headless runner cannot activate a platform virtual keyboard, but it
+        // can exercise the real shell's safety branch: an inactive input method
+        // must leave the StackView untranslated. This protects a real fallback
+        // instead of pretending the offscreen platform can activate an InputPanel.
+        function test_inactive_onscreen_keyboard_does_not_shift_shell() {
+            var component = Qt.createComponent("../../ui/qml/main.qml")
+            tryVerify(function () { return component.status !== Component.Loading }, 5000)
+            compare(component.status, Component.Ready, "main.qml compiles: " + component.errorString())
+            var win = component.createObject(root)
+            verify(win !== null, "main.qml instantiated with the test shell context")
+
+            var stack = findOne(win.contentItem, function (n) {
+                return n.objectName === "mainStack"
+            })
+            verify(stack !== null, "found the real main.qml StackView")
+            compare(Qt.inputMethod.visible, false, "offscreen input method starts inactive")
+            verify(stack.transform.length > 0, "the keyboard-lift Translate is attached")
+            compare(stack.transform[0].y, 0,
+                    "an inactive keyboard never moves dashboard content")
+            win.destroy()
         }
     }
 

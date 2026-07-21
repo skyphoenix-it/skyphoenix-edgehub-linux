@@ -72,26 +72,44 @@ launch; only the module check catches it. A smoke that cannot fail proves nothin
 
 ```sh
 cd packaging/aur
-makepkg -si            # build + install (fetches the v$pkgver release tarball)
+makepkg -si            # build + install the signed release named by _tag
 ```
 Publishing: push `PKGBUILD` + `.SRCINFO` to `ssh://aur@aur.archlinux.org/xeneon-edge-hub.git`.
-Requires a tagged GitHub release `v0.1.0` (the source URL points at the release tarball).
-Before publishing, replace `sha256sums=('SKIP')` with the real checksum
-(`updpkgsums`).
+Before publishing an update, set the pacman-compatible `pkgver`, the exact Git
+release `_tag`, and the release-asset checksum together, then regenerate
+`.SRCINFO` with `makepkg --printsrcinfo`. The detached signature is mandatory and
+is verified against the full fingerprint in `validpgpkeys`.
 
 ## CPack (.deb / .rpm / portable tarball)
 
-Configure + build the project, then from the build dir:
+Configure + build the project, passing the release version explicitly so the
+embedded app version, package metadata and filename cannot diverge:
 
 ```sh
-cpack -G TGZ           # portable tarball (works anywhere)
-cpack -G DEB           # on Debian/Ubuntu (needs dpkg for shlibdeps)
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX=/usr \
+  -DXENEON_VERSION_OVERRIDE=1.0.0-beta.1
+cmake --build build -j"$(nproc)"
+```
+
+Then from the build dir:
+
+```sh
+cpack -G TGZ           # portable archive; system glibc/Qt compatibility required
+cpack -G DEB           # on Debian/Ubuntu (needs dpkg + dpkg-shlibdeps)
 cpack -G RPM           # on Fedora/openSUSE (needs rpmbuild)
 ```
 
 Build each on the distro it targets — the generated dependency versions come from
-whatever is installed on the build host. The exact per-distro build dependencies
-are in `.github/workflows/distro.yml`, which is the executable version of this:
+whatever is installed on the build host. Generator preflight fails closed when
+the required native tools are absent; in particular, it prevents CPack from
+returning success with an empty-architecture `.deb` and no shlibdeps. The exact
+per-distro build dependencies are in `.github/workflows/distro.yml`, which is the
+executable version of this:
+
+For DEB/RPM metadata, a SemVer prerelease such as `1.0.0-beta.1` is encoded as
+`1.0.0~beta.1`, which sorts before the later `1.0.0` final package. The TGZ and
+its filename retain the human-facing SemVer spelling.
 
 ```sh
 # Fedora 43
@@ -124,7 +142,7 @@ job in `.github/workflows/distro.yml`.
 
 Smoke it the way CI does — in a container with **no Qt**:
 ```sh
-bash packaging/ci/smoke-appimage.sh xeneon-edge-hub-0.1.0-x86_64.AppImage "$(pwd)"
+bash packaging/ci/smoke-appimage.sh xeneon-edge-hub-VERSION-x86_64.AppImage "$(pwd)"
 ```
 
 It bundles Qt but **not** libGL/libGLX/libOpenGL/libEGL/libfontconfig or fonts;

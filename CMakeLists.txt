@@ -129,6 +129,7 @@ add_executable(xeneon-edge-hub
     app/src/timezone_bridge.h
     app/src/distro_bridge.h
     app/src/system_settings_probe.h
+    app/src/network_access_policy.h
     ${CMAKE_SOURCE_DIR}/ui/qml.qrc
     ${CMAKE_SOURCE_DIR}/assets/icons.qrc
     ${CMAKE_SOURCE_DIR}/assets/wallpapers.qrc
@@ -191,6 +192,7 @@ add_executable(xeneon-edge-manager
     app/src/timezone_bridge.h
     app/src/distro_bridge.h
     app/src/system_settings_probe.h
+    app/src/network_access_policy.h
     ${CMAKE_SOURCE_DIR}/manager/manager.qrc
     ${CMAKE_SOURCE_DIR}/assets/icons.qrc
     ${CMAKE_SOURCE_DIR}/assets/wallpapers.qrc
@@ -236,8 +238,20 @@ endif()
 # temp XDG_CONFIG_HOME so config round-trips are hermetic.
 if(XENEON_BUILD_TESTS)
     enable_testing()
-    find_package(Qt6 6.5 REQUIRED COMPONENTS Test)
+    find_package(Qt6 6.5 REQUIRED COMPONENTS Test QuickTest)
     add_subdirectory(tests/cpp)
+
+    # Resource-aware qmltestrunner replacement for tests/gui.  Linking the
+    # shipped QRC bundles is essential: the stock Qt runner cannot resolve
+    # qrc:/icons or qrc:/wallpapers, making rendered-pixel assertions vacuous.
+    add_executable(xeneon-qmltestrunner
+        tests/gui/runner.cpp
+        ${CMAKE_SOURCE_DIR}/assets/icons.qrc
+        ${CMAKE_SOURCE_DIR}/assets/wallpapers.qrc
+        ${CMAKE_SOURCE_DIR}/assets/fonts.qrc)
+    target_link_libraries(xeneon-qmltestrunner PRIVATE Qt6::QuickTest Qt6::Quick Qt6::Qml)
+    target_compile_definitions(xeneon-qmltestrunner PRIVATE
+        QUICK_TEST_SOURCE_DIR="${CMAKE_SOURCE_DIR}/tests/gui")
 endif()
 
 # Install
@@ -293,22 +307,49 @@ install(FILES packaging/udev/99-xeneon-edge.rules DESTINATION "${UDEV_RULES_DIR}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CPack: generate distro packages from the install rules above.
-#   cpack -G TGZ   (portable tarball; works anywhere)
+#   cpack -G TGZ   (generator works anywhere; runtime dependencies still apply)
 #   cpack -G DEB   (build on Debian/Ubuntu — needs dpkg for shlibdeps)
 #   cpack -G RPM   (build on Fedora/openSUSE — needs rpmbuild)
 # ─────────────────────────────────────────────────────────────────────────────
 if(PROJECT_IS_TOP_LEVEL)
+    # An explicit package override must bind the embedded appVersion and CPack
+    # metadata to the same identity. Keep PROJECT_VERSION as the fallback for
+    # ordinary unversioned developer builds, but never label an explicitly
+    # versioned DEB/RPM/TGZ as the historical 0.1.0.
+    set(XENEON_CPACK_VERSION "${PROJECT_VERSION}")
+    if(DEFINED XENEON_VERSION_OVERRIDE AND XENEON_VERSION_OVERRIDE)
+        string(REGEX REPLACE "^v" "" XENEON_CPACK_VERSION
+               "${XENEON_VERSION_OVERRIDE}")
+    endif()
+
+    # Debian and RPM use '~' for a prerelease that sorts before the corresponding
+    # final version. A literal SemVer hyphen has the wrong package-manager order
+    # (and is not valid in an RPM Version), while archive filenames should retain
+    # the familiar SemVer spelling.
+    set(XENEON_NATIVE_PACKAGE_VERSION "${XENEON_CPACK_VERSION}")
+    if(XENEON_CPACK_VERSION MATCHES "^([0-9]+\\.[0-9]+\\.[0-9]+)-(.+)$")
+        set(XENEON_NATIVE_PACKAGE_VERSION
+            "${CMAKE_MATCH_1}~${CMAKE_MATCH_2}")
+    endif()
+
     set(CPACK_PACKAGE_NAME "xeneon-edge-hub")
     set(CPACK_PACKAGE_VENDOR "SkyPhoenix IT")
     set(CPACK_PACKAGE_CONTACT "Simon Kreitmayer <simon.kreitmayer@skyphoenix-it.com>")
-    set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+    set(CPACK_PACKAGE_VERSION "${XENEON_CPACK_VERSION}")
+    if(XENEON_CPACK_VERSION MATCHES "^([0-9]+)\\.([0-9]+)\\.([0-9]+)")
+        set(CPACK_PACKAGE_VERSION_MAJOR "${CMAKE_MATCH_1}")
+        set(CPACK_PACKAGE_VERSION_MINOR "${CMAKE_MATCH_2}")
+        set(CPACK_PACKAGE_VERSION_PATCH "${CMAKE_MATCH_3}")
+    endif()
+    set(CPACK_XENEON_NATIVE_PACKAGE_VERSION "${XENEON_NATIVE_PACKAGE_VERSION}")
     set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
         "Native Linux widget dashboard for the Corsair Xeneon Edge and other secondary touchscreens")
     set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/skyphoenix-it/XeneonEdge_Linux")
     set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
     set(CPACK_PACKAGING_INSTALL_PREFIX "/usr")
     set(CPACK_STRIP_FILES ON)
-    set(CPACK_PACKAGE_FILE_NAME "xeneon-edge-hub_${PROJECT_VERSION}_${CMAKE_SYSTEM_PROCESSOR}")
+    set(CPACK_PACKAGE_FILE_NAME
+        "xeneon-edge-hub_${XENEON_CPACK_VERSION}_${CMAKE_SYSTEM_PROCESSOR}")
 
     # Debian/Ubuntu
     set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
@@ -341,8 +382,18 @@ qml6-module-qtquick-virtualkeyboard | qt6-virtualkeyboard")
         "qt6-qtbase >= 6.5, qt6-qtdeclarative, qt6-qtsvg, qt6-qtvirtualkeyboard, qt6-qtwayland")
     set(CPACK_RPM_FILE_NAME "RPM-DEFAULT")
 
+    # Per-generator tooling checks run at *cpack* time, after -G has selected
+    # DEB/RPM/TGZ. In particular, CPack's DEB generator otherwise exits 0 on a
+    # non-Debian host with no dpkg tools while emitting an empty Architecture
+    # field and silently omitting all dpkg-shlibdeps dependencies.
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/packaging/cpack/generator-preflight.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/xeneon-cpack-generator-preflight.cmake"
+        COPYONLY)
+    set(CPACK_PROJECT_CONFIG_FILE
+        "${CMAKE_CURRENT_BINARY_DIR}/xeneon-cpack-generator-preflight.cmake")
+
     # Default to a portable tarball; DEB/RPM are opt-in via `cpack -G`.
     set(CPACK_GENERATOR "TGZ")
     include(CPack)
 endif()
-

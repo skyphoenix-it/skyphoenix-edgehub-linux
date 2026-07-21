@@ -1,188 +1,25 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Xeneon Edge — Trailer</title>
-<style>
-  :root{
-    --bg:#05060a; --ink:#f5f7fb; --dim:#9aa4b2; --accent:#8b6cff; --accent2:#57c7ff;
-    --ease:cubic-bezier(.22,1,.36,1);
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%}
-  body{
-    background:var(--bg); color:var(--ink); overflow:hidden;
-    font-family:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Roboto,sans-serif;
-    -webkit-font-smoothing:antialiased;
-  }
-  /* Ambient glow that drifts per scene */
-  #glow{position:fixed;inset:-30% -20%;z-index:0;filter:blur(90px);opacity:.55;
-    background:radial-gradient(40% 40% at 30% 30%,rgba(139,108,255,.5),transparent 70%),
-               radial-gradient(45% 45% at 75% 70%,rgba(87,199,255,.35),transparent 70%);
-    transition:transform 3s var(--ease), opacity 1.2s ease;}
-  #stage{position:fixed;inset:0;z-index:1;display:grid;place-items:center;}
-
-  /* The rendered Edge device. Portrait 720x2560 by default; rotates to landscape. */
-  .device{
-    position:relative; height:78vh; aspect-ratio:720/2560;
-    border-radius:26px; padding:12px;
-    background:linear-gradient(145deg,#2a2d36,#111318 55%,#05060a);
-    box-shadow:0 40px 120px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.06) inset,
-               0 2px 0 rgba(255,255,255,.10) inset;
-    transition:transform 1.1s var(--ease), aspect-ratio 1.1s var(--ease), height 1.1s var(--ease);
-    transform:translateZ(0);
-  }
-  .device.landscape{height:44vh; aspect-ratio:2560/720;}
-  .device .screen{
-    position:absolute; inset:12px; border-radius:16px; overflow:hidden;
-    background:#000; box-shadow:0 0 0 1px rgba(0,0,0,.6) inset;
-  }
-  /* screenshot layers cross-fade */
-  .device .screen img{
-    position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
-    opacity:0; transition:opacity .9s var(--ease); transform:translateZ(0);
-  }
-  .device .screen img.on{opacity:1}
-  /* faint glass reflection */
-  .device .screen::after{content:"";position:absolute;inset:0;pointer-events:none;
-    background:linear-gradient(120deg,rgba(255,255,255,.10),transparent 30%,transparent 75%,rgba(255,255,255,.05));}
-
-  /* Captions */
-  #caption{position:fixed; z-index:3; left:50%; bottom:8vh; transform:translateX(-50%) translateY(14px);
-    width:min(90vw,720px); text-align:center; opacity:0; transition:opacity .7s var(--ease), transform .7s var(--ease);}
-  #caption.on{opacity:1; transform:translateX(-50%) translateY(0)}
-  #caption .k{font-size:clamp(24px,4.4vw,46px); font-weight:700; letter-spacing:-.02em; line-height:1.1;}
-  #caption .s{margin-top:.5em; font-size:clamp(14px,2vw,19px); color:var(--dim); line-height:1.4;}
-
-  /* Title / outro cards */
-  .card{position:fixed; inset:0; z-index:4; display:grid; place-items:center; text-align:center;
-    opacity:0; transition:opacity 1s var(--ease); pointer-events:none; padding:6vw;}
-  .card.on{opacity:1}
-  .card .wm{font-size:clamp(40px,8vw,96px);font-weight:800;letter-spacing:-.03em;
-    background:linear-gradient(100deg,var(--accent2),var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent;}
-  .card .tag{margin-top:.4em;font-size:clamp(16px,2.6vw,26px);color:var(--dim);max-width:22ch;line-height:1.35}
-  .card .fine{margin-top:2.2em;font-size:13px;color:#6b7482;letter-spacing:.02em;max-width:44ch}
-
-  /* PRO badge callout (for the Manager/Pro scene) */
-  #proPin{position:fixed;z-index:5;opacity:0;transition:opacity .6s var(--ease), transform .6s var(--ease);
-    transform:scale(.9);left:50%;top:14vh;translate:-50% 0;
-    background:rgba(10,12,20,.72);border:1px solid rgba(255,255,255,.14);border-radius:999px;
-    padding:8px 16px;font-weight:700;font-size:14px;letter-spacing:.06em;color:#fff;
-    box-shadow:0 10px 40px rgba(0,0,0,.5);backdrop-filter:blur(6px);}
-  #proPin.on{opacity:1;transform:scale(1)}
-
-  /* progress + replay */
-  #bar{position:fixed;left:0;top:0;height:3px;width:0;z-index:9;
-    background:linear-gradient(90deg,var(--accent2),var(--accent));transition:width .25s linear;}
-  #replay{position:fixed;right:18px;bottom:16px;z-index:9;opacity:0;transition:opacity .5s ease;
-    background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);color:var(--ink);
-    font:inherit;font-size:14px;padding:9px 16px;border-radius:999px;cursor:pointer;}
-  #replay.on{opacity:1}
-  #replay:hover{background:rgba(255,255,255,.15)}
-
-  @media (prefers-reduced-motion: reduce){
-    #glow{transition:none} .device{transition:none}
-    .device .screen img,#caption,.card,#proPin{transition:opacity .3s linear}
-  }
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>EdgeHub development-preview storyboard</title>
+  <style>
+    :root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#070a10;color:#f4f7fb;font:16px/1.55 system-ui,sans-serif}.wrap{width:min(980px,calc(100% - 36px));margin:50px auto}.hold{color:#ffc66d;text-transform:uppercase;letter-spacing:.1em;font-weight:750;font-size:13px}.frame{margin-top:28px;border:1px solid #29364d;background:#101722;border-radius:18px;padding:24px}.frame img{display:block;width:100%;border-radius:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}.card{border:1px solid #29364d;border-radius:14px;padding:18px;background:#0d131d}.dim{color:#aab5c6}a{color:#69adff}@media(max-width:680px){.grid{grid-template-columns:1fr}}
+  </style>
 </head>
-<body>
-  <div id="glow"></div>
-  <div id="stage">
-    <div class="device" id="device">
-      <div class="screen" id="screen"><!-- images injected --></div>
-    </div>
-  </div>
-  <div id="proPin">✦ PRO — premium theme pack</div>
-  <div id="caption"><div class="k"></div><div class="s"></div></div>
-
-  <div class="card" id="intro">
-    <div>
-      <div class="wm">Xeneon&nbsp;Edge</div>
-      <div class="tag">Your second screen, done right.</div>
-    </div>
-  </div>
-  <div class="card" id="outro">
-    <div>
-      <div class="wm">Xeneon&nbsp;Edge</div>
-      <div class="tag">A native Linux dashboard for the display beside your display.</div>
-      <div class="fine">Free &amp; open source · Pro is a low-cost supporter tier · Not affiliated with Corsair</div>
-    </div>
-  </div>
-
-  <div id="bar"></div>
-  <button id="replay">↻ Replay</button>
-
-<script>
-const A = "assets/generated/";
-// Preload every screen the trailer uses.
-const SHOTS = ["hero-system","gaming-synthwave","system-landscape","health-aurora",
-               "calm-focus","home-sunset","manager-appearance-pro"];
-const screen = document.getElementById("screen");
-const imgs = {};
-for (const s of SHOTS){
-  const im = new Image(); im.src = A + s + ".png";
-  screen.appendChild(im); imgs[s] = im;
-}
-const device = document.getElementById("device");
-const cap = document.getElementById("caption");
-const capK = cap.querySelector(".k"), capS = cap.querySelector(".s");
-const glow = document.getElementById("glow");
-const proPin = document.getElementById("proPin");
-const bar = document.getElementById("bar");
-const replay = document.getElementById("replay");
-
-function show(shot){ for (const s of SHOTS) imgs[s].classList.toggle("on", s===shot); }
-function caption(k, s){ capK.textContent=k||""; capS.textContent=s||"";
-  cap.classList.toggle("on", !!(k||s)); }
-function card(id,on){ document.getElementById(id).classList.toggle("on",on); }
-function landscape(on){ device.classList.toggle("landscape",on); }
-function drift(x,y){ glow.style.transform = `translate(${x}%,${y}%)`; }
-
-// Scene timeline: each step runs at t (ms from start). Declarative so pacing is
-// easy to tune and nothing overlaps awkwardly.
-const T = [
-  [0,    ()=>{ card("intro",true); caption("",""); show("hero-system"); drift(-6,-4); }],
-  [2600, ()=>{ card("intro",false); }],
-  [3200, ()=>{ caption("Live system vitals, at a glance.","CPU · GPU · memory, always in the corner of your eye."); }],
-  [6400, ()=>{ show("gaming-synthwave"); drift(8,-6);
-               caption("A cockpit for whatever you do.","Gaming, focus, home, trading — a screen per use."); }],
-  [9800, ()=>{ landscape(true); show("system-landscape"); drift(4,6);
-               caption("Turn it — the layout follows.","Rotate the panel; every widget reflows, instantly."); }],
-  [13200,()=>{ landscape(false); show("health-aurora"); drift(-8,4);
-               caption("Health, gently.","Hydration, streaks, the moon — no nagging, no shame."); }],
-  [16200,()=>{ show("calm-focus"); drift(0,-6);
-               caption("Calm by default.","Quiet out of the box. Accessible fonts. Reduce-motion respected."); }],
-  [19200,()=>{ show("home-sunset"); drift(7,5);
-               caption("At home in the room.","Ambient clocks and warmth when it's not working hard."); }],
-  [22400,()=>{ landscape(true); device.style.height="60vh"; show("manager-appearance-pro"); drift(-4,-2);
-               caption("Tune every pixel from your PC.","The companion Manager: themes, layout, scope-clear controls."); }],
-  [25600,()=>{ proPin.classList.add("on");
-               caption("Premium themes. Support the project.","Everything works free. Pro unlocks the extras."); }],
-  [28800,()=>{ proPin.classList.remove("on"); caption("",""); device.style.height=""; landscape(false);
-               show("hero-system"); card("outro",true); }],
-  [33000,()=>{ replay.classList.add("on"); }],
-];
-const DURATION = 33000;
-
-let timers=[], raf=0, startAt=0;
-function play(){
-  stop();
-  card("intro",false); card("outro",false); proPin.classList.remove("on");
-  replay.classList.remove("on"); device.style.height=""; landscape(false);
-  startAt = performance.now();
-  for (const [t,fn] of T) timers.push(setTimeout(fn, t));
-  function tick(now){ bar.style.width = Math.min(100,(now-startAt)/DURATION*100)+"%";
-    if (now-startAt < DURATION) raf=requestAnimationFrame(tick); }
-  raf=requestAnimationFrame(tick);
-}
-function stop(){ timers.forEach(clearTimeout); timers=[]; cancelAnimationFrame(raf); }
-replay.addEventListener("click", play);
-
-// Start once the hero image is ready (so the first frame is never blank).
-if (imgs["hero-system"].complete) play();
-else imgs["hero-system"].addEventListener("load", play, {once:true});
-</script>
-</body>
+<body><main class="wrap">
+  <div class="hold">Internal development preview — not launch material</div>
+  <h1>EdgeHub video storyboard is on hold</h1>
+  <p class="dim">The previous trailer advertised a paid Pro offering before the store, fulfilment, package and release gates existed. It has been replaced with this factual storyboard until the immutable candidate passes.</p>
+  <div class="frame"><img src="assets/generated/hero-system.png" alt="Development capture of EdgeHub system widgets"></div>
+  <section class="grid">
+    <article class="card"><h2>Scene 1 — Hub</h2><p>Show a real-device portrait layout and identify it as a development build.</p></article>
+    <article class="card"><h2>Scene 2 — Orientation</h2><p>Show the same exact candidate reflowing in landscape after the display gate passes.</p></article>
+    <article class="card"><h2>Scene 3 — Manager</h2><p>Show reorder and appearance changes reaching the running Hub over the local socket.</p></article>
+    <article class="card"><h2>Scene 4 — Evidence</h2><p>End with the actual tag, supported packages and measured results—never planned numbers.</p></article>
+  </section>
+  <p class="dim">Current source counts: 30 widgets, 19 presets, 29 themes, 29 accents, and 10 animated backgrounds plus Gradient. No CPU/RSS, auto-update, store, refund or broad-platform claim is approved.</p>
+  <p><a href="index.html">Current status page</a> · <a href="../BETA_PLAN.md">Release gate</a></p>
+</main></body>
 </html>

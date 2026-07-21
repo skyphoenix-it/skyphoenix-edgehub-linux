@@ -4,7 +4,10 @@ name: Docs
 # Everything else deliberately ignores docs (see ci.yml paths-ignore).
 on:
   push:
-    branches: [master]
+    branches: [main, master, 'v1.0-alpha']
+    paths: ['docs/**', '**.md']
+  pull_request:
+    branches: [main, master, 'v1.0-alpha']
     paths: ['docs/**', '**.md']
   workflow_dispatch:
 

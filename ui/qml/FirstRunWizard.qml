@@ -529,7 +529,7 @@ Item {
             console.log("Wizard complete, navigating to dashboard");
             var sv = wizard.StackView.view;
             if (sv)
-                sv.replace("qrc:/qml/Dashboard.qml");
+                sv.replace(Qt.resolvedUrl("Dashboard.qml").toString());
             else
                 wizard.finishError = "Setup saved, but couldn't open the dashboard. Please restart the hub.";
         } else {

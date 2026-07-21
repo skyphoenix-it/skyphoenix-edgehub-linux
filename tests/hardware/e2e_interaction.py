@@ -2,7 +2,7 @@
 """Real synthetic-touch interaction tests: compact widget controls + page swipe.
 
 Coordinates are for the fixed layout seeded in `run()` (Focus top, Hydration
-second, Tasks third) at the Edge's native 720x2560 — grab-measured 2026-07-16
+second, Tasks third) at the Edge's native 720x2560 — grab-measured 2026-07-20
 against the current build (the harness's IPC landing probe re-verifies two of
 them before any injection, so silent drift can no longer spray blind taps).
 
@@ -15,14 +15,22 @@ aborts injection for good.
 """
 import os
 import uinput_touch as u
-from e2e_harness import doc, page, tile, InjectionRefused, UserActivityAbort
+from e2e_harness import (doc, page, tile, InjectionRefused, UserActivityAbort,
+                         PROBE_FOCUS_START, PROBE_HYDRATION_PLUS,
+                         PAGE_SWIPE_NEXT, PAGE_SWIPE_PREVIOUS)
+
+
+# First task-row checkbox in the same fixed three-tile layout. Unlike the two
+# landing coordinates it is not a safety primitive, but keeping it named makes
+# the real-panel calibration explicit when the per-size layout changes.
+TASK_FIRST_CHECKBOX = (610, 1750)
 
 
 def _seed_controls(h):
     h.set_state(doc([page("Ctl", [
-        tile("focus-1", "focus", 1, 1),
-        tile("hydration-1", "hydration", 1, 1),
-        tile("tasks-1", "tasks", 1, 2),
+        tile("focus-1", "focus", "1x1"),
+        tile("hydration-1", "hydration", "1x1"),
+        tile("tasks-1", "tasks", "1x2"),
     ])], settings={
         "focus-1": {"preset": "classic", "phase": "work", "running": False, "endEpoch": 0,
                     "pausedRemaining": 1500, "doneToday": 0, "day": h.today, "points": 0,
@@ -62,27 +70,29 @@ def _run_gestures(h):
             "running=%s count=%s" % (st["focus-1"].get("running"), st["hydration-1"].get("count")))
 
     # Focus Start -> running true; tap again -> paused (running false)
-    h.tap(316, 787)
+    h.tap(*PROBE_FOCUS_START)
     st = h.settings()
     h.check("focus_start_touch", st["focus-1"].get("running") is True, "running=%s" % st["focus-1"].get("running"))
-    h.tap(316, 787)
+    h.tap(*PROBE_FOCUS_START)
     st = h.settings()
     h.check("focus_pause_touch", st["focus-1"].get("running") is False, "running=%s" % st["focus-1"].get("running"))
 
     # Hydration +1 x2 -> 2, then -1 -> 1
-    h.tap(394, 1281); h.tap(394, 1281)
+    h.tap(*PROBE_HYDRATION_PLUS); h.tap(*PROBE_HYDRATION_PLUS)
     st = h.settings()
     h.check("hydration_plus_touch", st["hydration-1"].get("count") == 2, "count=%s" % st["hydration-1"].get("count"))
-    h.tap(323, 1281)
+    # The QML row is vertical in the rotated output grab: minus is one control
+    # diameter above +, at the same x.
+    h.tap(PROBE_HYDRATION_PLUS[0], PROBE_HYDRATION_PLUS[1] - 66)
     st = h.settings()
     h.check("hydration_minus_touch", st["hydration-1"].get("count") == 1, "count=%s" % st["hydration-1"].get("count"))
 
     # Task row toggle -> done true, tap again -> false
-    h.tap(95, 1728)
+    h.tap(*TASK_FIRST_CHECKBOX)
     st = h.settings()
     h.check("task_toggle_on_touch", st["tasks-1"]["items"][0]["done"] is True,
             "done=%s" % st["tasks-1"]["items"][0]["done"])
-    h.tap(95, 1728)
+    h.tap(*TASK_FIRST_CHECKBOX)
     st = h.settings()
     h.check("task_toggle_off_touch", st["tasks-1"]["items"][0]["done"] is False,
             "done=%s" % st["tasks-1"]["items"][0]["done"])
@@ -106,7 +116,7 @@ def _run_gestures(h):
         h.check("swipe_grab_%d" % i, h.grab(p), p)
         grabs.append(p)
         if i < 2:
-            h.swipe(600, 1280, 120, 1280)   # next page (right-to-left)
+            h.swipe(*PAGE_SWIPE_NEXT)       # QML right-to-left on rotated output
 
     def _avg(path):
         from PIL import Image
@@ -127,7 +137,7 @@ def _run_gestures(h):
     h.check("swipe_p1_p2_differ", d12 > 25, "pages 2->3 colour-distance %.0f" % d12)
 
     # swipe back to the first page
-    h.swipe(120, 1280, 600, 1280); h.swipe(120, 1280, 600, 1280)
+    h.swipe(*PAGE_SWIPE_PREVIOUS); h.swipe(*PAGE_SWIPE_PREVIOUS)
     back = os.path.join(h.work, "swipe_back.png")
     h.grab(back)
     db = _dist(grabs[0], back)

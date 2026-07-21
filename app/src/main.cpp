@@ -18,6 +18,10 @@
 #include <QTextStream>
 #include <QQuickStyle>
 #include <QPalette>
+#include <QDBusConnection>
+#include <QDBusInterface>
+#include <QDBusPendingCallWatcher>
+#include <QDBusPendingReply>
 
 #include <cstdio>
 
@@ -39,6 +43,7 @@
 #include "autostart.h"
 #include "display_match.h"
 #include "config_bridge.h"
+#include "network_access_policy.h"
 #include "license_bridge.h"
 #include "metrics_worker.h"
 
@@ -99,6 +104,75 @@ static QPalette darkPalette() {
     pal.setColor(QPalette::Disabled, QPalette::ButtonText, muted);
     pal.setColor(QPalette::Disabled, QPalette::Highlight, alt);
     return pal;
+}
+
+static uint g_displayNotificationId = 0;
+static quint64 g_displayNotificationGeneration = 0;
+
+static void closeDesktopNotificationId(uint id) {
+    if (id == 0) return;
+    QDBusInterface notifications(QStringLiteral("org.freedesktop.Notifications"),
+                                 QStringLiteral("/org/freedesktop/Notifications"),
+                                 QStringLiteral("org.freedesktop.Notifications"),
+                                 QDBusConnection::sessionBus());
+    if (notifications.isValid())
+        notifications.asyncCall(QStringLiteral("CloseNotification"), id);
+}
+
+// Send a real desktop notification, not a popup inside the Hub window.  The Hub
+// is deliberately hidden before this runs so a compositor cannot relocate it
+// onto the primary display; org.freedesktop.Notifications lets the desktop show
+// the guidance independently on its normal notification surface.  The returned
+// daemon id is retained so reconnect can close stale recovery guidance.
+static void sendDisplayDisconnectNotification(const DisplayDisconnectNotice& notice) {
+    qInfo() << "Hub: desktop disconnect notice:" << notice.summary << notice.body;
+    QDBusInterface notifications(QStringLiteral("org.freedesktop.Notifications"),
+                                 QStringLiteral("/org/freedesktop/Notifications"),
+                                 QStringLiteral("org.freedesktop.Notifications"),
+                                 QDBusConnection::sessionBus());
+    if (!notifications.isValid()) {
+        qWarning() << "Hub: desktop notification service unavailable; display "
+                      "disconnect was still handled fail-closed";
+        return;
+    }
+    QVariantMap hints;
+    hints.insert(QStringLiteral("desktop-entry"), QStringLiteral("xeneon-edge-hub"));
+    hints.insert(QStringLiteral("urgency"), QVariant::fromValue<uchar>(1));
+    const QList<QVariant> arguments{
+        QStringLiteral("Xeneon Edge"),
+        QVariant::fromValue<uint>(g_displayNotificationId),
+        QStringLiteral("xeneon-edge-hub"),
+        notice.summary,
+        notice.body,
+        QStringList{},
+        hints,
+        10000,
+    };
+    const quint64 generation = ++g_displayNotificationGeneration;
+    auto* watcher = new QDBusPendingCallWatcher(
+        notifications.asyncCallWithArgumentList(QStringLiteral("Notify"), arguments),
+        QCoreApplication::instance());
+    QObject::connect(watcher, &QDBusPendingCallWatcher::finished, watcher,
+                     [watcher, generation]() {
+        const QDBusPendingReply<uint> reply = *watcher;
+        if (reply.isError()) {
+            qWarning() << "Hub: desktop disconnect notification failed:"
+                       << reply.error().message();
+        } else if (generation == g_displayNotificationGeneration) {
+            g_displayNotificationId = reply.value();
+        } else {
+            // The target reconnected before the asynchronous Notify reply.
+            closeDesktopNotificationId(reply.value());
+        }
+        watcher->deleteLater();
+    });
+}
+
+static void closeDisplayDisconnectNotification() {
+    ++g_displayNotificationGeneration;
+    const uint id = g_displayNotificationId;
+    g_displayNotificationId = 0;
+    closeDesktopNotificationId(id);
 }
 
 // --- Display helper ---
@@ -175,6 +249,8 @@ static QScreen* findTargetScreenStrict(ConfigHandle* config) {
     XeneonString targetHash(xeneon_config_get_target_edid_hash(config));
     XeneonString targetModel(xeneon_config_get_target_model(config));
     XeneonString targetConnector(xeneon_config_get_target_connector(config));
+    const bool configuredTarget = hasConfiguredTargetIdentity(
+        targetHash.qstring(), targetModel.qstring(), targetConnector.qstring());
 
     auto screens = QGuiApplication::screens();
 
@@ -215,7 +291,15 @@ static QScreen* findTargetScreenStrict(ConfigHandle* config) {
         }
     }
 
-    // Fallback: find XENEON model substring
+    // A persisted identity is an explicit user choice. If none of its resilient
+    // fields matched, that display is absent; do not reinterpret an unrelated
+    // Xeneon-shaped screen as the target. The caller will keep the Hub hidden.
+    if (configuredTarget) {
+        qWarning() << "Configured target display is not attached";
+        return nullptr;
+    }
+
+    // No explicit target yet: preserve first-run auto-detection.
     for (auto* s : screens) {
         if (s->model().contains("XENEON", Qt::CaseInsensitive)) {
             qInfo() << "Target found by XENEON model substring:" << s->name();
@@ -236,19 +320,24 @@ static QScreen* findTargetScreenStrict(ConfigHandle* config) {
     return nullptr;   // no positive match — caller decides on the fallback
 }
 
-// Boot-time placement helper: the positive identity match, else the primary screen
-// as a last resort so the hub still shows somewhere on first run / Edge-absent boot.
-static QScreen* findTargetScreen(ConfigHandle* config) {
-    QScreen* s = findTargetScreenStrict(config);
-    if (s)
-        return s;
-    QScreen* primary = QGuiApplication::primaryScreen();
-    qWarning() << "No Xeneon Edge detected, falling back to primary screen:"
-               << (primary ? primary->name() : QStringLiteral("<none>"));
-    return primary;
-}
-
 int main(int argc, char *argv[]) {
+    // Answer identity queries before touching Qt's GUI stack. Package tools and
+    // the hardware E2E freshness guard run this in headless contexts; creating a
+    // QGuiApplication first makes Qt abort when neither a compositor nor an X
+    // server is available, even though printing a version needs neither.
+    for (int vi = 1; vi < argc; ++vi) {
+        const QByteArray va(argv[vi]);
+        if (va == "--version" || va == "-v") {
+#ifdef XENEON_VERSION
+            std::printf("Xeneon Edge Linux Hub %s\n", XENEON_VERSION);
+#else
+            std::printf("Xeneon Edge Linux Hub 0.1.0\n");
+#endif
+            std::fflush(stdout);
+            return 0;
+        }
+    }
+
     // Allow QML XMLHttpRequest to read local file:// paths — the KPI widget's
     // "local file" source (a bare number or JSON on disk) relies on it. This is
     // a LOCAL read only; it opens no network path (remote egress is separately
@@ -281,9 +370,10 @@ int main(int argc, char *argv[]) {
     QGuiApplication::setPalette(darkPalette());
 
     // QA automation hooks (screenshot capture + auto-expand + single-instance
-    // bypass) are compiled in ONLY when XENEON_QA_HOOKS is defined (CI / tests /
-    // marketing builds). In production packages these stay empty/false, so the
-    // env vars are inert — no screenshot/automation surface ships.
+    // bypass + simulated target removal) are compiled in ONLY when
+    // XENEON_QA_HOOKS is defined (CI / tests / marketing builds). In production
+    // packages these stay empty/false, so the env vars are inert — no
+    // screenshot/automation surface ships.
 #ifdef XENEON_QA_HOOKS
     const bool    qaGrabMode = qEnvironmentVariableIsSet("XENEON_GRAB");
     const QString qaGrabPath = qEnvironmentVariable("XENEON_GRAB");
@@ -298,27 +388,6 @@ int main(int argc, char *argv[]) {
     const QString qaExpand;
     const int     qaAddPages = 0;
 #endif
-
-    // --version must answer BEFORE the single-instance guard below. It used to
-    // sit after it, so asking a version while a hub was running printed
-    // "Another Xeneon Edge Hub is already running - exiting" and exited 0 — an
-    // identity question answered with an unrelated status. That breaks
-    // tests/hardware/e2e_harness.assert_binaries_current(), which refuses to
-    // test a binary it cannot identify, on the developer's own machine where a
-    // hub is normally up. Asking a binary what it is must never depend on
-    // whether another copy is running.
-    for (int vi = 1; vi < argc; ++vi) {
-        const QByteArray va(argv[vi]);
-        if (va == "--version" || va == "-v") {
-#ifdef XENEON_VERSION
-            std::printf("Xeneon Edge Linux Hub %s\n", XENEON_VERSION);
-#else
-            std::printf("Xeneon Edge Linux Hub 0.1.0\n");
-#endif
-            std::fflush(stdout);
-            return 0;
-        }
-    }
 
     // Single-instance guard — two hubs racing the shared config.toml corrupt it.
     // Skipped in grab mode so headless QA captures run alongside a real instance.
@@ -427,14 +496,31 @@ int main(int argc, char *argv[]) {
         return QJsonDocument(arr).toJson(QJsonDocument::Compact);
     };
 
-    // Find target display for fullscreen placement
-    QScreen* targetScreen = findTargetScreen(config);
+    // Find target display for fullscreen placement. A saved identity changes
+    // failure semantics: missing configured targets stay hidden, while a fresh
+    // unconfigured install retains its primary-screen first-run fallback.
+    XeneonString targetHash(xeneon_config_get_target_edid_hash(config));
+    XeneonString targetConnector(xeneon_config_get_target_connector(config));
+    XeneonString targetModel(xeneon_config_get_target_model(config));
+    const bool configuredTarget = hasConfiguredTargetIdentity(
+        targetHash.qstring(), targetModel.qstring(), targetConnector.qstring());
+    QScreen* targetScreen = findTargetScreenStrict(config);
+    const StartupDisplayPlacement startupPlacement = decideStartupDisplayPlacement(
+        configuredTarget, targetScreen != nullptr, parser.isSet(resetWizardOpt));
+    // An explicit --reset-wizard is the safe recovery path when the saved target
+    // is absent: show the wizard windowed on primary instead of trapping it in a
+    // hidden window. Ordinary missing-target startups still remain hidden.
+    const bool windowedMode = parser.isSet(windowedOpt)
+                              || startupPlacement == StartupDisplayPlacement::PrimaryRecovery;
 
     // Collect system metrics for initial display
     QJsonObject metricsJson = metricsToJson();
 
-    // Create QML engine
+    // Create QML engine. The factory must outlive the engine (Qt does not take
+    // ownership); declaration order gives us engine-first destruction.
+    XeneonNetworkAccessManagerFactory networkAccessFactory;
     QQmlApplicationEngine engine;
+    engine.setNetworkAccessManagerFactory(&networkAccessFactory);
 
     // Expose data to QML
     engine.rootContext()->setContextProperty("_isFirstRun", isFirstRun);
@@ -442,7 +528,7 @@ int main(int argc, char *argv[]) {
     engine.rootContext()->setContextProperty("_metricsJson", QJsonDocument(metricsJson).toJson(QJsonDocument::Compact));
     engine.rootContext()->setContextProperty("_safeMode", parser.isSet(safeModeOpt));
     engine.rootContext()->setContextProperty("_startInDiagnostics", parser.isSet(diagOpt));
-    engine.rootContext()->setContextProperty("_windowedMode", parser.isSet(windowedOpt));
+    engine.rootContext()->setContextProperty("_windowedMode", windowedMode);
     // QA affordance: XENEON_EXPAND=<type> auto-opens that widget's expanded
     // config view on the first matching tile (mirrors the Manager's XENEON_CFG).
     engine.rootContext()->setContextProperty("_expandType", qaExpand);
@@ -457,9 +543,6 @@ int main(int argc, char *argv[]) {
     engine.rootContext()->setContextProperty("_themeMode", themeMode.qstring());
 
     // Expose target display info
-    XeneonString targetHash(xeneon_config_get_target_edid_hash(config));
-    XeneonString targetConnector(xeneon_config_get_target_connector(config));
-    XeneonString targetModel(xeneon_config_get_target_model(config));
     engine.rootContext()->setContextProperty("_targetEdidHash", targetHash.qstring());
     engine.rootContext()->setContextProperty("_targetConnector", targetConnector.qstring());
     engine.rootContext()->setContextProperty("_targetModel", targetModel.qstring());
@@ -567,9 +650,31 @@ int main(int argc, char *argv[]) {
     // C++ positions it on the target screen FIRST, then shows it.
     // This is critical for Wayland where the compositor controls placement.
     QWindow* mainWindow = qobject_cast<QWindow*>(engine.rootObjects().first());
-    // Prefer the detected Edge; otherwise the primary. Either may be null on a
-    // headless/no-display host, so guard before dereferencing.
-    QScreen* placeScreen = targetScreen ? targetScreen : QGuiApplication::primaryScreen();
+    QScreen* placeScreen = nullptr;
+    if (startupPlacement == StartupDisplayPlacement::MatchedTarget) {
+        placeScreen = targetScreen;
+    } else if (startupPlacement == StartupDisplayPlacement::PrimaryFallback
+               || startupPlacement == StartupDisplayPlacement::PrimaryRecovery) {
+        placeScreen = QGuiApplication::primaryScreen();
+        if (startupPlacement == StartupDisplayPlacement::PrimaryRecovery) {
+            qWarning() << "Configured target is absent; --reset-wizard requested, showing "
+                          "windowed recovery on primary screen:"
+                       << (placeScreen ? placeScreen->name() : QStringLiteral("<none>"));
+        } else {
+            qWarning() << "No target display configured or auto-detected; using primary "
+                          "screen for first-run setup:"
+                       << (placeScreen ? placeScreen->name() : QStringLiteral("<none>"));
+        }
+    } else {
+        XeneonString fallback(xeneon_config_get_fallback_behavior(config));
+        qWarning() << "Hub: configured target display is not attached; keeping window "
+                      "hidden and waiting for reconnect (fallback:"
+                   << fallback.qstring() << ")";
+    }
+
+    // Either screen may be null on a headless/no-display host. In the explicit
+    // missing-target case placeScreen deliberately remains null, so the QML
+    // window retains its initial Hidden visibility.
     if (mainWindow && placeScreen) {
         QRect geo = placeScreen->geometry();
         qInfo() << "Placing window on" << placeScreen->name()
@@ -582,7 +687,7 @@ int main(int argc, char *argv[]) {
         mainWindow->setPosition(geo.x(), geo.y());
         mainWindow->resize(geo.width(), geo.height());
 
-        if (!parser.isSet(windowedOpt)) {
+        if (!windowedMode) {
             // Now safe to go fullscreen — we're on the right screen
             mainWindow->showFullScreen();
             mainWindow->setVisible(true);
@@ -692,14 +797,13 @@ int main(int argc, char *argv[]) {
     };
 
     // S10: honor the display disconnect/reconnect keys on live hotplug.
-    //  - notify_disconnect → surface a "display disconnected" notice when the
-    //    TARGET screen vanishes.
-    //  - fallback_behavior "hide" → blank/hide the hub window on target loss.
-    //  - reconnect          → re-run the target match and migrate the window back
-    //    onto the Edge when it returns.
+    //  - every TARGET loss hides immediately, regardless of fallback policy, so
+    //    a compositor cannot relocate the fullscreen window onto primary.
+    //  - notify_disconnect / fallback "notify" surface a disconnect signal.
+    //  - fallback "ask" additionally requests display-selection guidance.
+    //  - reconnect re-runs the target match and migrates back when it returns.
     // `targetScreen` is tracked live so we know which physical screen is ours, and
-    // `targetHidden` remembers a fallback-hide so we can un-hide on reconnect.
-    const bool windowedMode = parser.isSet(windowedOpt);
+    // `targetHidden` remembers the safety hide so we can un-hide on reconnect.
     bool targetHidden = false;
     QObject::connect(&app, &QGuiApplication::screenAdded, &engine,
                      [&engine, config, &targetScreen, &targetHidden, &mainWindow,
@@ -722,34 +826,71 @@ int main(int argc, char *argv[]) {
             else              mainWindow->showFullScreen();
             mainWindow->setVisible(true);
             targetHidden = false;
+            closeDisplayDisconnectNotification();
+            for (auto* obj : engine.rootObjects()) {
+                obj->setProperty("displayDisconnected", QString());
+                obj->setProperty("displaySelectionRequested", QString());
+            }
         }
         for (auto* obj : engine.rootObjects())
             obj->setProperty("screenAddedChanged", screen->name());
         pushScreens();
     });
-    QObject::connect(&app, &QGuiApplication::screenRemoved, &engine,
-                     [&engine, config, &targetScreen, &targetHidden, &mainWindow,
-                      pushScreens](QScreen* screen) {
+    auto handleScreenRemoved = [&engine, config, &targetScreen, &targetHidden,
+                                &mainWindow, pushScreens](QScreen* screen) {
         qInfo() << "Screen removed:" << screen->name();
         const bool wasTarget = (screen == targetScreen);
         XeneonString fb(xeneon_config_get_fallback_behavior(config));
         const bool notifyDisconnect = xeneon_config_get_notify_disconnect(config) == 1;
-        const DisconnectDecision d = decideOnScreenRemoved(wasTarget, fb.qstring(), notifyDisconnect);
+        const TargetRemovalSafetyDecision d = decideTargetRemovalSafety(
+            wasTarget, fb.qstring(), notifyDisconnect);
+        if (d.hideWindow && mainWindow) {
+            // Hide before notifications/list refreshes: Qt/compositors may already
+            // be reassigning windows from the removed output to primary.
+            mainWindow->setVisible(false);
+            targetHidden = true;
+            qInfo() << "Hub: target display removed; window hidden before compositor "
+                       "fallback (policy:"
+                    << fb.qstring() << ")";
+        }
         if (d.notify) {
             qWarning() << "Hub: target display disconnected:" << screen->name();
+            sendDisplayDisconnectNotification(
+                displayDisconnectNotice(screen->name(), d.requestSelection));
             for (auto* obj : engine.rootObjects())
                 obj->setProperty("displayDisconnected", screen->name());
         }
-        if (d.hideWindow && mainWindow) {
-            qInfo() << "Hub: hiding window (fallback=hide) after target loss";
-            mainWindow->setVisible(false);
-            targetHidden = true;
+        if (d.requestSelection) {
+            qWarning() << "Hub: fallback=ask; display selection is required in the Manager";
+            for (auto* obj : engine.rootObjects())
+                obj->setProperty("displaySelectionRequested", screen->name());
         }
         if (wasTarget) targetScreen = nullptr;   // target gone until it returns
         for (auto* obj : engine.rootObjects())
             obj->setProperty("screenRemovedChanged", screen->name());
         pushScreens();
-    });
+    };
+    QObject::connect(&app, &QGuiApplication::screenRemoved, &engine, handleScreenRemoved);
+#ifdef XENEON_QA_HOOKS
+    // Offscreen Qt exposes only one immutable virtual QScreen, so the smoke suite
+    // cannot physically unplug it. This QA-only seam invokes the EXACT production
+    // handler against the current window screen and reports the resulting visibility.
+    // It is compiled out of release packages and makes no hardware-coverage claim.
+    if (qEnvironmentVariableIsSet("XENEON_SIMULATE_TARGET_REMOVAL")) {
+        QTimer::singleShot(350, &engine,
+                           [&targetScreen, &mainWindow, handleScreenRemoved]() {
+            QScreen* simulatedTarget = mainWindow ? mainWindow->screen() : nullptr;
+            if (!simulatedTarget) {
+                qWarning() << "Hub QA target-removal simulation skipped: no window screen";
+                return;
+            }
+            targetScreen = simulatedTarget;
+            handleScreenRemoved(simulatedTarget);
+            qInfo() << "Hub QA simulated target removal; visible:"
+                    << (mainWindow && mainWindow->isVisible());
+        });
+    }
+#endif
     // A primary-screen swap (e.g. the Edge becomes/stops being primary) changes the
     // isPrimary flags without an add/remove, so refresh on that too.
     QObject::connect(&app, &QGuiApplication::primaryScreenChanged, &engine,

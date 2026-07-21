@@ -222,14 +222,27 @@ private slots:
         QCOMPARE(s.artUrl, QString());
     }
 
-    // Remote art is NOT stat-ed — it is passed straight through (Spotify's case).
-    void artUrlRemoteIsPassedThrough() {
+    // Remote artwork would be fetched by QML Image outside NetHub, bypassing the
+    // global offline/allowlist policy. Suppress it rather than creating a hidden
+    // egress path controlled by an arbitrary player on the session bus.
+    void artUrlRemoteIsSuppressed() {
         for (const QString& url : {QStringLiteral("https://i.scdn.co/image/abc"),
                                    QStringLiteral("http://example.org/a.png")}) {
             QVariantMap meta{{"xesam:title", "Song"}, {"mpris:artUrl", url}};
             const TrackState s = mpris::resolveTrack(propsWith("Playing", meta),
                                                      "org.mpris.MediaPlayer2.x");
-            QCOMPARE(s.artUrl, url);
+            QCOMPARE(s.artUrl, QString());
+        }
+    }
+
+    void artUrlUnknownAndDataSchemesAreSuppressed() {
+        for (const QString& url : {QStringLiteral("ftp://example.org/a.png"),
+                                   QStringLiteral("data:image/png;base64,AAAA"),
+                                   QStringLiteral("/tmp/untrusted-bare-path.png")}) {
+            QVariantMap meta{{"xesam:title", "Song"}, {"mpris:artUrl", url}};
+            QCOMPARE(mpris::resolveTrack(propsWith("Playing", meta),
+                                         "org.mpris.MediaPlayer2.x").artUrl,
+                     QString());
         }
     }
 
@@ -431,7 +444,8 @@ private slots:
         QCOMPARE(bridge.title(), QString("Song"));
         QCOMPARE(bridge.artist(), QString("A, B"));
         QCOMPARE(bridge.album(), QString("Alb"));
-        QCOMPARE(bridge.artUrl(), QString("https://example.org/a.png"));
+        QVERIFY2(bridge.artUrl().isEmpty(),
+                 "remote artwork is suppressed before QML sees it");
         QCOMPARE(bridge.status(), QString("Paused"));
         QVERIFY(!bridge.playing());        // Paused is not Playing
         // playerName is derived from the service, which is empty with no bus —

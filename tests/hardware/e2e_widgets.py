@@ -16,20 +16,36 @@ import os
 import re
 from e2e_harness import doc, page, tile
 
-# Every widget type the dashboard ships. MUST stay in step with
-# ui/qml/WidgetCatalog.qml — test_catalog_drift() below fails the run if it
-# doesn't, because a type missing here is simply never exercised on the panel
-# and the omission is otherwise silent (that is how httpjson/kpi went untested
-# on real hardware after E1 added them).
-WIDGETS = [
-    "cpu", "gpu", "ram", "net", "disk", "sensors", "clock", "analog", "moon",
-    "focus", "tasks", "rightnow", "notes", "habit", "hydration", "break",
-    "media", "calendar", "weather", "countdown", "eod", "quote",
-    "httpjson", "kpi",
-]
-
 _REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 _CATALOG = os.path.join(_REPO, "ui", "qml", "WidgetCatalog.qml")
+
+
+def _catalog_specs():
+    """Return ``type -> {sizes, default}`` from the shipped catalog.
+
+    Lifecycle coverage follows the product registry instead of a duplicated
+    list.  A second, deliberately simpler type parser below is compared with
+    this richer parser so a catalog formatting change cannot silently shrink
+    the matrix.
+    """
+    with open(_CATALOG, "r", errors="replace") as f:
+        source = f.read()
+    entries = re.findall(
+        r'\{\s*type:\s*"([a-z0-9]+)"[\s\S]*?'
+        r'sizes:\s*\[([^]]*)\][\s\S]*?dflt:\s*"([^"]+)"\s*\}',
+        source,
+    )
+    specs = {}
+    for wtype, raw_sizes, default in entries:
+        sizes = re.findall(r'"([^"]+)"', raw_sizes)
+        if not sizes or default not in sizes or wtype in specs:
+            raise ValueError("invalid catalog entry for %s" % wtype)
+        specs[wtype] = {"sizes": sizes, "default": default}
+    return specs
+
+
+WIDGET_SPECS = _catalog_specs()
+WIDGETS = list(WIDGET_SPECS)
 
 
 def _catalog_types():
@@ -43,8 +59,8 @@ def test_catalog_drift(h):
     try:
         cat = _catalog_types()
         h.check("catalog_parsed", bool(cat), "%d types in WidgetCatalog.qml" % len(cat))
-        missing = sorted(cat - set(WIDGETS))
-        extra = sorted(set(WIDGETS) - cat)
+        missing = sorted(cat - set(WIDGET_SPECS))
+        extra = sorted(set(WIDGET_SPECS) - cat)
         h.check("catalog_no_untested_types", not missing,
                 "not exercised on hardware: %r" % missing if missing else "all covered")
         h.check("catalog_no_stale_types", not extra,
@@ -128,19 +144,18 @@ def run(h):
         except Exception as e:
             h.check("no_error_" + wtype, False, "exc: %r" % e)
 
-        # ── RESIZE to 2x2 (some widgets clamp width; require h==2) ────────
+        # ── RESIZE through a size this widget actually declares ──────────
         try:
-            d2 = doc([page("P1", [tile(tid, wtype, w=2, h=2)])], settings=seed)
+            spec = WIDGET_SPECS[wtype]
+            target = next(size for size in reversed(spec["sizes"])
+                          if size != spec["default"])
+            d2 = doc([page("P1", [tile(tid, wtype, target)])], settings=seed)
             h.set_state(d2)
             st = h.get_state()
             t0 = st.get("pages", [{}])[0].get("tiles", [{}])[0]
-            w, hh = t0.get("w"), t0.get("h")
-            if w == 2 and hh == 2:
-                h.check("resize_" + wtype, True, "w=2 h=2")
-            else:
-                # Width clamp is acceptable; height must have grown to 2.
-                h.check("resize_" + wtype, hh == 2,
-                        "clamped w=%r h=%r" % (w, hh))
+            got = t0.get("size")
+            h.check("resize_" + wtype, got == target,
+                    "asked size=%s, hub reports size=%r" % (target, got))
         except Exception as e:
             h.check("resize_" + wtype, False, "exc: %r" % e)
 

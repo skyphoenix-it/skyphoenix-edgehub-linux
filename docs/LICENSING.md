@@ -17,19 +17,21 @@ against a public key compiled into the app (`core/src/license.rs`,
 - **fails soft**: any bad key — empty, garbage, forged, expired, or signed for a
   future format — resolves to the free tier. It never panics and never blocks the
   app.
-- is **not a secret**: the key is safe to store in plain `config.toml`
-  (`license_key = "XE1…"`). It grants nothing on its own; the entitlement is
-  recomputed from the signature every time.
+- is a **sensitive bearer entitlement**: possession of a valid key unlocks Pro,
+  and its signed payload contains the holder label and licence id. It is stored
+  in owner-only `config.toml`, omitted from logs/diagnostics, and should not be
+  posted publicly. The entitlement is recomputed from its signature every time.
 
 The tier flows: config → Rust verifier → `LicenseBridge` (hub) /
 `ManagerBackend` (Manager) → QML gates on `license.isPro`. A key pasted in the
 Manager while the hub is connected is pushed over the control socket so the hub
 persists it (single-writer) and re-gates **live, without a restart**.
 
-## One-time setup: arm the licensing (yours to do, like GPG signing)
+## Issuer setup and release attestation
 
-The shipped `ISSUER_PUBLIC_KEY` is an **all-zero placeholder**, so until you arm
-it *every key verifies as free* — the mechanism is complete but inert.
+The shipped `ISSUER_PUBLIC_KEY` is armed with the production Ed25519 public key.
+The private seed remains outside the repository; anyone with that seed can mint
+Pro keys.
 
 1. Generate the issuer keypair **once, ever**:
 
@@ -37,11 +39,18 @@ it *every key verifies as free* — the mechanism is complete but inert.
    cargo run -q --manifest-path tools/license-tool/Cargo.toml -- keygen
    ```
 
-2. Paste the printed **public key** into `core/src/license.rs`, replacing the
-   `ISSUER_PUBLIC_KEY` placeholder. Commit that (it's public).
+2. Paste the printed **public key** into `core/src/license.rs` as
+   `ISSUER_PUBLIC_KEY`. Commit that public half.
 
 3. Store the printed **private seed** in your password manager (next to the GPG
    signing key). **Never commit it.** Anyone with the seed can mint Pro keys.
+
+Before a release, provide a genuine owner-issued Pro key as
+`XENEON_TEST_LICENSE_KEY` on the release command. The strict gate immediately
+removes it from the general child environment, exposes it only to the Rust core
+attestations, and requires that it unlock Pro against the issuer public key
+embedded in the candidate. Missing, mismatched, or tampered keys block the
+release before artifacts are built or signed.
 
 ## Selling: Lemon Squeezy (or Gumroad)
 
@@ -63,14 +72,27 @@ product URL.
 
 ## Issuing a key
 
-Never put the seed on the command line (shell history, `ps`). Pass it by env or
-file:
+Never put the seed on the command line (shell history, `ps`). Prefer a protected
+file; the wrapper opens a private descriptor, clears seed variables, and feeds
+the issuer through stdin so Cargo and the tool never receive it in argv or their
+environment:
 
 ```
-export XENEON_LICENSE_SEED="$(cat ~/.secrets/xeneon-license-seed)"
-./scripts/mint-license.sh --to "Ada Lovelace <ada@example.com>" --id XE-0007
+XENEON_LICENSE_SEED_FILE=~/.secrets/xeneon-license-seed \
+  ./scripts/mint-license.sh --to "Ada Lovelace <ada@example.com>" --id XE-0007
 # → XE1.eyJ0aWVy…
 ```
+
+For direct CLI use, redirect stdin rather than using a seed argument:
+
+```
+cargo run -q --manifest-path tools/license-tool/Cargo.toml -- \
+  mint --seed-stdin --to "Ada Lovelace <ada@example.com>" --id XE-0007 \
+  < ~/.secrets/xeneon-license-seed
+```
+
+The former `--seed <value>` form is intentionally rejected because no CLI can
+hide a secret that its caller has already placed in the process argument list.
 
 Options: `--to <name/email>` and `--id <id>` are required; `--tier` defaults to
 `pro`; `--expires` defaults to `never` (a one-time purchase shouldn't silently

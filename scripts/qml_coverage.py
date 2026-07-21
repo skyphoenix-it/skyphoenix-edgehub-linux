@@ -31,7 +31,10 @@ import os
 import re
 import sys
 
-THRESHOLD = 95.0
+# The beta freeze criterion is stricter than line coverage: every enumerated QML
+# behavior must retain an assertion-backed claim. This is a completeness matrix,
+# so accepting a known gap at release time would defeat its purpose.
+THRESHOLD = 100.0
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 

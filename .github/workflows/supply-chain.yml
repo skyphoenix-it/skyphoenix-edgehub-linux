@@ -6,11 +6,13 @@ name: Supply Chain
 # Kept out of ci.yml on purpose: these answer a compliance question ("can a
 # customer verify our claims"), not a correctness one, and the no-egress job is
 # a slow full build + several timed runs. Splitting it keeps the 10 CI jobs fast
-# and lets this run on tags for the release artifacts.
+# and lets the full evidence run on candidate tags. A separate published-release
+# event attaches the SBOM only after the target GitHub release actually exists.
 
 on:
   push:
-    branches: [master]
+    branches: [main, master, 'v1.0-alpha']
+    tags: ['v*']
     paths:
       - 'core/**'
       - 'app/**'
@@ -20,6 +22,8 @@ on:
       - '.github/workflows/supply-chain.yml'
   schedule:
     - cron: '43 5 * * 1'   # weekly: new RUSTSEC advisories arrive without pushes
+  release:
+    types: [published]
   workflow_dispatch:
 
 jobs:
@@ -68,7 +72,7 @@ jobs:
           path: dist/xeneon-core-sbom.cdx.json
 
       - name: Attach SBOM to the release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: github.event_name == 'release'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "${GITHUB_REF_NAME}" dist/xeneon-core-sbom.cdx.json --clobber

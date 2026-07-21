@@ -152,6 +152,19 @@ Item {
             return false
         }
 
+        function annulusDiffCount(a, b, cx, cy, rad, rinF, routF, tol, step) {
+            var rin = rad * rinF, rout = rad * routF, changed = 0
+            for (var y = Math.max(0, Math.floor(cy - rout)); y < Math.min(a.height, cy + rout); y += step)
+                for (var x = Math.max(0, Math.floor(cx - rout)); x < Math.min(a.width, cx + rout); x += step) {
+                    var dx = x - cx, dy = y - cy, r = Math.sqrt(dx * dx + dy * dy)
+                    if (r < rin || r > rout) continue
+                    if (G.colorDist("" + a.pixel(Math.floor(x), Math.floor(y)),
+                                    "" + b.pixel(Math.floor(x), Math.floor(y))) > tol)
+                        changed++
+                }
+            return changed
+        }
+
         function gridSig(img) {
             var a = []
             for (var y = 5; y < img.height; y += 10)
@@ -216,22 +229,26 @@ Item {
             verify(G.looksRendered(img), "face rendered non-blank")
         }
 
-        function test_analog_cf_seconds_data() {
-            return [ { tag: "on", v: true }, { tag: "off", v: false } ]
-        }
-        function test_analog_cf_seconds(row) {
+        function test_analog_cf_seconds() {
             analogPrep(600, 600, "compact")
             setC("showNumerals", false)
-            setC("showSeconds", row.v)
+            setC("showSeconds", true)
             wait(300)
-            var img = snap(wh, "anl_seconds_" + row.tag)
+            var on = snap(wh, "anl_seconds_on")
             var cv = findCanvas()
             var c = cv.mapToItem(wh, cv.width / 2, cv.height / 2)
             var rad = cv.width / 2 - 6
-            var has = annulusHasColor(img, c.x, c.y, rad, 0.30, 0.78, cSystem, 110, 2)
-            compare(cfg().showSeconds, row.v, "store updated")
-            if (row.v) verify(has, "second-hand accent present in face annulus")
-            else verify(!has, "no accent hand in annulus when seconds off")
+            verify(annulusHasColor(on, c.x, c.y, rad, 0.30, 0.88, cSystem, 45, 2),
+                   "second-hand accent present in face annulus")
+
+            setC("showSeconds", false)
+            wait(300)
+            var off = snap(wh, "anl_seconds_off")
+            compare(cfg().showSeconds, false, "store updated")
+            var changed = annulusDiffCount(on, off, c.x, c.y, rad,
+                                           0.30, 0.88, 24, 2)
+            verify(changed >= 8,
+                   "turning seconds off removes visible hand pixels (changed=" + changed + ")")
         }
 
         property var _numSigOff: null

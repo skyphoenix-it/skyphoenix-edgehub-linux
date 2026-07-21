@@ -17,37 +17,6 @@
 #include "xeneon_core.h"
 #include "xeneon_string.h"
 
-// --- Display hotplug (S10) disconnect/reconnect policy ---
-//
-// Pure decision helpers extracted from the hub's live QScreen hotplug handlers so
-// the branching can be unit-tested headlessly (the actual window migration needs a
-// live QScreen and is exercised by the smoke test instead). They translate the
-// three write-only config keys — reconnect / notify_disconnect / fallback_behavior
-// — into what the hub should do when the target Edge appears or disappears.
-
-struct DisconnectDecision {
-    bool hideWindow = false;  // blank/hide the hub window (fallback_behavior == "hide")
-    bool notify = false;      // surface a "display disconnected" notice to QML
-};
-
-// Decide how the hub reacts when a screen is removed.
-//   wasTarget        — the removed screen was the hub's current placement target.
-//   fallbackBehavior — "hide" | "notify" | "ask" (from config.display.fallback_behavior).
-//   notifyDisconnect — the notify-on-disconnect user preference.
-// Only a loss of the TARGET screen triggers any behavior; unrelated screens are ignored.
-inline DisconnectDecision decideOnScreenRemoved(bool wasTarget,
-                                                const QString& fallbackBehavior,
-                                                bool notifyDisconnect) {
-    DisconnectDecision d;
-    if (!wasTarget)
-        return d;
-    if (fallbackBehavior == QLatin1String("hide"))
-        d.hideWindow = true;
-    if (notifyDisconnect)
-        d.notify = true;
-    return d;
-}
-
 // Decide whether to migrate the hub window back onto a newly-added screen.
 //   reconnectEnabled — the reconnect-on-hotplug preference (config.startup).
 //   isTarget         — the added screen matches the hub's target (re-run of the match).
@@ -198,7 +167,8 @@ public:
         return s.qstring();
     }
 
-    // Full pretty-printed config JSON (for the Diagnostics → Config tab).
+    // Non-reversible config summary for Diagnostics. The Rust boundary omits
+    // bearer keys, identity, private URLs and all arbitrary widget/UI content.
     Q_INVOKABLE QString configJson() const {
         if (!m_config) return QString();
         XeneonString s(xeneon_config_to_json(m_config));

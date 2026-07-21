@@ -7,6 +7,8 @@ import QtTest
 // COVERS: fn:Manager.scopeDetail, fn:Manager.commitRename
 // COVERS: fn:Manager.applyPresetScreen, fn:Manager.confirmResetLayout, fn:Manager.hoverPreview
 // COVERS: fn:Manager.commitTheme, fn:Manager._themeDef
+// COVERS: fn:Manager._val, fn:Manager._lab, fn:Manager.catColor
+// COVERS: fn:Manager.refreshLicense, fn:Manager.onLicenseChanged, fn:Manager.reVerify
 //
 // manager/qml/Manager.qml (hosted with a STUBBED `backend`) —
 //   • the 5-tab StackLayout (Layout/Appearance/Images/Display/About) switches
@@ -40,6 +42,7 @@ Item {
         // a test can assert the dialog/card react to a valid vs invalid key
         // without a real ed25519 issuer.
         property string storedKey: ""
+        property bool malformedLicenseStatus: false
         property var proKeys: ({ "XE1.valid.pro": "Ada Lovelace" })
         function _statusFor(k) {
             if (proKeys[k] !== undefined)
@@ -47,7 +50,9 @@ Item {
             return JSON.stringify({ state: "unlicensed", tier: "free" })
         }
         function verifyLicenseCandidate(k) { return _statusFor(k) }
-        function licenseStatusJson() { return _statusFor(storedKey) }
+        function licenseStatusJson() {
+            return malformedLicenseStatus ? "{" : _statusFor(storedKey)
+        }
         function setLicenseKey(k) { storedKey = k; licenseChanged(); return true }
         function clearLicenseKey() { return setLicenseKey("") }
         property var imagesList: []
@@ -166,6 +171,7 @@ Item {
             _nav.currentIndex = 0
             backend.startHubCalled = false
             backend.stopHubCalled = false
+            backend.malformedLicenseStatus = false
         }
 
         // ── tabs ──────────────────────────────────────────────────────────────
@@ -175,6 +181,24 @@ Item {
                 _nav.currentIndex = i
                 compare(_nav.currentIndex, i, "switched to tab " + i)
             }
+        }
+
+        // MSegment accepts both compact scalar options and labelled objects. These
+        // helpers drive selection AND visible labels throughout the Manager, so pin
+        // both branches against a real instantiated segment.
+        function test_segment_option_value_and_label_helpers() {
+            _nav.currentIndex = 1
+            var seg = findPred(win, function (x) {
+                return x && x.options !== undefined
+                       && typeof x._val === "function" && typeof x._lab === "function"
+            })
+            verify(seg, "found an instantiated MSegment")
+            compare(seg._val({ label: "Alpha", value: "a" }), "a",
+                    "_val extracts an object option's value")
+            compare(seg._val("b"), "b", "_val leaves a scalar option unchanged")
+            compare(seg._lab({ label: "Alpha", value: "a" }), "Alpha",
+                    "_lab extracts an object option's label")
+            compare(seg._lab("Beta"), "Beta", "_lab uses a scalar option as its label")
         }
 
         // ── pageTiles ─────────────────────────────────────────────────────────
@@ -446,6 +470,37 @@ Item {
             dlg.close()
         }
 
+        // Opening a preview is passive UI, not consent to contact every network
+        // widget's endpoint. The dialog's explicit city search has a separate,
+        // narrowly allow-listed gate; every loaded preview receives the hard-off
+        // gate even though standalone widgets own an online fallback for tests.
+        function test_config_preview_is_offline_by_construction() {
+            _store.addTile(0, "weather")
+            var tileId = _store.pages()[0].tiles[0].id
+            var dlg = findPred(win, function (x) { return x && typeof x.openFor === "function" })
+            var previewGate = dlg ? dlg.previewNetHub : null
+            var geocodeGate = dlg ? dlg.geocodeNetHub : null
+            verify(dlg && previewGate && geocodeGate, "found dialog and both purpose-specific gates")
+            compare(previewGate.objectName, "managerPreviewNetHub")
+            compare(geocodeGate.objectName, "managerGeocodeNetHub")
+            compare(previewGate.offline, true, "preview egress is hard-disabled")
+            compare(geocodeGate.allowHosts.length, 1, "explicit lookup has one allowed host")
+            compare(geocodeGate.allowHosts[0], "geocoding-api.open-meteo.com")
+
+            dlg.openFor(tileId, "weather")
+            tryVerify(function () {
+                return dlg.previewItem !== null
+                       && dlg.previewItem.instanceId === tileId
+                       && dlg.previewItem.netHub !== undefined
+            }, 3000)
+            var preview = dlg.previewItem
+            compare(preview.netHub, previewGate, "the real Weather preview uses the offline gate")
+            wait(450) // cross Weather's initial 350 ms refresh debounce
+            compare(previewGate.requests, 0, "opening the preview sent no request")
+            verify(previewGate.blocked >= 1, "the attempted automatic poll was visibly refused")
+            dlg.close()
+        }
+
         // ── W2 scope vocabulary ───────────────────────────────────────────────
         // The pills are the answer to "which setting changes which behavior", so
         // they must be a CLOSED vocabulary: the audit's F3 was two words for one
@@ -568,6 +623,29 @@ Item {
                 return x && typeof x.text === "string" && x.text === txt })
         }
 
+        function test_refreshLicense_and_backend_signal_recompute_the_tier() {
+            backend.storedKey = "XE1.valid.pro"
+            compare(win.refreshLicense(), undefined,
+                    "refreshLicense re-verifies the currently stored key")
+            compare(win.isPro, true, "a directly refreshed valid key enables Pro")
+
+            // Change the backing value without calling refreshLicense: emitting the
+            // backend signal must execute Connections.onLicenseChanged and refresh.
+            backend.storedKey = ""
+            backend.licenseChanged()
+            compare(win.isPro, false, "onLicenseChanged recomputes the tier instead of leaving cached Pro state")
+
+            // Corrupt backend JSON is fail-closed, never a stale paid entitlement.
+            backend.storedKey = "XE1.valid.pro"
+            backend.malformedLicenseStatus = true
+            compare(win.refreshLicense(), undefined,
+                    "refreshLicense handles malformed status JSON without throwing")
+            compare(win.isPro, false, "malformed status fails closed to the free tier")
+            backend.malformedLicenseStatus = false
+            backend.storedKey = ""
+            win.refreshLicense()
+        }
+
         function test_activating_a_valid_key_unlocks_pro_and_a_bad_key_does_not() {
             _nav.currentIndex = 4                     // About tab hosts the licence card
             backend.storedKey = ""; backend.licenseChanged()
@@ -594,6 +672,10 @@ Item {
                        && x.hasOwnProperty("placeholderText")
                        && String(x.placeholderText).indexOf("XE1") === 0 })
             verify(field, "found the key input")
+            field.text = "   "
+            compare(dlg.reVerify(), undefined,
+                    "reVerify handles an empty candidate without consulting stale preview state")
+            compare(dlg.preview.state, "unlicensed", "an empty candidate previews as unlicensed")
             field.text = "XE1.nope.nope"
             var commit = findInDialog(function (x) {
                 return x && x.text === "Activate" && typeof x.enabled === "boolean" })
@@ -701,6 +783,12 @@ Item {
                 mini = findPred(win, function (x) { return x && x.objectName === "presetMini" })
                 return mini !== null && mini.placements !== undefined && mini.placements.length >= 1
             }, 3000, "a preset layout preview rendered with packed tiles")
+            verify(Qt.colorEqual(mini.catColor("cpu"), _theme.catSystem),
+                   "catColor maps System widgets to the system category colour")
+            verify(Qt.colorEqual(mini.catColor("focus"), _theme.catProductivity),
+                   "catColor maps Focus widgets to the productivity category colour")
+            verify(Qt.colorEqual(mini.catColor("not-a-widget"), _theme.accent),
+                   "catColor falls back to the active accent for an unknown type")
             dlg.close()
         }
 
@@ -926,14 +1014,14 @@ Item {
             compare(_store.appearance().wallpaper, "", "…and clears any wallpaper (mutually exclusive)")
             bp.pickStyle("orbs")
         }
-        function test_diagnostics_show_config_toggle() {
+        function test_diagnostics_show_redacted_summary_toggle() {
             _nav.currentIndex = 4                                  // About tab
-            var show = findButton("Show config")
-            verify(show, "the Diagnostics 'Show config' button is present")
+            var show = findButton("Show redacted summary")
+            verify(show, "the Diagnostics redacted-summary button is present")
             show.clicked()
-            verify(findButton("Hide config"), "clicking reveals the config (button flips to Hide)")
-            findButton("Hide config").clicked()
-            verify(findButton("Show config"), "…and hides again")
+            verify(findButton("Hide summary"), "clicking reveals the summary")
+            findButton("Hide summary").clicked()
+            verify(findButton("Show redacted summary"), "…and hides again")
         }
         function test_nav_chip_click_switches_tab() {
             _nav.currentIndex = 0

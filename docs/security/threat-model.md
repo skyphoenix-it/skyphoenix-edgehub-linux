@@ -209,14 +209,20 @@ This threat model covers the Xeneon Edge Linux Hub application, including:
 **Attack Vector:** A crash report or diagnostics export contains sensitive information (API keys, file paths, personal data) that is exposed to developers or in logs.
 
 **Mitigations:**
-- Diagnostics export has a "redact secrets" step that strips known sensitive patterns
+- Hub and Manager receive a structured diagnostics allowlist containing only
+  fixed labels, booleans and aggregate counts; raw config, licence/identity,
+  widget settings and opaque UI-state content never cross the Rust FFI boundary
 - Crash reports are opt-in (user must explicitly send)
-- Logging framework configured to avoid logging sensitive values
-- API keys stored in secret service, never in config files or logs
+- Malformed-config logs contain only the TOML error position, never the parser's
+  source snippet or offending value
+- Config files and every canonical/corrupt backup are forced to mode `0600` on Unix
+- New credentials use secret-service references; legacy inline values remain
+  supported for migration but are treated as sensitive and never diagnosed/logged
 - Diagnostics bundle is stored in user-owned directory before export
 - Review of diagnostics output before release to ensure no sensitive leaks
 
-**Residual Risk:** Low. Redaction is pattern-based and may miss novel formats.
+**Residual Risk:** Low. The configuration summary is allowlisted rather than
+pattern-redacted, so novel opaque UI fields are omitted by default.
 
 ---
 
@@ -288,4 +294,3 @@ Security vulnerabilities should be reported privately to the maintainers. See [S
 - [Widget Permissions](widget-permissions.md) (to be created)
 - [SECURITY.md](../../SECURITY.md)
 - [ADR-0002: Widget Runtime](../adr/0002-widget-runtime.md)
-

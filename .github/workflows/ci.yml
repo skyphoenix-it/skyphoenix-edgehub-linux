@@ -68,6 +68,12 @@ jobs:
           cargo fmt --check
           cargo clippy --all-targets -- -D warnings
           cargo test
+      - name: Licence webhook (fmt + clippy + test)
+        working-directory: tools/license-webhook
+        run: |
+          cargo fmt --check
+          cargo clippy --all-targets -- -D warnings
+          cargo test
   build:
     name: Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -99,7 +105,9 @@ jobs:
       - name: Build C++ application
         run: cmake --build build -j$(nproc)
       - name: Verify binary
-        run: test -f build/xeneon-edge-hub || echo "Binary not found, check build logs"
+        run: |
+          test -x build/xeneon-edge-hub
+          test -x build/xeneon-edge-manager
 
   qml-test:
     name: QML Tests + Behavior Matrix
@@ -127,7 +135,7 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: ./scripts/run_ui_tests.sh
-      - name: Enforce QML behavior-matrix coverage (>= 95%)
+      - name: Enforce complete QML behavior-matrix coverage (100%)
         run: python3 scripts/qml_coverage.py | tee coverage-qml.txt
       # The two structural lints. They lived only in run_all_tests.sh, i.e. they
       # gated nothing anyone was forced to run — and the egress lint is the whole
@@ -202,8 +210,8 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: ctest --test-dir build --output-on-failure
       # Nine scenarios driving the REAL hub binary and asserting the persisted
-      # config.toml. This tier existed only in run_all_tests.sh and ran in no
-      # workflow. Exit 77 = SKIP (no binary), which the script reports honestly.
+      # config.toml. Exit 77 is a hard failure here: a CI tier with no binary did
+      # no work and must not look green.
       - name: Runtime E2E battery (real hub binary)
         env:
           QT_QPA_PLATFORM: offscreen
@@ -211,7 +219,7 @@ jobs:
           rc=0
           for f in tests/runtime/run_*.sh; do
             echo "==> $f"
-            bash "$f" || { c=$?; [ "$c" = 77 ] && echo "   SKIP (no binary)" || { echo "   FAIL ($c)"; rc=1; }; }
+            bash "$f" || { c=$?; [ "$c" = 77 ] && echo "   FAIL (no binary)" || echo "   FAIL ($c)"; rc=1; }
           done
           exit $rc
       - name: Capture C++ coverage (lcov)
@@ -222,6 +230,15 @@ jobs:
             --exclude '.*main\.cpp' \
             --lcov coverage/cpp-lcov.info \
             build
+      - name: Enforce C++ >= 95%
+        run: |
+          pct=$(gcovr --root . \
+            --filter 'app/src/' --filter 'manager/src/' \
+            --exclude '.*main\.cpp' \
+            build --json-summary \
+            | python3 -c 'import json,sys; print("%.2f" % json.load(sys.stdin)["line_percent"])')
+          echo "C++ line coverage: ${pct}%"
+          python3 -c "import sys; sys.exit(0 if float('${pct}') >= 95 else 1)"
       - name: Upload C++ lcov
         uses: actions/upload-artifact@v4
         with:
@@ -291,30 +308,20 @@ jobs:
           name: coverage
           path: coverage/
 
-  # --- QML compositor suite (tests/gui) — NON-BLOCKING ---
-  # 20 files, 739 test functions, 2137 assertions under a real kwin_wayland at
-  # 2560x720 with real input and real pixels. It holds the ONLY aspect-ratio
-  # assertions in the repo, and until 2026-07-20 it was orphaned (referenced by
-  # no script or workflow) AND structurally unable to fail (it ended in an
-  # `echo`, so it printed RESULT: FAILURE and exited 0).
+  # --- QML compositor suite (tests/gui) — REQUIRED ---
+  # 16 files and 1,300+ checks under a real kwin_wayland at 2560x720 with real
+  # input and rendered-pixel assertions. It holds the repository's only
+  # compositor-backed aspect-ratio, rotation, navigation and wallpaper checks.
+  # The runner propagates per-file failures and rejects skips, fatal QML
+  # diagnostics and missing compiled resources.
   #
-  # continue-on-error is DELIBERATE and TEMPORARY: the suite carries ~210 known
-  # failures, and a permanently-red required gate is exactly how a suite gets
-  # ignored — the disease this whole effort is treating. Phase 1 of
-  # docs/agent-memory/TEST-STRATEGY-v2.md drives it green.
-  #
-  # >>> REMOVE continue-on-error AT THE END OF PHASE 1. <<<
-  #
-  # Viability on a hosted runner is UNPROVEN — the suite was written for a real
-  # desktop session. If nested KWin does not come up here, the honest outcome is
-  # to keep this tier on the local/hardware runs rather than fake it in CI.
   gui-test:
-    name: QML Compositor Suite (non-blocking, known-red)
+    name: QML Compositor Suite
     runs-on: ubuntu-24.04
     timeout-minutes: 60
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
       - name: Install Qt 6.7 (+ qmltestrunner)
         uses: jurplel/install-qt-action@v4
         with:
@@ -324,15 +331,25 @@ jobs:
       - name: Install compositor + runtime libs
         run: |
           sudo apt-get update
-          sudo apt-get install -y kwin-wayland xwayland libxkbcommon0 libgl1 \
+          sudo apt-get install -y cmake g++ kwin-wayland xwayland libxkbcommon0 \
+            libgl1-mesa-dev \
             fonts-dejavu-core fontconfig ffmpeg
           sudo fc-cache -f
+      - name: Build the resource-aware QuickTest runner
+        # Stock qmltestrunner has no product QRCs, so every qrc:/ icon,
+        # wallpaper and font would be missing and rendered-pixel checks would be
+        # meaningless. This small target embeds the same resources as the apps.
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DXENEON_BUILD_TESTS=ON
+          cmake --build build --target xeneon-qmltestrunner -j"$(nproc)"
       - name: Run compositor suite
-        run: bash tests/gui/run_gui_tests.sh
+        run: bash tests/gui/run_gui_tests.sh -j8
       - name: Upload GUI evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: gui-evidence
-          path: gui-evidence/
+          path: |
+            gui-evidence/
+            build/gui-logs/
           if-no-files-found: ignore

@@ -1,7 +1,7 @@
 # EdgeHub — Free vs Pro
 
-*Draft store copy. Every claim below is derived from the code in this repository;
-sources are cited inline. Read the "Unverified" section at the end before publishing.*
+*Internal entitlement audit, not store copy. No price, store, fulfilment, refund or
+support offer is approved. Read the release blockers at the end before publishing.*
 
 ---
 
@@ -46,8 +46,8 @@ We would rather say that plainly than have you discover it after paying.
 | — Premium group (Synthwave, Cyberpunk, Vaporwave, Matrix) | — | **4** |
 | — Inspired group (Keystone, Cascade, Swirl, Trilby, Fizz) | — | **5** |
 | — Accessibility group (Contrast) | 1 | 1 |
-| Accent colours | **22** (14 standard + 8 Okabe–Ito colour-blind-safe) | 22 (same) |
-| Animated backgrounds | **All 11** | All 11 (same) |
+| Accent colours | **29** (14 standard + 8 Okabe–Ito + 7 theme-completing) | 29 (same) |
+| Background styles | **Gradient + all 10 animated styles** | Same |
 | Bundled wallpapers | **All 18** | All 18 (same) |
 | Custom wallpaper upload | Yes | Yes |
 | Multi-page dashboards | Yes | Yes |
@@ -57,12 +57,12 @@ We would rather say that plainly than have you discover it after paying.
 | Live data widgets (HTTP/JSON, KPI) | Yes | Yes |
 | Weather, ICS calendar, media control | Yes | Yes |
 | Accessibility (reduce-motion, high contrast, large touch targets) | Yes | Yes |
-| Updates | Yes | Yes |
+| Update entitlement | No licence gate | No licence gate |
 
 Counts verified against `ui/qml/WidgetCatalog.qml` (30 entries),
 `ui/qml/PresetCatalog.qml` (19 entries), `ui/qml/Theme.qml` (`themeCatalog`,
-29 entries of which 9 carry `pro: true`; `accentPresets`, 22 entries),
-`ui/qml/BackgroundCatalog.qml` (11 styles), `ui/qml/WallpaperCatalog.qml`
+29 entries of which 9 carry `pro: true`; `accentPresets`, 29 entries),
+`ui/qml/BackgroundCatalog.qml` (Gradient plus 10 animated styles), `ui/qml/WallpaperCatalog.qml`
 (18 bundled images).
 
 ---
@@ -76,7 +76,7 @@ This is the section that matters most, so it is explicit.
   widgets — carry no `pro` flag. There is no such flag in the widget registry at all.
 - **Every preset screen is free.** All 19 entries in `ui/qml/PresetCatalog.qml`,
   including the developer, homelab, trading-desk, analyst and enterprise screens.
-- **Every animated background and every bundled wallpaper is free.** Neither catalog
+- **Every background style and every bundled wallpaper is free.** Neither catalog
   has a gating flag.
 - **Every accent colour is free**, including the 8-colour Okabe–Ito palette chosen to
   stay distinguishable under protanopia, deuteranopia and tritanopia.
@@ -85,8 +85,10 @@ This is the section that matters most, so it is explicit.
 - **EdgeHub Manager is free**, in full.
 - **Accessibility is free.** The high-contrast theme sits in the free Accessibility
   group; reduce-motion and touch-target sizing are unconditional.
-- **Updates are free**, and a Pro key never expires unless it was explicitly issued
-  with an expiry (`--expires` defaults to `never` — `docs/LICENSING.md`).
+- **Update access is not licence-gated.** This describes entitlement only; it does
+  not claim that an auto-update artifact or store delivery route is available.
+  A Pro key never expires unless it was explicitly issued with an expiry
+  (`--expires` defaults to `never` — `docs/LICENSING.md`).
 - **Nothing degrades if your licence lapses.** An expired key resolves to the free
   tier: your dashboards, widgets, layouts and data connections keep working
   untouched. Only the 9 Pro themes stop being selectable
@@ -94,21 +96,21 @@ This is the section that matters most, so it is explicit.
 
 The only gate in the codebase is one flag on nine theme entries and one
 `license.isPro` check in each of the two theme pickers
-(`ui/qml/widgets/SettingsPanel.qml:169`, `manager/qml/Manager.qml:406`/`:1058`).
+(`ui/qml/widgets/SettingsPanel.qml`, `manager/qml/Manager.qml`).
 
 ---
 
-## Why buy Pro, then?
+## What the Pro entitlement currently changes
 
-Two honest reasons, and no others:
+The implementation supports two possible motivations, but this is not a live sale:
 
 1. **You want the themes.** Synthwave, Cyberpunk, Vaporwave, Matrix, and five
    distribution-flavoured looks (Keystone, Cascade, Swirl, Trilby, Fizz). They are
    original palettes, not reproductions of anyone's branding.
-2. **You want the project to keep going.** EdgeHub is open source (MIT OR
-   Apache-2.0) and there is no other revenue in it. Pro is the supporter tier.
+2. **A future supporter offering could fund the project.** EdgeHub is open source
+   (MIT OR Apache-2.0), but no store or fulfilment route is asserted here.
 
-If neither is true for you, use the free build with our blessing. It is not a trial.
+The free build is not a trial and contains all functional features.
 
 ---
 
@@ -120,9 +122,10 @@ These are verifiable claims, not marketing adjectives.
 `XE1.<payload>.<signature>` token verified against an Ed25519 public key compiled
 into the app. Verifying it opens no socket, reads no file, and uses no hardware
 fingerprint — the result is identical under `unshare -n`. There is no activation
-server and no "phone home". The key is not a secret and is safe to keep in plain
-`config.toml`; the entitlement is recomputed from the signature every time rather
-than trusted from a stored flag.
+server and no "phone home". The key is a transferable bearer entitlement whose
+payload contains the holder label, so it is kept in owner-only `config.toml` and
+omitted from logs and diagnostics. Entitlement is recomputed from the signature
+every time rather than trusted from a stored flag.
 Source: `core/src/license.rs`, `docs/LICENSING.md`, `app/src/license_bridge.h`
 
 **It fails soft, never hard.** Any bad key — empty, garbage, forged, expired, or
@@ -152,43 +155,35 @@ Flagged for the owner, not for the store page.
   *intent* as "premium themes, premium preset packs, and custom user widgets", but
   no preset carries a `pro` flag and `ui/qml/UserWidgetCatalog.qml` performs no
   licence check. Only themes are actually gated today.
-- **The in-app copy already overstates this.** `manager/qml/Manager.qml:1780` tells
-  free users "Pro adds premium themes, preset packs and custom widgets", and the
-  expired-licence string says "Renew to keep the premium extras". Both promise more
-  than the code delivers. Fix the string or ship the gating before selling.
-- **Pricing implication.** At 9 cosmetic themes, this reads as a €3–7 tip jar, not a
-  €15+ upgrade. Anything priced as a feature tier will feel like the "scam" you
-  wanted to avoid. If you want a higher price point, gate the premium preset packs
-  and/or custom user widgets first — `docs/LICENSING.md` notes gating is a one-line
-  `pro:` flag per item.
-- **The "Get Pro" button points at a GitHub anchor**
-  (`manager/qml/Manager.qml:1797` → `.../XeneonEdge_Linux#pro`), not a store. That
-  needs to be the real product URL before launch.
+- **The primary in-app copy is now specific.** The free-tier line says Pro adds
+  nine themes. The expired-licence line still says "premium extras"; naming the
+  themes there would be clearer before any sale.
+- **Pricing remains undecided.** Nine cosmetic themes are the whole current delta;
+  do not attach a price or feature-tier promise until the product, policy and
+  fulfilment decisions are approved.
+- **The "Get Pro" button points at a GitHub anchor** in
+  `manager/qml/Manager.qml`, not a store. It must not imply that checkout or
+  fulfilment is live.
 
 ---
 
-## Unverified — do not publish without checking
+## Release blockers — do not publish as a store page
 
 Claims that appear in existing repo copy but that I could **not** confirm from the
 code, or that depend on something outside it:
 
-1. **"~3.5% CPU"** (`docs/LAUNCH_COPY.md:74`). No benchmark in the repo supports
-   this. Do not repeat it without a fresh measurement on target hardware.
-2. **"15 ready-made screens"** (`README.md`). The catalog contains **19**. One of
-   the two is stale — the table above uses 19, the code's number.
-3. **Alpha status.** `README.md` states the current release is an unsigned alpha
-   with "still fluid" feature set and widget sizing being reworked. Selling Pro
-   against an alpha is a business decision; the store page should say so.
-4. **Purchase and delivery flow.** `docs/LICENSING.md` describes Lemon Squeezy /
-   Gumroad integration and a mint webhook, but I did not verify that a store
-   product, price, or working delivery pipeline exists. Confirm before publishing
-   any "instant delivery" wording.
-5. **Refund policy, support commitments, and platform/distro compatibility list.**
+1. **Performance.** No approved candidate benchmark supports a public CPU, RSS,
+   startup or endurance number.
+2. **Release status.** The latest tag is `v1.0.0-alpha.2`; the current branch is
+   unreleased and no feature freeze or code freeze has been declared.
+3. **Purchase and delivery flow.** The repo contains licence tooling and webhook
+   code, but that does not prove a live product, price or fulfilment pipeline.
+4. **Refund policy, support commitments, and platform/distro compatibility list.**
    Not derivable from the code. Write these yourself.
-6. **Theme screenshots.** The nine Pro themes are defined as palettes in
-   `Theme.qml`; I did not render them. Capture real screenshots — for a purely
-   cosmetic tier, the screenshots *are* the product page.
-7. **Trademark posture of the "Inspired" themes.** The names were deliberately made
+5. **Theme screenshots.** Use fresh captures from the exact released candidate.
+6. **Trademark posture of the "Inspired" themes.** The names were deliberately made
    non-nominative (Keystone, Cascade, Swirl, Trilby, Fizz) and the code comments
    claim no logo is reproduced. That is a design intent recorded in comments, not a
    legal review. Get one before shipping paid distro-flavoured cosmetics.
+7. **Update delivery.** The AppImage/zsync update round trip has not been exercised
+   against published artifacts; do not advertise auto-update.

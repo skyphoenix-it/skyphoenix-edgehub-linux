@@ -4,6 +4,7 @@ import QtQuick.Layouts
 
 Item {
     id: diag
+    objectName: "diagnosticsPage"
     // NO `anchors.fill: parent` here. This item is a StackView PAGE (main.qml
     // pushes it), and StackView sets its pages' x/y/width/height itself. Anchoring
     // as well produced, on every launch:
@@ -197,7 +198,7 @@ Item {
                     anchors.fill: parent; contentHeight: configCol.implicitHeight+20; clip: true
                     ColumnLayout {
                         id: configCol; width: parent.width; spacing: 8
-                        Text { text: "Configuration"; color: theme.textPrimary; font.pixelSize: 16; font.bold: true }
+                        Text { text: "Redacted configuration summary"; color: theme.textPrimary; font.pixelSize: 16; font.bold: true }
                         Rectangle {
                             Layout.fillWidth: true; implicitHeight: configText.implicitHeight+24; radius: 8
                             color: theme.backgroundColor; border.color: theme.cardBorder

@@ -2,6 +2,8 @@ import QtQuick
 import QtTest
 import "../../ui/qml" as App
 
+// COVERS: fn:DashboardStore.fittingSizesFor
+
 // Probe: does setTileSize enforce page capacity? Fill a page, then try to grow a
 // widget (must be REFUSED when the page is full) and shrink one (must succeed and
 // must NOT overflow / pull from another page). Isolates the store logic from any
@@ -70,6 +72,8 @@ Item {
             var declared = store._catalogFn("sizesFor")("cpu") || []
             var fitting = store.fittingSizesFor(0, last)
 
+            compare(store.fittingSizesFor(0, last).join(","), fitting.join(","),
+                    "fittingSizesFor is stable for an unchanged full-page layout")
             verify(fitting.length >= 1, "at least the current size fits")
             verify(fitting.length <= declared.length, "fitting is a subset of declared")
             // On a FULL page, a bigger size must NOT be offered: every fitting

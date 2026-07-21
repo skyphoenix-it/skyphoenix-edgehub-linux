@@ -51,18 +51,19 @@ marked *(internal)*.
   names, so you can tell the presets apart before adding one.
 
 ### Known issues
-- **AppImage self-update is not verified.** beta.1 listed it as delivered; the
+- **AppImage self-update is not verified.** An earlier unreleased draft listed it
+  as delivered; the
   update *check* now works correctly, but the download-and-patch (zsync) path has
   never been exercised against a published release. Treat it as unproven until a
   release is cut and the round trip is tested.
 
-## [1.0.0-beta.1] - 2026-07-17
+### Candidate changes accumulated after alpha.2
 
-First public **beta**. Everything from alpha.2 plus the beta workstreams (sizing,
-Manager clarity, widget smoothness), the Pro tier, and a long tail of correctness
-fixes. Feature-freeze from here — beta → RC → GA is fixes only.
+The following work is present on the development branch but has **not** been
+tagged or published as `1.0.0-beta.1`. It does not establish a feature freeze,
+code freeze, or release-readiness claim.
 
-### Added
+#### Added
 - **Pro tier (licensing).** Offline, signed Ed25519 licence keys (`XE1.…`),
   verified on-device with no network and no hardware fingerprint; any bad key
   fails soft to Free. A paste-your-key dialog in the Manager (About) verifies as
@@ -80,12 +81,13 @@ fixes. Feature-freeze from here — beta → RC → GA is fixes only.
 - **W3 — widget smoothness.** Tile reorder MOVES instead of teleporting (Dashboard
   and the Manager's Edge clone), removed tiles fade out and added tiles arrive,
   eased gauges, and stable sensor rows that update values without rebuilding.
-- **AppImage self-update.** Embedded `X-AppImage-UpdateInformation` (gh-releases
-  zsync) so an installed AppImage can discover and delta-patch to the next release.
+- **AppImage update metadata.** Embedded `X-AppImage-UpdateInformation`
+  (gh-releases-zsync) for the intended discovery path. The published-artifact
+  delta-update round trip remains a release blocker, as noted above.
 - **Diagnostics:** the Network tab surfaces the NetHub egress counters.
 - Nine runtime end-to-end scenarios (up from one) driving the real hub binary.
 
-### Changed
+#### Changed
 - **Accessibility-forward defaults:** Atkinson Hyperlegible is the default font,
   and a fresh install is calm/quiet (animated background and widget glow off).
   Motion transitions stay on; reduce-motion remains a separate, respected setting.
@@ -94,7 +96,7 @@ fixes. Feature-freeze from here — beta → RC → GA is fixes only.
 - The local update flow (`scripts/update-local.sh`) restarts BOTH the hub and the
   Manager onto the new build.
 
-### Fixed
+#### Fixed
 - The RAM/gauge ring's centre reading overflowed when the mono font fell back to a
   proportional face (`Layout.maximumWidth` inert without a paired `preferredWidth`);
   fixed here and at three sibling sites.
@@ -115,14 +117,14 @@ fixes. Feature-freeze from here — beta → RC → GA is fixes only.
   downgrade); pkgver is now tag-derived.
 - Removed ~202 MB of accidentally-committed makepkg build output.
 
-### Security
+#### Security
 - Licence verification is offline and fails-soft; the private issuer seed is never
   in the repo or CI. GitHub private vulnerability reporting enabled.
 
 ---
 
 ## [1.0.0-alpha.2] - 2026-07-16
-First signed release; AUR package live. Curated 15-screen preset library, HTTP/JSON
+First signed release tag. Curated 15-screen preset library, HTTP/JSON
 + KPI primitive widgets behind the NetHub egress gate, org-managed policy, offline
 licence-verification scaffolding, and the hardened control-socket / hermetic-test
 foundations.
@@ -137,7 +139,7 @@ display matching, and the CI/coverage gates.
 
 | Version | Date | Description |
 |---------|------|-------------|
-| 1.0.0-beta.1 | 2026-07-17 | First public beta: Pro tier, sizing, Manager clarity, smoothness |
-| 1.0.0-alpha.2 | 2026-07-16 | First signed release; AUR live |
+| Unreleased | — | Development work after alpha.2; no beta or freeze declared |
+| 1.0.0-alpha.2 | 2026-07-16 | First signed release tag |
 | 1.0.0-alpha.1 | 2026-07 | Initial alpha |
 | 0.0.0 | 2026-07-11 | Project inception — Phase 0 Discovery |

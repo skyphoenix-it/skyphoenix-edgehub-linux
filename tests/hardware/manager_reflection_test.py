@@ -20,12 +20,13 @@ its effective CONTENT rotation, and with no sensor the hub DEFAULTS to landscape
 auto, is told "unknown" and falls back to portrait. This test is written to FAIL
 until the hub reports effective rotation.
 
-Safety identical to the other desktop tests (XENEON_HW_INPUT_DESKTOP gate, clamp
-to the Manager window rect, idle kill switch).
+This direction is deliberately input-free: the Manager starts on the Screens
+tab, so clicking that already-selected tab adds risk without adding coverage.
+Before inspecting it, the suite grabs the real desktop and proves the real
+Manager is frontmost in its own logged window rect and that Screens is selected.
 
 Run:
-    XENEON_HW_INPUT=1 XENEON_HW_INPUT_DESKTOP=1 \\
-        python3 tests/hardware/manager_reflection_test.py
+    python3 tests/hardware/manager_reflection_test.py
 """
 import os
 import subprocess
@@ -37,13 +38,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 import desktop_target as dt          # noqa: E402
-import input_guard                   # noqa: E402
-import uinput_touch as u             # noqa: E402
 import manager_window as mw          # noqa: E402
 from e2e_harness import (E2E, MANAGER, assert_binaries_current,  # noqa: E402
                          doc, page, tile)
 
-SIDEBAR_SCREENS = (0.059, 0.126)
 PULL = 5.0   # > the Manager's 4s pull interval, so a hub change is picked up
 
 
@@ -114,11 +112,6 @@ def preview_center(path, win_w, win_h):
 
 
 def main():
-    for gate in (u.require_gate, dt.require_desktop_gate):
-        try:
-            gate()
-        except Exception as e:  # noqa: BLE001
-            print("!!", e); return 2
     try:
         print("  binaries under test: %s" % assert_binaries_current())
     except RuntimeError as e:
@@ -149,18 +142,19 @@ def main():
         name, x, y, w, hgt = rect
         print("  Manager window: %s %dx%d+%d+%d" % (name, w, hgt, x, y))
 
-        guard = input_guard.ActivityGuard.connect()
-        guard.require_user_idle()
-        cw, ch = dt.canvas_size()
-        p = u.VPointer(cw, ch, (x, y, w, hgt), guard=guard)
-        # OCCLUSION GUARD: the clamp confines events to the Manager's
-        # rect but does not prove the Manager is the window receiving
-        # them there. It was not, once: a browser raised itself over the
-        # Manager and five clicks went into a docs page. Refuses to emit
-        # unless a sidebar row carries the accent. See manager_window.py.
-        p = mw.guard_pointer(p, rect, work)
-        p.tap(x + int(w * SIDEBAR_SCREENS[0]), y + int(hgt * SIDEBAR_SCREENS[1]))
-        time.sleep(0.6)
+        front = mw.grab_rect(rect, work, "initial-front")
+        if not front:
+            print("!! could not capture the Manager window"); return 2
+        row = mw.active_row(front, w, hgt)
+        try:
+            os.unlink(front)
+        except OSError:
+            pass
+        h.check("manager-frontmost-on-screens-tab", row == "Screens",
+                "real desktop grab selected row = %r" % (row,))
+        if row != "Screens":
+            print("!! Manager is occluded or not on Screens; refusing to inspect")
+            return 2
 
         def grab(tag):
             path = os.path.join(work, tag + ".png")

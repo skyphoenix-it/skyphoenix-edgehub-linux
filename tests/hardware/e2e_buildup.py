@@ -208,7 +208,7 @@ def main():
         # ── 2. WIDGETS onto the VISIBLE page — asserts they RENDER ───────────
         placed = []
         for i, (wtype, family) in enumerate(WIDGET_WALK, start=1):
-            placed.append(tile("bu-%s" % wtype, wtype, 1, 1))
+            placed.append(tile("bu-%s" % wtype, wtype, "1x1"))
 
             def mut(tiles=list(placed)):
                 h.set_state(doc([page("Home", tiles)] + [page(n, []) for n in extra]))

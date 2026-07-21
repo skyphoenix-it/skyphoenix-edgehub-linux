@@ -3,7 +3,7 @@ import QtTest
 import "../../ui/qml" as App
 import "../../ui/qml/widgets" as Wg
 
-// COVERS: config-value → store → rendered-observable for FIVE more widget types.
+// COVERAGE NOTE: config-value → store → rendered-observable for FIVE more widget types.
 //
 // T2 (widen widget-configuration coverage). tst_widget_config_values.qml proved
 // the chain for CPU — the richest DISPLAY widget — but CPU alone exercises one

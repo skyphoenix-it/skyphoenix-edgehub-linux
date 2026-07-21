@@ -11,6 +11,60 @@
 #include "xeneon_core.h"
 #include "xeneon_string.h"
 
+bool hasConfiguredTargetIdentity(const QString& edidHash, const QString& model,
+                                 const QString& connector) {
+    return !edidHash.isEmpty() || !model.isEmpty() || !connector.isEmpty();
+}
+
+StartupDisplayPlacement decideStartupDisplayPlacement(bool hasConfiguredTarget,
+                                                       bool targetMatched,
+                                                       bool recoveryRequested) {
+    if (targetMatched)
+        return StartupDisplayPlacement::MatchedTarget;
+    if (hasConfiguredTarget && recoveryRequested)
+        return StartupDisplayPlacement::PrimaryRecovery;
+    if (hasConfiguredTarget)
+        return StartupDisplayPlacement::KeepHidden;
+    return StartupDisplayPlacement::PrimaryFallback;
+}
+
+TargetRemovalSafetyDecision decideTargetRemovalSafety(bool wasTarget,
+                                                       const QString& fallbackBehavior,
+                                                       bool notifyDisconnect) {
+    TargetRemovalSafetyDecision decision;
+    if (!wasTarget)
+        return decision;
+
+    // Independent of user-facing fallback preferences, a removed target can no
+    // longer safely own a visible window. Hiding prevents compositor relocation
+    // onto primary for hide, notify, ask, and malformed/manual policy values.
+    decision.hideWindow = true;
+    decision.requestSelection = fallbackBehavior == QLatin1String("ask");
+    decision.notify = notifyDisconnect
+                      || fallbackBehavior == QLatin1String("notify")
+                      || decision.requestSelection;
+    return decision;
+}
+
+DisplayDisconnectNotice displayDisconnectNotice(const QString& screenName,
+                                                 bool requestSelection) {
+    const QString display = screenName.trimmed().isEmpty()
+                                ? QStringLiteral("The dashboard display")
+                                : QStringLiteral("Dashboard display %1").arg(screenName.trimmed());
+    DisplayDisconnectNotice notice;
+    notice.summary = QStringLiteral("Dashboard display disconnected");
+    if (requestSelection) {
+        notice.body = QStringLiteral(
+            "%1 is unavailable. The dashboard is hidden for safety. Open Xeneon "
+            "Edge Manager to select a display.").arg(display);
+    } else {
+        notice.body = QStringLiteral(
+            "%1 is unavailable. The dashboard is hidden and waiting for reconnection.")
+                          .arg(display);
+    }
+    return notice;
+}
+
 QString screenIdentityHash(const QString& name, const QString& model,
                            const QString& manufacturer, const QString& serial) {
     QByteArray identityData;

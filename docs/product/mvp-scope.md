@@ -1,212 +1,131 @@
-# MVP Scope
+# MVP scope and evidence status
 
-**Version:** 0.1.0-draft  
-**Status:** Phase 0 — Discovery  
-**Last Updated:** 2026-07-11  
+**Product baseline:** `v1.0.0-alpha.2`
+**Document status:** active requirements audit
+**Last updated:** 2026-07-21
 
----
+## Authority and historical documents
 
-## MVP Goal
+This file is the authoritative product/release scope for the next public
+milestone. The Phase-0 product vision, use cases and wireframes are retained as
+discovery history; they are not a second, parallel release contract. If a
+historical document conflicts with this file, this file wins.
 
-Deliver a functional, stable, performant Linux application that transforms the Corsair Xeneon Edge into a useful secondary dashboard. The MVP must be installable by normal users on CachyOS and Ubuntu, work reliably under KDE and GNOME (Wayland and X11), and provide enough built-in widgets to be genuinely useful for productivity, system monitoring, and media control.
+The distinction matters because the discovery drafts described a larger product
+than the implemented MVP and marked several ideas as "MVP" before feasibility or
+release evidence existed. The disposition matrix below makes those differences
+explicit instead of silently treating an absent feature as complete.
 
-## MVP Boundaries
+## Goal
 
-### IN SCOPE
+Deliver a stable Linux dashboard for the Corsair Xeneon Edge that normal users
+can install, operate by touch in portrait and landscape, manage from a desktop
+companion, and remove cleanly. Release support claims require evidence for the
+exact candidate; a source file or package recipe alone is not evidence.
 
-#### Application Shell
-- [x] Standalone native application (single binary or minimal bundled runtime)
-- [x] Display enumeration (name, manufacturer, model, connector, resolution, orientation)
-- [x] First-run wizard for display selection
-- [x] Resilient display identity (EDID hash + connector fallback)
-- [x] Borderless fullscreen window on selected display
-- [x] Portrait (720×2560) and landscape (2560×720) support
-- [x] Configurable autostart
-- [x] Clean shutdown and restart
-- [x] Settings persistence (XDG-compliant)
-- [x] Diagnostics screen
+## Implemented scope
 
-#### Layout Engine
-- [x] Responsive grid layout
-- [x] Widget add, remove, move, resize
-- [x] Edit mode (widget actions disabled during editing)
-- [x] Undo/redo during edit session
-- [x] Orientation-specific layouts
-- [x] Multiple dashboard pages
-- [x] Page switching via swipe
+The development branch currently contains:
 
-#### Display Management
-- [x] Display disconnect detection and hiding
-- [x] Display reconnect detection and recovery
-- [x] Notification on primary display when dashboard display missing
-- [x] Never silently open on wrong monitor
-- [x] Support for different connectors on reconnect
+- the native Rust core, Qt 6/QML Hub and standalone Manager;
+- persistent multi-page layouts with add/remove/move/resize and per-widget
+  configuration;
+- display selection, fail-closed target matching, hot-plug handling and Xeneon
+  Edge orientation-sensor support;
+- guarded touch interactions and 48 px minimum-target checks;
+- 30 first-party widgets, 19 presets, 29 themes, 29 accents and 10 animated
+  backgrounds plus Gradient;
+- local configuration, diagnostics, offline/egress controls and an opt-in update
+  check;
+- CMake install/CPack, AUR, AppImage and Flatpak recipes;
+- Rust, C++, QML, compositor-backed GUI, runtime, Manager and physical-hardware
+  test layers.
 
-#### Touch Interaction
-- [x] Tap
-- [x] Long press
-- [x] Swipe (page navigation)
-- [x] Scroll (within widgets)
-- [x] Drag (move widgets in edit mode)
-- [x] Minimum 48×48 logical pixel touch targets
-- [x] Accidental-touch resistance in view mode
+This list describes code present in the branch. It does **not** declare the MVP
+released, frozen, supported on every desktop, or within its performance targets.
 
-#### Themes
-- [x] Dark theme (default)
-- [x] Light theme
-- [x] OLED black theme
-- [x] High contrast theme
-- [x] User-defined accent color
-- [x] Reduced motion toggle
+## Release requirements still needing evidence or closure
 
-#### Built-in Widgets — System
-- [x] Clock (digital, 12h/24h, timezone support)
-- [x] Date (with configurable format)
-- [x] CPU usage (percentage, optional per-core, optional graph)
-- [x] CPU temperature (via hwmon)
-- [x] RAM usage (percentage, absolute GB)
-- [x] Disk usage (per-mount configurable)
-- [x] Network throughput (up/down, per-interface configurable)
+| Requirement | Current status |
+|---|---|
+| CachyOS/Arch install, upgrade and uninstall | Local staged lifecycle evidence exists; exact public package route must be verified |
+| Ubuntu/Fedora native packages | CPack recipes and distro workflow exist; exact-candidate distro jobs are still required |
+| Ubuntu 24.04 | Distro Qt 6.4.2 is below the Qt 6.5 floor; no native-support claim |
+| KDE/Wayland | Primary real-hardware environment; final candidate run pending |
+| GNOME and X11 | Do not claim release support without candidate evidence |
+| AppImage | Recipe exists; no published AppImage/zsync round trip has been exercised |
+| Flatpak/Flathub | Recipe exists; no Flathub publication or supported-store claim |
+| Correct-display and reconnect safety | Automated and real-device coverage exists; final candidate run pending |
+| Primary-desktop disconnect notice and selection guidance | Window hiding is implemented, but the promised user-visible notification/guidance is not; release-blocking product gap |
+| Touch-only add/move/resize/configure | Covered across GUI/Manager/hardware layers; final integrated run pending |
+| Idle CPU <1% and RAM <150 MiB | **Current development candidate fails:** CPU 0.120%, peak RSS 408.094 MiB |
+| Active CPU <5% and RAM <250 MiB | **Current development candidate fails:** CPU 2.053%, peak RSS 472.820 MiB with the exact 10-widget load |
+| Startup <2 s and 24-hour memory growth <10% | Current development startup passed at 0.223 s; 24/48-hour growth is unproven |
+| 48–72-hour physical-hardware stability | **Not completed** for the candidate |
+| Legal review of Inspired premium themes | **Open** |
+| Store, pricing, refunds, support and key delivery | **Open; no live-store claim permitted** |
 
-#### Built-in Widgets — Productivity
-- [x] Focus timer (configurable duration, count-up or count-down)
-- [x] Current goal (single text field, editable)
-- [x] Top-three priorities (editable checklist)
-- [x] Quick note (scratchpad, auto-saves)
-- [x] Break reminder (configurable interval)
+## MVP success gate
 
-#### Built-in Widgets — Media
-- [x] MPRIS media control (play/pause, prev/next, progress, track info)
-- [x] Volume control (via PipeWire/PulseAudio)
+1. The exact candidate builds from a clean source snapshot.
+2. Rust, C++, QML, Hub GUI, Manager GUI, runtime and integrated physical-Edge
+   suites pass with no failure or hidden skip.
+3. Display targeting never falls back to the wrong monitor; disconnect/reconnect
+   and rotation evidence is attached.
+4. Native package and portable artifact install/upgrade/uninstall paths are
+   exercised on every advertised platform.
+5. Performance and endurance limits are measured and pass.
+6. Documentation, legal/product decisions and support boundaries match reality.
+7. The immutable final candidate passes the strict release gate, is signed, is
+   published, and its downloaded artifacts verify in a clean environment.
 
-#### Built-in Widgets — Controls
-- [x] Application launcher (.desktop integration)
-- [x] Dashboard page switcher
-- [x] Lock screen button
+None of these criteria may be checked merely because an implementation or CI
+workflow exists. Until all seven are satisfied, status remains alpha/development.
 
-#### Widget Infrastructure
-- [x] Widget lifecycle management (init, update, teardown)
-- [x] Widget error boundaries (crash isolation)
-- [x] Disable-on-repeated-failure
-- [x] Widget configuration persistence
-- [x] Widget minimum/maximum size enforcement
+### Current performance evidence is a failed development measurement
 
-#### Settings
-- [x] Display settings (target display, orientation override)
-- [x] Appearance settings (theme, accent, motion)
-- [x] Dashboard management (pages, layouts)
-- [x] Widget management (list, enable/disable, reset)
-- [x] Startup settings (autostart, reconnect behavior)
-- [x] Performance settings (polling intervals)
-- [x] Diagnostics screen (version, system info, resource usage, logs)
-- [x] Search within settings
+The 2026-07-21 short formal profile used a CMake `Release` binary with coverage
+and QA hooks off. Its binary SHA-256 was
+`224efa6580b41da832b8edc6da5e37f91b0ad837ae08fc576982f3f5cdac89ce`; the
+embedded version was `v1.0.0-alpha.2-246-g684cddb-dirty`. Startup qualified, and
+both CPU averages qualified, but both RSS limits failed. The aggregate result was
+therefore **FAIL**.
 
-#### Logging & Diagnostics
-- [x] Structured logging (JSON or key-value)
-- [x] Configurable log level
-- [x] Diagnostics export (with secret redaction)
-- [x] Clear logs
+This is evidence about that dirty development binary, not an immutable release
+candidate and not a publishable performance claim. A clean candidate must still
+pass the same short profiles and the complete long-duration gate.
 
-#### Packaging
-- [x] Arch/CachyOS PKGBUILD
-- [x] Ubuntu/Debian .deb package
-- [x] Desktop entry file
-- [x] Application icon
-- [x] Clean uninstall
+## Requirements disposition
 
-#### Documentation
-- [x] README with build and install instructions
-- [x] CachyOS-specific installation guide
-- [x] Ubuntu-specific installation guide
-- [x] Widget user guide
-- [x] Architecture overview
-- [x] Troubleshooting guide
-- [x] Security policy
-- [x] Contribution guide
-- [x] Changelog
+| Discovery-era item | Current disposition |
+|---|---|
+| Add/remove/move/resize/configure widgets | **MVP required and implemented**; final exact-candidate touch run remains required |
+| Duplicate widgets and edit-session undo/redo | **Deferred**; not part of the current MVP contract |
+| Hide on target loss; never take over primary; reconnect safely | **MVP required** |
+| Primary-desktop disconnect notification and `ask` guidance | **MVP release blocker**; hiding works, but the user-facing notice/guidance is not implemented |
+| Configurable core metric polling interval | **Deferred**; the core currently uses a fixed two-second interval |
+| AMD/NVIDIA/Intel detailed GPU integrations | **Deferred**; current GPU support is AMD-oriented |
+| MPRIS metadata plus play/pause/previous/next | **MVP required and implemented** |
+| Media scrubbing, volume control and a measured <200 ms response SLA | **Deferred** |
+| Fixed accessible accent palette | **MVP required and implemented** |
+| Arbitrary custom-hex accent editor | **Deferred** |
+| Application launcher / arbitrary command execution | **Deferred** |
+| Current on-device settings and diagnostics surfaces | **MVP required** |
+| Search across a full settings taxonomy, diagnostics ZIP export and persistent safe mode | **Deferred** |
+| Unknown/policy-disabled widget fallback | **MVP required and implemented** |
+| Per-widget CPU budgets, restart/disable/reset error UI and three-strike isolation | **Deferred** with the third-party sandbox/runtime work |
+| Pixel-golden visual regression, touch-to-photon latency and 25/50-widget stress profiles | **Deferred**; they are not implied by the current behavior and resource gates |
+| KDE/Wayland on the recorded Edge setup | **Release evidence required** |
+| GNOME, X11 and broad arbitrary-display support | **Evidence-gated future support claim**, not assumed by the MVP |
 
-#### CI/CD
-- [x] Build pipeline (format, lint, test, build)
-- [x] Dependency audit
-- [x] Documentation build check
-- [x] Artifact creation for releases
+## Deferred work
 
-#### Testing
-- [x] Unit tests for core logic
-- [x] Integration tests for integrations
-- [x] UI tests for critical workflows
-- [x] Performance baseline tests
+Community widget SDK/marketplace, third-party sandboxing, edit undo/redo,
+application launching, media scrubbing/volume, custom-hex accents, searchable
+full settings, diagnostics export, persistent safe mode, game-profile switching,
+deep vendor-specific GPU integrations, OBS/Discord integrations, embedded web
+content, multi-touch gestures and additional distribution stores remain post-MVP
+possibilities without committed dates.
 
-### EXPLICITLY OUT OF SCOPE (MVP)
-
-| Feature | Reason | Target Version |
-|---------|--------|----------------|
-| Community widget SDK | Requires stable internal APIs first | v1.1 |
-| Third-party widget sandbox | Requires SDK + isolation infrastructure | v1.1 |
-| Widget marketplace/repository | Requires SDK + community adoption | v1.2 |
-| Gaming profile auto-switch | Complex process monitoring; needs careful anti-cheat review | v1.0 |
-| Per-game dashboard profiles | Depends on gaming profile auto-switch | v1.0 |
-| OpenLinkHub integration | Optional hardware integration; lower priority | v1.0 |
-| AMD/NVIDIA/Intel GPU detailed metrics | Complex; basic sysfs/hwmon metrics included in MVP | v1.0 |
-| Discord integration | Legal and technical complexity | v1.1+ |
-| OBS/stream controls | Niche use case for MVP | v1.1+ |
-| Configuration import/export | Nice-to-have, not critical for MVP | v1.0 |
-| Web content widget (embedded browser) | Security complexity; needs thorough isolation design | v1.1 |
-| Flatpak package | Requires sandbox testing; .deb and PKGBUILD first | v1.0 |
-| AppImage | Lower priority than native packages | v1.0 |
-| Snap package | Controversial in community; lowest priority | TBD |
-| Fedora/openSUSE RPM | Expand after Arch/Ubuntu are stable | v1.0 |
-| Nix package | Community-driven; not blocking MVP | TBD |
-| On-screen keyboard integration | Complex system integration; basic touch input works without it | v1.0 |
-| Multi-touch gestures (pinch, multi-finger) | Nice-to-have; basic single-touch interactions sufficient | v1.0 |
-| Calendar agenda widget | Requires calendar backend integration | v1.0 |
-| Weather widget | Requires network + API key management | v1.1 |
-| Habit tracker widget | Productivity nice-to-have | v1.1 |
-| Visual regression tests | Infrastructure complexity; unit/integration tests first | v1.0 |
-| 24/72hr/7day soak tests | Important but resource-intensive; basic stability tests in MVP | v1.0 |
-
-## MVP Success Criteria
-
-1. ✅ Installs from a single package on CachyOS
-2. ✅ Installs from a single .deb on Ubuntu 24.04 LTS
-3. ✅ First-run wizard is touch-operable
-4. ✅ Dashboard opens on correct display (portrait and landscape)
-5. ✅ Dashboard survives display disconnect and reconnect
-6. ✅ Dashboard never opens on wrong monitor
-7. ✅ All 15+ built-in widgets function correctly
-8. ✅ Idle CPU <1%, RAM <150 MB
-9. ✅ No compositor freezes after 1 hour of operation
-10. ✅ All settings persist across restarts
-11. ✅ Touch-only operation for add/move/resize/config widgets
-12. ✅ Widget crash does not crash application
-13. ✅ Complete documentation for installation and usage
-14. ✅ CI pipeline passes on every commit
-15. ✅ Public roadmap available
-
-## MVP Development Phases
-
-See [ROADMAP.md](../../ROADMAP.md) for detailed timeline and phases.
-
-| Phase | Name | Key Deliverables |
-|-------|------|-----------------|
-| 0 | Discovery | Personas, use cases, architecture ADRs, UI concepts, MVP scope (← CURRENT) |
-| 1 | Application Shell | Display enumeration, window placement, touch input, settings persistence |
-| 2 | Layout Engine | Grid layout, widget add/move/resize, edit mode, themes, pages |
-| 3 | Core Widgets | Clock, system metrics, focus timer, goals, checklist, media controls |
-| 4 | Integrations | MPRIS, PipeWire, sensors, autostart |
-| 5 | Hardening | Performance optimization, display reconnection, packaging, documentation |
-| 6 | Public MVP Release | Signed packages, release notes, public roadmap |
-
-## Risk Register
-
-| Risk | Likelihood | Impact | Mitigation |
-|------|-----------|--------|------------|
-| Qt licensing complexity with Rust bindings | Medium | High | Evaluate pure C++ Qt if Rust bindings are immature |
-| Wayland protocol limitations for window placement | High | Medium | Layer-shell protocol; X11 fallback path |
-| Touchscreen mapping varies by compositor | High | Medium | User-assisted mapping wizard; libinput analysis |
-| EDID not available on some displays | Low | Medium | Fallback to connector name; manual identification |
-| MPRIS D-Bus instability with some players | Medium | Low | Graceful degradation; timeout handling |
-| Performance target (150MB RAM) too aggressive for Qt+QML | Medium | Medium | QML profiling; lazy widget loading; static builds |
-| CachyOS packaging differences from Arch | Low | Low | Test on both; document differences |
-| Ubuntu 24.04 Qt version too old | Medium | Medium | Static Qt build or Flatpak fallback |
-
+See [the roadmap](../../ROADMAP.md), [beta/release gate](../BETA_PLAN.md), and
+[distribution status](../DISTRIBUTION.md).

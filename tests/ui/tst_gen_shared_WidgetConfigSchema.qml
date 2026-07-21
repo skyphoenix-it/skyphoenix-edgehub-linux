@@ -87,15 +87,6 @@ Item {
         for (var i = 0; i < kids.length; i++) collectByProp(kids[i], prop, out)
         return out
     }
-    function readFile(rel) {
-        try {
-            var xhr = new XMLHttpRequest()
-            xhr.open("GET", Qt.resolvedUrl(rel), false)
-            xhr.send()
-            return xhr.responseText || ""
-        } catch (e) { return "" }
-    }
-
     // ─────────────────────────────────────────────────────────────────────────
     // 1. Schema field invariants (numeric ranges, segmented defaults).
     // ─────────────────────────────────────────────────────────────────────────
@@ -183,12 +174,15 @@ Item {
             var missing = []
             for (var i = 0; i < catalog.items.length; i++) {
                 var base = catalog.items[i].source.split("/").pop()
-                var body = readFile("../../ui/qml/widgets/" + base)
-                if (!body.length) missing.push(base)
+                // Loading the source as a QML Component is deterministic under
+                // qmltestrunner (unlike local-file XMLHttpRequest) and stronger
+                // than a non-empty read: the file must exist and compile with its
+                // real imports. Instantiation is covered by the widget suites.
+                var component = Qt.createComponent(Qt.resolvedUrl("../../ui/qml/widgets/" + base))
+                if (component.status !== Component.Ready)
+                    missing.push(base + ": " + component.errorString())
             }
-            if (missing.length && readFile("../../ui/qml/widgets/EndOfDayWidget.qml").length === 0)
-                skip("local file reads unavailable in this runner")
-            compare(missing, [], "each catalog source resolves to a real widget file")
+            compare(missing, [], "each catalog source resolves to a compilable widget file")
         }
 
         function test_categories_distinct_in_declaration_order() {
@@ -361,25 +355,30 @@ Item {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // 5. Header field-type contract comment must list every type ConfigField's
-    //    switch handles (including 'accent').
+    // 5. Runtime field-type contract: every type emitted by the schema must be a
+    //    type ConfigField supports, including the universal `accent` control.
     // ─────────────────────────────────────────────────────────────────────────
     TestCase {
         name: "FieldTypeContract"
         when: windowShown
 
-        // BUG: the authoritative field-type list in the file header omits 'accent',
-        // even though appearanceSection() emits type:"accent" and ConfigField renders it.
-        function test_header_lists_accent_type() {
-            var src = readFile("../../ui/qml/WidgetConfigSchema.qml")
-            if (!src.length) { skip("local file reads unavailable in this runner"); return }
-            // The contract lives in the leading comment block (before QtObject).
-            var head = src.split("QtObject")[0]
-            // Confirm this is the type-list comment (mentions the other types).
-            verify(head.indexOf("textarea") >= 0 && head.indexOf("segmented") >= 0,
-                   "sanity: found the field-type contract comment")
-            verify(head.indexOf("accent") >= 0,
-                   "field-type contract comment must include 'accent'")
+        function test_schema_emits_only_configfield_supported_types() {
+            var supported = ["accent", "action", "date", "hour", "info", "number",
+                             "segmented", "slider", "tasks", "text", "textarea", "toggle"]
+            var emitted = {}
+            for (var i = 0; i < catalog.items.length; i++) {
+                var sections = sc.schemaFor(catalog.items[i].type).sections
+                for (var j = 0; j < sections.length; j++) {
+                    var fields = sections[j].fields || []
+                    for (var k = 0; k < fields.length; k++)
+                        emitted[fields[k].type] = true
+                }
+            }
+            var actual = Object.keys(emitted).sort()
+            compare(actual, supported,
+                    "the live schema and ConfigField switch share one exhaustive field-type contract")
+            verify(emitted.accent === true,
+                   "the universal appearance section exercises ConfigField's accent renderer")
         }
     }
 

@@ -97,6 +97,10 @@ def main():
         guard.require_user_idle()
         cw, ch = dt.canvas_size()
         p = u.VPointer(cw, ch, (x, y, w, hgt), guard=guard)
+        # Device creation can itself cause compositor activity; require a
+        # second idle proof before arming the structurally guarded sink.
+        guard.require_user_idle()
+        guard.arm()
         # OCCLUSION GUARD: the clamp confines events to the Manager's
         # rect but does not prove the Manager is the window receiving
         # them there. It was not, once: a browser raised itself over the

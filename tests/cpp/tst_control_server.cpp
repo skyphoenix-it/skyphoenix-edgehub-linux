@@ -74,6 +74,8 @@ class TstControlServer : public QObject {
     QString gotConnector_;
     QString gotModel_;
     bool gotAutostart_ = false;
+    QString gotLicense_;
+    int gotActivePage_ = -999;
 
     // Open a client, send one request line, collect `nLines` reply lines. The
     // server and client share this thread's event loop, so we PUMP events (rather
@@ -122,6 +124,11 @@ private slots:
                     gotAutostart_ = enabled;
                     if (ok) *ok = applyResult_;
                 });
+        connect(srv_, &ControlServer::licenseKeyReceived, this,
+                [this](const QString& key, bool* ok) {
+                    gotLicense_ = key;
+                    if (ok) *ok = applyResult_;
+                });
         QVERIFY(srv_->start());
     }
     void cleanup() {
@@ -142,6 +149,33 @@ private slots:
         QCOMPARE(r.size(), 1);
         QCOMPARE(r[0].value("type").toString(), QStringLiteral("uiState"));
         QCOMPARE(r[0].value("state").toString(), providerState_);
+    }
+
+    void getUiStateIncludesLivePanelContext() {
+        providerState_ = QStringLiteral("{\"layout\":\"pages\"}");
+        srv_->setRotationProvider([] { return 270; });
+        srv_->setPageProvider([] { return 2; });
+        const auto r = exchange("{\"type\":\"getUiState\"}");
+        QCOMPARE(r.size(), 1);
+        QCOMPARE(r[0].value("type").toString(), QStringLiteral("uiState"));
+        QCOMPARE(r[0].value("state").toString(), providerState_);
+        QCOMPARE(r[0].value("rotation").toInt(), 270);
+        QCOMPARE(r[0].value("currentPage").toInt(), 2);
+    }
+
+    void setActivePageInvokesHandlerAndAcks() {
+        srv_->setActivePageHandler([this](int page) { gotActivePage_ = page; });
+        const auto r = exchange("{\"type\":\"setActivePage\",\"page\":4}");
+        QCOMPARE(r.size(), 1);
+        QCOMPARE(r[0].value("type").toString(), QStringLiteral("ok"));
+        QCOMPARE(gotActivePage_, 4);
+
+        // A missing/non-number page is explicitly represented as unknown (-1),
+        // leaving clamping/rejection to the same owner callback as production.
+        const auto missing = exchange("{\"type\":\"setActivePage\"}");
+        QCOMPARE(missing.size(), 1);
+        QCOMPARE(missing[0].value("type").toString(), QStringLiteral("ok"));
+        QCOMPARE(gotActivePage_, -1);
     }
 
     void setUiStateOkAck() {
@@ -251,6 +285,48 @@ private slots:
             QCOMPARE(r.size(), 1);
             QCOMPARE(r[0].value("type").toString(), QStringLiteral("error"));
             QCOMPARE(r[0].value("message").toString(), QStringLiteral("missing enabled flag"));
+        }
+        QCOMPARE(spy.count(), 0);
+    }
+
+    void setLicenseKeyOkAndExplicitClear() {
+        applyResult_ = true;
+        QSignalSpy spy(srv_, &ControlServer::licenseKeyReceived);
+
+        const auto set = exchange(
+            "{\"type\":\"setLicenseKey\",\"key\":\"XE1.invalid.signature\"}");
+        QCOMPARE(set.size(), 1);
+        QCOMPARE(set[0].value("type").toString(), QStringLiteral("ok"));
+        QCOMPARE(set[0].value("for").toString(), QStringLiteral("setLicenseKey"));
+        QCOMPARE(gotLicense_, QStringLiteral("XE1.invalid.signature"));
+
+        // Empty string is the deliberate remove-key operation and remains valid.
+        const auto clear = exchange("{\"type\":\"setLicenseKey\",\"key\":\"\"}");
+        QCOMPARE(clear.size(), 1);
+        QCOMPARE(clear[0].value("type").toString(), QStringLiteral("ok"));
+        QVERIFY(gotLicense_.isEmpty());
+        QCOMPARE(spy.count(), 2);
+    }
+
+    void setLicenseKeyFailAck() {
+        applyResult_ = false;
+        const auto r = exchange("{\"type\":\"setLicenseKey\",\"key\":\"candidate\"}");
+        QCOMPARE(r.size(), 1);
+        QCOMPARE(r[0].value("type").toString(), QStringLiteral("error"));
+        QCOMPARE(r[0].value("for").toString(), QStringLiteral("setLicenseKey"));
+        QCOMPARE(r[0].value("message").toString(),
+                 QStringLiteral("failed to apply licence key"));
+    }
+
+    void setLicenseKeyRequiresStringField() {
+        QSignalSpy spy(srv_, &ControlServer::licenseKeyReceived);
+        for (const char* req : {"{\"type\":\"setLicenseKey\"}",
+                                "{\"type\":\"setLicenseKey\",\"key\":false}",
+                                "{\"type\":\"setLicenseKey\",\"key\":7}"}) {
+            const auto r = exchange(req);
+            QCOMPARE(r.size(), 1);
+            QCOMPARE(r[0].value("type").toString(), QStringLiteral("error"));
+            QCOMPARE(r[0].value("message").toString(), QStringLiteral("missing key field"));
         }
         QCOMPARE(spy.count(), 0);
     }
