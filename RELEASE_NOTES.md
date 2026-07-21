@@ -11,7 +11,7 @@ Watch the [52-second Hub and Manager feature tour](https://github.com/skyphoenix
 It uses the exact signed beta.1 binaries on the physical secondary display and
 shows portrait and landscape layouts, screen creation, live page selection,
 Manager previews, and theme changes. English captions are included in the
-repository and the [capture evidence](docs/testing/release-media-validation-2026-07-21.md)
+repository and the [capture evidence](https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/blob/master/docs/testing/release-media-validation-2026-07-21.md)
 records the binaries, hashes, display, and safety controls.
 
 ## Highlights
