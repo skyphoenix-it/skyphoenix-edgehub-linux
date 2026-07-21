@@ -141,8 +141,14 @@ def assert_binaries_current(binaries=(HUB, MANAGER)):
 
     Raises RuntimeError with what to do about it.
     """
-    want = subprocess.run(["git", "describe", "--tags", "--always", "--dirty"],
-                          cwd=REPO, capture_output=True, text=True).stdout.strip()
+    # A packaged candidate deliberately reports SemVer without the Git tag's
+    # leading "v". Capture and release tooling can pin that exact package
+    # version explicitly while ordinary developer runs remain tied to the
+    # current git-describe identity.
+    want = os.environ.get("XENEON_EXPECT_VERSION", "").strip()
+    if not want:
+        want = subprocess.run(["git", "describe", "--tags", "--always", "--dirty"],
+                              cwd=REPO, capture_output=True, text=True).stdout.strip()
     if not want:
         return None                      # no git (packaged tree) - nothing to check
     for b in binaries:

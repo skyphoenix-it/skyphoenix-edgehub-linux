@@ -11,6 +11,7 @@ import os
 import re
 import sys
 import unittest
+from types import SimpleNamespace
 from unittest import mock
 
 
@@ -18,7 +19,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, HERE)
 
-from e2e_harness import tile  # noqa: E402
+from e2e_harness import assert_binaries_current, tile  # noqa: E402
 import e2e_widgets  # noqa: E402
 import edge_e2e  # noqa: E402
 import input_guard  # noqa: E402
@@ -34,6 +35,28 @@ class TestTileContract(unittest.TestCase):
     def test_legacy_numeric_spans_fail_loudly(self):
         with self.assertRaises(TypeError):
             tile("clock-1", "clock", 1)
+
+
+class TestPackagedCandidateIdentity(unittest.TestCase):
+    def test_explicit_package_version_accepts_semver_without_tag_prefix(self):
+        result = SimpleNamespace(stdout="Xeneon Edge Linux Hub 1.0.0-beta.1\n")
+        with mock.patch.dict(os.environ,
+                             {"XENEON_EXPECT_VERSION": "1.0.0-beta.1"}), \
+             mock.patch("e2e_harness.os.path.exists", return_value=True), \
+             mock.patch("e2e_harness.subprocess.run", return_value=result):
+            self.assertEqual(
+                assert_binaries_current(("/candidate/xeneon-edge-hub",)),
+                "1.0.0-beta.1",
+            )
+
+    def test_explicit_package_version_still_rejects_a_stale_binary(self):
+        result = SimpleNamespace(stdout="Xeneon Edge Linux Hub 1.0.0-alpha.2\n")
+        with mock.patch.dict(os.environ,
+                             {"XENEON_EXPECT_VERSION": "1.0.0-beta.1"}), \
+             mock.patch("e2e_harness.os.path.exists", return_value=True), \
+             mock.patch("e2e_harness.subprocess.run", return_value=result):
+            with self.assertRaises(RuntimeError):
+                assert_binaries_current(("/candidate/xeneon-edge-hub",))
 
 
 class TestCatalogContract(unittest.TestCase):
