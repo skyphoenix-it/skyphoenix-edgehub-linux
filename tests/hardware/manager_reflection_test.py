@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""manager_reflection_test.py — HUB -> Manager reflection (the other direction).
+"""manager_reflection_test.py - HUB -> Manager reflection (the other direction).
 
 manager_hub_boundary tests Manager -> hub (clicks in the Manager land on the
 hub). This tests the reverse: a change made on the HUB must appear in the
@@ -9,14 +9,14 @@ Manager, because the Manager polls the hub every 4s (manager_backend.h, the
 Covers three reflections, each: change it on the hub over the control socket,
 wait for the Manager to pull, grab the Manager, assert it changed.
 
-  1. SCREENS    — add screens on the hub -> the Manager's screen chips grow.
-  2. THEME      — change the theme on the hub -> the Manager preview recolours.
-  3. ORIENTATION — set the hub to landscape -> the Manager PREVIEW becomes WIDE.
+  1. SCREENS    - add screens on the hub -> the Manager's screen chips grow.
+  2. THEME      - change the theme on the hub -> the Manager preview recolours.
+  3. ORIENTATION - set the hub to landscape -> the Manager PREVIEW becomes WIDE.
 
 (3) is a KNOWN BUG the owner reported: hub horizontal shown vertical in the
 Manager. The hub reports the raw SENSOR rotation (-1 with no sensor) rather than
 its effective CONTENT rotation, and with no sensor the hub DEFAULTS to landscape
-(main.qml contentRotation) — so the panel is landscape while the Manager, in
+(main.qml contentRotation) - so the panel is landscape while the Manager, in
 auto, is told "unknown" and falls back to portrait. This test is written to FAIL
 until the hub reports effective rotation.
 

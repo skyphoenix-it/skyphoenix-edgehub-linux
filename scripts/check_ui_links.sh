@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# check_ui_links.sh — a link the UI offers must actually go somewhere.
+# check_ui_links.sh - a link the UI offers must actually go somewhere.
 #
 # The Manager's About pane shipped a "GitHub" button wired to
 # `Qt.openUrlExternally("#")`. Clicking it did nothing at all: no browser, no
-# error, no log line. That is worse than having no button — the user concludes
+# error, no log line. That is worse than having no button - the user concludes
 # the app is broken rather than the link, and there is no failure for anyone to
 # notice. It survived every test and review because nothing could fail on it.
 #
 # So: every `Qt.openUrlExternally(...)` with a literal argument must name a real
-# scheme. Non-literal arguments (a property, an expression) are skipped — this
+# scheme. Non-literal arguments (a property, an expression) are skipped - this
 # lint only judges what it can actually see.
 #
 # NOTE ON THE SCAN: this deliberately does NOT grep for `openUrlExternally("`.
-# The first version did, and was born inert — the call it was written to catch
+# The first version did, and was born inert - the call it was written to catch
 # is wrapped:
 #
 #     onClicked: Qt.openUrlExternally(
@@ -50,7 +50,7 @@ for root in ("ui/qml", "manager/qml"):
             if not url.startswith(OK_SCHEMES):
                 # Report the line the literal sits on, not the call's start.
                 line = src[:src.index('"%s"' % url)].count("\n") + 1
-                print(f'  {path}:{line} — openUrlExternally("{url}") goes nowhere')
+                print(f'  {path}:{line} - openUrlExternally("{url}") goes nowhere')
                 fail = 1
 
 if fail:

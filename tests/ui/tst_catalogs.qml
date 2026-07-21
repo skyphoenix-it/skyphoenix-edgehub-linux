@@ -5,7 +5,7 @@ import "../../ui/qml/widgets" as Wg
 
 // COVERS: bg:*, wallpaper:*
 
-// BackgroundCatalog + WallpaperCatalog (ui/qml/*Catalog.qml) — the shared style /
+// BackgroundCatalog + WallpaperCatalog (ui/qml/*Catalog.qml) - the shared style /
 // wallpaper registries. Assert expected counts, unique keys, required fields, and
 // non-empty asset paths, plus that every background style has a real backdrop
 // component (catalog ↔ BackdropLayer map parity).
@@ -40,7 +40,7 @@ Item {
         }
 
         // Every animated style (all but 'none') must map to a real component in
-        // BackdropLayer — the catalog and the style→component map must not drift.
+        // BackdropLayer - the catalog and the style→component map must not drift.
         function test_every_animated_style_loads_a_backdrop() {
             var bl = Qt.createQmlObject(
                 'import "../../ui/qml/widgets" as W; W.BackdropLayer { width: 80; height: 80; running: false; visible: true }',

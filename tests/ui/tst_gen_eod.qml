@@ -6,7 +6,7 @@ import "../../ui/qml/widgets" as Widgets
 // COVERS: schema:endHour, schema:progressStyle, schema:showPercent, schema:startHour
 
 // ─────────────────────────────────────────────────────────────────────────
-// Comprehensive tests for widget:eod — ui/qml/widgets/EndOfDayWidget.qml
+// Comprehensive tests for widget:eod - ui/qml/widgets/EndOfDayWidget.qml
 // (the "End of Day" workday-progress widget) plus the shared config schema /
 // ConfigField surface that drives its hour fields.
 //
@@ -34,7 +34,7 @@ Item {
     // that is the only pairing Dashboard ever produces: injectWidget sets
     // sizeClass "full" for the overlay and a span-derived class otherwise. Left
     // to WidgetChrome's geometric default this 760-tall host reported "tall"
-    // WHILE expanded — a combination the product cannot reach — and the widget
+    // WHILE expanded - a combination the product cannot reach - and the widget
     // carried a `&& !w.expanded` term whose only job was to paper over it. Pinning
     // the real pairing let that dead term go.
     WidgetHarness {
@@ -724,7 +724,7 @@ Item {
         WidgetHarness { id: hBase; anchors.fill: parent; widgetFile: "EndOfDayWidget.qml"; expanded: false } }
     // The OVERLAY, at the two boxes Dashboard actually gives it: the live-preview
     // pane beside the config form, ~941x456 landscape and ~656x980 portrait.
-    // `expanded: true` AND sizeClass "full" — the real pairing — because a
+    // `expanded: true` AND sizeClass "full" - the real pairing - because a
     // mode-keyed literal can only be caught with the mode switched ON.
     Item { width: 941; height: 456
         WidgetHarness { id: hOvlL; anchors.fill: parent; widgetFile: "EndOfDayWidget.qml"; expanded: true } }
@@ -743,7 +743,7 @@ Item {
                 { startHour: 9, endHour: 17, progressStyle: "bar", showPercent: true })
         }
 
-        // 0.5x0.5 — headerless: the remaining time + a slim bar, no caption.
+        // 0.5x0.5 - headerless: the remaining time + a slim bar, no caption.
         function test_micro_is_time_plus_bar() {
             tryVerify(function () { return hMicro.ready }, 3000)
             prep(hMicro)
@@ -756,7 +756,7 @@ Item {
             verify(visibleTextEq(w, "Started") === null, "micro has no detail column")
         }
 
-        // wide — remaining/caption beside the progress; the ring style is
+        // wide - remaining/caption beside the progress; the ring style is
         // honoured outside the overlay.
         function test_wide_honours_ring_style() {
             tryVerify(function () { return hWide.ready }, 3000)
@@ -776,7 +776,7 @@ Item {
             wideWrap.width = 696; wideWrap.height = 416
         }
 
-        // tall — the detail column spells the workday out and replaces the caption.
+        // tall - the detail column spells the workday out and replaces the caption.
         function test_tall_earns_detail_column() {
             tryVerify(function () { return hTall.ready }, 3000)
             prep(hTall)
@@ -807,16 +807,16 @@ Item {
         // FIXED while only the room moves: anything that changes is genuinely
         // sized by its box, anything that does not is still reading the mode.
         //
-        // The two hosts are a 344x819 TALL tile and a 696x819 BASELINE — both
+        // The two hosts are a 344x819 TALL tile and a 696x819 BASELINE - both
         // expanded:false, both non-micro. That pairing is deliberate: the old
         // literals had a micro-aware ELSE branch (`micro ? 64 : 52`,
         // `micro ? 8 : 10`), so a tall-vs-micro comparison passes even against
-        // the buggy code — the two boxes differ only in the micro flag, which the
+        // the buggy code - the two boxes differ only in the micro flag, which the
         // else branch reads too. tall-vs-baseline strips that out: with the mode
         // literal restored both collapse to the same non-micro else value (hero
         // 52, rowSpacing 6), so the assertions below go red exactly when the bug
         // is present. (Verified by restoring `w.expanded ? 80` and
-        // `rowSpacing: w.expanded ? 14 : 6` — this test failed, the overlay test
+        // `rowSpacing: w.expanded ? 14 : 6` - this test failed, the overlay test
         // stayed green; see the report.)
         function test_sizing_follows_the_room_while_the_mode_is_held_fixed() {
             tryVerify(function () { return hTall.ready && hBase.ready }, 3000)
@@ -834,7 +834,7 @@ Item {
             // The RENDERED hero time, not the property that feeds it: a Text that
             // ignored the binding and re-froze a literal would sail through a
             // property-only check. Both boxes are non-micro, so the old
-            // `micro ? 64 : 52` else branch gives BOTH 52 — only the box-derived
+            // `micro ? 64 : 52` else branch gives BOTH 52 - only the box-derived
             // term separates them.
             var th = visibleTextEq(tall, tall.remaining)
             var bh = visibleTextEq(base, base.remaining)
@@ -859,7 +859,7 @@ Item {
         // false, where a surviving `w.expanded ? 80 : <derived>` never fires its
         // literal at all and the derived branch keeps the assertion green.
         //
-        // Both hosts are expanded AND "full"; only the BOX differs — the real
+        // Both hosts are expanded AND "full"; only the BOX differs - the real
         // live-preview panes beside the config form (Dashboard: 38% of the width
         // in landscape, a stacked band in portrait), NOT a 2560x720 screen. A
         // literal returns one number for both, so asserting the two differ is
@@ -872,7 +872,7 @@ Item {
             // A real event-loop turn, not wait(0): these hosts default to "tall"
             // (height > 240) and only become "full" on the lines above; wait(0)
             // returns BEFORE the layout re-polishes and a rendered read then
-            // reports pre-change geometry. waitForRendering is not the tool —
+            // reports pre-change geometry. waitForRendering is not the tool -
             // offscreen never swaps a frame.
             wait(16)
             compare(land.expanded, true, "precondition: this IS the overlay")
@@ -905,14 +905,14 @@ Item {
                    "the caption is sized by the pane too (" + capP.font.pixelSize
                    + " vs " + capL.font.pixelSize + ")")
 
-            // The hero still FITS the pane it was sized for — the structural
+            // The hero still FITS the pane it was sized for - the structural
             // guarantee, not glyph ink (headless font metrics are meaningless).
             verify(t.width <= land.width + 0.51,
                    "the hero stays inside the landscape pane (" + t.width.toFixed(0)
                    + " in " + land.width + ")")
         }
 
-        // invalid hours — the detail column must not render a bogus workday.
+        // invalid hours - the detail column must not render a bogus workday.
         function test_tall_detail_hidden_when_invalid() {
             tryVerify(function () { return hTall.ready }, 3000)
             prep(hTall)

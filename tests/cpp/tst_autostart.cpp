@@ -22,7 +22,7 @@ class TstAutostart : public QObject {
     QString path_;
 private slots:
     void initTestCase() {
-        // ConfigLocation, matching the code under test — homePath() was the BUG:
+        // ConfigLocation, matching the code under test - homePath() was the BUG:
         // it ignores XDG_CONFIG_HOME, so an isolated hub wrote the REAL autostart
         // dir (and cleanup deleted the user's genuine entry). The hermetic harness
         // gives this test a sandboxed XDG_CONFIG_HOME, which is the point.
@@ -41,7 +41,7 @@ private slots:
         QFile::remove(homeSide);
         QVERIFY(applyAutostart(true));
         QVERIFY2(QFile::exists(path_), "entry lands under XDG_CONFIG_HOME");
-        QVERIFY2(!QFile::exists(homeSide), "and NEVER under $HOME/.config — the escape is closed");
+        QVERIFY2(!QFile::exists(homeSide), "and NEVER under $HOME/.config - the escape is closed");
         QVERIFY(applyAutostart(false));
     }
     void cleanup() {
@@ -81,7 +81,7 @@ private slots:
     }
 
     // Honest return regression: when the removal genuinely fails (parent dir made
-    // read-only so unlink is denied), applyAutostart(false) must report false —
+    // read-only so unlink is denied), applyAutostart(false) must report false -
     // the hub previously returned true unconditionally on the disable path.
     void disableReturnsRealRemoveResult() {
         if (::geteuid() == 0)

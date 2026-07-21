@@ -1,7 +1,7 @@
 import QtQuick
 
 // ─────────────────────────────────────────────────────────────────────────
-// NetHub — the single egress gate. EVERY outbound request from a widget goes
+// NetHub - the single egress gate. EVERY outbound request from a widget goes
 // through NetHub.request(); it is the ONLY place in the QML tree that may
 // construct an XMLHttpRequest. This makes "no telemetry / local-only" provable
 // by construction: there is exactly one choke point to audit, gate, and count.
@@ -12,9 +12,9 @@ import QtQuick
 // NetHub, so the same code path is exercised offline through the xhrFactory seam.
 //
 // The gate enforces, in order:
-//   1. global offline  — a hard kill switch (blocks all remote egress)
-//   2. host allowlist   — when non-empty, only these hosts may be reached
-//   3. local files pass — file:/relative URLs are not egress, so they are only
+//   1. global offline  - a hard kill switch (blocks all remote egress)
+//   2. host allowlist   - when non-empty, only these hosts may be reached
+//   3. local files pass - file:/relative URLs are not egress, so they are only
 //                         subject to nothing (a local KPI file works offline)
 // then counts the request (for the attestation surface) and performs it.
 // ─────────────────────────────────────────────────────────────────────────
@@ -22,7 +22,7 @@ QtObject {
     id: hub
 
     // Global kill switch. When true, NO remote request is made (local file:
-    // reads still work — they are not egress).
+    // reads still work - they are not egress).
     property bool offline: false
 
     // Host allowlist. Empty = allow any host. Non-empty = only these hosts.
@@ -37,7 +37,7 @@ QtObject {
     // Resolves credential references (E7). Anything with a
     // resolveSecret(raw) -> { ok, value, error, plaintext } method; in the hub
     // that is ConfigBridge (Dashboard injects it). Null in tests/standalone,
-    // where _resolveToken falls back — see there for why a ref then FAILS rather
+    // where _resolveToken falls back - see there for why a ref then FAILS rather
     // than being sent verbatim.
     property var secretResolver: null
 
@@ -48,7 +48,7 @@ QtObject {
 
     // Is this a LOCAL read (not egress)? This must be an allowlist of local forms,
     // never "anything that isn't http(s)": the old shape treated EVERY unknown
-    // scheme as local, so `webcal://…` — a real Apple/iCloud calendar URL — skipped
+    // scheme as local, so `webcal://…` - a real Apple/iCloud calendar URL - skipped
     // both the offline kill switch and the host allowlist and went straight out.
     // Any scheme we do not positively recognise is therefore NOT local; it is
     // refused by request() rather than waved through as a file read.
@@ -99,7 +99,7 @@ QtObject {
         return t.indexOf("${env:") === 0 || t.indexOf("file:") === 0 || t.indexOf("secret://") === 0
     }
 
-    // Hosts already warned about a plaintext credential — the warning is about a
+    // Hosts already warned about a plaintext credential - the warning is about a
     // stored value, not an event, so it must not repeat on every poll.
     property var _plaintextWarned: ({})
 
@@ -133,7 +133,7 @@ QtObject {
     //   opts.method     default "GET"
     //   opts.headers    { name: value } (applied when the XHR supports it)
     //   opts.authToken  the STORED credential (a "${env:}"/"file:" ref or a legacy
-    //                   literal) — resolved here and sent as "Authorization:
+    //                   literal) - resolved here and sent as "Authorization:
     //                   Bearer <value>". Pass the stored string, never a resolved
     //                   secret: that is what keeps it out of ui_state.
     //   opts.body       request body (string)
@@ -186,7 +186,7 @@ QtObject {
                 return null
             }
             if (sec.value.length) {
-                // Copy: never mutate the caller's object — headers may be a
+                // Copy: never mutate the caller's object - headers may be a
                 // widget property, which would park the secret in the QML tree.
                 headers = {}
                 for (var hk in opts.headers) headers[hk] = opts.headers[hk]
@@ -207,7 +207,7 @@ QtObject {
             // A local file read succeeds with status 0 (no HTTP layer). A remote
             // request succeeds on ANY 2xx, not just 200: a transforming proxy
             // legitimately answers 203, and CalendarWidget accepted 203/206 before
-            // it moved onto the gate — narrowing that here would have silently
+            // it moved onto the gate - narrowing that here would have silently
             // broken an ICS feed behind a corporate proxy. A 2xx with an empty body
             // (204) still fails the caller's own parse, which is the right layer
             // for that.

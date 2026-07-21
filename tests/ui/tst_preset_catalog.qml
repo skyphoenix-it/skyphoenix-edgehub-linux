@@ -17,7 +17,7 @@ Item {
     App.WidgetConfigSchema { id: sc }
     App.DashboardStore { id: store }
     App.WidgetSizes { id: sizes }
-    // The REAL packer the Dashboard uses — the budget is measured by placing the
+    // The REAL packer the Dashboard uses - the budget is measured by placing the
     // tiles, never by summing them: half-width tiles pair across the short axis, so
     // a sum would reject pages that genuinely fit.
     App.WidgetPacker { id: packer }
@@ -65,7 +65,7 @@ Item {
 
         // A preset may only name a size the tile's TYPE declares. Legality alone is
         // not enough: `1x2` is a real size, but `focus` does not render it, and a
-        // preset that asked for one would be silently coerced by the store — the
+        // preset that asked for one would be silently coerced by the store - the
         // preset would ship a layout its author never saw.
         function test_every_preset_tile_size_is_declared_by_its_type() {
             var list = presets.list()
@@ -89,7 +89,7 @@ Item {
         // THE POINT OF THIS FILE: no preset page may run past one screen.
         //
         // The scroll axis follows the LONG axis, which in the default 2560x720
-        // landscape is the same axis as the SwipeView's page swipe — on an
+        // landscape is the same axis as the SwipeView's page swipe - on an
         // OVERFLOWING landscape page the inner Flickable wins the drag and the
         // PageIndicator becomes the only way to change pages. A page that fits never
         // scrolls, so the conflict cannot arise. This test is what makes that
@@ -119,7 +119,7 @@ Item {
         // calm-focus's hero timer is the regression this epic's migration fix exists
         // for: `focus` tops out at 1x1.5, so a preset asking for more used to be
         // coerced to the 1x1 default and the "big timer" its blurb promises quietly
-        // became an ordinary tile. Assert the shipped preset keeps a hero — a size
+        // became an ordinary tile. Assert the shipped preset keeps a hero - a size
         // strictly larger than the baseline.
         function test_calm_focus_keeps_a_hero_timer() {
             var doc = presets.buildDoc("calm-focus")
@@ -134,7 +134,7 @@ Item {
             verify(found !== null, "calm-focus ships a focus timer")
             compare(found.size, "1x1.5", "the timer is the largest size `focus` declares")
             verify(sizes.area(found.size) > sizes.area(sizes.baseline),
-                   "the timer is a HERO — bigger than the 1x1 baseline, not coerced down to it")
+                   "the timer is a HERO - bigger than the 1x1 baseline, not coerced down to it")
         }
 
         // A preset ships per-tile `settings`, but nothing at runtime validates them:
@@ -167,7 +167,7 @@ Item {
         }
 
         // The data-connected presets are the payoff of the primitive widgets (E1):
-        // they must actually carry a data tile, and must ship it UNCONFIGURED — the
+        // they must actually carry a data tile, and must ship it UNCONFIGURED - the
         // endpoint is the user's to supply, so a preset must never guess a URL (which
         // would poll a stranger's host on first run). A blank url/filePath also means
         // the widget's own polling stays off until the user connects it.
@@ -186,7 +186,7 @@ Item {
                         var st = tiles[t].settings || {}
                         verify(st.title && st.title.length,
                                expected[i] + ": data tile is labelled (a named slot, not a bare 'HTTP / JSON')")
-                        verify(!st.url, expected[i] + ": data tile ships with NO url — the user connects it")
+                        verify(!st.url, expected[i] + ": data tile ships with NO url - the user connects it")
                         verify(!st.filePath, expected[i] + ": data tile ships with NO filePath")
                     }
                 }
@@ -240,7 +240,7 @@ Item {
                 compare(list[i].pages.length, 1, list[i].id + " is a single-page screen")
         }
 
-        // buildBundle composes several single-page screens into one document — the
+        // buildBundle composes several single-page screens into one document - the
         // "a few starter screens" a fresh install begins with.
         function test_buildBundle_composes_several_screens() {
             var doc = presets.buildBundle(["productivity", "system-monitor", "home-ambient"])

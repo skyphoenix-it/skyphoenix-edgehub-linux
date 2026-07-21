@@ -1,11 +1,11 @@
 import QtQuick
 import QtQuick.Shapes
 
-// MeshGradientBackground — a modern "mesh gradient" wash: a few very large, very
+// MeshGradientBackground - a modern "mesh gradient" wash: a few very large, very
 // soft, overlapping colour blobs that cover the whole screen so their colours
 // blend edge-to-edge, each drifting slowly to new positions on long InOutSine
 // loops. GPU-rendered (QtQuick.Shapes RadialGradient), so no per-frame repaint.
-// When `active` is false the blobs stay painted but stop drifting — matching the
+// When `active` is false the blobs stay painted but stop drifting - matching the
 // static-canvas behaviour of the waves/stars backdrops.
 Item {
     id: root

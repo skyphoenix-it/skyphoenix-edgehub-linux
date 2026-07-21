@@ -1,16 +1,16 @@
 import QtQuick
 import QtQuick.Layouts
 
-// Root-filesystem usage — real data (statvfs via the Rust core).
+// Root-filesystem usage - real data (statvfs via the Rust core).
 //
 // Sizing (W1): layout keys off `sizeClass` (injected by Dashboard), never off
 // `expanded`. Disk usage barely changes, so the ring carries the story and each
 // size earns what it can hold:
-//   • 0.5x0.5 (micro) — a bare ring + percent, headerless: nothing competes
+//   • 0.5x0.5 (micro) - a bare ring + percent, headerless: nothing competes
 //     with the one number in a twelfth of the screen.
-//   • 1x1 (compact)   — header + ring with percent and used/total inside.
-//   • wide            — ring beside a Used / Free / Total detail column.
-//   • tall / full     — ring above the same detail column.
+//   • 1x1 (compact)   - header + ring with percent and used/total inside.
+//   • wide            - ring beside a Used / Free / Total detail column.
+//   • tall / full     - ring above the same detail column.
 WidgetChrome {
     id: w
     property var metrics: ({})
@@ -35,7 +35,7 @@ WidgetChrome {
         return Math.max(50, Math.min(99, p))
     }
 
-    // statvfs('/') failure — and the pre-first-sample frame — report no real disk
+    // statvfs('/') failure - and the pre-first-sample frame - report no real disk
     // (total absent or 0). Don't fabricate a confident "0%"; flag the tile
     // unavailable so the gauge dims instead of showing a full empty track.
     property bool avail: metrics.disk_total_bytes !== undefined
@@ -75,7 +75,7 @@ WidgetChrome {
     // The detail column earns its place wherever there is room beyond the ring.
     readonly property bool showDetails: sizeClass === "wide" || sizeClass === "tall"
                                         || sizeClass === "large" || sizeClass === "full"
-    // used/total inside the ring: only the baseline tile and the overlay — the
+    // used/total inside the ring: only the baseline tile and the overlay - the
     // micro ring is too small and the detail column already carries it elsewhere.
     readonly property bool showInlineSub: avail && !micro && !showDetails
     readonly property real ringDia: {
@@ -132,7 +132,7 @@ WidgetChrome {
             }
         }
 
-        // Used / Free / Total — the numbers the percent is made of, where a size
+        // Used / Free / Total - the numbers the percent is made of, where a size
         // has the room to spell them out.
         ColumnLayout {
             visible: w.showDetails

@@ -28,7 +28,7 @@ import e2e_theming  # noqa: E402
 
 def _kill_stale():
     # Only hubs launched from THIS repo's build tree (a stale spawn from a
-    # crashed previous run). Never a bare "xeneon-edge-hub" pattern — that
+    # crashed previous run). Never a bare "xeneon-edge-hub" pattern - that
     # would match the user's live packaged hub. And never touch the real
     # XDG_RUNTIME_DIR: since the harness isolates each spawned hub's runtime
     # dir, the live hub's lock and control socket are not ours to remove.
@@ -82,13 +82,13 @@ def ipc_robustness_and_perf(h):
 
 def soak(h, seconds=120):
     """Sustained MIXED-operation endurance test: rotate themes/backgrounds, add &
-    remove widgets, resize, rebuild multi-page layouts, and periodically swipe —
+    remove widgets, resize, rebuild multi-page layouts, and periodically swipe -
     a realistic churn that stresses every path for the full duration. Catches
     leaks, races, and crashes that only surface over time."""
     section("Soak (%ds sustained mixed operations)" % seconds)
     # Rotate through the FULL catalogs, derived from the same drift-checked
     # lists the theming suite asserts against Theme.qml / BackgroundCatalog.qml
-    # — a new theme or background style is soak-tested automatically.
+    # - a new theme or background style is soak-tested automatically.
     themes, bgs = list(e2e_theming.THEMES), list(e2e_theming.BG_STYLES)
     types = ["cpu", "gpu", "ram", "clock", "focus", "weather", "moon", "quote", "habit", "media"]
     end = time.time() + seconds
@@ -111,7 +111,7 @@ def soak(h, seconds=120):
                                  "animatedBg": (n % 2 == 0), "glass": 0.4 + 0.4 * (n % 2),
                                  "glow": (n % 2 == 0), "gridCols": 1 + (n % 2)})
             h.set_state(st); h.get_state(); n += 1
-            # Occasional real touch input under load — ONLY when synthetic
+            # Occasional real touch input under load - ONLY when synthetic
             # input is opted in (XENEON_HW_INPUT=1) and not killed. The soak
             # itself is IPC-driven and stays fully useful without it.
             if n % 40 == 0 and h.input_allowed and not h.input_aborted:
@@ -172,7 +172,7 @@ def main():
         return 2
     _kill_stale()
     work = tempfile.mkdtemp(prefix="edge-e2e-")
-    print("EdgeHub E2E — workdir:", work, flush=True)
+    print("EdgeHub E2E - workdir:", work, flush=True)
     h = E2E(work)
     print("Edge geom:", h.ex, h.ey, h.ew, h.eh, "canvas:", h.cw, h.ch, flush=True)
     h.write_config(doc([page("Start", [tile("clock-1", "clock")])]))
@@ -181,7 +181,7 @@ def main():
 
     t0 = time.time()
     try:
-        section("Widget lifecycle (add / render / resize / remove — all %d types)"
+        section("Widget lifecycle (add / render / resize / remove - all %d types)"
                 % len(e2e_widgets.WIDGETS))
         e2e_widgets.run(h)
         section("Theming (all themes / backgrounds / accents / per-widget style)")

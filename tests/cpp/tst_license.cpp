@@ -3,7 +3,7 @@
 //
 // Scope note: this asserts the FFI *contract* and the fail-soft guarantee. It
 // cannot assert "a valid key unlocks Pro", because this path is pinned to the
-// public key compiled into the core and nothing may redirect it at runtime —
+// public key compiled into the core and nothing may redirect it at runtime -
 // that immovability IS the security property, and a C++ test that could bypass
 // it would be a licence bypass. The verifier's own behaviour (valid / tampered
 // / wrong-issuer / expired / truncated) is proven against a test issuer in the
@@ -59,7 +59,7 @@ private slots:
         QTest::newRow("non-base64")   << QByteArray("XE1.****.****");
         QTest::newRow("padded-b64")   << QByteArray("XE1.AAAA=.BBBB=");
         QTest::newRow("jwt-lookalike")<< QByteArray("eyJhbGciOiJub25lIn0.eyJ0aWVyIjoicHJvIn0.");
-        // Well-formed shape, unverifiable content — the shipped default until a
+        // Well-formed shape, unverifiable content - the shipped default until a
         // real issuer key exists.
         QTest::newRow("well-formed")  << QByteArray("XE1.eyJ0aWVyIjoicHJvIn0.AAAA");
         // A long paste and a lone separator: neither may index out of bounds.
@@ -71,7 +71,7 @@ private slots:
         const auto o = verify(key.constData());
         QCOMPARE(o.value("tier").toString(), QStringLiteral("free"));
         QCOMPARE(o.value("state").toString(), QStringLiteral("unlicensed"));
-        // Unlicensed must always explain itself — support needs the failure mode.
+        // Unlicensed must always explain itself - support needs the failure mode.
         QVERIFY2(o.value("reason").isString() && !o.value("reason").toString().isEmpty(),
                  "an unlicensed result must carry a reason");
     }
@@ -84,7 +84,7 @@ private slots:
     }
 
     // The result is user- and log-facing. It must name the failure mode and
-    // never hand the key back — the same rule secrets.rs holds for tokens.
+    // never hand the key back - the same rule secrets.rs holds for tokens.
     void the_result_never_echoes_the_key() {
         const auto o = verify("XE1.SUPERSECRETLICENCEPAYLOAD.SUPERSECRETSIGNATURE");
         const QByteArray whole = QJsonDocument(o).toJson(QJsonDocument::Compact);
@@ -100,7 +100,7 @@ private slots:
     }
 
     // Verification is offline by construction (the public key is compiled in),
-    // so it must be fast and repeatable — a network call would show up as
+    // so it must be fast and repeatable - a network call would show up as
     // latency or as a differing answer. This is a smoke check of that claim,
     // not a substitute for the CI egress gate.
     void verification_is_offline_fast_and_deterministic() {
@@ -114,7 +114,7 @@ private slots:
         }
         // 200 verifications in a second is unreachable for anything that resolves
         // DNS or opens a socket, even to a local refusal.
-        QVERIFY2(t.elapsed() < 1000, qPrintable(QString("200 verifications took %1ms — "
+        QVERIFY2(t.elapsed() < 1000, qPrintable(QString("200 verifications took %1ms - "
                                                         "is something doing I/O?").arg(t.elapsed())));
     }
 };

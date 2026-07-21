@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Speak the hub's real control protocol — a Manager stand-in for the scenarios.
+"""Speak the hub's real control protocol - a Manager stand-in for the scenarios.
 
 Usage: ipc_client.py <runtime_dir> <message-json>   [--wait-secs N]
 
 Sends one newline-delimited JSON message to $XDG_RUNTIME_DIR/xeneon-edge-hub-ctl
-(the SAME path both real ends resolve through app/src/control_socket_path.h —
+(the SAME path both real ends resolve through app/src/control_socket_path.h -
 never name the socket literally elsewhere) and prints the hub's reply JSON.
 Exit 0 on a reply, 1 on connect/timeout failure.
 
 Why a stand-in and not the real Manager binary: the Manager only saves in
-response to GUI interaction — it exposes no headless "push this layout" hook,
+response to GUI interaction - it exposes no headless "push this layout" hook,
 and adding one would be product code written to make a test pass. So the
 scenarios drive the wire protocol the Manager actually speaks. This proves the
 HUB half of the single-writer rule (the hub owns and performs the write); the
@@ -19,7 +19,7 @@ tests/cpp/tst_manager_backend_sync.cpp against a FakeHub.
 The ack IS the save receipt: the hub's uiStateReceived handler is an EXPLICIT
 Qt::DirectConnection and applyExternalUiState() calls xeneon_config_save()
 BEFORE ControlServer writes the ack (app/src/config_bridge.h). So a scenario
-that has read "ok" may assert on config.toml immediately — and may then kill the
+that has read "ok" may assert on config.toml immediately - and may then kill the
 hub without racing the write it is asserting.
 """
 import json

@@ -1,7 +1,7 @@
 # AGB & Software-Lizenz (Terms of Sale + EULA)
 
 > Template for terms of sale + the software licence for the **paid** EdgeHub build.
-> Fill `[[...]]`. Not legal advice — have it reviewed, especially the licence and
+> Fill `[[...]]`. Not legal advice - have it reviewed, especially the licence and
 > liability limits. If you sell via a Merchant of Record, their terms govern the
 > *transaction*; these govern the *software licence* and your relationship.
 
@@ -53,7 +53,7 @@ gesetzlich Zulässigen]] ohne Zusicherung der Eignung für einen bestimmten Zwec
 bereitgestellt. Die Haftung des Anbieters für leicht fahrlässig verursachte Schäden
 ist auf vertragstypische, vorhersehbare Schäden begrenzt; die Haftung für Vorsatz,
 grobe Fahrlässigkeit, Personenschäden und nach dem Produkthaftungsgesetz bleibt
-unberührt. _(Have a lawyer tighten this clause — liability limits are heavily
+unberührt. _(Have a lawyer tighten this clause - liability limits are heavily
 regulated in DE.)_
 
 ## 9. Schlussbestimmungen

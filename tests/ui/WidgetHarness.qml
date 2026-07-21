@@ -1,7 +1,7 @@
 import QtQuick
 import "../../ui/qml" as App
 
-// WidgetHarness — hosts a single widget for source-tree testing exactly the way
+// WidgetHarness - hosts a single widget for source-tree testing exactly the way
 // Dashboard.qml hosts it: a Loader whose loaded item inherits this component's
 // context, so the widget resolves the `theme`, `store` and `media` globals via
 // the scope chain (no C++ app needed). Load a widget by file name and the

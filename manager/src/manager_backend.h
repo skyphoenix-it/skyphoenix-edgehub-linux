@@ -73,7 +73,7 @@ public:
             // Correct reconnect order: PULL the hub's authoritative state FIRST,
             // then reconcile any edit buffered while the socket was down against it
             // (in onSocketReadyRead, when the reply arrives) before pushing.
-            // Flushing the buffered edit here — BEFORE pulling — would clobber edits
+            // Flushing the buffered edit here - BEFORE pulling - would clobber edits
             // made on the device while the Manager was offline.
             if (!m_pendingPush.isEmpty())
                 m_pendingPushAwaitingHub = true;
@@ -88,7 +88,7 @@ public:
         connect(m_sock, &QLocalSocket::readyRead, this, &ManagerBackend::onSocketReadyRead);
 
         // Reconnect loop so the "connected" indicator recovers when the hub starts
-        // AFTER the Manager (or restarts) — the ctor connect alone isn't enough.
+        // AFTER the Manager (or restarts) - the ctor connect alone isn't enough.
         auto* reconnect = new QTimer(this);
         reconnect->setInterval(2000);
         connect(reconnect, &QTimer::timeout, this, [this] { tryConnectHub(); });
@@ -106,7 +106,7 @@ public:
         m_watcher = new QFileSystemWatcher(this);
         if (QFile::exists(m_configPath)) m_watcher->addPath(m_configPath);
         // Also watch the containing directory so that if config.toml does NOT exist
-        // yet at startup, we arm the file watch the moment it first appears — without
+        // yet at startup, we arm the file watch the moment it first appears - without
         // this, later external writes to a config that was initially absent go unseen.
         const QString cfgDir = QFileInfo(m_configPath).absolutePath();
         QDir().mkpath(cfgDir);
@@ -114,13 +114,13 @@ public:
         connect(m_watcher, &QFileSystemWatcher::directoryChanged, this, [this] {
             if (m_watcher->files().contains(m_configPath) || !QFile::exists(m_configPath))
                 return;                       // already armed, or still absent
-            m_watcher->addPath(m_configPath); // config just appeared — arm the watch
+            m_watcher->addPath(m_configPath); // config just appeared - arm the watch
             if (m_nowMs() < m_ignoreWatchUntilMs) return;
             if (m_hubConnected) return;
             reloadConfig();                   // pick up the just-created config  // GCOVR_EXCL_LINE (offline external-change reload = inotify/timing glue)
         });
         connect(m_watcher, &QFileSystemWatcher::fileChanged, this, [this] {
-            // Atomic saves rename over the file and drop the watch — re-add it.
+            // Atomic saves rename over the file and drop the watch - re-add it.
             QTimer::singleShot(60, this, [this] {
                 if (!m_watcher->files().contains(m_configPath) && QFile::exists(m_configPath))
                     m_watcher->addPath(m_configPath);
@@ -153,7 +153,7 @@ public:
 
     // Launch the hub if it isn't already running. Returns false only when the
     // launch could not be started (missing binary). If a hub is already up (or
-    // we're mid-connect to one), it's a no-op success — avoids a double instance.
+    // we're mid-connect to one), it's a no-op success - avoids a double instance.
     Q_INVOKABLE bool startHub() {
         if (m_hubConnected || m_sock->state() == QLocalSocket::ConnectedState)
             return true;
@@ -183,7 +183,7 @@ public:
         // GCOVR_EXCL_STOP
     }
 
-    // O1 — tell the hub which screen the Manager has selected, so the panel
+    // O1 - tell the hub which screen the Manager has selected, so the panel
     // mirrors what the user is editing instead of always showing the first page.
     // Fire-and-forget over the live socket; a no-op when the hub is offline (the
     // Manager still works standalone). The hub clamps out-of-range indices.
@@ -201,7 +201,7 @@ public:
         return true;
     }
 
-    // Dev/doc affordances (headless capture) — compiled in only under
+    // Dev/doc affordances (headless capture) - compiled in only under
     // XENEON_QA_HOOKS; return inert defaults in production packages.
 #ifdef XENEON_QA_HOOKS
     Q_INVOKABLE QString grabPath() const { return qEnvironmentVariable("XENEON_GRAB"); }
@@ -243,7 +243,7 @@ public:
         // Keep our in-memory copy current either way so uiState() reflects the edit.
         xeneon_config_set_ui_state(m_config, json.toUtf8().constData());
         // Single-writer: when the hub is connected it OWNS config.toml. Push the edit
-        // over the control socket and let the hub persist it — do NOT also atomically
+        // over the control socket and let the hub persist it - do NOT also atomically
         // rename the file here, which would race the hub's writer (the two-writer save
         // race). When offline the Manager is the sole writer and persists directly, so
         // offline edits are never lost.
@@ -279,7 +279,7 @@ public:
 
     // ── Display / startup settings ──
     Q_INVOKABLE QString screensJson() const {
-        // Headless/offscreen exposes a single bogus 800x800 screen — hide it so the
+        // Headless/offscreen exposes a single bogus 800x800 screen - hide it so the
         // Display tab doesn't offer a garbage target in dev/capture runs.
         if (QGuiApplication::platformName().contains("offscreen", Qt::CaseInsensitive))
             return QStringLiteral("[]");
@@ -362,7 +362,7 @@ public:
             if (!ok) emit saveError(QStringLiteral("Failed to update autostart"));
             return ok;
         }
-        // Install/remove the XDG entry AND persist the flag — both must succeed for
+        // Install/remove the XDG entry AND persist the flag - both must succeed for
         // the switch to be honest. Report the combined result.
         bool fileOk = applyAutostart(enabled);
         markSelfWrite();
@@ -379,7 +379,7 @@ public:
     }
 
     // ── Licensing (Pro tier) ──
-    // Verify a candidate key WITHOUT storing it — the dialog previews "unlocks Pro
+    // Verify a candidate key WITHOUT storing it - the dialog previews "unlocks Pro
     // for <name>" / "expired" / "not a valid key" before the user commits.
     Q_INVOKABLE QString verifyLicenseCandidate(const QString& key) const {
         XeneonString js(xeneon_license_verify_json(key.toUtf8().constData()));
@@ -470,7 +470,7 @@ public:
     }
     // Properly percent-encoded file:// URL for an image in the hub's images dir.
     // Building the URL here via QUrl ensures paths containing spaces or '#' survive
-    // — naive "file://" + path string concatenation (as done in the QML) produces a
+    // - naive "file://" + path string concatenation (as done in the QML) produces a
     // malformed URL that fails to load for those characters.
     Q_INVOKABLE QString imageUrl(const QString& name) const {
         const QString base = QFileInfo(name).fileName();
@@ -522,8 +522,8 @@ private slots:
                 // On the first pull after reconnecting, decide the fate of any edit
                 // buffered while the socket was down BEFORE adopting or pushing.
                 // If the hub's state changed while we were offline (a device-side
-                // edit) — OR we have no prior baseline yet the hub reports a non-empty
-                // state — the hub is authoritative and the stale buffered push is
+                // edit) - OR we have no prior baseline yet the hub reports a non-empty
+                // state - the hub is authoritative and the stale buffered push is
                 // dropped; otherwise the device didn't touch it and our offline edit
                 // is applied. This pull → reconcile → push order is what prevents
                 // clobbering device-side changes.
@@ -533,11 +533,11 @@ private slots:
                         true, !m_pendingPush.isEmpty(), st, m_lastHubState,
                         m_nowMs() < m_suppressAdoptUntilMs);
                     if (a == ReconcileAction::DropEdit) {
-                        m_pendingPush.clear();     // hub is newer — drop the offline edit
+                        m_pendingPush.clear();     // hub is newer - drop the offline edit
                     } else if (a == ReconcileAction::KeepAndPushEdit) {
                         const QString edit = m_pendingPush;
                         m_pendingPush.clear();
-                        pushLive(edit);            // hub unchanged — apply our edit
+                        pushLive(edit);            // hub unchanged - apply our edit
                     }
                     if (!st.isEmpty()) m_lastHubState = st;
                 }
@@ -547,7 +547,7 @@ private slots:
                     continue;
                 if (!st.isEmpty()) m_lastHubState = st;   // track the hub's live state
                 if (!st.isEmpty() && m_config) {
-                    // This IS the hub's live state — adopt it WITHOUT re-saving, and
+                    // This IS the hub's live state - adopt it WITHOUT re-saving, and
                     // only tell QML to reload when it actually differs (so the gentle
                     // periodic pull doesn't churn the UI when nothing changed).
                     XeneonString cur(xeneon_config_get_ui_state(m_config));
@@ -575,7 +575,7 @@ private slots:
         // on the next newline.
         if (m_rxBuf.size() > kMaxRxBufBytes) {
             qWarning() << "Manager: RX buffer exceeded" << kMaxRxBufBytes
-                       << "bytes without a newline — dropping" << m_rxBuf.size()
+                       << "bytes without a newline - dropping" << m_rxBuf.size()
                        << "buffered bytes and resyncing";
             m_rxBuf.clear();
         }
@@ -608,7 +608,7 @@ private:
         m_sock->flush();
     }
     // Block (briefly, bounded) until the hub acks the per-field setter `forType`.
-    // Returns false on a reject, a timeout, or a socket that dropped mid-request —
+    // Returns false on a reject, a timeout, or a socket that dropped mid-request -
     // never a silent optimistic "true".
     //
     // Blocking is deliberate and confined to the RARE display/startup writes: the QML
@@ -616,7 +616,7 @@ private:
     // (the autostart Switch does `setAutostart(c); c = isAutostart()`), and the state
     // it reads is the .desktop entry the HUB writes. A fire-and-forget push would be
     // read back before the hub had done anything. The hot saveUiState path is NOT
-    // acked this way — it stays fire-and-forget.
+    // acked this way - it stays fire-and-forget.
     bool waitForAck(const QString& forType) {
         m_awaitAckFor = forType;
         m_ackSeen = false;
@@ -625,7 +625,7 @@ private:
         // A nested QEventLoop, NOT QLocalSocket::waitForReadyRead: the latter pumps
         // only this socket, which deadlocks whenever the hub shares our event loop
         // (the in-process regression tests) and stalls every other Manager timer even
-        // when it doesn't. ExcludeUserInputEvents keeps the reentrancy honest — the
+        // when it doesn't. ExcludeUserInputEvents keeps the reentrancy honest - the
         // user cannot toggle the same control again while we are inside the wait.
         QEventLoop loop;
         m_ackLoop = &loop;
@@ -647,7 +647,7 @@ private:
             // while offline: a newer live edit always wins over an older buffered one.
             // Clear the pending offline push AND its awaiting-reconcile flag so that a
             // getUiState reply still in flight from the reconnect can't resurrect and
-            // re-push the OLDER buffered edit over this newer one — the stale-repush
+            // re-push the OLDER buffered edit over this newer one - the stale-repush
             // edit-loss heisenbug (edit A buffered, connect arms reconcile, live edit B
             // pushes here, then the reply reconciles with A and re-pushes it, losing B).
             m_pendingPush.clear();
@@ -661,7 +661,7 @@ private:
             // foreign device-side change, and DROP the newer offline edit.
             m_lastHubState = uiStateJson;
         } else {
-            // connectToServer is async — buffer and flush on the `connected` signal
+            // connectToServer is async - buffer and flush on the `connected` signal
             // so the edit is never silently lost (was the "first save dropped" bug).
             m_pendingPush = uiStateJson;
             tryConnectHub();

@@ -1,37 +1,74 @@
-# Unreleased development hold
+# EdgeHub v1.0.0-beta.1
 
-> **DO NOT PUBLISH THIS FILE AS RELEASE NOTES.** It is a fail-visible placeholder
-> for the current development branch. There is no new beta, feature freeze, code
-> freeze or release-ready candidate.
+EdgeHub beta.1 is the first beta of the native Linux dashboard and companion
+Manager for the Corsair Xeneon Edge. It focuses on the complete physical-panel
+workflow: display targeting, touch navigation, portrait and landscape layouts,
+live Manager-to-Hub editing, reconnect behavior, and durable configuration.
 
-The latest public baseline remains `v1.0.0-alpha.2`. Work after that tag contains
-substantial Hub, Manager, widget, packaging and test improvements, but source-tree
-features and passing development tests are not a release certificate.
+## Highlights
 
-## Why publication is blocked
+- 30 first-party widgets and 19 preset screens.
+- Touch-first portrait and landscape dashboards.
+- EdgeHub Manager can add, resize, reorder, restyle, and switch the screen shown
+  by the running Hub over a local socket.
+- 29 themes, 29 accents, 10 animated backgrounds plus Gradient, and 18 bundled
+  wallpapers.
+- Local TOML configuration, no account requirement, and no telemetry
+  implementation.
+- All functional features, widgets, presets, layouts, backgrounds, wallpapers,
+  accessibility options, and the Manager are available in Free.
+- Pro entitlement is limited to nine optional colour themes; Pro keys are not
+  sold as part of this beta.
 
-- The authoritative requirements audit still has an unresolved user-facing
-  disconnect-notification/selection-guidance gap.
-- The 2026-07-21 formal short profile **failed** its memory limits on the dirty
-  development binary: idle peak RSS was 408.094 MiB against `<150 MiB`; the exact
-  10-widget profile peaked at 472.820 MiB against `<250 MiB`. Startup and average
-  CPU passed, but the aggregate result is still failure.
-- The qualifying long-duration performance and physical-hardware stability runs
-  are incomplete.
-- Exact-candidate native package lifecycles and a published AppImage/zsync update
-  round trip are incomplete. A recipe or workflow is not package availability.
-- Legal/trademark review and any store, pricing, refund, support and key-delivery
-  path are not complete.
-- The worktree is not an immutable signed candidate and the strict release gate
-  has not passed for one.
+## Verification summary
 
-## Maintainer action
+The development candidate completed the real-device and integration campaign:
 
-Before invoking `scripts/release.sh`, replace this entire hold with notes for the
-exact signed tag. Describe only artifacts that are actually uploaded and verified;
-do not claim AUR, DEB, RPM, AppImage, Flatpak, self-update, paid delivery or broad
-platform support without the corresponding release evidence.
+- physical Edge workflow: 269/269 checks;
+- 20-minute hardware soak: 2,169 update cycles and 54 touch swipes;
+- Manager/Hub integration: 53/53 scenarios;
+- display lifecycle: 18/18 scenarios;
+- Rust: 242 tests; QML: 93 files; C++: 22 tests;
+- nested compositor: 1,311/1,311 local checks;
+- hosted coverage: 96.60% C++, 96.62% Rust, 97.06% combined.
 
-See [MVP scope and evidence status](docs/product/mvp-scope.md),
-[the beta/release gate](docs/BETA_PLAN.md), and
-[distribution status](docs/DISTRIBUTION.md).
+The release owner accepted the risk of publishing beta.1 without the previously
+planned 48-hour soak. The final hosted compositor rerun was cancelled to stop
+excessive CI usage after the corrected failing function passed locally in 3.472
+seconds. No 48-hour stability or formal performance claim is made for this beta.
+
+## Artifacts
+
+This beta advertises only:
+
+- the signed source tarball;
+- the portable x86-64 tarball;
+- `SHA256SUMS` and its detached signature;
+- the detached source-tarball signature.
+
+AppImage/zsync, AUR freshness, DEB/RPM repositories, Flatpak, and automatic
+updating are not advertised for beta.1. Package recipes and CI jobs may exist,
+but they are not release availability claims.
+
+## Known limitations
+
+- Auto-rotate needs the included udev rule; manual orientation works without it.
+- Network widgets require explicit configuration and remain subject to the
+  central egress gate.
+- AppImage delta updating has not completed a published release-to-release
+  round trip.
+- This is beta software. Keep a copy of `~/.config/xeneon-edge-hub/config.toml`
+  before upgrading.
+
+## Independence notice
+
+EdgeHub is an independent product by SKYPhoenix IT. It is not affiliated with,
+sponsored by or endorsed by Corsair. “Corsair” and “Xeneon Edge” are used only
+to describe hardware compatibility.
+
+## Verification
+
+Release artifacts are signed by GPG key
+`2F0CAD36DC1D46F3347B7EF293CDC77EACF98990`. Verify the checksums and signatures
+before installation. Source, downloads, issues, and documentation are available
+from <https://github.com/skyphoenix-it/skyphoenix-edgehub-linux>.

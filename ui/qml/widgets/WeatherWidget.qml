@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// Weather — real forecast from Open-Meteo (free, no API key). Location comes
+// Weather - real forecast from Open-Meteo (free, no API key). Location comes
 // from the instance settings (lat/lon/place). Degrades gracefully offline.
 //
 // Both requests (forecast + city geocode) go through NetHub, never a raw XHR, so
@@ -15,17 +15,17 @@ import QtQuick.Layouts
 // 34px glyph over a 28px number and ~1000px of nothing.
 //
 // WHAT THE TILE CAN HONESTLY SHOW IS BOUNDED BY THE REQUEST, and the request is
-// `&current=` + `&daily=` — never `hourly` (see refresh()). So there is no hourly
+// `&current=` + `&daily=` - never `hourly` (see refresh()). So there is no hourly
 // series to chart, and a tall tile that drew one would be inventing data. Adding
 // `&hourly=` would be new egress + a new feature: NetHub gates it and the
 // no-egress attestation watches the default config. So the taller sizes grow the
-// only way the payload allows — today's detail, then N DAILY rows:
-//   • 0.5x0.5 (micro) — headerless: glyph + temperature + place.
-//   • 1x1 (baseline)  — + "feels like", + the daily rows that fit.
-//   • wide            — glyph/temp block beside the forecast as COLUMNS (the
+// only way the payload allows - today's detail, then N DAILY rows:
+//   • 0.5x0.5 (micro) - headerless: glyph + temperature + place.
+//   • 1x1 (baseline)  - + "feels like", + the daily rows that fit.
+//   • wide            - glyph/temp block beside the forecast as COLUMNS (the
 //                       wide projections are 306-409px tall; rows would not fit).
-//   • tall            — the daily forecast as a list, filling the height.
-//   • full (overlay)  — unchanged (the city search is genuinely modal).
+//   • tall            - the daily forecast as a list, filling the height.
+//   • full (overlay)  - unchanged (the city search is genuinely modal).
 //
 // `forecastDays` (the user's setting, capped at 7 by the schema) is how many days
 // are FETCHED. The size decides how many of them are SHOWN: never more than the
@@ -69,7 +69,7 @@ WidgetChrome {
     readonly property real nowW: Math.min(w.width * 0.32, 340)
 
     // How many daily entries FIT. The user's forecastDays is a MAXIMUM (what to
-    // fetch); the box decides how many of those are rendered — never more than we
+    // fetch); the box decides how many of those are rendered - never more than we
     // hold, never an overflowing card.
     readonly property real dayRowH: Math.max(34, Math.min(w.height * 0.055, 52))
     readonly property int dayRowsFit: {
@@ -92,7 +92,7 @@ WidgetChrome {
     }
     property real lat: cfg.lat !== undefined ? cfg.lat : 52.52
     property real lon: cfg.lon !== undefined ? cfg.lon : 13.405
-    // Only default to "Berlin" when no coordinates are configured either — a
+    // Only default to "Berlin" when no coordinates are configured either - a
     // custom location with a blanked place field must not be mislabelled Berlin;
     // fall back to the coordinates instead.
     property string place: cfg.place ? cfg.place
@@ -125,7 +125,7 @@ WidgetChrome {
 
     // In-flight requests, tracked so a newer fetch aborts an older one (last-write
     // wins cleanly) and a hung socket resolves via a timeout instead of spinning.
-    // The sequence tokens — not the XHR object — are the supersede guard: the gate
+    // The sequence tokens - not the XHR object - are the supersede guard: the gate
     // refuses offline/blocked requests synchronously and returns null, so there is
     // no XHR to compare a callback against in exactly the cases that must still report.
     property var _fxhr: null
@@ -145,7 +145,7 @@ WidgetChrome {
             var out = []
             var names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
             for (var i = 0; i < d.daily.time.length; i++) {
-                // "YYYY-MM-DD" — parse as LOCAL midnight so getDay() names the
+                // "YYYY-MM-DD" - parse as LOCAL midnight so getDay() names the
                 // right weekday (new Date(str) would parse it as UTC and, west
                 // of UTC, shift the label a day earlier).
                 var p = ("" + d.daily.time[i]).split("-")
@@ -184,7 +184,7 @@ WidgetChrome {
                 // A timeout may still resolve into the same reading, so the last
                 // one stays on screen; every other failure means what's displayed
                 // is no longer live (curTemp/days still hold the previous city's
-                // numbers — clear `loaded` so they aren't shown as current).
+                // numbers - clear `loaded` so they aren't shown as current).
                 if (reason === "timeout") { if (!w.loaded) w.errorText = "Timed out"; return }
                 w.loaded = false
                 w.errorText = reason === "blocked" ? "Blocked" : "Offline"
@@ -236,14 +236,14 @@ WidgetChrome {
         if (seq === w._gseq) w._gxhr = xhr
     }
 
-    // Debounce: lat and lon both "change" as settings load — coalesce to one fetch.
+    // Debounce: lat and lon both "change" as settings load - coalesce to one fetch.
     property string locKey: lat + "," + lon + "," + units + "," + forecastDays
     // Honor `active` (S3): don't fetch/repaint on the inactive (non-driver)
     // instance; refetch once when it becomes active again.
     onLocKeyChanged: if (w.active) refreshDebounce.restart()
     onActiveChanged: if (w.active) refreshDebounce.restart()
     // A units flip changes degSym synchronously, but curTemp still holds the old
-    // reading in the previous unit — invalidate it so the tile never relabels a
+    // reading in the previous unit - invalidate it so the tile never relabels a
     // Celsius number as "°F" until the refetch lands.
     onUnitsChanged: w.loaded = false
     Component.onCompleted: refreshDebounce.restart()
@@ -260,7 +260,7 @@ WidgetChrome {
         rowSpacing: theme.spacingSm
         columnSpacing: theme.spacingMd
 
-        // "Now": glyph + temperature, then feels/place. Identical everywhere —
+        // "Now": glyph + temperature, then feels/place. Identical everywhere -
         // only its scale changes.
         ColumnLayout {
             id: nowCell
@@ -291,7 +291,7 @@ WidgetChrome {
                               : (w.errorText.length ? "-" : "…")
                         font.pixelSize: w.tempPx; font.bold: true; color: theme.textPrimary
                     }
-                    // "Feels like" is data the CURRENT reading already carries —
+                    // "Feels like" is data the CURRENT reading already carries -
                     // it was locked in the overlay for no reason. The half-cell
                     // has no room for it.
                     Text {
@@ -313,7 +313,7 @@ WidgetChrome {
             Item { Layout.fillHeight: true; visible: !w.horiz }
         }
 
-        // The forecast — the same delegates reflowed: a COLUMN per day when the
+        // The forecast - the same delegates reflowed: a COLUMN per day when the
         // box is wide-and-short, a ROW per day when it is tall. Nothing is
         // recreated by a reflow, and the model is an int (the count), so a new
         // reading moves the bound VALUES rather than rebuilding delegates.
@@ -333,7 +333,7 @@ WidgetChrome {
                 delegate: GridLayout {
                     id: dayCell
                     required property int index
-                    // days[0] is today — the forecast starts at 1.
+                    // days[0] is today - the forecast starts at 1.
                     readonly property var d: w.days[dayCell.index + 1]
                     columns: w.horiz ? 1 : 3
                     rowSpacing: 0
@@ -343,12 +343,12 @@ WidgetChrome {
                     // Rows share the height, but only up to a point: four days in
                     // an 819px box gave 125px rows with a 30px glyph adrift in the
                     // middle of each. Capped here, and every glyph/label below is
-                    // sized from the row's ACTUAL height — so the row fills out
+                    // sized from the row's ACTUAL height - so the row fills out
                     // instead of the row growing around fixed-size content.
                     Layout.maximumHeight: w.horiz ? 100000 : Math.max(44, w.dayRowH * 1.7)
                     // The scale each day entry is drawn at. Stacked: the row's own
                     // height. Wide: the column is bounded by its WIDTH but still
-                    // has the box's height to spend — sizing off the width alone
+                    // has the box's height to spend - sizing off the width alone
                     // left 11px labels under a 19px glyph in a 409px-tall box.
                     readonly property real px: w.horiz
                         ? Math.min(w.dayColW * 0.75, w.height * 0.30)
@@ -390,7 +390,7 @@ WidgetChrome {
             }
         }
 
-        // Refresh — a real touch target in its own cell, so it can never sit on
+        // Refresh - a real touch target in its own cell, so it can never sit on
         // top of the forecast (it used to be a 36px circle anchored over the
         // bottom-right of a body that had no bottom content; now it does).
         Item {

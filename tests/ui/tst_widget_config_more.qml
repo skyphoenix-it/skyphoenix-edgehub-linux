@@ -6,22 +6,22 @@ import "../../ui/qml/widgets" as Wg
 // COVERAGE NOTE: config-value → store → rendered-observable for FIVE more widget types.
 //
 // T2 (widen widget-configuration coverage). tst_widget_config_values.qml proved
-// the chain for CPU — the richest DISPLAY widget — but CPU alone exercises one
+// the chain for CPU - the richest DISPLAY widget - but CPU alone exercises one
 // shape of config: booleans and a slider feeding a MetricGauge. This file takes
 // the same structure to four other widget FAMILIES, so the schema's remaining
 // field kinds (segmented enums, numbers, free text) are all driven end to end:
 //
-//   • RAM       — a second metric widget: `unit` (segmented) + `showHistory`.
-//   • CLOCK     — a time widget: format24 / showSeconds / showDate / dateStyle
+//   • RAM       - a second metric widget: `unit` (segmented) + `showHistory`.
+//   • CLOCK     - a time widget: format24 / showSeconds / showDate / dateStyle
 //                 / customZone+zoneLabel.
-//   • HYDRATION — a focus widget: `goal` + `glassMl` (numbers driving counts).
-//   • NOTES     — a text widget: `text` (the note itself).
-//   • KPI       — an info/data widget: label / unit / warnAt / critAt / invert.
+//   • HYDRATION - a focus widget: `goal` + `glassMl` (numbers driving counts).
+//   • NOTES     - a text widget: `text` (the note itself).
+//   • KPI       - an info/data widget: label / unit / warnAt / critAt / invert.
 //
 // Every case follows the CPU file's shape: write the value through
 // store.setSetting / patchSettings (exactly what WidgetConfigDialog does), then
 // assert (a) it lands in settingsFor(id) AND (b) a REAL rendered observable
-// moves — a Text node's rendered string, a node's `visible`, a delegate COUNT,
+// moves - a Text node's rendered string, a node's `visible`, a delegate COUNT,
 // a rendered colour. Never a re-read of the value just written. Where possible
 // the observable node is CAPTURED BEFORE the write and re-asserted afterwards,
 // so the test cannot pass by finding some other node that happened to appear.
@@ -64,7 +64,7 @@ Item {
     }
     // As above, but only nodes that are actually ON SCREEN. `visible` on a
     // QQuickItem is EFFECTIVE visibility, so this excludes delegates living in a
-    // hidden sibling layout — several widgets instantiate both their tile and
+    // hidden sibling layout - several widgets instantiate both their tile and
     // their expanded overlay and switch between them with `visible`, so a raw
     // count would double every delegate.
     function countVisibleText(rootNode, str) {
@@ -102,7 +102,7 @@ Item {
     WidgetHarness { id: kpiH;   width: 520; height: 440; widgetFile: "KpiWidget.qml" }
 
     // ═════════════════════════════════════════════════════════════════════════
-    // RAM — a second metric widget. `unit` is the schema's segmented field kind,
+    // RAM - a second metric widget. `unit` is the schema's segmented field kind,
     // which CPU has no example of.
     // ═════════════════════════════════════════════════════════════════════════
     TestCase {
@@ -120,7 +120,7 @@ Item {
         function feed(obj) { ramH.metricsJson = JSON.stringify(obj) }
 
         // ── segmented: "Center reading" (unit: percent | gb) ─────────────────
-        // Observable: the gauge's centre Text and its supporting line SWAP —
+        // Observable: the gauge's centre Text and its supporting line SWAP -
         // percent mode reads "40%" over "8.0 / 16.0 GB", gb mode reads "8.0 GB"
         // over "40%". Both are rendered Text nodes, captured by exact string.
         function test_unit_field_swaps_the_rendered_centre_reading() {
@@ -188,7 +188,7 @@ Item {
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    // CLOCK — a time widget. Its config is almost entirely FORMAT, so every
+    // CLOCK - a time widget. Its config is almost entirely FORMAT, so every
     // observable here is the literal string the tile renders.
     // ═════════════════════════════════════════════════════════════════════════
     TestCase {
@@ -217,7 +217,7 @@ Item {
             var t = timeNode(w)
             verify(t !== null, "the time Text is rendered")
             verify(/ (AM|PM)$/.test(t.text),
-                   "precondition: the 12-hour default renders an AM/PM suffix — got '" + t.text + "'")
+                   "precondition: the 12-hour default renders an AM/PM suffix - got '" + t.text + "'")
 
             clockH.storeCtl.setSetting("test-instance", "format24", true)
 
@@ -226,9 +226,9 @@ Item {
             compare(w.format24, true, "widget re-reads format24 from the store")
 
             verify(!/ (AM|PM)$/.test(t.text),
-                   "the AM/PM suffix is gone from the very Text that showed it — got '" + t.text + "'")
+                   "the AM/PM suffix is gone from the very Text that showed it - got '" + t.text + "'")
             verify(/^\d{2}:\d{2}$/.test(t.text),
-                   "and the time renders as zero-padded 24-hour HH:mm — got '" + t.text + "'")
+                   "and the time renders as zero-padded 24-hour HH:mm - got '" + t.text + "'")
         }
 
         // ── toggle: "Show seconds" ───────────────────────────────────────────
@@ -239,7 +239,7 @@ Item {
             var t = timeNode(w)
             verify(t !== null, "the time Text is rendered")
             compare(t.text.split(":").length - 1, 1,
-                    "precondition: the time has one colon (HH:mm) — got '" + t.text + "'")
+                    "precondition: the time has one colon (HH:mm) - got '" + t.text + "'")
 
             clockH.storeCtl.setSetting("test-instance", "showSeconds", true)
 
@@ -248,7 +248,7 @@ Item {
             compare(w.showSeconds, true, "widget re-reads showSeconds from the store")
 
             verify(/^\d{2}:\d{2}:\d{2}$/.test(t.text),
-                   "the same Text now renders HH:mm:ss — got '" + t.text + "'")
+                   "the same Text now renders HH:mm:ss - got '" + t.text + "'")
         }
 
         // ── toggle: "Show the date" ──────────────────────────────────────────
@@ -278,7 +278,7 @@ Item {
             var d = dateNode(w)
             verify(d !== null, "the date Text is rendered")
             verify(/[A-Za-z]/.test(d.text),
-                   "precondition: the 'full' default spells the date out — got '" + d.text + "'")
+                   "precondition: the 'full' default spells the date out - got '" + d.text + "'")
             compare(w.status, "",
                     "precondition: the header carries no weekday while the full date does")
 
@@ -289,16 +289,16 @@ Item {
             compare(w.dateStyle, "short", "widget re-reads dateStyle from the store")
 
             verify(/^\d{2}\/\d{2}$/.test(d.text),
-                   "the same Text now renders the numeric dd/MM form — got '" + d.text + "'")
+                   "the same Text now renders the numeric dd/MM form - got '" + d.text + "'")
             verify(/^[A-Za-z]{3}$/.test(w.status),
-                   "and the header picks up the weekday the short form drops — got '" + w.status + "'")
+                   "and the header picks up the weekday the short form drops - got '" + w.status + "'")
             verify(findExactText(w, w.status) !== null,
                    "the header weekday is actually rendered")
         }
 
         // ── toggle + text: "Use a specific time zone" / "Zone name" ──────────
         // Observable: the zone label line above the time appears with the
-        // configured name — foreign time must never read as local time.
+        // configured name - foreign time must never read as local time.
         function test_customZone_and_zoneLabel_render_the_zone_line() {
             var w = clockH.item
             verify(findExactText(w, "Tokyo Office") === null,
@@ -317,14 +317,14 @@ Item {
             verify(z !== null, "the zone line renders the configured name")
             verify(z.visible, "and it is visible")
 
-            // Turning the zone off must take the line with it — the same node.
+            // Turning the zone off must take the line with it - the same node.
             clockH.storeCtl.setSetting("test-instance", "customZone", false)
             verify(!z.visible, "clearing customZone hides that same zone line")
         }
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    // HYDRATION — a focus widget. Both fields are NUMBERS that drive a count and
+    // HYDRATION - a focus widget. Both fields are NUMBERS that drive a count and
     // a derived volume, so the observables are a delegate count and a string.
     // ═════════════════════════════════════════════════════════════════════════
     TestCase {
@@ -332,7 +332,7 @@ Item {
         when: windowShown
 
         function todayKey() { return Qt.formatDate(new Date(), "yyyy-MM-dd") }
-        // Empty glasses render "○", filled ones "💧" — a real delegate count.
+        // Empty glasses render "○", filled ones "💧" - a real delegate count.
         // Counted VISIBLE-only: the widget instantiates its tile grid and its
         // expanded overlay grid at the same time and hides one, so a raw count
         // reports both (16 for a goal of 8).
@@ -372,7 +372,7 @@ Item {
         }
 
         // ── number: "Glass size" (glassMl) ───────────────────────────────────
-        // Observable: the overlay's volume line — count × glassMl, rendered as
+        // Observable: the overlay's volume line - count × glassMl, rendered as
         // ml below a litre and as L at or above it.
         function test_glassMl_field_changes_the_rendered_volume() {
             var w = hydH.item
@@ -399,7 +399,7 @@ Item {
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    // NOTES — a text widget. Its single config key IS its content.
+    // NOTES - a text widget. Its single config key IS its content.
     // ═════════════════════════════════════════════════════════════════════════
     TestCase {
         name: "NotesConfigValues"
@@ -413,8 +413,8 @@ Item {
         }
 
         // ── textarea: "Note" (text) ──────────────────────────────────────────
-        // Observable: the tile preview Text — captured while it still shows the
-        // placeholder — renders the note, and its colour promotes from the
+        // Observable: the tile preview Text - captured while it still shows the
+        // placeholder - renders the note, and its colour promotes from the
         // tertiary placeholder tone to primary body text.
         function test_text_field_replaces_the_placeholder_preview() {
             var w = notesH.item
@@ -455,7 +455,7 @@ Item {
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    // KPI — an info/data widget. The reading itself is normally fetched, so the
+    // KPI - an info/data widget. The reading itself is normally fetched, so the
     // fetch is quiesced (active=false) and the value seeded through the same
     // store keys the fetch writes; the CONFIG under test is presentation +
     // thresholds, which is pure local logic over that value.
@@ -487,7 +487,7 @@ Item {
 
         // ── text: "Label" ────────────────────────────────────────────────────
         // Observable: the caption under the number. With no label it falls back
-        // to the widget title, which the card header ALSO renders — so the
+        // to the widget title, which the card header ALSO renders - so the
         // observable is the COUNT of nodes rendering each string, not mere
         // existence (a bare "is 'KPI' present" check would pass either way).
         function test_label_field_replaces_the_fallback_caption() {
@@ -507,7 +507,7 @@ Item {
             compare(countText(w, "Queue depth"), 1,
                     "the caption renders the configured label")
             compare(countText(w, "KPI"), 1,
-                    "and the fallback caption is gone — only the card header still reads 'KPI'")
+                    "and the fallback caption is gone - only the card header still reads 'KPI'")
         }
 
         // ── text: "Unit" ─────────────────────────────────────────────────────

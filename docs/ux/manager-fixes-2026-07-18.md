@@ -1,4 +1,4 @@
-# Manager fixes & full-control pass — 2026-07-18
+# Manager fixes & full-control pass - 2026-07-18
 
 Follow-up to [`manager-audit-2026-07-16.md`](manager-audit-2026-07-16.md). The
 owner installed the build and hit a set of real problems; this records what was
@@ -32,7 +32,7 @@ QML behaviour matrix 98.8%, all 8 runtime E2E); theme 98/98, manager 40/40.
 ## Appearance restructure (audit F3/F5)
 
 - The **Manager-window style** control moved out of the sidebar and into the
-  Appearance tab, beside the Edge theme — the audit's "two unlabelled theme
+  Appearance tab, beside the Edge theme - the audit's "two unlabelled theme
   controls in two places" confusion. Both now carry scope pills.
 - The 29-swatch Edge-theme grid is **collapsed to a curated 8** with "Show all
   themes" (the selected theme always shows), so the tab isn't swatch-dominated.
@@ -43,14 +43,14 @@ QML behaviour matrix 98.8%, all 8 runtime E2E); theme 98/98, manager 40/40.
   via `store.resetTo` → persisted + pushed live; preserves the user's
   reduce-motion choice).
 - **Diagnostics** card (About): connection, displays, and the raw config on
-  demand — points to the hub for live egress counters rather than faking zeros.
+  demand - points to the hub for live egress counters rather than faking zeros.
 - **Reset to default layout** (keeps uploaded images).
 - Per-page background overrides were already present (Layout tab).
 
 ## Branding
 
 - The lockup is now **"EdgeHub"** in a bundled brand wordmark face
-  (**Chakra Petch**, SIL OFL 1.1 — a close free stand-in for the SKYPhoenix IT
+  (**Chakra Petch**, SIL OFL 1.1 - a close free stand-in for the SKYPhoenix IT
   logo lettering; swap the files to use the real font later), over a small
   **"by SKYPhoenix IT"** and a small logo beneath (sidebar + About).
 
@@ -66,7 +66,7 @@ shared store must restore it (emit `backend.configChanged()`) or a later test
 inherits the state.
 
 > **CORRECTION (2026-07-19).** This note previously read: *"`tst_manager` is heavy
-> (~250–300 s) — expected, not a hang."* **That was wrong, and the wrongness was
+> (~250–300 s) - expected, not a hang."* **That was wrong, and the wrongness was
 > load-bearing.** `tst_manager.qml` carried an unmemoised multi-axis scene-graph
 > walk: it grew from 7 MB to **20 GB RSS in 25 seconds** and never completed. The
 > "expected slowness" framing is why nobody investigated. After the fix it runs in

@@ -3,7 +3,7 @@ import QtTest
 import "../../ui/qml" as App
 import "../../ui/qml/widgets" as Wg
 
-// WidgetConfigPanel (ui/qml/widgets/WidgetConfigPanel.qml) + ConfigField — the
+// WidgetConfigPanel (ui/qml/widgets/WidgetConfigPanel.qml) + ConfigField - the
 // schema-driven config form shared by the hub and the Manager. Assert: sections
 // render (minus the "About" section), fields read their store/default value,
 // edits push through setSetting/patchSettings, reset restores defaults, and the

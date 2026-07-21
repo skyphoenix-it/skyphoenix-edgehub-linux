@@ -55,7 +55,7 @@ DisplayDisconnectNotice displayDisconnectNotice(const QString& screenName,
 // Compute the stable identity hash for a display from its four identity fields
 // (connector name + model + manufacturer + serial). The hub uses this both to
 // serialize a screen's `edidHash` and to match the configured target screen, so
-// the two paths MUST agree — hence a single shared implementation.
+// the two paths MUST agree - hence a single shared implementation.
 QString screenIdentityHash(const QString& name, const QString& model,
                            const QString& manufacturer, const QString& serial);
 

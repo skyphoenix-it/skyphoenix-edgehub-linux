@@ -1,6 +1,6 @@
 # Supply Chain & No-Egress Attestation
 
-**Status:** E9 (technical half) — implemented in CI
+**Status:** E9 (technical half) - implemented in CI
 **Workflow:** [`.github/workflows/supply-chain.yml`](../../.github/workflows/supply-chain.yml)
 **Last Updated:** 2026-07-15
 
@@ -10,7 +10,7 @@
 
 "The hub has no telemetry" is the product's central privacy claim. A claim a
 customer cannot check is marketing. This page describes the three mechanisms
-that make it checkable, and — just as importantly — states precisely what they
+that make it checkable, and - just as importantly - states precisely what they
 do **not** cover.
 
 | Question | Mechanism | Job |
@@ -40,41 +40,41 @@ Exit `0` pass, `1` fail, `77` skip (no hub binary). Point it at any build with
 
 The hub runs inside a **network namespace** containing only `lo`, so nothing can
 actually leave the machine during the test. Containment is not the assertion,
-though — two independent channels record what the hub *attempted*:
+though - two independent channels record what the hub *attempted*:
 
-1. **`strace -f -e trace=connect`** — ground truth. Every `connect(2)` in the
+1. **`strace -f -e trace=connect`** - ground truth. Every `connect(2)` in the
    process tree, whether or not it resolves, routes or completes. This is the
    only channel that sees egress to a **hard-coded IP**.
-2. **A loopback DNS + TCP sink** (`packaging/ci/egress_sink.py`) — attribution.
+2. **A loopback DNS + TCP sink** (`packaging/ci/egress_sink.py`) - attribution.
    `connect(2)` to `127.0.0.1` does not say which *host* was wanted; the DNS
    QNAME does. The sink answers every A query with `127.0.0.1` and accepts on
    80/443, so the attempt completes far enough to be logged and named.
 
 **Why not just `unshare -n`?** Under a bare `unshare -n` a phone-home dies at
-DNS resolution — *before* `connect(2)`. There would be nothing to observe and
+DNS resolution - *before* `connect(2)`. There would be nothing to observe and
 the test would pass for the wrong reason. The namespace is the containment; the
 sink is what makes the attempt visible. Neither is the assertion alone.
 
 **Why not just the sink?** It is blind to a hard-coded IP, which never asks DNS.
-That case is caught only by `strace` — and is exercised by negative control 2,
+That case is caught only by `strace` - and is exercised by negative control 2,
 precisely so this cannot regress unnoticed.
 
 ### What it asserts
 
 | Run | Assertion |
 |---|---|
-| `default` (pristine config dir — first-run wizard) | zero DNS, zero TCP, zero non-loopback `connect(2)` |
+| `default` (pristine config dir - first-run wizard) | zero DNS, zero TCP, zero non-loopback `connect(2)` |
 | `seeded` (default `productivity` starter layout) | as above |
 | `weather` | at least one request, and **only** to `api.open-meteo.com` |
 
 The default starter layout (`productivity`: focus, tasks, habit, eod, cpu, ram,
 clock) contains no network widget, so zero egress is a property of the shipped
-default — not of a specially-prepared test config. Note that the **`desk` and
+default - not of a specially-prepared test config. Note that the **`desk` and
 `minimal` presets do include a Weather tile**: a user who picks those is opting
 in to Open-Meteo. That is a user choice, not background telemetry, and it is why
 the `weather` run asserts a host allowlist rather than silence.
 
-### It can fail — three negative controls
+### It can fail - three negative controls
 
 A test that cannot fail proves nothing, so CI breaks each guarantee in turn and
 requires the *specific* failure (not merely a non-zero exit, which a typo also
@@ -87,26 +87,26 @@ produces):
 | 3 | `XENEON_HUB=/bin/true` (hub never starts) | `NOT LIVE` |
 
 Control 3 is the vacuity guard. **A dead hub sends nothing**, which is
-indistinguishable from a clean hub unless liveness is asserted — the harness
+indistinguishable from a clean hub unless liveness is asserted - the harness
 therefore requires the hub to survive the full window (SIGKILLed by the timer,
 `rc=137`) before it will believe a zero. The `weather` run has the mirror-image
 guard: a run that observes *no* request at all is reported as `VACUOUS`, not as
 a pass.
 
-### Limits — what this does NOT prove
+### Limits - what this does NOT prove
 
 Stated plainly, because an attestation oversold is worse than none:
 
 - **It is a ~12 s observation window.** A beacon that fires after 24 h, or only
   on a user action the harness never performs, would not be caught. It proves
   the hub is quiet at rest on startup, not that it is quiet forever.
-- **It covers `xeneon-edge-hub` only** — not `xeneon-edge-manager`, and not the
+- **It covers `xeneon-edge-hub` only** - not `xeneon-edge-manager`, and not the
   AppImage/Flatpak runtimes, which bundle their own Qt.
 - **It measures the build it is given.** It says nothing about a binary a third
   party compiled or repackaged.
 - **Qt itself is in the trusted base.** If Qt or a system library opened a
   socket, `strace` *would* record it (the channel is syscall-level, not
-  QML-level) — but the harness asserts on the hub's configured widgets, and
+  QML-level) - but the harness asserts on the hub's configured widgets, and
   reasoning about Qt's own behaviour is out of scope here.
 
 The complementary static check is `scripts/check_no_raw_xhr.sh` (run in CI's
@@ -128,12 +128,12 @@ cd core && cargo deny check
 
 **Known trap:** `cargo audit` and `cargo deny` both read `Cargo.lock`, **not the
 enabled feature set**. A crate reported here may not be compiled into the
-shipped artifact. The lockfile is the honest worst case — verify before
+shipped artifact. The lockfile is the honest worst case - verify before
 dismissing a finding as unreachable.
 
 ### Current state
 
-`advisories ok, bans ok, licenses ok, sources ok` — **no advisories** against
+`advisories ok, bans ok, licenses ok, sources ok` - **no advisories** against
 any of the 113 locked crates.
 
 The license policy allows exactly the licenses present today (`MIT`,
@@ -141,14 +141,14 @@ The license policy allows exactly the licenses present today (`MIT`,
 dependency under any other license is *meant* to fail: that failure is the
 license review.
 
-**`option-ext 0.2.0` is MPL-2.0** — the only non-MIT/Apache license in the tree,
+**`option-ext 0.2.0` is MPL-2.0** - the only non-MIT/Apache license in the tree,
 pulled in transitively by `dirs` (`dirs → dirs-sys → option-ext`). MPL-2.0 is
 **file-level** copyleft: linking it into a proprietary binary is fine, and the
 obligation attaches only to modifications of option-ext's own source, which we
 do not make. Documented here so an audit finds it explained rather than as a
 surprise.
 
-### Open finding — `xeneon-core` has no `license` field
+### Open finding - `xeneon-core` has no `license` field
 
 `core/Cargo.toml` declares no `license`, so cargo-deny correctly reports our own
 crate as `unlicensed`, even though the repo ships `LICENSE-MIT` +
@@ -177,14 +177,14 @@ artifact on every run and attached to the GitHub release on a `v*` tag.
 - Dev-dependencies (`proptest`, `tempfile`) are excluded by design: they are not
   in the shipped artifact, and listing them would overstate the surface a
   customer must review.
-- CI fails if the SBOM has ≤ 10 components — an empty SBOM would otherwise
+- CI fails if the SBOM has ≤ 10 components - an empty SBOM would otherwise
   upload and publish perfectly while attesting nothing.
 
-### Limit — this is the Rust core only
+### Limit - this is the Rust core only
 
 **The SBOM covers `xeneon-core` and its 55 crates. It does not cover Qt, the C++
 application, the QML layer, or the libraries bundled into the AppImage/Flatpak**
-— which is the majority of the shipped bytes. `cargo-cyclonedx` cannot see them.
+- which is the majority of the shipped bytes. `cargo-cyclonedx` cannot see them.
 A complete artifact SBOM needs a second, non-Cargo generator (e.g. Syft over the
 AppImage). Tracked as remaining E9 work.
 

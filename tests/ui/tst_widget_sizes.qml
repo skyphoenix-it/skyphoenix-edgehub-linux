@@ -6,11 +6,11 @@ import "../../ui/qml" as App
 // COVERS: fn:WidgetSizes.halfUnits, fn:WidgetSizes.gridColumns, fn:WidgetSizes.gridRows
 // COVERS: fn:WidgetSizes.isFullScreen
 //
-// WidgetSizes — the fixed size set. These tests are the SPEC:
+// WidgetSizes - the fixed size set. These tests are the SPEC:
 //   1x1 = 1/3 of the display (the baseline; 3 of them fill it)
 //   0.5x1 and 1x0.5 = 1/6 · 0.5x0.5 = 1/12 · 1x1.5 = 1/2 · 1x2 = 2/3 · 1x3 = all
 // The fractions are asserted as literals, not recomputed from the table, so a
-// change to the table has to change these numbers — which is the point.
+// change to the table has to change these numbers - which is the point.
 Item {
     App.WidgetSizes { id: sz }
 
@@ -20,7 +20,7 @@ Item {
 
         // The spec, verbatim.
         function test_areas_match_the_specified_fractions() {
-            fuzzyCompare(sz.area("1x1"), 1 / 3, 1e-9, "1x1 is a THIRD of the display — the baseline")
+            fuzzyCompare(sz.area("1x1"), 1 / 3, 1e-9, "1x1 is a THIRD of the display - the baseline")
             fuzzyCompare(sz.area("0.5x1"), 1 / 6, 1e-9, "0.5x1 is a sixth")
             fuzzyCompare(sz.area("1x0.5"), 1 / 6, 1e-9, "1x0.5 is a sixth")
             fuzzyCompare(sz.area("0.5x0.5"), 1 / 12, 1e-9, "0.5x0.5 is a twelfth")
@@ -34,7 +34,7 @@ Item {
         // exactly fill it. If this ever fails the baseline is wrong.
         function test_three_baseline_widgets_fill_the_screen() {
             fuzzyCompare(sz.area(sz.baseline) * 3, 1, 1e-9,
-                         "3 x 1x1 fills the display exactly — the default layout")
+                         "3 x 1x1 fills the display exactly - the default layout")
             compare(sz.baseline, "1x1")
         }
 
@@ -78,7 +78,7 @@ Item {
             compare(sz.gridRows(true), 2, "2 down")
         }
 
-        // 1x3 is the whole screen in BOTH orientations — the case that would break
+        // 1x3 is the whole screen in BOTH orientations - the case that would break
         // if the names were pinned to width/height instead of short/long.
         function test_full_screen_is_full_screen_in_either_orientation() {
             var p = sz.halfUnits("1x3", false), l = sz.halfUnits("1x3", true)
@@ -130,7 +130,7 @@ Item {
             compare(sz.semiUnits("2x2"), null, "an unknown size has no units")
         }
 
-        // halfUnits is semiUnits PROJECTED — the projection is the only place
+        // halfUnits is semiUnits PROJECTED - the projection is the only place
         // orientation may enter.
         function test_halfUnits_is_semiUnits_projected() {
             var names = sz.all()

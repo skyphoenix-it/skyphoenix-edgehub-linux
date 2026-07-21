@@ -1,11 +1,11 @@
-// DistroBridge — distro identity / package count / install date for QML.
+// DistroBridge - distro identity / package count / install date for QML.
 //
 // These assert the BINDING: that the bridge probes OFF the GUI thread, publishes
 // exactly what the Rust core found, and stays in its "unknown" state rather than
 // half-populating when the answer is absent.
 //
 // Every case roots the probe at a CRAFTED fixture tree (setRoot), so the results
-// are pinned values rather than whatever the build box happens to run — the suite
+// are pinned values rather than whatever the build box happens to run - the suite
 // asserts the same thing on Arch, in a Debian CI container, and in a scratch
 // image with no /etc at all. One case deliberately probes the real "/" to prove
 // the default path works, and asserts only shape.
@@ -34,7 +34,7 @@ class TstDistroBridge : public QObject {
     Q_OBJECT
 
     // Build a pacman root with `n` package dirs + the ALPM_DB_VERSION FILE (which
-    // is not a package — the count must exclude it).
+    // is not a package - the count must exclude it).
     void makeArchRoot(const QString& root, int n, const QByteArray& osRelease,
                       const QByteArray& pacmanLog = QByteArray()) {
         writeFile(root, "etc/os-release", osRelease);
@@ -49,7 +49,7 @@ class TstDistroBridge : public QObject {
     // Waiting for "any infoChanged" is not enough, and the difference is not
     // theoretical: the constructor kicks off a probe of the REAL system, and on
     // the dev box (CachyOS) that answer has the same `id`/`family` as the arch
-    // fixtures below — so a test that resumed on the first signal asserted
+    // fixtures below - so a test that resumed on the first signal asserted
     // against the real machine's 1461 packages and only failed on the count.
     // Gate on probedRoot() instead, which names the root that produced the data.
     static bool probeAt(DistroBridge& b, const QString& root) {
@@ -138,7 +138,7 @@ private slots:
         QVERIFY(!b.info().value("unsupportedReason").toString().isEmpty());
     }
 
-    // "Updates available" is never claimed — see core/src/distro.rs. If someone
+    // "Updates available" is never claimed - see core/src/distro.rs. If someone
     // ever wires up a stale-cache guess, this fails.
     void updatesAreNeverClaimed() {
         QTemporaryDir d;
@@ -150,7 +150,7 @@ private slots:
         QVERIFY(b.info().value("updates").isNull());
     }
 
-    // Before the first probe lands there is no data — and an empty map must not
+    // Before the first probe lands there is no data - and an empty map must not
     // be mistakable for "0 packages". QML keys its placeholder off `ready`.
     void isNotReadyBeforeTheFirstProbeLands() {
         DistroBridge b;
@@ -196,7 +196,7 @@ private slots:
 
     // A probe still in flight must not overwrite a newer one. Probes are queued,
     // so without the root check in _onProbed the FIRST root's answer lands second
-    // and wins — which is exactly what the dev box reproduced, invisibly, because
+    // and wins - which is exactly what the dev box reproduced, invisibly, because
     // the real system and the arch fixture share an `id`.
     void aStaleInFlightProbeCannotOverwriteANewerOne() {
         QTemporaryDir oldRoot, newRoot;
@@ -235,7 +235,7 @@ private slots:
         QTRY_COMPARE(b.info().value("packageCount").toInt(), 5);
     }
 
-    // The default root is the real system. Shape only — this must pass on any
+    // The default root is the real system. Shape only - this must pass on any
     // distro (and in a container with no package manager at all).
     void defaultRootProbesTheRealSystem() {
         DistroBridge b;

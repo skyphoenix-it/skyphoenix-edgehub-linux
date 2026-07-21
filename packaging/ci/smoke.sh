@@ -4,8 +4,8 @@
 #
 # Why not just `--version`: it returns before the QML engine loads, so it proves
 # only that the ELF links against its .so deps. The dependency that actually
-# breaks is a QML module — those are dlopen'd plugins, invisible to
-# dpkg-shlibdeps/rpm autoreqs — and the failure mode is a package that installs
+# breaks is a QML module - those are dlopen'd plugins, invisible to
+# dpkg-shlibdeps/rpm autoreqs - and the failure mode is a package that installs
 # perfectly and then dies on launch. So this launches the real dashboard.
 set -uo pipefail
 
@@ -55,7 +55,7 @@ cat "$LOG"
 # directory": the hidraw orientation-sensor warning is expected in a container
 # (no device, no udev rule) and would false-positive.
 if grep -qiE 'is not installed|plugin .* not found|cannot load library|QQmlApplicationEngine failed|Failed to load QML' "$LOG"; then
-  echo "FAIL: QML module/plugin resolution error above — the package is missing a dependency"
+  echo "FAIL: QML module/plugin resolution error above - the package is missing a dependency"
   RC=1
 fi
 
@@ -63,7 +63,7 @@ fi
 # Launching only proves the STARTUP path resolves. main.qml imports just
 # QtQuick/Controls/Layouts/Window/VirtualKeyboard; QtQuick.Effects, QtQuick.Shapes
 # (backgrounds) and QtQuick.Dialogs (manager) are reached through lazily-loaded
-# widgets, so deleting them still yields a clean 10s launch — verified. Those are
+# widgets, so deleting them still yields a clean 10s launch - verified. Those are
 # exactly the modules distros split into separate packages, so check them
 # directly. The list is derived from the sources, not hand-maintained, so a new
 # import cannot silently escape the packaging.
@@ -89,14 +89,14 @@ if [ -d "$SRC_ROOT/ui/qml" ]; then
             | awk '{print $2}' | grep -v '^QtTest$' | sort -u)
   # ANTI-VACUITY: an empty MODULES makes the loop below iterate zero times, so
   # RC stays 0 and this prints SMOKE PASS having verified NOTHING. This app
-  # cannot import zero Qt modules — an empty list means the grep or SRC_ROOT
+  # cannot import zero Qt modules - an empty list means the grep or SRC_ROOT
   # broke, not that the package is clean. That distinction matters: this check is
   # the only reason we know the Ubuntu .deb needs its nine qml6-module-* Depends
   # (dpkg-shlibdeps cannot see dlopened QML plugins), and a launch alone proves
   # nothing because widgets load lazily.
   MODULE_COUNT=$(printf '%s\n' $MODULES | grep -c . || true)
   if [ "${MODULE_COUNT:-0}" -eq 0 ]; then
-    echo "FAIL: derived ZERO QML modules from $SRC_ROOT — the scan is broken."
+    echo "FAIL: derived ZERO QML modules from $SRC_ROOT - the scan is broken."
     echo "      (this app imports many; an empty list is never a clean result)"
     RC=1
   fi

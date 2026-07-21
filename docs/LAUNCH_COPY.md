@@ -1,16 +1,13 @@
-# EdgeHub launch-copy hold
+# EdgeHub v1.0.0-beta.1 launch copy
 
-**Do not publish.** The project is still alpha/development. No feature freeze,
-code freeze, beta tag or release-ready candidate has been declared.
+**Prepared for publication after signed artifacts are live.**
 
 The previous Product Hunt, Show HN and Reddit drafts were removed because they
 mixed current implementation facts with unsupported performance, package-store,
 auto-update, paid-download, refund and support promises.
 
-Replacement channel templates are maintained in the embargoed
-[`marketing/release-kit/`](marketing/release-kit/README.md). They are structured
-around placeholders and a fail-closed checklist so preparation does not become
-an accidental availability claim.
+Channel-ready announcement, email, press, social, demo, and asset material is in
+[`marketing/release-kit/`](marketing/release-kit/README.md).
 
 ## Verified factual core for a future draft
 

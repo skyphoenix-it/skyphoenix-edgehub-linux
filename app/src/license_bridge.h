@@ -10,15 +10,15 @@
 
 // --- LicenseBridge: the tier, exposed to QML, live ---
 //
-// Wraps the hub's ConfigHandle and answers the only question the UI ever asks —
-// "am I Pro?" — reactively, so a key pasted in the Manager (pushed over the
+// Wraps the hub's ConfigHandle and answers the only question the UI ever asks -
+// "am I Pro?" - reactively, so a key pasted in the Manager (pushed over the
 // control socket) re-gates premium features WITHOUT a restart. Verification is
 // the Rust path (`xeneon_config_license_status_json`): offline, fails-soft, and
 // identical to the pasted-key verify (they share `Status::to_json`), so a stored
 // key and a freshly-entered one can never disagree.
 //
 // `isPro` is what QML GATES ON. `state`/`issuedTo`/`expires` are for WORDING only
-// (e.g. "expired — renew" vs "free"). None of these grant anything on their own;
+// (e.g. "expired - renew" vs "free"). None of these grant anything on their own;
 // the entitlement is always recomputed from the signed key, never trusted from a
 // stored boolean.
 class LicenseBridge : public QObject {
@@ -43,7 +43,7 @@ public:
     double expires() const { return m_expires; }
     bool hasKey() const { return m_hasKey; }
 
-    // Verify a candidate key WITHOUT storing it — for the dialog to preview
+    // Verify a candidate key WITHOUT storing it - for the dialog to preview
     // "this key unlocks Pro for <name>" (or "expired"/"not a valid key") before
     // the user commits. Returns the same JSON shape as the status properties.
     Q_INVOKABLE QString verifyCandidate(const QString& key) const {
@@ -54,7 +54,7 @@ public:
     // Persist a key (or clear it with an empty string) and re-evaluate the tier.
     // This is the HUB-OWNS-CONFIG path: the hub writes its own config directly.
     // The Manager, which must not race the hub's writer, goes through IPC
-    // instead (ManagerBackend::setLicenseKey) — that lands here on the hub via
+    // instead (ManagerBackend::setLicenseKey) - that lands here on the hub via
     // applyExternalKey(). Returns whether the persist succeeded.
     Q_INVOKABLE bool setKey(const QString& key) {
         if (!m_config) return false;

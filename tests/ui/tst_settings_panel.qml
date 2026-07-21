@@ -3,11 +3,11 @@ import QtTest
 import "../../ui/qml" as App
 import "../../ui/qml/widgets" as Wg
 
-// SettingsPanel (ui/qml/widgets/SettingsPanel.qml) — the in-app appearance sheet.
+// SettingsPanel (ui/qml/widgets/SettingsPanel.qml) - the in-app appearance sheet.
 // Each control row is bound to an appearance key on `root`/`theme`/`store`; we
 // assert BOTH directions: the control REFLECTS external state (read) and a tap
 // WRITES through the bound sink (write). The sheet height is capped, so the form
-// scrolls — a helper brings each target into view before clicking it.
+// scrolls - a helper brings each target into view before clicking it.
 Item {
     id: root
     width: 720; height: 1000
@@ -122,7 +122,7 @@ Item {
         }
 
         // Pro-gating: without a licence (no `license` context in the harness → free),
-        // a Pro theme is locked and tapping it must NOT apply — the on-device leak fix.
+        // a Pro theme is locked and tapping it must NOT apply - the on-device leak fix.
         function test_pro_theme_is_gated_without_a_licence() {
             root.themeMode = "dark"; _theme.applyTheme("dark")
             var d = delegateWhere(function (n) { return n.modelData.k === "synthwave" })
@@ -144,7 +144,7 @@ Item {
             compare(root.accentName, "green", "the active-swatch source (accentName) tracks the applied accent")
         }
 
-        // The Layout Columns picker is GONE — a size is a fraction of the screen,
+        // The Layout Columns picker is GONE - a size is a fraction of the screen,
         // so a per-page column count may not exist. Asserted, not merely deleted:
         // the picker was inert for a while before it was removed (nothing read it,
         // and _normaliseDoc stripped the key on reload), and a control that silently
@@ -176,7 +176,7 @@ Item {
         }
 
         // The slider must actually DRAG (the class of bug the Manager glass slider
-        // shipped with — no test anywhere dragged a slider). Real mouse input.
+        // shipped with - no test anywhere dragged a slider). Real mouse input.
         function test_glass_slider_drags_commits_and_rebinds() {
             var slider = findPred(panel, function (n) {
                 return n.from !== undefined && n.to !== undefined && n.value !== undefined && n.stepSize !== undefined

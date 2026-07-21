@@ -3,7 +3,7 @@ import QtQuick.Layouts
 
 // How long this system has been installed, derived from the package manager's
 // own history (the first `installed` line in pacman.log, or the installer's
-// timestamp on a dpkg system) — resolved by the Rust core, probed off-thread.
+// timestamp on a dpkg system) - resolved by the Rust core, probed off-thread.
 //
 // It measures what it can actually see: on a system whose package log has been
 // rotated away, that is the age of the LOG. The expanded view says so rather
@@ -21,7 +21,7 @@ WidgetChrome {
 
     // Resolved from CONTEXT as `distro`. NOT declared as `property var distro`:
     // an object property shadows the context property of the same name, and
-    // Dashboard.injectWidget never assigns this one — so a declared `distro`
+    // Dashboard.injectWidget never assigns this one - so a declared `distro`
     // would stay null forever in the real app. See PackagesWidget for the full
     // note. Tests inject via `distroOverride`.
     property var distroOverride: null
@@ -34,7 +34,7 @@ WidgetChrome {
     }
 
     // Three states, kept apart on purpose (see PackagesWidget): unknown-yet,
-    // cannot-know, and a real epoch. `installEpoch` is null — never 0 — when
+    // cannot-know, and a real epoch. `installEpoch` is null - never 0 - when
     // absent, so a missing date can never render as "installed in 1970".
     readonly property bool loading: w.probe === null
     readonly property bool known: !w.loading && w.probe.installEpoch !== null
@@ -103,7 +103,7 @@ WidgetChrome {
 
         Text {
             Layout.alignment: Qt.AlignHCenter
-            // preferredWidth so HorizontalFit has a fixed box to shrink into —
+            // preferredWidth so HorizontalFit has a fixed box to shrink into -
             // see the same note in PackagesWidget.
             Layout.preferredWidth: w.width - 2 * w.contentMargins
             Layout.maximumWidth: w.width - 2 * w.contentMargins

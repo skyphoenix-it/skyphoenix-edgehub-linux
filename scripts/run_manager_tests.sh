@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# run_manager_tests.sh — the REAL Manager, driven with REAL input, against the
+# run_manager_tests.sh - the REAL Manager, driven with REAL input, against the
 # REAL hub. No nested compositor, no stubbed backend.
 #
 # WHY THIS SCRIPT EXISTS
@@ -12,18 +12,18 @@
 # deleted 2026-07-20 and scripts/check_no_manager_compositor_tests.sh keeps them
 # out.
 #
-# Meanwhile the REAL tests — the ones that launch both binaries and talk over the
-# control socket — already existed and were ORPHANED: no runner, no workflow,
+# Meanwhile the REAL tests - the ones that launch both binaries and talk over the
+# control socket - already existed and were ORPHANED: no runner, no workflow,
 # never executed. That is the same disease. This script is the fix.
 #
 # GATES. Both are required and neither is implied by the other:
-#   XENEON_HW_INPUT=1          — synthetic input at all
-#   XENEON_HW_INPUT_DESKTOP=1  — input on the DESKTOP (the Manager lives there,
+#   XENEON_HW_INPUT=1          - synthetic input at all
+#   XENEON_HW_INPUT_DESKTOP=1  - input on the DESKTOP (the Manager lives there,
 #                                not on the Edge). The cursor moves on your
 #                                screen; any real input from you aborts the run.
 # Without them every suite here SKIPs loudly rather than silently passing.
 #
-# Requires the Edge connected and binaries matching the working tree — the
+# Requires the Edge connected and binaries matching the working tree - the
 # suites assert that themselves and refuse to run stale (reconfigure, don't just
 # rebuild: git describe is evaluated at configure time).
 set -uo pipefail
@@ -40,9 +40,9 @@ SUITES=(
 )
 
 if [ "${XENEON_HW_INPUT:-0}" != "1" ] || [ "${XENEON_HW_INPUT_DESKTOP:-0}" != "1" ]; then
-    echo "==> Manager suites SKIPPED — desktop input is opt-in."
+    echo "==> Manager suites SKIPPED - desktop input is opt-in."
     echo "    Run: XENEON_HW_INPUT=1 XENEON_HW_INPUT_DESKTOP=1 $0"
-    echo "    (${#SUITES[@]} suites were not executed — this is a SKIP, not a pass.)"
+    echo "    (${#SUITES[@]} suites were not executed - this is a SKIP, not a pass.)"
     exit 77
 fi
 
@@ -55,7 +55,7 @@ for entry in "${SUITES[@]}"; do
     echo "==================================================================="
     # Never leave a previous suite's binaries holding the Edge or the socket.
     # `-x` for the hub (comm is exactly 15 chars); a [b]racket pattern for the
-    # Manager, whose name exceeds the 15-char comm limit — and `pkill -f` on the
+    # Manager, whose name exceeds the 15-char comm limit - and `pkill -f` on the
     # bare name matches THIS script's own command line and kills the runner
     # (exit 144, learned the hard way).
     pkill -TERM -x xeneon-edge-hub 2>/dev/null
@@ -84,7 +84,7 @@ echo "==================================================================="
 # ANTI-VACUITY: zero suites executed must never read as success. Every gate in
 # this repo that reported OK for "I did no work" is why the suite rotted.
 if [ "${#names[@]}" -eq 0 ]; then
-    echo "!! no Manager suites ran — refusing to report success"; exit 1
+    echo "!! no Manager suites ran - refusing to report success"; exit 1
 fi
 [ "$fail" -ne 0 ] && { echo "RESULT: FAILURE"; exit 1; }
 echo "RESULT: SUCCESS (${#names[@]} suites)"

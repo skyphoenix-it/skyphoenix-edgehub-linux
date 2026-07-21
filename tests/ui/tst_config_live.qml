@@ -2,7 +2,7 @@ import QtQuick
 import QtTest
 
 // Regression: a config change must update an ALREADY-LOADED widget live (the
-// "config options in the Manager did nothing" bug — widgets returned the same
+// "config options in the Manager did nothing" bug - widgets returned the same
 // cfg object reference so QML never re-evaluated the derived properties).
 Item {
     width: 300; height: 300

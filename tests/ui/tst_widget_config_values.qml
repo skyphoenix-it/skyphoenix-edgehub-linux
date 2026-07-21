@@ -9,19 +9,19 @@ import "../../ui/qml/widgets" as Wg
 // per-tile config UI, but no test drove a config VALUE through the store and
 // asserted it (a) lands in the tile's settings bucket AND (b) actually changes
 // what the widget renders. This file closes that gap for CPU, the richest
-// display widget: it owns every config field kind the schema exposes — a text
+// display widget: it owns every config field kind the schema exposes - a text
 // field (custom title), two toggles (showTemp / showHistory), a slider
 // (warnTemp), and the two universal appearance keys (accent / cardBackdrop).
 //
 // The dialog itself only wires store.setSetting(id, key, val) + the appearance
-// bindings (titleOverride / accentName / cardBackdrop) onto the live widget —
+// bindings (titleOverride / accentName / cardBackdrop) onto the live widget -
 // see WidgetConfigDialog.inject(). This test reproduces exactly that path (the
 // store write plus the same three Qt.bindings) against a harness-hosted CPU
 // widget and asserts the OBSERVABLE the field is supposed to drive.
 //
 // Every assertion here is written so it FAILS if the widget ignores the config:
 // the observable is the rendered header text / the header status Text's
-// visibility / the gauge's history array / the gauge's ring colour — never a
+// visibility / the gauge's history array / the gauge's ring colour - never a
 // re-read of the value that was just written. (The store re-read is asserted
 // too, but only as the first link in the chain: store → widget.cfg → render.)
 Item {
@@ -54,7 +54,7 @@ Item {
         return f
     }
     // MetricGauge: duck-typed by its distinctive property set. `color` is the
-    // input the ring's progressColor binds to (MetricGauge.qml) — the rendered
+    // input the ring's progressColor binds to (MetricGauge.qml) - the rendered
     // colour observable the accent/warnTemp fields must move.
     function findGauge(rootNode) {
         return findPred(rootNode, function (n) {

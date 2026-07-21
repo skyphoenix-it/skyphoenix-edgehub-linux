@@ -1,11 +1,11 @@
 import QtQuick
 
 // ─────────────────────────────────────────────────────────────────────────
-// PresetCatalog — the curated library of ready-made "screens".
+// PresetCatalog - the curated library of ready-made "screens".
 //
 // EACH PRESET IS ONE SCREEN = EXACTLY ONE PAGE, designed for a single workflow.
 // A "screen" is applied by ADDING it as one new page (DashboardStore.appendPreset)
-// — it never overwrites the user's other pages. (The first-run wizard and
+// - it never overwrites the user's other pages. (The first-run wizard and
 // "reset to default" still compose a few screens into a fresh document via
 // DashboardStore.seed()/buildBundle().) Each preset is a small, purposeful set of
 // widgets (never overloaded), with a fitting background/motion character and
@@ -15,13 +15,13 @@ import QtQuick
 // A tile spec is { type, size?, settings? }. `size` is a name from WidgetSizes and
 // MUST be one the type declares in WidgetCatalog; omit it for the type's default.
 // Appearance only sets the preset's *character* (bgStyle / animatedBg /
-// reduceMotion) — never themeMode/accent, so applying a preset preserves the user's
+// reduceMotion) - never themeMode/accent, so applying a preset preserves the user's
 // chosen colours; appendPreset carries the character as a per-page background so it
 // rides on the page, not the global look. Every tile `type` MUST exist in
 // WidgetCatalog (a QML test asserts both).
 //
 // THE ONE PAGE FITS ON ONE SCREEN. Its tiles may not exceed WidgetSizes.longHalves
-// (6 half-cells) along the long axis — three `1x1` fill a screen exactly, and a
+// (6 half-cells) along the long axis - three `1x1` fill a screen exactly, and a
 // hero `1x1.5` plus a `1x1.5` companion does too. Hard product constraint, asserted
 // by tst_preset_catalog against the real WidgetPacker: the scroll axis follows the
 // long axis, which in landscape is the SwipeView's own swipe axis, so an overflowing
@@ -44,7 +44,7 @@ QtObject {
 
     property var items: [
         // ── Local, no online config needed ──────────────────────────────────
-        // `focus` tops out at 1x1.5 — the hero timer is the largest it renders.
+        // `focus` tops out at 1x1.5 - the hero timer is the largest it renders.
         { id: "calm-focus", title: "Calm Focus", icon: "flower-lotus",
           blurb: "Deep work, quietly. A big timer beside your one thing.",
           appearance: _calm, surfaced: ["Focus"],
@@ -155,7 +155,7 @@ QtObject {
           blurb: "Two clocks and your P&L - local and New York, beside one headline number.",
           appearance: _calm, surfaced: ["Time", "Data"],
           pages: [ { name: "Desk", tiles: [
-              // The two zones sit side by side — one glance, two clocks.
+              // The two zones sit side by side - one glance, two clocks.
               { type: "clock", size: "0.5x1" },
               { type: "clock", size: "0.5x1", settings: { title: "New York", customZone: true, zoneId: "America/New_York" } },
               { type: "kpi", size: "1x1.5", settings: { title: "P&L", label: "P&L", unit: "%", pollSec: 60 } } ] } ] },
@@ -165,7 +165,7 @@ QtObject {
           appearance: _calm, surfaced: ["Data", "Time"],
           pages: [ { name: "Data", tiles: [
               { type: "kpi", size: "1x1.5", settings: { title: "Headline metric", label: "Headline metric", source: "http", pollSec: 300 } },
-              // The file source reads a local path — a fully offline KPI (no egress).
+              // The file source reads a local path - a fully offline KPI (no egress).
               { type: "kpi", size: "0.5x1", settings: { title: "Daily total", label: "Daily total", source: "file", pollSec: 60 } },
               { type: "httpjson", size: "0.5x1", settings: { title: "Monitoring", mode: "value", pollSec: 120 } } ] } ] },
 
@@ -174,7 +174,7 @@ QtObject {
           appearance: _calm, surfaced: ["Info", "Data"],
           pages: [ { name: "Team", tiles: [
               { type: "eod", size: "1x1.5" },
-              // "Approved KPI/monitoring tiles only" — a KPI the org points at its
+              // "Approved KPI/monitoring tiles only" - a KPI the org points at its
               // own endpoint. The egress primitives stay governed by NetHub's allowlist.
               { type: "kpi", size: "1x1.5", settings: { title: "Team KPI", label: "Team KPI", pollSec: 300 } } ] } ] }
     ]
@@ -195,7 +195,7 @@ QtObject {
     // A tile carries its `size` straight through. Presets used to emit the old
     // {w,h} spans and lean on the store's migration to name them, which is lossy by
     // construction (old `h` was a ratio against siblings, a size is a fraction of
-    // the screen) — it mapped `h:2` to `1x2` and, for a type that does not declare
+    // the screen) - it mapped `h:2` to `1x2` and, for a type that does not declare
     // it, dropped the tile to its default. A preset is authored, not migrated: it
     // names the size it means, and the test asserts the type declares it.
     function buildDoc(id) {
@@ -222,7 +222,7 @@ QtObject {
         return { "version": 1, "appearance": appearance, "settings": settings, "pages": pages }
     }
 
-    // Compose several single-page presets into ONE document — the "a few starter
+    // Compose several single-page presets into ONE document - the "a few starter
     // screens" a fresh install / wizard begins with. Each preset contributes its
     // one page (with its character as a per-page background so the pages differ),
     // tile ids stay unique across the bundle, and per-tile settings are merged. The

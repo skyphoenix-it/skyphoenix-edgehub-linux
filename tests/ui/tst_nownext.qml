@@ -4,17 +4,17 @@ import "fixtures.js" as Fx
 import "../../ui/qml/widgets" as W
 
 // ─────────────────────────────────────────────────────────────────────────
-// tst_nownext — ui/qml/widgets/NowNextWidget.qml.
+// tst_nownext - ui/qml/widgets/NowNextWidget.qml.
 //
 // The widget derives now/next from a nested CalendarWidget's ICS model rather
 // than parsing ICS a second time. Two consequences this file has to prove:
-//   1. The derivation is right — including the all-day case, where CalendarWidget
+//   1. The derivation is right - including the all-day case, where CalendarWidget
 //      leaves end == start and a naive start<=now<end would report that an all-day
 //      event is never happening.
 //   2. Embedding a Calendar did not smuggle a fetch around the egress gate. The
 //      nested instance must obey the SAME NetHub kill switch and allowlist, or the
 //      "no telemetry / local-only" claim has a hole in it that no lint would see
-//      (check_no_raw_xhr.sh only proves this file builds no XHR itself — it cannot
+//      (check_no_raw_xhr.sh only proves this file builds no XHR itself - it cannot
 //      prove the one it delegates to is gated).
 //
 // Events are injected straight into the nested model where the ICS layer is not
@@ -35,7 +35,7 @@ Item {
         for (var k in s) delete s[k]
         harness.storeCtl._touchSettings()
     }
-    // The nested agenda model, reached the way a caller never should — this is the
+    // The nested agenda model, reached the way a caller never should - this is the
     // one place that is allowed to know it exists.
     function agenda() {
         var kids = root.findAll(h.item, function (n) { return n.hasOwnProperty("parseICS") }, [])
@@ -49,7 +49,7 @@ Item {
         for (var i = 0; kids && i < kids.length; i++) findAll(kids[i], pred, acc)
         return acc
     }
-    // A Timer is not a visual child — it is a resource. `data` is the union of
+    // A Timer is not a visual child - it is a resource. `data` is the union of
     // children and resources, so this is the only walk that can see one.
     function findAllData(node, pred, acc) {
         acc = acc || []
@@ -304,7 +304,7 @@ Item {
             return t ? t.parent.parent : null
         }
 
-        // The type is sized off the BOX, not off `expanded` — the wave-2b bug.
+        // The type is sized off the BOX, not off `expanded` - the wave-2b bug.
         function test_the_type_scales_with_the_tile() {
             tryVerify(function () { return nBase.ready }, 3000)
             tryVerify(function () { return nTall.ready }, 3000)
@@ -321,7 +321,7 @@ Item {
             verify(n.nextTitlePx < n.titlePx, "NEXT stays quieter than NOW")
         }
 
-        // wide — the two blocks sit side by side rather than splitting 306px.
+        // wide - the two blocks sit side by side rather than splitting 306px.
         function test_wide_puts_now_beside_next() {
             tryVerify(function () { return nWide.ready }, 3000)
             var n = nWide.item

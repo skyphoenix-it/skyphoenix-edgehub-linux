@@ -2,37 +2,37 @@ import QtQuick
 import QtQuick.Layouts
 
 // ─────────────────────────────────────────────────────────────────────────
-// Meds — scheduled doses with a taken / due / earlier state, and a taken-today
+// Meds - scheduled doses with a taken / due / earlier state, and a taken-today
 // record that survives a restart.
 //
 // TONE IS A HARD REQUIREMENT, NOT A PREFERENCE. A dose whose time has passed
-// un-marked renders in `textTertiary` and reads "not marked" — never red, never
+// un-marked renders in `textTertiary` and reads "not marked" - never red, never
 // "MISSED", never a count of failures. Three reasons, in descending order of
 // how much they bind us:
 //   • Safety. This widget cannot know whether a dose was taken; it only knows
 //     whether it was TAPPED. Colouring an un-tapped dose as an alarm asserts a
 //     fact we do not have, and the plausible correction ("take it now") is the
-//     dangerous one — double-dosing. Muted-and-neutral is the only honest state.
+//     dangerous one - double-dosing. Muted-and-neutral is the only honest state.
 //   • Evidence. The "calm UI" canon is largely unevidenced (a 2019 review found
 //     none of the autism software-a11y guidelines were empirically based), but
 //     the part that IS clinical is the flash threshold: the Epilepsy Foundation's
 //     advisory board recommends staying under 2 Hz, stricter than WCAG 2.3.1's
-//     3/s. So nothing here blinks, pulses or animates on a timer AT ALL — the due
+//     3/s. So nothing here blinks, pulses or animates on a timer AT ALL - the due
 //     state is a colour and a word, held still.
 //   • It is a reminder, not a scoreboard. Guilt is not an adherence mechanism.
 //
 // Persistence: `takenDay` + `taken` (dose keys). Anything not from today is
 // ignored rather than migrated, so the rollover is a read-time decision and the
-// widget never writes on a timer — only a tap writes. Nothing here belongs in
+// widget never writes on a timer - only a tap writes. Nothing here belongs in
 // DashboardStore._ephemeralKeys because nothing here is per-tick state.
 //
 // Sizing (W1 wave 2b): the day's schedule used to be `expanded`-only, so a 1x2
-// tile (696x1639 — room for two dozen doses) showed ONE dose and a button, and
+// tile (696x1639 - room for two dozen doses) showed ONE dose and a button, and
 // the actual schedule was locked behind the overlay. The split is now by SHAPE:
-//   • wide  — the focused dose + Mark taken BESIDE the schedule. The focus block
+//   • wide  - the focused dose + Mark taken BESIDE the schedule. The focus block
 //             is this widget's summary/control, so the wide box spends its width
 //             on it rather than stacking three cramped bands.
-//   • every other shape (compact / tall / large / full) — the day's schedule,
+//   • every other shape (compact / tall / large / full) - the day's schedule,
 //             headed by the taken count. Each row IS the touch target
 //             (theme.touchSecondary = 60, above the 52 minimum), so the one-tap
 //             logging survives without a separate button.
@@ -55,7 +55,7 @@ WidgetChrome {
         return (store && instanceId) ? JSON.parse(JSON.stringify(store.settingsFor(instanceId))) : ({})
     }
     // One dose per line: "HH:MM Name". Free text rather than a structured editor
-    // because the whole adjustment surface is meant to stay small — the evidence
+    // because the whole adjustment surface is meant to stay small - the evidence
     // supports "make it adjustable, keep the surface small", not a form builder.
     readonly property string schedule: cfg.schedule !== undefined ? cfg.schedule : ""
     // How long after its time a dose still reads "Due now" rather than settling
@@ -66,13 +66,13 @@ WidgetChrome {
     function todayKey() { return Qt.formatDate(new Date(), "yyyy-MM-dd") }
     property string dayKey: (w.tick, todayKey())
     // Taken-today only. A stored day that is not today means the list is stale, so
-    // it reads as empty — the rollover needs no timer and cannot half-apply.
+    // it reads as empty - the rollover needs no timer and cannot half-apply.
     readonly property var takenToday: (cfg.takenDay === dayKey && cfg.taken) ? cfg.taken : []
 
     // ── Schedule parsing ────────────────────────────────────────────────────
     // Lenient on purpose: "8:00 Ritalin", "08:00  Ritalin 10mg" and "20:30" all
     // parse. A line with no readable time is kept as an UNTIMED dose rather than
-    // dropped — silently discarding a medication line is the worst failure mode
+    // dropped - silently discarding a medication line is the worst failure mode
     // here, so it degrades to "no set time" and is still tappable.
     readonly property var doses: {
         var out = []
@@ -116,7 +116,7 @@ WidgetChrome {
     //
     // Tests MUST pin it. A schedule is a bare "HH:mm" with no date, so a dose
     // written as "ten minutes ago" silently becomes a dose due in 23h50m when
-    // the suite runs at 00:07 — which is exactly how tst_meds failed every
+    // the suite runs at 00:07 - which is exactly how tst_meds failed every
     // night in the first ten minutes after midnight.
     property int nowMinsOverride: -1
     function nowMins() {
@@ -125,13 +125,13 @@ WidgetChrome {
     }
 
     // "taken" | "due" | "later" | "open"
-    //   due   — its time has arrived and is still inside the window
-    //   open  — its time has passed un-marked. NOT "missed": see the header.
-    //   later — still ahead of us today
+    //   due   - its time has arrived and is still inside the window
+    //   open  - its time has passed un-marked. NOT "missed": see the header.
+    //   later - still ahead of us today
     // An untimed dose is never "due"; it just sits "open" until tapped.
     //
     // `nowM` (minutes since midnight) is optional and defaults to the wall clock.
-    // Passing it makes this a pure function of (dose, clock) — which is what lets
+    // Passing it makes this a pure function of (dose, clock) - which is what lets
     // the state matrix be tested at a FIXED time of day instead of depending on
     // when the suite happens to run (a schedule built as "now + 2 h" is a
     // different scenario at 22:00 than at 09:00, and would flake nightly).
@@ -184,7 +184,7 @@ WidgetChrome {
     // leads with the schedule (whose rows are themselves the tap target).
     readonly property bool showFocus: w.horiz
     readonly property bool showSchedule: !w.horiz || w.width > 560
-    // A dose row is a full touch target at EVERY size — never thinned for density.
+    // A dose row is a full touch target at EVERY size - never thinned for density.
     readonly property real rowH: theme.touchSecondary
     readonly property real rowFont: w.expanded ? 16
         : Math.max(13, Math.min((w.horiz ? width * 0.55 : width) * 0.028, 16))
@@ -214,7 +214,7 @@ WidgetChrome {
     }
 
     // `columns` flips for a wide box: the focus block sits BESIDE the schedule
-    // instead of replacing it. Only a reshape — the ListView is not rebuilt.
+    // instead of replacing it. Only a reshape - the ListView is not rebuilt.
     GridLayout {
         anchors.fill: parent
         visible: w.doses.length > 0
@@ -257,7 +257,7 @@ WidgetChrome {
                 font.pixelSize: Math.max(10, Math.round(w.rowFont * 0.75))
                 color: theme.textTertiary; elide: Text.ElideRight
             }
-            // Logging from the tile itself — the whole point is that it takes one
+            // Logging from the tile itself - the whole point is that it takes one
             // tap. A PillButton is theme.touchSecondary (60), above the minimum.
             PillButton {
                 Layout.alignment: Qt.AlignHCenter
@@ -305,7 +305,7 @@ WidgetChrome {
                         required property var modelData
                         readonly property string st: w.stateOf(modelData)
                         width: ListView.view ? ListView.view.width : 0
-                        // A full-width row IS the touch target — above
+                        // A full-width row IS the touch target - above
                         // touchTertiary (52), so a shaky tap still lands on the
                         // right dose. Fixed across sizes: room buys rows, not bulk.
                         height: w.rowH

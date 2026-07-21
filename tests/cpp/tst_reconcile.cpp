@@ -1,4 +1,4 @@
-// Decision table for reconcileOnPull() — the reconnect PULL-before-PUSH state
+// Decision table for reconcileOnPull() - the reconnect PULL-before-PUSH state
 // machine. Pure, GUILESS.
 #include <QtTest>
 

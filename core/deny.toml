@@ -1,10 +1,10 @@
-# cargo-deny — supply-chain policy for the Rust core (E9).
+# cargo-deny - supply-chain policy for the Rust core (E9).
 #
 # Complements `cargo audit`, which only reads Cargo.lock and knows nothing about
 # licenses, duplicate crates, or where a crate came from. Note the trap that has
 # bitten this repo before: audit/deny both reason about the LOCKFILE, not the
 # enabled feature set, so a crate reported here may not be compiled into the
-# shipped artifact. Verify before treating a finding as unreachable — the
+# shipped artifact. Verify before treating a finding as unreachable - the
 # lockfile is the honest worst case.
 #
 # Policy: no blanket allows. An advisory or a copyleft dependency is a FINDING to
@@ -28,14 +28,14 @@ ignore = []
 
 [licenses]
 version = 2
-# Exactly the licenses currently resolved in the graph — nothing speculative.
+# Exactly the licenses currently resolved in the graph - nothing speculative.
 # A new dependency under any other license (BSD, ISC, Zlib, …) is meant to FAIL
 # here: that failure is the license review, and waving it through in advance
 # would skip the one decision this file exists to force. Every entry below is
 # redistributable in a proprietary/enterprise deployment without imposing
 # source-disclosure obligations on the customer.
 #
-# MPL-2.0 is here for exactly one crate — option-ext 0.2.0, pulled in
+# MPL-2.0 is here for exactly one crate - option-ext 0.2.0, pulled in
 # transitively by `dirs` (dirs -> dirs-sys -> option-ext). MPL-2.0 is FILE-level
 # copyleft: linking it into a proprietary binary is fine, and the obligation only
 # attaches if we modify option-ext's own source, which we do not. It is called
@@ -46,11 +46,11 @@ allow = [
     "Apache-2.0",
     "Unicode-3.0",
     "MPL-2.0",
-    # BSD-3-Clause — the dalek/RustCrypto stack (curve25519-dalek, ed25519-dalek,
+    # BSD-3-Clause - the dalek/RustCrypto stack (curve25519-dalek, ed25519-dalek,
     # subtle) that E11's licence verification links. Permissive, no copyleft, no
     # advertising clause (that is the 4-clause variant): it may be linked into a
     # product we sell, and its only obligation is attribution in the distributed
-    # notices. Added by review when E11 landed — which is the point of pinning the
+    # notices. Added by review when E11 landed - which is the point of pinning the
     # allowlist to exactly what the graph contains: a NEW licence is meant to fail
     # the build and force this decision, not slip in.
     "BSD-3-Clause",
@@ -70,7 +70,7 @@ skip = []
 [sources]
 unknown-registry = "deny"
 unknown-git = "deny"
-# crates.io only. A git dependency has no immutable version and no audit trail —
+# crates.io only. A git dependency has no immutable version and no audit trail -
 # if one ever appears here it must be justified explicitly.
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 allow-git = []

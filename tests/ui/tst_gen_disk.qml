@@ -13,7 +13,7 @@ import QtTest
 // (dead) `active` gate.
 //
 // Assertions that encode the *intended* behaviour but fail against the current
-// code are deliberate — they pin real bugs called out in the audit:
+// code are deliberate - they pin real bugs called out in the audit:
 //   • col() hard-codes a 97% red threshold BELOW the configurable warnPercent,
 //     so warnPercent≥97 turns the ring red before the user's own warn line and
 //     the amber band becomes unreachable.
@@ -37,7 +37,7 @@ Item {
         expanded: true
     }
 
-    // Fixed-size hosts for the per-sizeClass structure tests — real projected
+    // Fixed-size hosts for the per-sizeClass structure tests - real projected
     // cell footprints (half-cell ≈ 344x416 portrait, full cell ≈ 696x840).
     Item { id: microWrap; width: 344; height: 416
         WidgetHarness { id: hMicro; anchors.fill: parent; widgetFile: "DiskWidget.qml"; expanded: false } }
@@ -137,7 +137,7 @@ Item {
                    "below the configured warn line the ring should show the accent colour")
         }
 
-        // BUG (audit, high): with warnPercent≥97 the amber band is unreachable —
+        // BUG (audit, high): with warnPercent≥97 the amber band is unreachable -
         // any value over the warn line is ≥97 so it goes straight to red. The
         // schema help says "The ring turns amber above this fill level."
         function test_amber_reachable_above_high_warn() {
@@ -149,7 +149,7 @@ Item {
         }
 
         // BUG (audit, high): the critical (red) threshold must always sit at or
-        // above the configured warn line — otherwise the band order inverts.
+        // above the configured warn line - otherwise the band order inverts.
         function test_critical_never_below_warnline() {
             var w = h.item
             set("warnPercent", 98)
@@ -171,7 +171,7 @@ Item {
 
         // ── Unavailable state ────────────────────────────────────────────────
         // With empty metrics (before the first sample) the tile must read
-        // unavailable — a dimmed "N/A", never a confident 0%.
+        // unavailable - a dimmed "N/A", never a confident 0%.
         function test_empty_metrics_show_unavailable() {
             var w = h.item
             h.metricsJson = "{}"
@@ -202,7 +202,7 @@ Item {
             // Root-reserved case: core percent 94.7, raw used/total 90/100.
             feed(94.7, 90 * gib, 100 * gib)
             // Fix keeps the df-correct ring % (root-reservation aware) and derives the
-            // shown used/free from it, so the sub-line matches the ring — not raw bytes.
+            // shown used/free from it, so the sub-line matches the ring - not raw bytes.
             var shownPct = 100 * (100 * gib - w.freeBytes) / (100 * gib)
             verify(Math.abs(w.v - shownPct) < 1.5,
                    "the ring % (" + w.v + ") and the used/free shown (" + shownPct
@@ -295,7 +295,7 @@ Item {
             verify(g !== null, "found the RingProgress")
             feed(50, 50 * gib, 100 * gib)
             // W1 moved disk onto RingProgress directly (progressColor, no colour
-            // fade there today) — but assert via tryVerify anyway, so if W3's
+            // fade there today) - but assert via tryVerify anyway, so if W3's
             // cross-fade ever extends to RingProgress this pins the LANDED tone
             // instead of starting to flake.
             tryVerify(function () { return Qt.colorEqual(g.progressColor, h.theme.accentPresets["purple"].a) },
@@ -357,7 +357,7 @@ Item {
         // must not silently collapse the sizes back into one stretched layout.
         // The wrapper boxes are real projected cell sizes (portrait/landscape).
 
-        // 0.5x0.5 — a bare ring: no header, no inline used/total, no details.
+        // 0.5x0.5 - a bare ring: no header, no inline used/total, no details.
         function test_micro_is_a_bare_ring() {
             tryVerify(function () { return hMicro.ready }, 3000)
             hMicro.metricsJson = JSON.stringify({ disk_usage_percent: 50,
@@ -365,13 +365,13 @@ Item {
             var w = hMicro.item
             w.sizeClass = "compact"
             compare(w.micro, true, "a 344x416 compact box is the micro tile")
-            compare(w.showHeader, false, "micro hides the header — nothing competes with the ring")
+            compare(w.showHeader, false, "micro hides the header - nothing competes with the ring")
             compare(w.showInlineSub, false, "micro drops the used/total sub-line")
             compare(w.showDetails, false, "micro has no detail column")
             verify(findRing(hMicro) !== null, "the ring itself is there")
         }
 
-        // 1x1 — header + ring with percent AND used/total inside.
+        // 1x1 - header + ring with percent AND used/total inside.
         function test_baseline_has_header_and_inline_sub() {
             tryVerify(function () { return hBase.ready }, 3000)
             hBase.metricsJson = JSON.stringify({ disk_usage_percent: 50,
@@ -384,7 +384,7 @@ Item {
             compare(w.showDetails, false, "no detail column at 1x1")
         }
 
-        // wide — ring beside a Used/Free/Total detail column. The SAME class is
+        // wide - ring beside a Used/Free/Total detail column. The SAME class is
         // 1x0.5 in portrait (696x416) and 0.5x1 in landscape (840x344): both
         // boxes must produce the side-by-side layout.
         function test_wide_shows_detail_column_in_both_orientations() {
@@ -406,7 +406,7 @@ Item {
             wideWrap.width = 696; wideWrap.height = 416
         }
 
-        // tall — ring above the detail column.
+        // tall - ring above the detail column.
         function test_tall_stacks_ring_over_details() {
             tryVerify(function () { return hTall.ready }, 3000)
             hTall.metricsJson = JSON.stringify({ disk_usage_percent: 50,
@@ -421,7 +421,7 @@ Item {
             verify(free !== null && free.visible, "the Free row is rendered")
         }
 
-        // full (the overlay) — same rich layout as tall, never the micro one.
+        // full (the overlay) - same rich layout as tall, never the micro one.
         function test_full_is_rich() {
             var w = h.item
             w.sizeClass = "full"
@@ -433,7 +433,7 @@ Item {
         // ── The dead `active` gate ───────────────────────────────────────────
         // The audit flags `active` as declared-but-unused. This documents that the
         // widget keeps recomputing when off-page (active=false), i.e. there is no
-        // pause support — v tracks metrics regardless of active.
+        // pause support - v tracks metrics regardless of active.
         function test_active_is_ignored() {
             var w = h.item
             h.active = false

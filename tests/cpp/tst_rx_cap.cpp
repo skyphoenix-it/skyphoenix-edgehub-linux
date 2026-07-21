@@ -1,5 +1,5 @@
 // Robustness tests for ManagerBackend's IPC read path (onSocketReadyRead):
-//   1. An unterminated flood (no '\n') is CAPPED — the pending RX buffer never
+//   1. An unterminated flood (no '\n') is CAPPED - the pending RX buffer never
 //      grows past ~1 MB, so a stuck/hostile peer can't OOM the Manager.
 //   2. A malformed JSON line is LOGGED and IGNORED without desyncing the stream:
 //      a valid uiState sent right after it is still adopted.
@@ -21,7 +21,7 @@ XENEON_REQUIRE_HERMETIC_ENV();
 
 // Bind exactly where production resolves it (manager_backend.h pulls in the
 // same header), so the fake hub and the ManagerBackend under test cannot
-// drift apart — and so this never binds the shared /tmp node a live hub used
+// drift apart - and so this never binds the shared /tmp node a live hub used
 // to own. See app/src/control_socket_path.h.
 static QString kSock() { return xeneon::controlSocketPath(); }
 
@@ -74,7 +74,7 @@ private slots:
                                     .arg(b.rxBufferSizeForTest())));
         }
 
-        // Close the (garbage) unterminated frame with a newline — the residual is
+        // Close the (garbage) unterminated frame with a newline - the residual is
         // consumed as one malformed line and dropped. A following newline-terminated
         // message then parses normally: the reader resynced rather than wedging.
         QSignalSpy spy(&b, &ManagerBackend::configChanged);

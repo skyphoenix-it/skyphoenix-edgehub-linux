@@ -7,7 +7,7 @@ import "GuiUtil.js" as G
 // Each widget is hosted single via UI.WidgetHarness in a REAL KWin-composited
 // window and driven with real store/metric mutations + real property drives that
 // mirror exactly what Dashboard.injectWidget does (sizeClass / accentName /
-// titleOverride / cardBackdrop are bindings the Dashboard sets from store — the
+// titleOverride / cardBackdrop are bindings the Dashboard sets from store - the
 // harness has no Dashboard, so we set them directly, which is the same public
 // API and produces the same visible pixels).
 //

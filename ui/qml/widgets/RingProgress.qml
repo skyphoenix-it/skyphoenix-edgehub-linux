@@ -1,6 +1,6 @@
 import QtQuick
 
-// RingProgress — a circular progress ring used by timers and gauges.
+// RingProgress - a circular progress ring used by timers and gauges.
 Item {
     id: ring
     property real value: 0.0          // 0..1
@@ -12,7 +12,7 @@ Item {
     // Opt-in smoothing for DATA-driven rings (metric gauges): a new sample eases
     // the sweep instead of hard-cutting it. Deliberately OFF by default so
     // second-hand timer rings (focus/break/countdown) keep their honest 1Hz step
-    // — and don't pay ~24 extra Canvas repaints per second. The token already
+    // - and don't pay ~24 extra Canvas repaints per second. The token already
     // collapses to 0 under reduce-motion.
     property bool animateValue: false
     Behavior on value {
@@ -46,7 +46,7 @@ Item {
             ctx.lineCap = "round"
             ctx.stroke()
 
-            // Progress arc. An idle metric (value <= 0) must paint nothing — a
+            // Progress arc. An idle metric (value <= 0) must paint nothing - a
             // round-cap stroke over a zero-length arc would leave a spurious dot
             // at 12 o'clock, so guard the sweep instead of flooring it.
             var frac = Math.max(0, Math.min(1, ring.value))
@@ -55,7 +55,7 @@ Item {
             var start = -Math.PI / 2
             var end = start + frac * 2 * Math.PI
             var c0 = ring.progressColor, c1 = ring.progressColor2
-            // (Canvas shadowBlur glow removed — it is a CPU-side blur that is
+            // (Canvas shadowBlur glow removed - it is a CPU-side blur that is
             // recomputed on every repaint and caused noticeable jank when the
             // ring animates each second. The gradient stroke reads well on its own.)
             if (Qt.colorEqual(c0, c1)) {
@@ -91,7 +91,7 @@ Item {
 
     // Repaint coalescing for the EASED path only. A Canvas repaint is a full
     // CPU re-rasterization of the ring; letting the 400ms glide repaint at the
-    // display's 60Hz measured ~1.8% CPU per gauge on the real panel — most of
+    // display's 60Hz measured ~1.8% CPU per gauge on the real panel - most of
     // the whole app's budget. ~22fps during the glide is visually
     // indistinguishable for a sweep this slow and costs a third as much. The
     // timer only ever runs while a glide is delivering value changes, so an

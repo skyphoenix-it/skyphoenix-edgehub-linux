@@ -3,7 +3,7 @@
 
 Drives the actual `build/xeneon-edge-hub` binary (QA-hooks build) via XENEON_GRAB,
 with each curated preset dashboard + theme, at the real 720x2560 panel resolution
-(or 2560x720 landscape). No mockups — these are the app rendering itself.
+(or 2560x720 landscape). No mockups - these are the app rendering itself.
 
   python3 scripts/gen_screenshots.py                 # the curated set
   python3 scripts/gen_screenshots.py --only developer,gaming
@@ -25,7 +25,7 @@ QMLTESTRUNNER = "/usr/lib/qt6/bin/qmltestrunner"
 OUT_DIR = os.path.join(REPO, "docs", "marketing-site", "assets", "generated")
 
 # Manager shots: (name, tab index, chrome theme). Tab 1 (Appearance) shows the
-# theme grid WITH the Pro badges + scope tags — the single best Pro/clarity shot.
+# theme grid WITH the Pro badges + scope tags - the single best Pro/clarity shot.
 MANAGER_SHOTS = [
     ("manager-appearance-pro", 1, "default"),  # theme grid, PRO badges, live preview
     ("manager-layout",         0, "default"),  # the Edge clone + layout controls
@@ -33,7 +33,7 @@ MANAGER_SHOTS = [
 ]
 
 # Curated shots: (name, preset id, theme mode, orientation). Chosen so page 0
-# renders POPULATED — system/time/focus/health widgets show live data headless,
+# renders POPULATED - system/time/focus/health widgets show live data headless,
 # unlike the HTTP/JSON widgets, which honestly show a "connect a source" empty
 # state. A range of themes, including two premium (Pro) ones.
 SHOTS = [
@@ -85,7 +85,7 @@ def dump_presets():
 def write_config(cfg_dir, ui_state, theme):
     os.makedirs(os.path.join(cfg_dir, "xeneon-edge-hub"), exist_ok=True)
     ui = json.dumps(ui_state)
-    # TOML basic string (double-quoted) with JSON escaped — robust against any
+    # TOML basic string (double-quoted) with JSON escaped - robust against any
     # apostrophes a preset might carry (a single-quoted literal would break).
     ui_toml = ui.replace("\\", "\\\\").replace('"', '\\"')
     body = "\n".join([
@@ -147,7 +147,7 @@ def main():
     ap.add_argument("--no-manager", action="store_true", help="skip the Manager shots")
     args = ap.parse_args()
     if not os.path.exists(HUB):
-        sys.exit(f"hub binary not found at {HUB} — build first (scripts/build.sh)")
+        sys.exit(f"hub binary not found at {HUB} - build first (scripts/build.sh)")
     os.makedirs(OUT_DIR, exist_ok=True)
 
     print("Dumping preset layouts…")

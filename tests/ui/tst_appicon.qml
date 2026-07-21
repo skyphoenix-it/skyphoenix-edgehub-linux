@@ -3,7 +3,7 @@ import QtTest
 import "../../ui/qml" as App
 import "../../ui/qml/widgets" as Wg
 
-// AppIcon (ui/qml/widgets/AppIcon.qml) — a tinted SVG via MultiEffect. MultiEffect
+// AppIcon (ui/qml/widgets/AppIcon.qml) - a tinted SVG via MultiEffect. MultiEffect
 // does not render offscreen, so we assert the DRIVING PROPS: source resolution
 // (name → qrc path, iconSource override), the tint routing (Image vs MultiEffect
 // visibility + colorizationColor), size, and the empty-input fallback.
@@ -108,7 +108,7 @@ Item {
 
         // ── W5 finding 4: the software-scenegraph fallback ───────────────────
         // Under a software renderer MultiEffect draws nothing; the raw image
-        // must take over (untinted beats invisible). Driven via the seam — the
+        // must take over (untinted beats invisible). Driven via the seam - the
         // backend itself cannot be swapped inside one test run.
         function test_software_fallback_shows_untinted_image() {
             icon.tint = true; icon.iconSource = ""

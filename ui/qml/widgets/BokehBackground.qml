@@ -1,11 +1,11 @@
 import QtQuick
 import QtQuick.Shapes
 
-// BokehBackground — soft depth-of-field bokeh: a scattering of circular soft dots
+// BokehBackground - soft depth-of-field bokeh: a scattering of circular soft dots
 // (QtQuick.Shapes RadialGradient, bright centre → transparent edge) of varying
 // diameter, deterministically placed, slowly rising and wrapping, each gently
 // pulsing its opacity. GPU-rendered; no per-frame repaint. When `active` is false
-// the dots stay painted but stop rising/pulsing — matching the other backdrops.
+// the dots stay painted but stop rising/pulsing - matching the other backdrops.
 Item {
     id: root
     property bool active: true
@@ -18,7 +18,7 @@ Item {
         delegate: Shape {
             id: dot
             required property int index
-            // Deterministic (index-based) pseudo-random parameters — no RNG.
+            // Deterministic (index-based) pseudo-random parameters - no RNG.
             readonly property real diameter: 30 + (((index * 137 + 53) % 100) / 100) * 110   // 30..140
             readonly property real startFrac: ((index * 613 + 197) % 1000) / 1000
             readonly property real strength: 0.28 + ((index * 71) % 40) / 200                 // 0.28..0.48

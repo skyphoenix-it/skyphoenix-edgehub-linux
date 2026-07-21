@@ -16,7 +16,7 @@ import "../../ui/qml" as App
 // Several assertions here intentionally fail because they document REAL bugs
 // flagged in the audit (save-on-close loss, external-overwrite, no cursor
 // follow, whitespace placeholder, revision churn). Those failures are the
-// point — do not "fix" the test to make them pass.
+// point - do not "fix" the test to make them pass.
 // ─────────────────────────────────────────────────────────────────────────
 Item {
     id: root
@@ -57,7 +57,7 @@ Item {
     // binding in the dying NotesWidget/WidgetChrome subtree re-evaluates once
     // during teardown. When `theme` was resolved through destroyHost's scope,
     // those late re-evaluations hit an invalidated context and produced 52
-    // "TypeError: Cannot read property 'X' of undefined" diagnostics per run —
+    // "TypeError: Cannot read property 'X' of undefined" diagnostics per run -
     // enough to fail the whole offscreen tier on a gate that exists to catch
     // real product errors.
     //
@@ -95,11 +95,11 @@ Item {
 
     // ── Visual-tree helpers ──────────────────────────────────────────────────
     // Recurse over children AND a Flickable's contentItem (which is where its
-    // declared children — e.g. the editor — actually live).
+    // declared children - e.g. the editor - actually live).
     // The `seen` set is a correctness requirement, not an optimisation: a
     // Control's `contentItem` is ALSO one of its `children`, so every
     // contentItem subtree is reachable by two paths. Without memoing, each such
-    // subtree is re-walked once per path — 2^k for k nested contentItem-bearing
+    // subtree is re-walked once per path - 2^k for k nested contentItem-bearing
     // ancestors (Pane > ScrollView > Flickable > TextArea nests several here).
     // Two sibling copies of this bug reached 18.8 GB and 20 GB RSS and caused a
     // system-wide OOM on 2026-07-19. It also inflated collect() results, so any
@@ -226,7 +226,7 @@ Item {
 
     // ── Close/destroy semantics (audit critical bug) ─────────────────────────
     // Reproduces Dashboard.closeExpanded(): the overlay Loader item is destroyed
-    // outright — `expanded` never transitions true→false — so nothing relying on
+    // outright - `expanded` never transitions true→false - so nothing relying on
     // onExpandedChanged runs. Any un-flushed (still-debouncing) text is lost.
     TestCase {
         name: "NotesCloseFlush"
@@ -299,7 +299,7 @@ Item {
             compare(hNotes.storeCtl.settingsFor("test-instance").text, "server text",
                     "a stale local edit must not overwrite the Manager's pushed value")
         }
-        // Compact preview DOES react to external revision bumps — this passes.
+        // Compact preview DOES react to external revision bumps - this passes.
         function test_compact_reacts_to_external_bump() {
             var w = hCompact.item
             clearStore(hCompact)
@@ -378,7 +378,7 @@ Item {
             ed.text = "base"                 // sync editor to the saved base
             var rev0 = hNotes.storeCtl.revision
             ed.text = "basex"                // type a char
-            ed.text = "base"                 // delete it — net unchanged
+            ed.text = "base"                 // delete it - net unchanged
             w.flush()                        // land the debounced write
             compare(hNotes.storeCtl.settingsFor("test-instance").text, "base", "text unchanged")
             compare(hNotes.storeCtl.revision, rev0,
@@ -510,7 +510,7 @@ Item {
         WidgetHarness { id: qMicro; anchors.fill: parent; widgetFile: "NotesWidget.qml"; expanded: false } }
     Item { width: 696; height: 819
         WidgetHarness { id: qBase; anchors.fill: parent; widgetFile: "NotesWidget.qml"; expanded: false } }
-    // 1x3 portrait — the whole panel.
+    // 1x3 portrait - the whole panel.
     Item { width: 696; height: 2459
         WidgetHarness { id: qBoard; anchors.fill: parent; widgetFile: "NotesWidget.qml"; expanded: false } }
 
@@ -539,7 +539,7 @@ Item {
                        && n.visible && String(n.text).indexOf("Pick up the dry") === 0 }, [])[0]
         }
 
-        // 0.5x0.5 — the note IS the tile; 36px of chrome is a line you cannot spare.
+        // 0.5x0.5 - the note IS the tile; 36px of chrome is a line you cannot spare.
         function test_micro_drops_the_header_for_a_line_of_note() {
             tryVerify(function () { return qMicro.ready }, 3000)
             var q = qMicro.item
@@ -551,7 +551,7 @@ Item {
             verify(preview(qMicro) !== null, "the note still renders")
         }
 
-        // The preview is sized off the BOX, not off `expanded` — the wave-2b bug.
+        // The preview is sized off the BOX, not off `expanded` - the wave-2b bug.
         function test_the_preview_scales_with_the_tile() {
             tryVerify(function () { return qBase.ready }, 3000)
             tryVerify(function () { return qMicro.ready }, 3000)
@@ -577,7 +577,7 @@ Item {
             seed(qBoard)
             wait(32)
             compare(q.previewPx, qBase.item.previewPx,
-                    "a 696x2459 panel uses the SAME type size as a 696x819 tile — "
+                    "a 696x2459 panel uses the SAME type size as a 696x819 tile - "
                     + "the same column width carries the same line length")
             verify(preview(qBoard).height > preview(qBase).height * 2,
                    "…it just has room for far more lines")

@@ -1,24 +1,24 @@
 import QtQuick
 
 // ─────────────────────────────────────────────────────────────────────────
-// UpdateChecker — the opt-in "is a newer EdgeHub available?" service (E10).
+// UpdateChecker - the opt-in "is a newer EdgeHub available?" service (E10).
 //
 // A QtObject service, not a widget: it has no visual surface of its own.
 // Dashboard creates ONE instance and SettingsPanel renders its result line.
-// It deliberately contains no Timer — a QtObject child would lean on the
+// It deliberately contains no Timer - a QtObject child would lean on the
 // QtObject default `data` property, and the periodic re-check lives in
 // Dashboard's wiring instead, where an Item can host a Timer on every Qt 6.
 //
 // THE PRIVACY CONTRACT (load-bearing, CI-enforced):
 //   • `enabled` defaults to FALSE and nothing here flips it. With a default
-//     config the checker never constructs a request — packaging/ci/no-egress.sh
+//     config the checker never constructs a request - packaging/ci/no-egress.sh
 //     launches the hub with defaults and fails the build on a single connect().
 //   • When the user opts in, the ONE request goes through NetHub.request()
 //     like every other widget (scripts/check_no_raw_xhr.sh forbids a raw
 //     XMLHttpRequest anywhere else), so the global kill switch, the host
 //     allowlist and the attestation counters all govern it.
 //   • The request is a bare GET of the public GitHub releases API. No token,
-//     no serial, no config, no telemetry — nothing beyond what a GET carries.
+//     no serial, no config, no telemetry - nothing beyond what a GET carries.
 //
 // SELF-UPDATE IS OUT OF SCOPE: this only *reports*. Native packages update
 // through the distro's package manager; only an AppImage install is pointed
@@ -28,7 +28,7 @@ QtObject {
     id: checker
 
     // The egress gate (Dashboard's app-global NetHub). Without one, check()
-    // fails closed — this service never builds its own XMLHttpRequest.
+    // fails closed - this service never builds its own XMLHttpRequest.
     property var netHub: null
 
     // THE OPT-IN. Default OFF, and it must stay OFF: defaulting this to true
@@ -36,18 +36,18 @@ QtObject {
     // persisted appearance flag (`updateCheck`), written by SettingsPanel.
     property bool enabled: false
 
-    // The version currently running — ConfigBridge.appVersion(): a git
+    // The version currently running - ConfigBridge.appVersion(): a git
     // describe (e.g. "1.0.0-alpha.2-5-gabc1234") or the pkgver for packaged
     // builds; "dev" for syntax-only builds (which compares as unknown).
     property string currentVersion: ""
 
     // The one URL the check ever touches.
     // The LIST endpoint, not /releases/latest. GitHub's "latest" EXCLUDES
-    // pre-releases and 404s when every release is one — exactly the alpha/beta
+    // pre-releases and 404s when every release is one - exactly the alpha/beta
     // situation, where the check then reported an error instead of a version.
     // Listing lets us pick the newest release on the user's own channel.
     readonly property string releasesUrl:
-        "https://api.github.com/repos/skyphoenix-it/XeneonEdge_Linux/releases?per_page=20"
+        "https://api.github.com/repos/skyphoenix-it/skyphoenix-edgehub-linux/releases?per_page=20"
 
     // Test seam, passed through the gate exactly like the net widgets do.
     property var xhrFactory: null
@@ -57,7 +57,7 @@ QtObject {
     // the environment itself, so we reuse the audited ${env:} resolver that
     // ConfigBridge already exposes for credential refs (Dashboard injects it;
     // null in tests/standalone). An unset variable resolves as an error, so
-    // absence honestly reads as "package" — never a guess at "appimage".
+    // absence honestly reads as "package" - never a guess at "appimage".
     property var envResolver: null
     readonly property string installKind: {
         var r = checker.envResolver
@@ -185,7 +185,7 @@ QtObject {
     }
 
     // ── Version ordering (SemVer §11) ───────────────────────────────────────
-    // A naive string compare says "v1.0.0-alpha.2" > "v1.0.0" — exactly wrong.
+    // A naive string compare says "v1.0.0-alpha.2" > "v1.0.0" - exactly wrong.
     // Rules pinned by tests/ui/tst_update_checker.qml:
     //   • a pre-release sorts BEFORE its release (1.0.0-rc.1 < 1.0.0)
     //   • pre-release identifiers compare dot-by-dot; numeric ones numerically
@@ -196,10 +196,10 @@ QtObject {
     //     ("-5-gabc1234") rides along as extra identifiers, so a build AHEAD
     //     of its tag is not told to "update" to that same tag.
     // Returns -1 / 0 / 1, or null when either side has no parsable version
-    // (e.g. "dev") — null means "cannot honestly order these".
+    // (e.g. "dev") - null means "cannot honestly order these".
     // Newest release the user should be OFFERED, from the list endpoint.
     // Channel rule: a pre-release is only offered when the RUNNING build is
-    // itself a pre-release — a stable user is never pushed onto an alpha, and an
+    // itself a pre-release - a stable user is never pushed onto an alpha, and an
     // alpha user still gets alpha updates (without this, every check during the
     // whole alpha/beta period fails). Drafts are never offered.
     function _pickRelease(list) {

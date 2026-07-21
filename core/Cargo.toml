@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 description = "Core library for Xeneon Edge Linux Hub"
 # The repo ships LICENSE-MIT + LICENSE-APACHE and the README grants both, but the
-# manifest declared nothing — so cargo-deny reported our OWN crate as
+# manifest declared nothing - so cargo-deny reported our OWN crate as
 # "unlicensed" while auditing everyone else's. Declaring it lets the licence
 # allowlist stay strict instead of carrying a clarify-rule for ourselves.
 license = "MIT OR Apache-2.0"

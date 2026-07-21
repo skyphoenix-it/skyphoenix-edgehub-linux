@@ -18,8 +18,8 @@
 #include "xeneon_string.h"
 
 // Decide whether to migrate the hub window back onto a newly-added screen.
-//   reconnectEnabled — the reconnect-on-hotplug preference (config.startup).
-//   isTarget         — the added screen matches the hub's target (re-run of the match).
+//   reconnectEnabled - the reconnect-on-hotplug preference (config.startup).
+//   isTarget         - the added screen matches the hub's target (re-run of the match).
 inline bool shouldReconnectToScreen(bool reconnectEnabled, bool isTarget) {
     return reconnectEnabled && isTarget;
 }
@@ -149,7 +149,7 @@ public:
         return path;
     }
 
-    // Display hotplug preferences (S10) — read by the hub's QScreen handlers and
+    // Display hotplug preferences (S10) - read by the hub's QScreen handlers and
     // available to QML for the Display/Diagnostics surfaces. These mirror the three
     // formerly write-only keys so QML can render + honor them.
     Q_INVOKABLE bool reconnectOnHotplug() const {
@@ -182,7 +182,7 @@ public:
     // ui/qml/UserWidgetCatalog.qml, where it runs in the offscreen test suite.
     //
     // SECURITY NOTE: these helpers only LIST and READ. Whether anything is
-    // loaded is decided in QML by the `enableUserWidgets` flag (default OFF) —
+    // loaded is decided in QML by the `enableUserWidgets` flag (default OFF) -
     // callers gate on the flag BEFORE invoking listUserWidgets(), so the
     // attested default configuration performs no scan at all.
     static QString userWidgetsRoot() {
@@ -198,7 +198,7 @@ public:
     //     "manifest": "<raw manifest.json text>" }
     // or, when the manifest is missing/unreadable/oversized:
     //   { "dir": ..., "dirName": ..., "files": [...], "error": "<why>" }
-    // Deliberately dumb — no parsing, no validation, no recursion: the
+    // Deliberately dumb - no parsing, no validation, no recursion: the
     // filesystem scan is the only part QML cannot do, so it is the only part
     // done here. A missing root directory is simply an empty list.
     Q_INVOKABLE QStringList listUserWidgets() const {
@@ -243,7 +243,7 @@ public:
     // Returns { ok, value, error, plaintext }. `plaintext` is true when the stored
     // value is a bare secret, so the UI can warn without the caller re-parsing it.
     // An empty input is a success with an empty value (an unconfigured widget just
-    // sends no Authorization header) — NOT an error.
+    // sends no Authorization header) - NOT an error.
     Q_INVOKABLE QVariantMap resolveSecret(const QString& raw) const {
         QVariantMap r;
         r["ok"] = false;
@@ -259,7 +259,7 @@ public:
 
         char* errRaw = nullptr;
         XeneonString value(xeneon_secret_resolve(rawUtf8.constData(), &errRaw));
-        XeneonString err(errRaw);   // owned even on success (then null) — RAII frees both.
+        XeneonString err(errRaw);   // owned even on success (then null) - RAII frees both.
         if (value) {
             r["ok"] = true;
             r["value"] = value.qstring();
@@ -271,7 +271,7 @@ public:
 
     // --- Managed / org policy (E9) --------------------------------------------
     // The effective org policy, as one QVariantMap (mirrors resolveSecret: the
-    // FFI answers, the bridge shapes it for QML). Keys — always all present:
+    // FFI answers, the bridge shapes it for QML). Keys - always all present:
     //   active               bool   false only when NO policy file exists
     //   source               string "absent" | "policy" | "fail-closed"
     //   reason               string non-empty only for fail-closed
@@ -282,11 +282,11 @@ public:
     //   disabledWidgetTypes  list   hidden from the picker, never rendered
     //
     // Deliberately INDEPENDENT of m_config (no detach guard): policy comes from
-    // /etc (or $XENEON_POLICY_PATH — a test-only seam), not from the user's
+    // /etc (or $XENEON_POLICY_PATH - a test-only seam), not from the user's
     // config handle. Cached: the file is root-owned and static per launch, and
     // QML bindings would otherwise re-read it on every evaluation.
     //
-    // Never log the returned map wholesale — allowedHosts may name internal
+    // Never log the returned map wholesale - allowedHosts may name internal
     // infrastructure (same discipline as core/src/secrets.rs).
     Q_INVOKABLE QVariantMap policy() const {
         if (m_policyLoaded) return m_policy;

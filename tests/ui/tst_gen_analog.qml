@@ -5,7 +5,7 @@ import "../../ui/qml" as App
 // COVERS: schema:showNumerals
 
 // ─────────────────────────────────────────────────────────────────────────
-// widget:analog — comprehensive coverage for AnalogClockWidget.qml plus its
+// widget:analog - comprehensive coverage for AnalogClockWidget.qml plus its
 // shared config surfaces (WidgetConfigSchema "analog" + DashboardStore).
 //
 // The face is drawn on a Canvas, so behaviour is verified two ways:
@@ -16,7 +16,7 @@ import "../../ui/qml" as App
 //      rule" (the `active` flag) and the theme-reactivity contract.
 //
 // Assertions that FAIL do so because of a real bug in the widget (documented
-// inline with BUG:) — those are intentionally left failing.
+// inline with BUG:) - those are intentionally left failing.
 // ─────────────────────────────────────────────────────────────────────────
 Item {
     id: root
@@ -143,7 +143,7 @@ Item {
         }
 
         function test_cfg_is_a_snapshot_copy() {
-            // cfg is JSON.parse(JSON.stringify(...)) — a copy, not the live obj.
+            // cfg is JSON.parse(JSON.stringify(...)) - a copy, not the live obj.
             var w = h.item
             set("showNumerals", true)
             var snap = w.cfg
@@ -209,7 +209,7 @@ Item {
         function test_resize_repaints() {
             // Component.onCompleted + onWidthChanged/onHeightChanged ⇒ paint.
             // The face is square and sized by the LIMITING dimension (here the
-            // height, on a 480x360 host), so resize that one — a width-only
+            // height, on a 480x360 host), so resize that one - a width-only
             // change legitimately leaves the square face untouched.
             settle()
             root.height = 330
@@ -223,7 +223,7 @@ Item {
             // BUG (audit medium): `active` is declared (line 8) but never read.
             // The tile loader sets active=false for off-screen / expanded /
             // edit-mode tiles (single-driver rule, Dashboard.qml:14) so those
-            // clocks should stop repainting. They don't — the tick Connections
+            // clocks should stop repainting. They don't - the tick Connections
             // (line 72) fires unconditionally. Correct behaviour: no repaint.
             var w = h.item
             h.active = false            // ⇒ item.active = false via harness binding
@@ -239,7 +239,7 @@ Item {
         function test_theme_switch_repaints_face() {
             // BUG (audit low): onPaint reads theme.cardBorder / textTertiary /
             // textSecondary / textPrimary at paint time, but nothing watches
-            // those roles — there is no Connections on `theme`. A dark→light
+            // those roles - there is no Connections on `theme`. A dark→light
             // switch that leaves effAccent unchanged does NOT repaint, so the
             // ring/ticks/hands/numerals keep the old palette until the next
             // tick. Correct behaviour: the switch repaints the face.
@@ -254,7 +254,7 @@ Item {
     // ── Per-sizeClass structure (W1) ──────────────────────────────────────
     // Fixed-size hosts at real projected cell footprints; the Dashboard injects
     // sizeClass, so the tests assign it the same way and pin what each size
-    // shows — a future edit can't silently collapse the sizes back into one
+    // shows - a future edit can't silently collapse the sizes back into one
     // stretched face.
     Item { id: aMicroWrap; width: 344; height: 416
         WidgetHarness { id: hAMicro; anchors.fill: parent; widgetFile: "AnalogClockWidget.qml"; expanded: false } }
@@ -282,7 +282,7 @@ Item {
         name: "AnalogClockSizes"
         when: windowShown
 
-        // 0.5x0.5 — the face IS the widget: no header, no date, no digital time.
+        // 0.5x0.5 - the face IS the widget: no header, no date, no digital time.
         function test_micro_face_only() {
             tryVerify(function () { return hAMicro.ready }, 3000)
             var w = hAMicro.item
@@ -293,7 +293,7 @@ Item {
             compare(w.showHeader, false, "no header competes with the face on a tile")
         }
 
-        // 1x1 — face + date beneath it, still no digital duplicate.
+        // 1x1 - face + date beneath it, still no digital duplicate.
         function test_baseline_face_plus_date() {
             tryVerify(function () { return hABase.ready }, 3000)
             var w = hABase.item
@@ -306,7 +306,7 @@ Item {
             verify(date !== null && date.visible, "the date line is rendered")
         }
 
-        // wide — face beside digital time + date, in BOTH projections of the
+        // wide - face beside digital time + date, in BOTH projections of the
         // class (1x0.5 portrait 696x416, 0.5x1 landscape 840x344).
         function test_wide_face_beside_time_both_orientations() {
             tryVerify(function () { return hAWide.ready }, 3000)
@@ -321,7 +321,7 @@ Item {
             aWideWrap.width = 696; aWideWrap.height = 416
         }
 
-        // tall — face above digital time + date.
+        // tall - face above digital time + date.
         function test_tall_face_above_time() {
             tryVerify(function () { return hATall.ready }, 3000)
             var w = hATall.item
@@ -332,7 +332,7 @@ Item {
             verify(time !== null && time.visible, "the digital time is rendered")
         }
 
-        // full (the overlay) — header + face + the full info block.
+        // full (the overlay) - header + face + the full info block.
         function test_full_has_header_and_info() {
             tryVerify(function () { return h.ready }, 3000)
             var w = h.item

@@ -1,7 +1,7 @@
 import QtQuick
 import QtTest
 
-// BreakWidget — verifies persistent/shared timer state and the audited fix that
+// BreakWidget - verifies persistent/shared timer state and the audited fix that
 // the compact "Done" action (reset) is reachable and works, plus interval clamp.
 Item {
     width: 420; height: 820
@@ -49,7 +49,7 @@ Item {
         function test_state_lives_in_store_not_widget() {
             // Timer state must be persisted in the store (so tile + expanded, which
             // are separate widget instances bound to the same id, share it and it
-            // survives restart) — not in widget-local properties as before.
+            // survives restart) - not in widget-local properties as before.
             var w = h.item
             w.reset()
             var ep = cfg().endEpoch

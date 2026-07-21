@@ -1,18 +1,18 @@
 import QtQuick
 import QtQuick.Layouts
 
-// Sensor cluster — CPU / GPU / RAM utilization + temperatures in one glance.
+// Sensor cluster - CPU / GPU / RAM utilization + temperatures in one glance.
 // All values are real (from the Rust core); rows without data are hidden.
 //
 // Sizing (W1 wave 2a): the Repeater's STATIC label model and its long-lived
 // delegates are load-bearing (identity-pinned: values ease, delegates never
 // rebuild). Per-size layout therefore only RESHAPES the same rows:
-//   • 0.5x0.5 (micro) — headerless; the six slim rows ARE the tile.
-//   • 1x1 (baseline)  — header + rows with type/bars scaled up to the box.
-//   • wide            — the SAME delegates flow into two columns (GridLayout
+//   • 0.5x0.5 (micro) - headerless; the six slim rows ARE the tile.
+//   • 1x1 (baseline)  - header + rows with type/bars scaled up to the box.
+//   • wide            - the SAME delegates flow into two columns (GridLayout
 //                       `columns` flips; no delegate is recreated).
-//   • tall            — single column, thicker bars + larger type.
-//   • full (overlay)  — unchanged.
+//   • tall            - single column, thicker bars + larger type.
+//   • full (overlay)  - unchanged.
 WidgetChrome {
     id: w
     property var metrics: ({})
@@ -41,7 +41,7 @@ WidgetChrome {
         // distinct category colours (which help tell the rows apart at a glance).
         var accentSet = w.accentName !== ""
         function lc(base) { return accentSet ? w.effAccent : base }
-        // Temperature bars threshold by the ACTUAL value — a cool GPU must not show
+        // Temperature bars threshold by the ACTUAL value - a cool GPU must not show
         // a red bar (the old constant amber/red misread as "hot").
         function tc(t) { return t > 85 ? theme.error : t > 70 ? theme.warning : (accentSet ? w.effAccent : theme.catSystem) }
         var ct = num(metrics.cpu_temp_celsius), gt = num(metrics.gpu_temp_celsius)
@@ -74,7 +74,7 @@ WidgetChrome {
     GridLayout {
         anchors.fill: parent
         // Wide reflows the SAME six delegates into two columns; flipping
-        // `columns` only re-lays-out — it does not recreate delegates, so the
+        // `columns` only re-lays-out - it does not recreate delegates, so the
         // eased bars and colour cross-fades survive a resize too.
         columns: w.horiz ? 2 : 1
         rowSpacing: w.expanded ? 12 : 5
@@ -82,8 +82,8 @@ WidgetChrome {
         Repeater {
             // STABLE DELEGATES (owner-reported clunk). The model is a literal list
             // of row labels, so it is evaluated ONCE and the six delegates live for
-            // the widget's whole life. Binding the Repeater to `w.rows` instead —
-            // a fresh JS array every metrics tick — destroyed and recreated every
+            // the widget's whole life. Binding the Repeater to `w.rows` instead -
+            // a fresh JS array every metrics tick - destroyed and recreated every
             // delegate ~2s, so nothing survived long enough to animate and the
             // whole widget flickered through reconstruction. Now a tick only moves
             // the bound VALUES below; the bar glides and the colour cross-fades.
@@ -117,7 +117,7 @@ WidgetChrome {
                         color: sensorRow.row ? sensorRow.row.col : "transparent"
                         width: sensorRow.row
                                ? parent.width * Math.min(sensorRow.row.val / sensorRow.row.max, 1) : 0
-                        // A 1° temperature rise moves ONLY this bar, smoothly — the
+                        // A 1° temperature rise moves ONLY this bar, smoothly - the
                         // token collapses both eases to an instant jump under
                         // reduce-motion. Threshold colour (cool→warn→hot) cross-fades
                         // instead of hard-cutting for the same reason.

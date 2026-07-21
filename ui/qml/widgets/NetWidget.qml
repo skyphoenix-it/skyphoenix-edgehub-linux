@@ -1,20 +1,20 @@
 import QtQuick
 import QtQuick.Layouts
 
-// Network throughput — real up/down byte-rates from the Rust core, with a
+// Network throughput - real up/down byte-rates from the Rust core, with a
 // live sparkline of recent activity (history kept in-widget).
 //
 // Sizing (W1 wave 2a): layout keys off the injected `sizeClass`.
-//   • 0.5x0.5 (micro) — headerless; the two rates, big and centred. No graph.
-//   • 1x1 (baseline)  — rates row above the sparkline (the classic tile).
-//   • wide            — rates (+ session peaks) beside a full-width sparkline.
-//   • tall            — rates + session peaks above a sparkline that earns the
+//   • 0.5x0.5 (micro) - headerless; the two rates, big and centred. No graph.
+//   • 1x1 (baseline)  - rates row above the sparkline (the classic tile).
+//   • wide            - rates (+ session peaks) beside a full-width sparkline.
+//   • tall            - rates + session peaks above a sparkline that earns the
 //                       height (peaks are genuinely more information).
-//   • full (overlay)  — rates left, peaks right, big sparkline below; SIZED by the
+//   • full (overlay)  - rates left, peaks right, big sparkline below; SIZED by the
 //                       pane it is actually given (see rateFont), not by literals.
 //                       "full" is NOT a full screen: Dashboard hosts the overlay's
-//                       live preview in a pane beside the config form — ~941x456 in
-//                       landscape, ~656x980 stacked in portrait — so it is a class
+//                       live preview in a pane beside the config form - ~941x456 in
+//                       landscape, ~656x980 stacked in portrait - so it is a class
 //                       like any other and reads its own box.
 WidgetChrome {
     id: w
@@ -46,7 +46,7 @@ WidgetChrome {
             // Step down to Kbps for small values so it doesn't read "0.0 Mbps".
             return mb < 1 ? (bps * 8 / 1e3).toFixed(0) + " Kbps" : mb.toFixed(1) + " Mbps"
         }
-        // Round to whole bytes FIRST, then pick the unit — otherwise a value like
+        // Round to whole bytes FIRST, then pick the unit - otherwise a value like
         // 1023.7 takes the B/s branch and rounds up to a nonsensical "1024 B/s".
         var b = Math.round(bps)
         if (b >= 1048576) return (b / 1048576).toFixed(1) + " MB/s"
@@ -55,7 +55,7 @@ WidgetChrome {
     }
 
     // Session peaks + sparkline history live in the shared store (keyed by
-    // instanceId) so a tile and its expanded overlay — separate instances — share
+    // instanceId) so a tile and its expanded overlay - separate instances - share
     // the same accumulated state instead of resetting to 0/empty on every open (S5).
     function _persist() {
         if (!store || !instanceId) return
@@ -73,7 +73,7 @@ WidgetChrome {
 
     onMetricsChanged: {
         // Honour `active`: an off-page/hidden instance must not keep accumulating
-        // (S3). Read the freshly-changed `metrics` directly — the derived rx/tx
+        // (S3). Read the freshly-changed `metrics` directly - the derived rx/tx
         // bindings lag one frame behind this handler.
         if (!w.active) return
         var m = w.metrics || ({})
@@ -99,7 +99,7 @@ WidgetChrome {
     // NAME, so the question has to be answered from the room itself. Among the
     // sizes this widget declares, 1x1.5 is the only one that is BOTH off-square and
     // full-short-axis (696x1229 portrait / 1269x612 landscape, short side >= 612),
-    // where 0.5x1 and 1x0.5 stop at 423 — so WidgetChrome's own 480 half-cell
+    // where 0.5x1 and 1x0.5 stop at 423 - so WidgetChrome's own 480 half-cell
     // threshold separates them here too, with no size-name special case. `large`
     // and `full` are roomier still; this widget declares no `large` tile, but it
     // must not read as cramped if it ever does.
@@ -109,8 +109,8 @@ WidgetChrome {
 
     // Session peaks earn a place wherever there is room beyond the baseline:
     // the overlay (as before), and now also tall/wide tiles.
-    // The `expanded ||` this used to lead with was already DEAD — the overlay is
-    // injected as sizeClass "full", which `big` already covers — but it said the
+    // The `expanded ||` this used to lead with was already DEAD - the overlay is
+    // injected as sizeClass "full", which `big` already covers - but it said the
     // decision was partly the overlay's, which is the habit being removed.
     readonly property bool showPeaks: !micro && (big || horiz)
 
@@ -119,7 +119,7 @@ WidgetChrome {
     // This used to open with `expanded ? 30`, a literal frozen twice over: it
     // ignored the box it was actually in, and it never noticed when W5 shrank the
     // overlay's live-preview pane to 38% of the width in landscape. Worse, 30 beat
-    // the 26 a 1x1.5 tile got — a tile with FAR more room than that pane.
+    // the 26 a 1x1.5 tile got - a tile with FAR more room than that pane.
     //
     // The height term is new and binds nowhere on a shipped tile (the 26 cap
     // already did): it exists so the overlay's short 456px landscape pane cannot
@@ -137,7 +137,7 @@ WidgetChrome {
         columns: w.horiz ? 2 : 1
         // Air is room, not mode. 10 was "the overlay" and 4 "not the overlay";
         // what earns the wider gap is having the space for it, which is the same
-        // `roomy` predicate rateFont's cap uses — so a 1x1.5 tile, whose rates are
+        // `roomy` predicate rateFont's cap uses - so a 1x1.5 tile, whose rates are
         // now ~35px, gets the breathing room its own contents ask for instead of
         // the baseline third's tighter 4. Compact/micro tiles are unchanged.
         rowSpacing: w.roomy ? 10 : 4
@@ -145,9 +145,9 @@ WidgetChrome {
 
         // Rates block (+ peaks beside in the overlay, beneath on tall/wide).
         GridLayout {
-            // DELIBERATELY still keyed off the mode, with `alignment` below — and
+            // DELIBERATELY still keyed off the mode, with `alignment` below - and
             // the second of the two legitimate cases in this file (see `status` on
-            // WidgetChrome). This is COMPOSITION — which side the peaks sit on —
+            // WidgetChrome). This is COMPOSITION - which side the peaks sit on -
             // not a dimension. No box measurement makes one arrangement correct:
             // a 696-wide 1x1.5 tile and the 656-wide portrait overlay pane have
             // effectively the same width and genuinely want different compositions,
@@ -157,7 +157,7 @@ WidgetChrome {
             columns: w.expanded ? 2 : 1
             rowSpacing: 2; columnSpacing: theme.spacingLg
             Layout.fillWidth: !w.horiz
-            // micro (no graph): the rates are the tile — centre them in it.
+            // micro (no graph): the rates are the tile - centre them in it.
             Layout.fillHeight: w.micro || !w.showHistory
             Layout.alignment: Qt.AlignVCenter
             Layout.preferredWidth: w.horiz ? Math.round(lay.width * 0.36) : -1
@@ -177,7 +177,7 @@ WidgetChrome {
                     Layout.fillWidth: true; elide: Text.ElideRight
                     horizontalAlignment: w.micro ? Text.AlignHCenter : Text.AlignLeft }
             }
-            // Session peaks — "best so far". Right-aligned beside the rates in
+            // Session peaks - "best so far". Right-aligned beside the rates in
             // the overlay; a quiet line under them on tall/wide tiles.
             // The peaks are a SECONDARY readout of the rates, so they are sized
             // from the rates rather than re-deriving the box: `expanded ? 14`
@@ -185,7 +185,7 @@ WidgetChrome {
             // width term straight into its own 14 cap), but it left the peaks
             // pinned at 14 next to a rate number that had grown to 40. Tied to
             // rateFont they stay legible against it at every box. The `alignment`
-            // ternaries below are composition, not size — see `columns` above.
+            // ternaries below are composition, not size - see `columns` above.
             ColumnLayout {
                 visible: w.showPeaks; spacing: 0
                 Layout.alignment: w.expanded ? (Qt.AlignRight | Qt.AlignVCenter) : Qt.AlignLeft

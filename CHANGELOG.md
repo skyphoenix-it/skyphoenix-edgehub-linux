@@ -9,12 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-beta.1] - 2026-07-21
+
 Stability, fidelity and correctness pass. Everything below is user-visible unless
 marked *(internal)*.
 
 ### Fixed
 - **The Edge now shows the screen you're editing.** Selecting a screen in the
-  Manager — or adding one — left the panel stuck on the first screen. The Manager
+  Manager - or adding one - left the panel stuck on the first screen. The Manager
   now tells the hub which screen is selected and the panel follows.
 - **Landscape orientation is no longer shown as portrait in the Manager.** The hub
   reported its raw sensor rotation instead of what it was actually displaying, so
@@ -29,11 +31,11 @@ marked *(internal)*.
 - **A widget can no longer be resized past the space left.** Dragging a widget
   larger on a full screen briefly showed it overflowing (and appearing to scroll)
   before snapping back. The resize now only offers sizes that fit, so a screen
-  always stays one screen — while dragging, not just afterwards.
+  always stays one screen - while dragging, not just afterwards.
 - **Version reporting.** Both apps always reported `0.1.0` regardless of the build,
   the Manager ignored `--version` entirely, and the hub answered it only when no
   other copy was running. As a direct consequence, **"Check for updates" could
-  never detect a newer release** — it had no real version to compare. Fixed.
+  never detect a newer release** - it had no real version to compare. Fixed.
 - **Memory.** Fixed leaks that could grow the app to many gigabytes: three
   scene-graph traversals that re-walked the same nodes exponentially, and dashboard
   rows that were never reclaimed when a removed widget's fade was interrupted.
@@ -46,7 +48,7 @@ marked *(internal)*.
 - **Inspired themes renamed.** The distro-flavoured palettes are now named after
   the idea rather than the project (Trilby, Keystone, Swirl, Cascade, Fizz) and
   grouped as "Inspired". Saved themes are unaffected.
-- **The preset picker previews what you get** — each preset's layout is drawn with
+- **The preset picker previews what you get** - each preset's layout is drawn with
   the real packer, colour-coded by widget category and labelled with the widget
   names, so you can tell the presets apart before adding one.
 
@@ -59,10 +61,6 @@ marked *(internal)*.
 
 ### Candidate changes accumulated after alpha.2
 
-The following work is present on the development branch but has **not** been
-tagged or published as `1.0.0-beta.1`. It does not establish a feature freeze,
-code freeze, or release-readiness claim.
-
 #### Added
 - **Pro tier (licensing).** Offline, signed Ed25519 licence keys (`XE1.…`),
   verified on-device with no network and no hardware fingerprint; any bad key
@@ -72,13 +70,13 @@ code freeze, or release-readiness claim.
   Matrix + the five distro themes); ~20 themes stay free and nothing functional is
   ever gated. Issuer tooling (`tools/license-tool`, `scripts/mint-license.sh`) and
   `docs/LICENSING.md` for selling via Lemon Squeezy / Gumroad.
-- **W1 — per-size widget layouts.** Every widget genuinely designed for each size
+- **W1 - per-size widget layouts.** Every widget genuinely designed for each size
   it declares, in both orientations, keyed off `sizeClass` (not the modal overlay).
   Waves 1–3 across all widgets; `habit` gained a real transposed `1x1.5` map.
-- **W2 — Manager UX clarity.** A defined scope vocabulary with a tag on every
+- **W2 - Manager UX clarity.** A defined scope vocabulary with a tag on every
   control, honest copy, live Appearance preview, and a post-setup Screens picker
   so the preset library is no longer wizard-only.
-- **W3 — widget smoothness.** Tile reorder MOVES instead of teleporting (Dashboard
+- **W3 - widget smoothness.** Tile reorder MOVES instead of teleporting (Dashboard
   and the Manager's Edge clone), removed tiles fade out and added tiles arrive,
   eased gauges, and stable sensor rows that update values without rebuilding.
 - **AppImage update metadata.** Embedded `X-AppImage-UpdateInformation`
@@ -92,7 +90,7 @@ code freeze, or release-readiness claim.
   and a fresh install is calm/quiet (animated background and widget glow off).
   Motion transitions stay on; reduce-motion remains a separate, respected setting.
 - `--reset` now backs up `config.toml` to `config.toml.bak` before clearing, and
-  refuses if the backup fails — a mistyped `--reset` is no longer unrecoverable.
+  refuses if the backup fails - a mistyped `--reset` is no longer unrecoverable.
 - The local update flow (`scripts/update-local.sh`) restarts BOTH the hub and the
   Manager onto the new build.
 
@@ -105,7 +103,7 @@ code freeze, or release-readiness claim.
 - `tst_meds` failed every night between 00:00–00:10 (a bare `HH:mm` schedule read
   as a future dose); pinned to an injected clock.
 - Three tests that never executed (QtTest's `test_*_data` data-provider trap),
-  plus a family of gates that reported success while doing no work — all now
+  plus a family of gates that reported success while doing no work - all now
   assert their own subjects exist. A live-test lint (`check_live_tests.sh`) gates
   the class in CI.
 - The Manager's About "GitHub" button opened `"#"` and did nothing.
@@ -139,7 +137,8 @@ display matching, and the CI/coverage gates.
 
 | Version | Date | Description |
 |---------|------|-------------|
-| Unreleased | — | Development work after alpha.2; no beta or freeze declared |
+| Unreleased | - | Development after beta.1 |
+| 1.0.0-beta.1 | 2026-07-21 | Hub/Manager integration, hardware lifecycle, widget fidelity and release hardening |
 | 1.0.0-alpha.2 | 2026-07-16 | First signed release tag |
 | 1.0.0-alpha.1 | 2026-07 | Initial alpha |
-| 0.0.0 | 2026-07-11 | Project inception — Phase 0 Discovery |
+| 0.0.0 | 2026-07-11 | Project inception - Phase 0 Discovery |

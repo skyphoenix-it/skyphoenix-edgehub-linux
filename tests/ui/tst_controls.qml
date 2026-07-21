@@ -10,7 +10,7 @@ import "../../ui/qml/widgets" as Wg
 // PillButton GLYPH SIZING (see PillButtonGlyph below): these assertions are
 // deliberately FONT-INDEPENDENT. CI installs fonts-dejavu-core and NO emoji
 // font, so the emoji codepoints here resolve to a real colour font locally and
-// to a fallback/notdef box on CI — any assertion on emoji ink or on a specific
+// to a fallback/notdef box on CI - any assertion on emoji ink or on a specific
 // metric value would mean two different things on the two machines. What is
 // asserted instead is the structure the fix guarantees regardless of which font
 // answers: the glyph size is arithmetic on theme tokens, the two runs' baselines
@@ -155,7 +155,7 @@ Item {
         // new y/height are applied, so a read then pairs a fresh baselineOffset
         // with a stale y and invents a drift that is NOT there (this bit: it
         // reported a 1.07px drift that a standalone probe measured as 0.000).
-        // waitForRendering is not the tool — offscreen never swaps a frame, so it
+        // waitForRendering is not the tool - offscreen never swaps a frame, so it
         // just burns its 5s timeout per call. A real event-loop turn is what lets
         // the layout polish.
         function settle() { wait(16) }
@@ -170,7 +170,7 @@ Item {
         }
 
         // The glyph tracks the label through the whole a11y range. Pure
-        // arithmetic on theme tokens — no font is consulted, so this means the
+        // arithmetic on theme tokens - no font is consulted, so this means the
         // same thing on CI as it does locally.
         // Asserted on the rendered Text's OWN font.pixelSize, not on btn.glyphPx:
         // checking the property only proves the arithmetic, and a Text that
@@ -232,7 +232,7 @@ Item {
         }
 
         // The touch target is a FLOOR, and the box also has to contain its
-        // content — the old flat height referenced the content nowhere.
+        // content - the old flat height referenced the content nowhere.
         function test_height_is_a_floor_not_a_fixed_box() {
             var scales = [0.8, 1.0, 1.6]
             for (var i = 0; i < scales.length; i++) {
@@ -248,7 +248,7 @@ Item {
 
             // The loop above CANNOT distinguish a derived height from the flat
             // theme.touchSecondary it replaced: textScale is clamped at 1.6, which
-            // keeps the content ~40px — under the 60px floor — at every reachable
+            // keeps the content ~40px - under the 60px floor - at every reachable
             // setting, so a hardcoded 60 satisfies it too. Drive the label token
             // past the floor directly to actually pin the binding down.
             _theme.textScale = 1.0
@@ -259,7 +259,7 @@ Item {
                    "content genuinely exceeds the touch floor now (content="
                    + big.implicitHeight + " floor=" + _theme.touchSecondary + ")")
             verify(pill.implicitHeight >= big.implicitHeight,
-                   "the pill GROWS to contain content taller than the touch floor — "
+                   "the pill GROWS to contain content taller than the touch floor - "
                    + "the height is derived, not a fixed " + _theme.touchSecondary
                    + " (box=" + pill.implicitHeight + " content=" + big.implicitHeight + ")")
             // Restore the token's binding for the rest of the suite.
@@ -271,7 +271,7 @@ Item {
         }
 
         // The whole point: an emoji is atomic and can only be CUT, so when the
-        // pill is squeezed the label must be what gives way. Structural — it
+        // pill is squeezed the label must be what gives way. Structural - it
         // compares the row against the pill, never ink against a font.
         function test_squeezed_pill_keeps_the_glyph_and_elides_the_label() {
             _theme.textScale = 1.6
@@ -281,14 +281,14 @@ Item {
                    + " want=" + squeezed.implicitWidth + ")")
             var row = squeezed.children[0]
             verify(row.x >= 0,
-                   "the content row does not overflow the pill's left edge — the "
+                   "the content row does not overflow the pill's left edge - the "
                    + "leading glyph is what a symmetric overflow cuts first (x=" + row.x + ")")
             verify(row.x + row.width <= squeezed.width + 0.51,
                    "…nor its right edge (right=" + (row.x + row.width)
                    + " pill=" + squeezed.width + ")")
             var r = runs(squeezed)
             verify(r.glyph.width >= r.glyph.implicitWidth - 0.51,
-                   "the glyph keeps its full advance — it is never the thing that shrinks ("
+                   "the glyph keeps its full advance - it is never the thing that shrinks ("
                    + r.glyph.width + " vs " + r.glyph.implicitWidth + ")")
             verify(r.label.width < r.label.implicitWidth,
                    "the LABEL is what gives way under the squeeze (" + r.label.width
@@ -296,7 +296,7 @@ Item {
             verify(r.label.elide === Text.ElideRight, "…by eliding")
         }
 
-        // minWidth is a caller's FLOOR, not a fixed box — the distinction the
+        // minWidth is a caller's FLOOR, not a fixed box - the distinction the
         // Hydration overlay's `implicitWidth: 170` got wrong. Two halves, and the
         // second is the one that bites: the floor holding is also true of a pill
         // pinned to exactly 170, so it proves nothing on its own.
@@ -318,7 +318,7 @@ Item {
 
             // As with the touch floor above, the loop CANNOT tell a floor from a
             // fixed 170: textScale is clamped at 1.6, where "Remove" only wants
-            // ~141px — under the floor at every reachable setting, so an
+            // ~141px - under the floor at every reachable setting, so an
             // `implicitWidth: 170` passes it too. Drive the label token past the
             // floor directly to actually pin the binding down.
             _theme.textScale = 1.0
@@ -329,7 +329,7 @@ Item {
                    "content genuinely exceeds the hero floor now (content="
                    + big.implicitWidth.toFixed(1) + " floor=" + floored.minWidth + ")")
             verify(floored.width >= big.implicitWidth,
-                   "the pill GROWS to contain content wider than its floor — the "
+                   "the pill GROWS to contain content wider than its floor - the "
                    + "width is derived, not a fixed " + floored.minWidth
                    + " (w=" + floored.width.toFixed(1) + " content="
                    + big.implicitWidth.toFixed(1) + ")")
@@ -348,7 +348,7 @@ Item {
             compare(_theme.fontLabel, 15, "the fontLabel binding is restored")
         }
 
-        // A pill with no floor declared must be exactly its content — the floor is
+        // A pill with no floor declared must be exactly its content - the floor is
         // opt-in, so the default cannot have quietly become 170-wide for everyone.
         function test_min_width_defaults_to_no_floor() {
             _theme.textScale = 1.0
@@ -365,7 +365,7 @@ Item {
         // squeeze case alone cannot see it: the glyph survives ONLY because the
         // label is the row's fillWidth item and absorbs the shortfall. Take that
         // away and there is no elastic item, so the row cannot honour the width it
-        // is given and overflows the pill again — cutting the leading glyph.
+        // is given and overflows the pill again - cutting the leading glyph.
         function test_label_is_the_rows_only_elastic_item() {
             var r = runs(pill)
             compare(r.label.Layout.fillWidth, true, "the label is elastic")
@@ -399,7 +399,7 @@ Item {
             mouseClick(target)
             compare(root.selectCount, 1, "selected fired once")
             compare(root.lastSelected, "short", "selected carried the tapped value")
-            // The control must NOT imperatively assign currentValue — the external
+            // The control must NOT imperatively assign currentValue - the external
             // binding (root.mode) still governs it (S2 self-destruct guard).
             compare(seg.currentValue, "work", "currentValue still follows the external binding, not the tap")
         }

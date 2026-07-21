@@ -1,5 +1,5 @@
 // Traversal matrix for sanitizeImageName(): a crafted image name must never
-// resolve outside the images directory. Pure string/path logic — GUILESS.
+// resolve outside the images directory. Pure string/path logic - GUILESS.
 #include <QtTest>
 #include <QDir>
 
@@ -65,7 +65,7 @@ private slots:
     void traversalContained() {
         QFETCH(QString, name);
         const auto r = sanitizeImageName(name, imagesDir_);
-        // Either rejected, or contained strictly within the images dir — never an
+        // Either rejected, or contained strictly within the images dir - never an
         // escape to a parent/sibling path.
         if (r.has_value()) {
             QVERIFY2(r->startsWith(imagesDir_ + "/"),

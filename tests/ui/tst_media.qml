@@ -1,7 +1,7 @@
 import QtQuick
 import QtTest
 
-// MediaWidget — verifies the transport controls actually fire the bridge (they
+// MediaWidget - verifies the transport controls actually fire the bridge (they
 // were dead before the tapMA fix) in both compact and expanded modes, and that
 // the honest "nothing playing" state shows when unavailable.
 Item {
@@ -29,7 +29,7 @@ Item {
         function test_playpause_invokes_bridge() {
             h.mediaCtl.loadTrack("Song", "Artist")
             var before = h.mediaCtl.playPauseCount
-            h.mediaCtl.playPause()   // direct call proxy — proves API wired
+            h.mediaCtl.playPause()   // direct call proxy - proves API wired
             compare(h.mediaCtl.playPauseCount, before + 1)
         }
 

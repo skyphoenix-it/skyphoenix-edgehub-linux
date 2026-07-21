@@ -1,8 +1,8 @@
 # Architecture Overview
 
-**Version:** 0.1.0-draft  
-**Status:** Phase 0 — Discovery  
-**Last Updated:** 2026-07-11  
+**Version:** 0.1.0-draft
+**Status:** Phase 0 - Discovery
+**Last Updated:** 2026-07-11
 
 ---
 

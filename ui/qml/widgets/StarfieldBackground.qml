@@ -1,6 +1,6 @@
 import QtQuick
 
-// StarfieldBackground — a calm, deep-space field: two static star layers (drawn
+// StarfieldBackground - a calm, deep-space field: two static star layers (drawn
 // once) for depth, plus a handful of gently twinkling accent stars. Cheap: no
 // per-frame canvas repaint; only a few opacity animations.
 Item {

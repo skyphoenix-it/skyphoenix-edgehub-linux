@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""widget_render_matrix.py — every widget type actually RENDERS on the real Edge.
+"""widget_render_matrix.py - every widget type actually RENDERS on the real Edge.
 
 The biggest remaining coverage gap. The offscreen suites prove each widget's
 LOGIC and config; e2e_buildup proves that *something* renders. Nothing proved
-that each of the 30 widget types individually draws correctly on the panel —
+that each of the 30 widget types individually draws correctly on the panel -
 so a widget that silently fell back to "This widget isn't available", or drew
 nothing at all, would pass every existing test.
 
 For each widget type this puts it ALONE on the visible page, grabs the Edge, and
 asserts two things:
 
-  1. RENDERED — the frame differs from an empty-page baseline. Catches a widget
+  1. RENDERED - the frame differs from an empty-page baseline. Catches a widget
      that draws nothing.
-  2. DISTINCT — no two widget types produce the same frame. This is what catches
+  2. DISTINCT - no two widget types produce the same frame. This is what catches
      the fallback tile: a broken widget renders the SAME "isn't available" card
      regardless of type, so two broken widgets collide. It also catches a widget
      that renders as an empty card.
@@ -45,12 +45,12 @@ ALL_WIDGETS = [
 
 # Grid resolution for the frame signature. 32x32, NOT 8x8: a 1x1 widget covers
 # only ~a quarter of the tall portrait panel, so a coarse grid averages its
-# change away — the first run of this file failed all 30 widgets that were in
+# change away - the first run of this file failed all 30 widgets that were in
 # fact rendering perfectly. Measured at 32x32: every widget differs from the
 # empty page by >=25, and the two most similar widgets still differ by 8.5.
 GRID = 32
 # A widget must move at least one grid cell this far vs the empty page. Uses the
-# MAX cell delta, not the average — a small widget changes a few cells a lot and
+# MAX cell delta, not the average - a small widget changes a few cells a lot and
 # the rest not at all, which an average hides.
 MIN_RENDER_DELTA = 25.0
 # Two widgets closer than this are the same picture (the shared "isn't
@@ -130,7 +130,7 @@ def main():
                 why = ("did not render: frame differs from the EMPTY page by only "
                        "%.1f (need >=%.0f)" % (delta, MIN_RENDER_DELTA))
             elif twin:
-                why = ("rendered the SAME picture as '%s' — almost certainly the "
+                why = ("rendered the SAME picture as '%s' - almost certainly the "
                        "\"This widget isn't available\" fallback or an empty card"
                        % twin)
             else:

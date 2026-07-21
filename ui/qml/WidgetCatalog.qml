@@ -1,23 +1,23 @@
 import QtQuick
 
 // ─────────────────────────────────────────────────────────────────────────
-// WidgetCatalog — the registry of available widgets.
+// WidgetCatalog - the registry of available widgets.
 //
 // Each entry is defined ONCE here and reused everywhere: the dashboard grid,
 // the expanded overlay, and the edit-mode "add widget" picker. `source` is the
 // qrc path to the widget's QML file (all widgets live under qrc:/qml/ via
 // qml.qrc aliases). `defaults` seeds a fresh instance's persisted settings.
 //
-// SIZES — `sizes` lists the sizes (names from WidgetSizes) a widget can honestly
+// SIZES - `sizes` lists the sizes (names from WidgetSizes) a widget can honestly
 // render, and `dflt` is what a fresh instance gets. Every entry declares the `1x1`
 // baseline: a widget that cannot do the default size is a bug. The list is a
 // CAPABILITY claim, not a menu of everything that would technically lay out, and it
 // is judged against two hard facts:
 //   • The screen ROTATES. A size is (short × long), so declaring one means the
-//     widget works in BOTH of its shapes — `0.5x1` is a ~348x853 column in portrait
+//     widget works in BOTH of its shapes - `0.5x1` is a ~348x853 column in portrait
 //     and a ~853x306 banner in landscape.
 //   • Bigger is not better. `1x3` is the WHOLE screen (~770x2560): only content that
-//     actually grows into it earns it. Almost nothing here does — a lone ring or a
+//     actually grows into it earns it. Almost nothing here does - a lone ring or a
 //     glyph at full screen is a stretched card, not a feature. Likewise `0.5x0.5`
 //     (1/12, ~348x409 portrait / ~423x306 landscape) is where the 36px chrome header
 //     and any fixed control row stop fitting.
@@ -40,17 +40,17 @@ QtObject {
         { type: "net",     title: "Network",  category: "System", source: "qrc:/qml/NetWidget.qml",     defaults: {},
           sizes: ["0.5x0.5", "0.5x1", "1x0.5", "1x1", "1x1.5"], dflt: "1x1" },
         // Disk deliberately draws NO sparkline ("usage barely changes"), so it is a
-        // lone static ring — it has strictly less to show than the tiles above and
+        // lone static ring - it has strictly less to show than the tiles above and
         // earns nothing past the baseline.
         { type: "disk",    title: "Disk",     category: "System", source: "qrc:/qml/DiskWidget.qml",    defaults: {},
           sizes: ["0.5x0.5", "0.5x1", "1x0.5", "1x1", "1x1.5"], dflt: "1x1" },
-        // At most 6 rows (CPU/GPU/RAM/DISK + 2 temps) — they share the height, so it
+        // At most 6 rows (CPU/GPU/RAM/DISK + 2 temps) - they share the height, so it
         // survives a 1/12 tile but runs out of rows past half the screen.
         { type: "sensors", title: "Sensors",  category: "System", source: "qrc:/qml/SensorsWidget.qml", defaults: {},
           sizes: ["0.5x0.5", "0.5x1", "1x0.5", "1x1", "1x1.5"], dflt: "1x1" },
 
         // Installed-package count + system age, read from the package manager's
-        // own database (never mutated). Both are ONE number plus a caption — the
+        // own database (never mutated). Both are ONE number plus a caption - the
         // same content shape as `countdown`, so the same sizes: they read fine
         // down to 1/12 of the screen and have nothing to grow into past half of
         // it (a lone number at 1x2 is a stretched card, not more information).
@@ -67,7 +67,7 @@ QtObject {
         { type: "analog",  title: "Analog Clock",category: "Time", source: "qrc:/qml/AnalogClockWidget.qml", defaults: {},
           sizes: ["0.5x0.5", "0.5x1", "1x0.5", "1x1", "1x1.5"], dflt: "1x1" },
         // Was "illumination/next-new/next-full are expanded-only, so a larger tile
-        // would just scale the emoji" — no longer true since wave 2a: a tall tile
+        // would just scale the emoji" - no longer true since wave 2a: a tall tile
         // earns the illumination and the next-new/next-full dates, so the size
         // list is honest rather than a shrug. It could now justify 1x1.5 too.
         { type: "moon",    title: "Moon Phase",  category: "Time", source: "qrc:/qml/MoonWidget.qml",    defaults: {},
@@ -89,7 +89,7 @@ QtObject {
         { type: "notes",    title: "Quick Note",  category: "Focus", source: "qrc:/qml/NotesWidget.qml",    defaults: { text: "" },
           sizes: ["0.5x0.5", "0.5x1", "1x0.5", "1x1", "1x1.5", "1x2", "1x3"], dflt: "1x1" },
         // Was "the heatmap is expanded-only … a tile shows a streak number + one
-        // button, whatever room it is given" — untrue since wave 2b: the 28-day map
+        // button, whatever room it is given" - untrue since wave 2b: the 28-day map
         // is earned by any tile but the 1/12. 1x1.5 (wave 2c) goes further and is a
         // genuinely different card, not the baseline stretched: it earns the
         // best-ever record line, and its map transposes to 4x7 to fit the tall
@@ -98,7 +98,7 @@ QtObject {
         // is nothing further to grow into and the map would just inflate.
         { type: "habit",    title: "Habit Streak",category: "Focus", source: "qrc:/qml/HabitWidget.qml",     defaults: { checkins: [] },
           sizes: ["0.5x0.5", "0.5x1", "1x0.5", "1x1", "1x1.5"], dflt: "1x1" },
-        // Today's glasses only — no history is kept, so there is nothing to grow into.
+        // Today's glasses only - no history is kept, so there is nothing to grow into.
         { type: "hydration",title: "Hydration",   category: "Focus", source: "qrc:/qml/HydrationWidget.qml", defaults: { goal: 8, count: 0, day: "" },
           sizes: ["0.5x0.5", "0.5x1", "1x0.5", "1x1"], dflt: "1x1" },
         // A countdown + two buttons.
@@ -107,7 +107,7 @@ QtObject {
 
         // Everyday / wellness (E5). All three are user-data widgets whose content
         // is a LIST that genuinely grows with height, and all three are control
-        // surfaces you tap — so they share a size story: no 1/12 tile (the chrome
+        // surfaces you tap - so they share a size story: no 1/12 tile (the chrome
         // header plus a real ≥52px touch row does not fit one), and no full screen
         // (they are meant to be short; a 12-line routine at 1x3 is a wall, which is
         // the thing these widgets exist to avoid).
@@ -131,7 +131,7 @@ QtObject {
         { type: "media",    title: "Now Playing", category: "Media", source: "qrc:/qml/MediaWidget.qml", defaults: {},
           sizes: ["0.5x0.5", "0.5x1", "1x0.5", "1x1", "1x1.5"], dflt: "1x1" },
 
-        // Data (generic, connect-anything primitives — devs, homelab, enterprise)
+        // Data (generic, connect-anything primitives - devs, homelab, enterprise)
         // Value/gauge/list. Its largest mode is hard-capped at 12 list rows, which
         // stops short of filling the whole screen.
         { type: "httpjson", title: "HTTP / JSON", category: "Data", source: "qrc:/qml/HttpJsonWidget.qml",
@@ -144,11 +144,11 @@ QtObject {
           sizes: ["0.5x0.5", "0.5x1", "1x0.5", "1x1", "1x1.5", "1x2", "1x3"], dflt: "1x1" },
 
         // Info
-        // An agenda grows with height, but maxEvents caps at 12 — enough for two
+        // An agenda grows with height, but maxEvents caps at 12 - enough for two
         // thirds, not the whole screen. Not 1/12: "Up next" + the event rows.
         { type: "calendar", title: "Calendar",    category: "Info", source: "qrc:/qml/CalendarWidget.qml",  defaults: { url: "" },
           sizes: ["0.5x1", "1x0.5", "1x1", "1x1.5", "1x2"], dflt: "1x1" },
-        // Exactly TWO events, ever — so unlike `calendar` it has nothing to grow
+        // Exactly TWO events, ever - so unlike `calendar` it has nothing to grow
         // into past half the screen: 1x2 would be two lines of text and a lot of
         // air. Not 1/12 either: NOW and NEXT are two labelled blocks, and dropping
         // one to fit would make it a worse `calendar` rather than a Now/Next.
@@ -206,7 +206,7 @@ QtObject {
     // runtime by the hub's UserWidgetCatalog loader. Default EMPTY: the Manager
     // and the test harness never set it, so this registry stays a plain data
     // table everywhere else. def() consults shipped `items` FIRST, so a user
-    // entry can never shadow a shipped type — shipped always wins.
+    // entry can never shadow a shipped type - shipped always wins.
     property var userItems: []
 
     function def(type) {
@@ -227,7 +227,7 @@ QtObject {
     // Consequence: widgets were tested ONLY in isolation, at a sizeClass the
     // test supplied by hand, and the shell was tested with NO widgets in it.
     // Nothing rendered a widget inside the real shell at a size the real layout
-    // computed — which is exactly the seam the Manager/hub sizeClassFor
+    // computed - which is exactly the seam the Manager/hub sizeClassFor
     // divergence lived in, and why it could only ever be found by eye.
     //
     // Same resolution rule as Theme._fontsDir: bundle when bundled, tree when
@@ -239,7 +239,7 @@ QtObject {
         var d = def(type)
         if (!d || !d.source) return ""
         var s = "" + d.source
-        // User widgets carry their own file: URL — never rewrite those.
+        // User widgets carry their own file: URL - never rewrite those.
         if (_fromBundle || s.indexOf("qrc:/qml/") !== 0) return s
         return Qt.resolvedUrl("widgets/" + s.substring(s.lastIndexOf("/") + 1)).toString()
     }
@@ -254,7 +254,7 @@ QtObject {
     }
     // Picker/header icon for a type. Shipped entries resolve by TYPE from the
     // bundled qrc set; user entries carry their own file (`source`, untinted)
-    // or a bundled fallback glyph (`name`) — never a blank tile, because the
+    // or a bundled fallback glyph (`name`) - never a blank tile, because the
     // shipped-icon lint cannot see user directories.
     function iconFor(type) {
         var d = def(type)
@@ -272,7 +272,7 @@ QtObject {
     // "constructor"/"__proto__" must resolve to "unknown", never to something
     // inherited from Object.prototype.
 
-    // The sizes this type can render, smallest → largest. [] for an unknown type —
+    // The sizes this type can render, smallest → largest. [] for an unknown type -
     // callers must treat that as "no such widget", not as "any size is fine".
     // Copied so a caller cannot mutate the catalog's live list (cf. defaults()).
     function sizesFor(type) { var d = def(type); return (d && d.sizes) ? d.sizes.slice() : [] }
@@ -286,7 +286,7 @@ QtObject {
     // equals WidgetSizes.baseline, so the two cannot drift apart unnoticed.
     function defaultSize(type) { var d = def(type); return (d && d.dflt) ? d.dflt : "1x1" }
 
-    // Distinct category names, in declaration order — shipped first, then any
+    // Distinct category names, in declaration order - shipped first, then any
     // categories only user widgets introduce.
     function categories() {
         var seen = [], out = []

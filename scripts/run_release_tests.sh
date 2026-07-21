@@ -321,7 +321,7 @@ run_release_suite "Fresh non-instrumented performance candidate" 7200 \
     bash "$PROJECT_DIR/tests/performance/prepare_release_candidate.sh"
 
 if ! performance_evidence_root="$(mktemp -d "${TMPDIR:-/tmp}/xeneon-release-performance.XXXXXX")"; then
-    echo "RESULT: FAILURE — could not create the performance evidence directory" >&2
+    echo "RESULT: FAILURE - could not create the performance evidence directory" >&2
     exit 1
 fi
 echo "Performance evidence root: $performance_evidence_root"
@@ -349,7 +349,7 @@ for i in "${!names[@]}"; do
 done
 echo "==================================================================="
 if [ "$release_fail" -ne 0 ]; then
-    echo "RESULT: FAILURE — release is blocked"
+    echo "RESULT: FAILURE - release is blocked"
     exit 1
 fi
-echo "RESULT: SUCCESS — every release suite executed and passed"
+echo "RESULT: SUCCESS - every release suite executed and passed"

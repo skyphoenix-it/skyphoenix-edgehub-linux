@@ -16,8 +16,8 @@ import re
 from e2e_harness import doc, page, tile
 
 # 28 explicitly-named themes plus the "dark" default (Theme.qml applyTheme()):
-# the 21 classics and the 7 distro-evoking palettes (arch..crimson) — 29 values.
-# MUST stay in step with ui/qml/Theme.qml — test_style_drift() below fails the
+# the 21 classics and the 7 distro-evoking palettes (arch..crimson) - 29 values.
+# MUST stay in step with ui/qml/Theme.qml - test_style_drift() below fails the
 # run if it doesn't, because a theme missing here is simply never exercised on
 # the panel and the omission is otherwise silent (that is how the 7 distro
 # palettes went untested after they landed). Same contract as e2e_widgets.WIDGETS.
@@ -31,7 +31,7 @@ THEMES = [
 
 # All catalogued background styles, including "none" (static gradient) and the
 # character styles (arch/fedora/aubergine). MUST stay in step with
-# ui/qml/BackgroundCatalog.qml — asserted by test_style_drift() below.
+# ui/qml/BackgroundCatalog.qml - asserted by test_style_drift() below.
 BG_STYLES = ["none", "orbs", "mesh", "aurora", "waves", "stars", "bokeh",
              "grid", "arch", "fedora", "aubergine"]
 
@@ -42,7 +42,7 @@ _BG_QML = os.path.join(_REPO, "ui", "qml", "BackgroundCatalog.qml")
 
 def theme_modes():
     """The theme values declared in Theme.qml (the product's source of truth):
-    every `case "<mode>":` of applyTheme() — its only switch — plus the "dark"
+    every `case "<mode>":` of applyTheme() - its only switch - plus the "dark"
     default the fall-through resolves to."""
     with open(_THEME_QML, "r", errors="replace") as f:
         cases = re.findall(r'case\s+"([a-z0-9_]+)"\s*:', f.read())
@@ -56,7 +56,7 @@ def bg_styles():
 
 
 def test_style_drift(h):
-    """THEMES/BG_STYLES must cover the QML catalogs exactly — no untested
+    """THEMES/BG_STYLES must cover the QML catalogs exactly - no untested
     value, no ghost. Mirrors e2e_widgets.test_catalog_drift()."""
     try:
         themes = theme_modes()

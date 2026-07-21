@@ -15,15 +15,15 @@ import "../../ui/qml" as App
 // Several assertions intentionally document REAL bugs called out in the audit
 // (stale/out-of-range storage index, dropped item fields, undefined text,
 // empty-state shown while completed tasks exist, celebration re-firing, scroll
-// reset). Those failures are the point — they are NOT test mistakes.
+// reset). Those failures are the point - they are NOT test mistakes.
 // ─────────────────────────────────────────────────────────────────────────
 Item {
     id: root
     width: 520; height: 940
 
-    // Expanded instance — the interactive editor surface.
+    // Expanded instance - the interactive editor surface.
     WidgetHarness { id: hTasks;   anchors.fill: parent; widgetFile: "TasksWidget.qml"; expanded: true }
-    // Compact instance — tile mode (taps must fall through to the host).
+    // Compact instance - tile mode (taps must fall through to the host).
     WidgetHarness { id: hCompact; anchors.fill: parent; widgetFile: "TasksWidget.qml"; expanded: false }
 
     // Schema is a shared area; instantiate it directly (as the config tests do).
@@ -383,12 +383,12 @@ Item {
         WidgetHarness { id: tTall; anchors.fill: parent; widgetFile: "TasksWidget.qml"; expanded: false } }
     Item { id: tWideWrap; width: 696; height: 409
         WidgetHarness { id: tWide; anchors.fill: parent; widgetFile: "TasksWidget.qml"; expanded: false } }
-    // 1x3 portrait — the whole panel.
+    // 1x3 portrait - the whole panel.
     Item { width: 696; height: 2459
         WidgetHarness { id: tBoard; anchors.fill: parent; widgetFile: "TasksWidget.qml"; expanded: false } }
 
     // The OVERLAY, at the two boxes Dashboard actually gives it. `expanded: true`
-    // AND sizeClass "full" — the real pairing — because a mode-keyed literal can
+    // AND sizeClass "full" - the real pairing - because a mode-keyed literal can
     // only be caught with the mode switched ON. These are the live-preview pane
     // beside the config form (Dashboard: 38% of the width in landscape, a <=46%-
     // tall band stacked in portrait), NOT a 2560x720 screen.
@@ -450,7 +450,7 @@ Item {
                     var cell = rr[j].children[0]
                     verify(cell.width >= minT && cell.height >= minT,
                            classes[i] + " row " + j + " checkbox cell is >= touchTertiary ("
-                           + cell.width + "x" + cell.height + ") — it was 18x24")
+                           + cell.width + "x" + cell.height + ") - it was 18x24")
                 }
             }
         }
@@ -466,7 +466,7 @@ Item {
                    "the add field is >= touchTertiary (" + f.height + ")")
         }
 
-        // 1x3 — the whole panel is just MORE ROWS, not bigger ones.
+        // 1x3 - the whole panel is just MORE ROWS, not bigger ones.
         function test_the_full_panel_earns_rows_not_bulk() {
             tryVerify(function () { return tBoard.ready }, 3000)
             tryVerify(function () { return tTall.ready }, 3000)
@@ -481,7 +481,7 @@ Item {
                    + listOf(tTall).height.toFixed(0) + "px of list)")
         }
 
-        // wide — the controls move BESIDE the list.
+        // wide - the controls move BESIDE the list.
         function test_wide_puts_the_controls_beside_the_list() {
             tryVerify(function () { return tWide.ready }, 3000)
             var t = tWide.item
@@ -539,7 +539,7 @@ Item {
             // A real event-loop turn, not wait(0): these hosts default to
             // sizeClass "tall" and only become "full" on the lines above, so
             // wait(0) reads PRE-change geometry. waitForRendering is wrong
-            // offscreen — no frame is ever swapped, so it just burns its timeout.
+            // offscreen - no frame is ever swapped, so it just burns its timeout.
             wait(16)
             compare(land.expanded, true, "precondition: this IS the overlay")
             compare(port.expanded, true, "…and so is this one")
@@ -561,7 +561,7 @@ Item {
         }
 
         // The checkbox is sized by its ROW, and the row is theme.touchTertiary at
-        // every size by design — so the box is a CONSTANT, and `expanded ? 30` was
+        // every size by design - so the box is a CONSTANT, and `expanded ? 30` was
         // a mode-keyed exception to it. Rendered sizes, not the property.
         function test_the_checkbox_is_a_constant_because_its_row_is() {
             tryVerify(function () { return tOvlL.ready && tTall.ready }, 3000)
@@ -575,7 +575,7 @@ Item {
             var ov = checkboxOf(tOvlL), ti = checkboxOf(tTall)
             verify(ov && ti, "both checkboxes resolve")
             compare(ov.width, ti.width,
-                    "the overlay's checkbox is the SAME size as a tile's — its row is, "
+                    "the overlay's checkbox is the SAME size as a tile's - its row is, "
                     + "so it is (overlay " + ov.width + " vs tile " + ti.width + ")")
             compare(ov.width, ov.height, "…and it is square")
         }
@@ -598,14 +598,14 @@ Item {
             compare(tb.font.pixelSize, Math.round(tall.celebratePx),
                     "…and on a 0.5x1 sliver")
             verify(bb.font.pixelSize > tb.font.pixelSize,
-                   "a 696x2459 panel pops bigger than a 348x819 sliver — the banner "
+                   "a 696x2459 panel pops bigger than a 348x819 sliver - the banner "
                    + "reads the card, not the mode (" + bb.font.pixelSize + " vs "
                    + tb.font.pixelSize + ")")
         }
 
         // The banner had NO width, no wrapMode and no elide, so a message longer
         // than the card spilled out of both edges. Structural: the box is bounded
-        // by the card and the text wraps to at most 2 lines. Never glyph ink —
+        // by the card and the text wraps to at most 2 lines. Never glyph ink -
         // paintedWidth is meaningless headless.
         function test_a_long_celebration_stays_inside_the_card() {
             tryVerify(function () { return tTall.ready }, 3000)
@@ -616,7 +616,7 @@ Item {
             // Deliberately FAR longer than could conceivably fit: ~330 characters
             // into two ~320px lines at a ~19px font. No font makes that fit, so
             // `lineCount`/`truncated` below are structural here rather than a
-            // claim about DejaVu's metrics — the margin, not the measurement, is
+            // claim about DejaVu's metrics - the margin, not the measurement, is
             // what keeps them font-independent.
             t.celebrateMsg = "🎉 Every single task on the entire list is finally done, "
                            + "including the ones you have been quietly avoiding since "
@@ -627,7 +627,7 @@ Item {
             wait(16)
             verify(b.width <= t.width + 0.51,
                    "the banner stays inside the card (" + b.width.toFixed(1)
-                   + " in " + t.width + ") — it had no width at all and simply spilled")
+                   + " in " + t.width + ") - it had no width at all and simply spilled")
             compare(b.lineCount, 2,
                     "…it WRAPS (so wrapMode is live) and stops at 2 lines")
             verify(b.truncated,
@@ -636,9 +636,9 @@ Item {
         }
 
         // The empty-state line follows the room. (rowFont is NOT asserted here:
-        // dropping its `w.expanded ? 18` changed nothing — both overlay panes
+        // dropping its `w.expanded ? 18` changed nothing - both overlay panes
         // already drove the derived branch into the same 18 cap the literal
-        // hardcoded — so any guard for it would be green either way. Documented
+        // hardcoded - so any guard for it would be green either way. Documented
         // rather than faked.)
         function test_the_empty_state_line_follows_the_room() {
             tryVerify(function () { return tBoard.ready && tTall.ready }, 3000)

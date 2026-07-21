@@ -26,7 +26,7 @@
 #include "hermetic.h"
 XENEON_REQUIRE_HERMETIC_ENV();
 
-// Resolved the same way production does — the point of the shared header.
+// Resolved the same way production does - the point of the shared header.
 static QString sockPath() { return xeneon::controlSocketPath(); }
 
 // The path the socket must NEVER land on: what a bare QLocalServer name resolves
@@ -36,7 +36,7 @@ static QString legacyTmpPath() {
 }
 
 // Simulates a session with no XDG_RUNTIME_DIR, with TMPDIR aimed at `tmpRoot` so
-// the fallback stays inside the test's sandbox. Restores both on scope exit —
+// the fallback stays inside the test's sandbox. Restores both on scope exit -
 // including when a QVERIFY bails out early, which is why this is a guard object
 // and not a pair of calls: a leaked unset XDG_RUNTIME_DIR would trash every slot
 // that runs afterwards.
@@ -79,7 +79,7 @@ class TstControlServer : public QObject {
 
     // Open a client, send one request line, collect `nLines` reply lines. The
     // server and client share this thread's event loop, so we PUMP events (rather
-    // than block on the client fd) — otherwise the server never accepts/replies.
+    // than block on the client fd) - otherwise the server never accepts/replies.
     QList<QJsonObject> exchange(const QByteArray& req, int nLines = 1) {
         QLocalSocket c;
         c.connectToServer(sockPath());
@@ -275,7 +275,7 @@ private slots:
     }
 
     // A missing/non-bool `enabled` must NOT be coerced to false (which would silently
-    // turn autostart OFF on a malformed request) — it is rejected.
+    // turn autostart OFF on a malformed request) - it is rejected.
     void setAutostartRequiresBool() {
         QSignalSpy spy(srv_, &ControlServer::autostartReceived);
         for (const char* req : {"{\"type\":\"setAutostart\"}",
@@ -348,7 +348,7 @@ private slots:
     // shutdown ORDERING: the ack MUST be written+flushed BEFORE shutdownRequested is
     // emitted. We wire the shutdown slot to immediately tear the server down (as
     // main() quits the loop on shutdown), so the ok is only observable if it was
-    // written first — a reversed (emit-before-write) order would close the socket and
+    // written first - a reversed (emit-before-write) order would close the socket and
     // DROP the ack, making `r` empty.
     void shutdownAcksThenSignals() {
         QSignalSpy spy(srv_, &ControlServer::shutdownRequested);
@@ -399,7 +399,7 @@ private slots:
     // corrupt the per-connection buffer. Send TWO complete requests in ONE write: the
     // FIRST handler re-enters the event loop, so onReadyRead()'s line loop must
     // re-look-up the buffer (not hold a stale iterator) and still process the SECOND
-    // line — exercising the multi-line dangling-iterator guard, not just single-line.
+    // line - exercising the multi-line dangling-iterator guard, not just single-line.
     void reentrantHandlerSafe() {
         ackResult_ = true;
         QMetaObject::Connection conn = connect(srv_, &ControlServer::uiStateReceived, this,
@@ -416,13 +416,13 @@ private slots:
     // ── The socket is confined to $XDG_RUNTIME_DIR ──
     //
     // REGRESSION. The socket used to be a BARE QLocalServer name, and Qt resolves
-    // a bare name via QDir::tempPath() — so the hub, and every run of this test,
+    // a bare name via QDir::tempPath() - so the hub, and every run of this test,
     // bound the single shared /tmp/xeneon-edge-hub-ctl. Two things followed, both
     // observed on a real machine:
     //   * start()'s removeServer() UNLINKED a live hub's socket. That hub keeps
     //     its listening fd and logs nothing, so it looks healthy while no client
     //     can reach it again until it restarts. Sandboxing XDG_RUNTIME_DIR (see
-    //     hermetic.h) did not help — the path was never inside the sandbox.
+    //     hermetic.h) did not help - the path was never inside the sandbox.
     //   * /tmp is world-writable, so any local user could squat the node.
     void socketIsConfinedToRuntimeDir() {
         const QString runtimeDir = qEnvironmentVariable("XDG_RUNTIME_DIR");
@@ -444,7 +444,7 @@ private slots:
     //
     // This deliberately asserts against the REAL shared path rather than a
     // fixture: the whole failure mode was production ESCAPING the sandbox, which
-    // a sandboxed stand-in cannot observe. The test only ever READS that path —
+    // a sandboxed stand-in cannot observe. The test only ever READS that path -
     // it is the old production code that wrote to it.
     void startDoesNotTouchSharedTmpSocket() {
         const QString shared = legacyTmpPath();
@@ -469,7 +469,7 @@ private slots:
     //
     // The socket must still land in a PRIVATE per-uid directory. The old bare name
     // effectively fell back to the world-writable temp root itself, which is the
-    // squattable arrangement this change exists to remove — so "no runtime dir" may
+    // squattable arrangement this change exists to remove - so "no runtime dir" may
     // not mean "shared path".
     //
     // The fallback is kept inside this test's sandbox by pointing TMPDIR at it:
@@ -484,7 +484,7 @@ private slots:
         const QString path = xeneon::controlSocketPath();
         QCOMPARE(path, dir + QStringLiteral("/xeneon-edge-hub-ctl"));
 
-        // Private: 0700 and owned by us — not the temp root, and not group/other
+        // Private: 0700 and owned by us - not the temp root, and not group/other
         // accessible.
         struct stat st {};
         QCOMPARE(::lstat(QFile::encodeName(dir).constData(), &st), 0);

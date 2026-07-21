@@ -5,7 +5,7 @@ Usage: focus_seed_config.py <config_dir> <doneToday> <dailyGoal>
 
 Writes <config_dir>/config.toml. The Focus instance is seeded RUNNING with an
 already-expired endEpoch, so the hub's 1 s tick fires a *natural* completion
-(advance(true)) immediately on load — driving one real session end.
+(advance(true)) immediately on load - driving one real session end.
 
 Two schema details the hub's Rust core (`toml` crate + serde) is strict about,
 learned the hard way:
@@ -13,7 +13,7 @@ learned the hard way:
   * The config is NESTED: [display] / [theme] / [startup] / [widgets] are
     required tables. A flat key layout deserializes-fails and the core reports
     it as "TOML parse error at line 1, column 1" (a serde error with no span),
-    then salvages into the default starter layout — silently discarding the seed.
+    then salvages into the default starter layout - silently discarding the seed.
   * `ui_state` must be a single-quoted TOML *literal* string. The embedded JSON
     contains double quotes; a basic "..."-string with \\"-escapes is rejected.
     JSON never contains a single quote, so a literal string needs no escaping.

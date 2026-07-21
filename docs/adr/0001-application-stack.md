@@ -1,9 +1,9 @@
 # ADR-0001: Application Stack Selection
 
-**Status:** Proposed  
-**Date:** 2026-07-11  
-**Decision Maker:** Software Architect  
-**Consulted:** Security Engineer, Senior Linux Developer, Senior Rust/C++ Developer, Product Manager  
+**Status:** Proposed
+**Date:** 2026-07-11
+**Decision Maker:** Software Architect
+**Consulted:** Security Engineer, Senior Linux Developer, Senior Rust/C++ Developer, Product Manager
 
 ---
 
@@ -50,7 +50,7 @@ We need to select the primary technology stack for Xeneon Edge Linux Hub. The st
 | Community access | ✅ Web developers are abundant. Frontend frameworks are well-known. |
 | Ecosystem stability | ⚠️ Tauri 2 is relatively new. WebKitGTK API stability is moderate. |
 
-**Idle resource estimate:** 200-350MB RAM, 2-5% CPU  
+**Idle resource estimate:** 200-350MB RAM, 2-5% CPU
 **Verdict:** Does not meet performance targets. WebView overhead is prohibitive for a secondary display.
 
 ---
@@ -72,7 +72,7 @@ We need to select the primary technology stack for Xeneon Edge Linux Hub. The st
 | Licensing | ⚠️ Qt is LGPLv3/GPLv3 + commercial. LGPL is compatible with our open-source goals. Static linking requires LGPL compliance (object file availability) or commercial license. |
 | Ecosystem stability | ✅ Qt has 25+ years of stability. KDE is built on Qt. Long-term support guaranteed. |
 
-**Idle resource estimate:** 80-150MB RAM, <1% CPU  
+**Idle resource estimate:** 80-150MB RAM, <1% CPU
 **Verdict:** Best balance of performance, multi-monitor support, and touch handling. Primary concern is widget sandboxing (addressable) and licensing (manageable with LGPL compliance).
 
 ---
@@ -93,7 +93,7 @@ We need to select the primary technology stack for Xeneon Edge Linux Hub. The st
 | Community access | ❌ Slint is niche. Small community. Learning curve for custom DSL. |
 | Ecosystem stability | ❌ Slint is young (v1.x in 2024). API stability not proven long-term. |
 
-**Idle resource estimate:** 30-80MB RAM, <1% CPU  
+**Idle resource estimate:** 30-80MB RAM, <1% CPU
 **Verdict:** Too immature for multi-monitor and touchscreen requirements. Widget extensibility path is unclear. Slint is promising but not yet ready for this use case.
 
 ---
@@ -114,7 +114,7 @@ We need to select the primary technology stack for Xeneon Edge Linux Hub. The st
 | Community access | ✅ Dart/Flutter has a large developer community. |
 | Ecosystem stability | ⚠️ Flutter Linux is not a priority for Google. Desktop support lags behind mobile. |
 
-**Idle resource estimate:** 150-300MB RAM, 2-5% CPU  
+**Idle resource estimate:** 150-300MB RAM, 2-5% CPU
 **Verdict:** Resource overhead is too high. Flutter Linux maturity for multi-monitor is insufficient. Packaging complexity is a barrier.
 
 ---
@@ -135,14 +135,14 @@ We need to select the primary technology stack for Xeneon Edge Linux Hub. The st
 | Community access | ⚠️ GTK development has a steeper learning curve than QML. Rust bindings add another layer. |
 | Ecosystem stability | ✅ GTK is mature and stable. GNOME's official toolkit. |
 
-**Idle resource estimate:** 60-150MB RAM, <1% CPU  
+**Idle resource estimate:** 60-150MB RAM, <1% CPU
 **Verdict:** Strong technically but widget extensibility story is weaker than Qt/QML. GTK's gesture system is good but QML's declarative approach is more natural for widget dashboards. Libadwaita styling may feel too GNOME-specific.
 
 ---
 
 ## Decision
 
-**Selected: Option B — Rust + Qt 6/QML (with C++ where Rust bindings are insufficient)**
+**Selected: Option B - Rust + Qt 6/QML (with C++ where Rust bindings are insufficient)**
 
 ### Primary Implementation Approach
 
@@ -156,7 +156,7 @@ We need to select the primary technology stack for Xeneon Edge Linux Hub. The st
 - **Qt 6 is the only option with proven, first-class multi-monitor support on both Wayland and X11.** `QWindow::setScreen()` and `QScreen` API are exactly what we need.
 - **QML's declarative widget system maps directly to our widget dashboard concept.** Widgets are QML components; layouts are QML positioners; themes are QML style properties.
 - **Native touch handling** with gesture recognizers eliminates the need for custom touch event processing.
-- **Performance targets are achievable** — Qt+QML can idle under 150MB and <1% CPU with proper optimization.
+- **Performance targets are achievable** - Qt+QML can idle under 150MB and <1% CPU with proper optimization.
 - **Rust for the core** gives us memory safety for all non-UI logic: hardware integration, configuration management, metrics parsing, widget lifecycle, and security boundaries.
 
 ### Mitigations for Identified Concerns
@@ -187,7 +187,7 @@ We need to select the primary technology stack for Xeneon Edge Linux Hub. The st
 - QML provides a natural widget development model
 - GPU-accelerated rendering with low idle overhead
 - Qt's stability and long-term support reduce ecosystem risk
-- KDE Plasma (our primary target) is built on Qt — maximum compatibility
+- KDE Plasma (our primary target) is built on Qt - maximum compatibility
 
 ### Negative
 - Qt licensing requires LGPL compliance diligence

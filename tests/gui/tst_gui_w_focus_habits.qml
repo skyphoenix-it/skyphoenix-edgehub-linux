@@ -3,13 +3,13 @@ import QtTest
 import "../ui" as UI
 import "GuiUtil.js" as G
 
-// Visible GUI suite — Focus/habit widgets: Quick Note, Habit Streak and Break
+// Visible GUI suite - Focus/habit widgets: Quick Note, Habit Streak and Break
 // Reminder. Each is hosted in a real KWin-composited window via
 // UI.WidgetHarness, sized to a concrete cell, driven with real mouse/keyboard
 // events, and asserted via item.visible / geometry / on-screen text / grabImage
 // pixels / a store setting reflected in the visible output. Deterministic day &
 // timer seams are seeded through store settings (checkins[], break
-// endEpoch/running/due/intervalMin) — never by sleeping real time.
+// endEpoch/running/due/intervalMin) - never by sleeping real time.
 Item {
     id: root
     width: 1400; height: 760
@@ -27,7 +27,7 @@ Item {
         when: windowShown
         visible: true
 
-        // Unicode MINUS SIGN (U+2212) — the exact glyph the widgets use for their
+        // Unicode MINUS SIGN (U+2212) - the exact glyph the widgets use for their
         // "−" / "−5m" pill labels (not ASCII hyphen).
         readonly property string minusSign: "−"
 
@@ -103,7 +103,7 @@ Item {
         }
         // Live heatmap cells (Rectangles carrying a `dk` date key). GuiUtil's
         // walker visits an Item via both `children` and `data`, so a delegate can
-        // be reported more than once — dedupe by object identity.
+        // be reported more than once - dedupe by object identity.
         function heatCells() {
             var raw = G.collectPred(wh.item, function (n) {
                 try { return n && n.dk !== undefined && G.isLive(n) } catch (e) { return false }

@@ -1,6 +1,6 @@
 # Flatpak manifest for the Xeneon Edge Linux Hub.
 #
-# STATUS: starter manifest — NOT yet build-tested (no flatpak-builder in the dev
+# STATUS: starter manifest - NOT yet build-tested (no flatpak-builder in the dev
 # container). See packaging/flatpak/README.md for the open items (Rust cargo
 # vendoring, /sys sensor access, cross-sandbox Manager<->hub IPC) that must be
 # resolved before a Flathub submission.
@@ -24,7 +24,7 @@ finish-args:
   - --device=all                    # hidraw orientation sensor (tighten if possible)
   - --talk-name=org.mpris.MediaPlayer2.*
   # Live system metrics read /proc and parts of /sys (temps, GPU). /proc is
-  # available in the sandbox; some /sys paths are not — metrics degrade gracefully.
+  # available in the sandbox; some /sys paths are not - metrics degrade gracefully.
 
 modules:
   - name: xeneon-edge-hub
@@ -35,12 +35,12 @@ modules:
         CARGO_HOME: /run/build/xeneon-edge-hub/cargo
       # For a local `flatpak-builder --user` test build you can add network access
       # so cargo can fetch crates:  build-args: ['--share=network']
-      # Flathub requires offline builds — generate cargo-sources.json instead
+      # Flathub requires offline builds - generate cargo-sources.json instead
       # (see README.md) and add it to `sources` below.
     config-opts:
       - -DCMAKE_BUILD_TYPE=Release
     sources:
       - type: git
-        url: https://github.com/skyphoenix-it/XeneonEdge_Linux.git
+        url: https://github.com/skyphoenix-it/skyphoenix-edgehub-linux.git
         tag: v1.0.0-alpha.2
       # - cargo-sources.json      # generated; required for offline (Flathub) builds

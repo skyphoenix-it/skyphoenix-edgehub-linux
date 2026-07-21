@@ -1,6 +1,6 @@
 // E9 managed/org policy: ConfigBridge::policy() + the xeneon_policy_json FFI
 // against the REAL Rust core, driven entirely through the XENEON_POLICY_PATH
-// test seam (never the real /etc — a real deployment relies on /etc being
+// test seam (never the real /etc - a real deployment relies on /etc being
 // root-owned; the env override exists precisely so tests don't touch it).
 #include <QtTest>
 #include <QFile>
@@ -75,7 +75,7 @@ private slots:
     }
 
     // The fail-closed core: a policy the org WROTE but this build cannot use is
-    // never silently ignored — the restrictive interpretation applies.
+    // never silently ignored - the restrictive interpretation applies.
     void corruptPolicyFailsClosed() {
         const QString path = writePolicy("corrupt.toml", "not = = toml at all");
         qputenv("XENEON_POLICY_PATH", path.toUtf8());
@@ -112,7 +112,7 @@ private slots:
     }
 
     // The fail-closed reason must name the failure mode WITHOUT echoing file
-    // contents — allowed_hosts values are internal infrastructure names.
+    // contents - allowed_hosts values are internal infrastructure names.
     void failClosedReasonNeverEchoesHostValues() {
         const QString path = writePolicy("hosts-typo.toml",
             "policy_version = 1\n"

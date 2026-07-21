@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
-# Scenario 04 — secret REFERENCES never persist as VALUES (E7 Phase A).
+# Scenario 04 - secret REFERENCES never persist as VALUES (E7 Phase A).
 #
 # Seeds an httpjson tile whose authToken is the reference "${env:XENEON_RT_SECRET}"
 # and points it at a loopback sink; launches the real hub with the variable set
 # to a run-unique value. Asserts, in order of proof:
 #
-#   1. NON-VACUOUS: the sink received "Authorization: Bearer <value>" — the
+#   1. NON-VACUOUS: the sink received "Authorization: Bearer <value>" - the
 #      ref really was resolved and used this run (a scenario that never
 #      resolves the secret could not catch a leak).
 #   2. The hub REWROTE config.toml this run (Focus save trigger), so the
-#      persisted doc is hub-authored — the exact bytes the store serializes.
+#      persisted doc is hub-authored - the exact bytes the store serializes.
 #   3. The rewritten config still carries the REFERENCE string, verbatim.
-#   4. The resolved VALUE appears NOWHERE in the config dir — config.toml,
+#   4. The resolved VALUE appears NOWHERE in the config dir - config.toml,
 #      backups, temp files, anything (recursive grep).
 #
 # Honest limit: this proves the value never reaches DISK through the store's
 # save path in this session; it does not (cannot) prove anything about process
-# memory, and the sink obviously sees the value — sending it is the feature.
+# memory, and the sink obviously sees the value - sending it is the feature.
 set -uo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -51,7 +51,7 @@ if grep -q "Bearer $SECRET" "$RT_SINK_LOG"; then
     n="$(grep -c "Bearer $SECRET" "$RT_SINK_LOG")"
     echo "  [resolve] PASS: sink saw the resolved Bearer token on $n request(s)"
 else
-    echo "  [resolve] FAIL: sink never saw the resolved token — the run is vacuous"
+    echo "  [resolve] FAIL: sink never saw the resolved token - the run is vacuous"
     sed 's/^/    sink: /' "$RT_SINK_LOG"
     fail=1
 fi
@@ -60,7 +60,7 @@ fi
 if grep -aq "Configuration saved" "$RT_ROOT/hub.log"; then
     echo "  [rewrite] PASS: hub rewrote config.toml this run"
 else
-    echo "  [rewrite] FAIL: config.toml was never rewritten — persistence assertions are vacuous"
+    echo "  [rewrite] FAIL: config.toml was never rewritten - persistence assertions are vacuous"
     fail=1
 fi
 
@@ -83,4 +83,4 @@ fi
 
 echo
 if [ "$fail" -ne 0 ]; then echo "RESULT: FAILURE"; exit 1; fi
-echo "RESULT: SUCCESS — the stored token stays a reference; the resolved value never touches disk"
+echo "RESULT: SUCCESS - the stored token stays a reference; the resolved value never touches disk"

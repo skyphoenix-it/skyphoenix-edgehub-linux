@@ -14,10 +14,10 @@
 Instead, use **GitHub private vulnerability reporting**, which opens a private
 advisory visible only to the maintainers:
 
-**<https://github.com/skyphoenix-it/XeneonEdge_Linux/security/advisories/new>**
+**<https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/security/advisories/new>**
 
 (This replaced a `security@…` address on a domain that was never registered.
-Mail to it bounced, so any report sent there was lost — and the domain was
+Mail to it bounced, so any report sent there was lost - and the domain was
 free for anyone to claim and receive vulnerability reports for this product.
 A GitHub-native channel cannot be squatted that way and needs no mailbox.)
 
@@ -51,17 +51,17 @@ We follow coordinated disclosure:
 
 ## Security Design Principles
 
-1. **No root required** — The application runs with normal user privileges.
-2. **Deny by default** — Widget permissions are opt-in, reviewed by the user.
-3. **Sandbox community widgets** — Third-party widgets run in isolated WASM sandboxes (Phase 7+).
-4. **No arbitrary command execution** — Custom commands require explicit user approval.
-5. **Secrets are referenced, not stored** — config holds `${env:VAR}` / `file:/path`
+1. **No root required** - The application runs with normal user privileges.
+2. **Deny by default** - Widget permissions are opt-in, reviewed by the user.
+3. **Sandbox community widgets** - Third-party widgets run in isolated WASM sandboxes (Phase 7+).
+4. **No arbitrary command execution** - Custom commands require explicit user approval.
+5. **Secrets are referenced, not stored** - config holds `${env:VAR}` / `file:/path`
    *references*, resolved per-request and never written back to `config.toml`.
-   (OS-keyring `secret://` refs are Phase B and **not implemented** — see Known
+   (OS-keyring `secret://` refs are Phase B and **not implemented** - see Known
    Limitations. Do not read this line as keyring support.)
-6. **Input validation** — All external data (D-Bus, /proc, /sys, user config) is validated.
-7. **Minimal dependencies** — We audit and pin all dependencies.
-8. **Reproducible builds** — Release artifacts are verifiable.
+6. **Input validation** - All external data (D-Bus, /proc, /sys, user config) is validated.
+7. **Minimal dependencies** - We audit and pin all dependencies.
+8. **Reproducible builds** - Release artifacts are verifiable.
 
 ## Security Features by Trust Level
 
@@ -85,8 +85,8 @@ We follow coordinated disclosure:
 ## Dependency Security
 
 - All Rust dependencies are pinned via `Cargo.lock`
-- CI runs `cargo deny check` — advisories (RUSTSEC), licenses, bans, and source
-  pinning — in `.github/workflows/supply-chain.yml`, on pushes that touch code
+- CI runs `cargo deny check` - advisories (RUSTSEC), licenses, bans, and source
+  pinning - in `.github/workflows/supply-chain.yml`, on pushes that touch code
   plus a **weekly** cron, because new advisories land without anyone pushing.
   (There is no separate `cargo audit` job: it was redundant with deny's
   advisories check and was removed when CI cost was cut.)
@@ -95,9 +95,9 @@ We follow coordinated disclosure:
 
 ## Security Contacts
 
-Reports go through [private vulnerability reporting](https://github.com/skyphoenix-it/XeneonEdge_Linux/security/advisories/new),
+Reports go through [private vulnerability reporting](https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/security/advisories/new),
 which reaches the maintainers directly. The repository is maintained by
-**@skyphoenix-it**. There is deliberately no role mailbox to keep stale — the
+**@skyphoenix-it**. There is deliberately no role mailbox to keep stale - the
 last one pointed at an unregistered domain for the whole alpha.
 
 ## Hall of Fame

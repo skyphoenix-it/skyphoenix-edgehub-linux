@@ -1,18 +1,18 @@
 import QtQuick
 import QtQuick.Layouts
 
-// MetricGauge — the shared visual for the system metric tiles (CPU/GPU/RAM).
+// MetricGauge - the shared visual for the system metric tiles (CPU/GPU/RAM).
 // A large ring gauge with the value in the centre + a live sparkline, so the
 // tile fills its box richly instead of floating a lone number.
 //
 // Sizing (W1 wave 2a): the host widget keys the knobs below off its injected
 // `sizeClass`; the defaults reproduce the original stacked layout, so existing
 // consumers (HttpJsonWidget) render unchanged.
-//   • showSpark:false  — micro (0.5x0.5): the ring IS the tile; no sparkline
+//   • showSpark:false  - micro (0.5x0.5): the ring IS the tile; no sparkline
 //     slot is reserved at all.
-//   • horizontal:true  — wide: ring beside the sparkline, which finally gets
+//   • horizontal:true  - wide: ring beside the sparkline, which finally gets
 //     real width instead of a 30px strip under the ring.
-//   • sparkFrac        — tall: the sparkline's share of the box; tall tiles
+//   • sparkFrac        - tall: the sparkline's share of the box; tall tiles
 //     raise it so the history earns genuine height.
 Item {
     id: g
@@ -29,7 +29,7 @@ Item {
     property bool horizontal: false
     property real sparkFrac: 0.17
     // Tall tiles: pin the ring to a square cell at the top and hand the
-    // sparkline ALL the remaining height — history earns the height, and the
+    // sparkline ALL the remaining height - history earns the height, and the
     // ring no longer floats in a stretched void. Only meaningful stacked.
     property bool sparkFills: false
     // Cap for the centre value font when collapsed (micro tiles raise it so the
@@ -89,7 +89,7 @@ Item {
                     // which never reach the cap; an HTTP/JSON gauge shows arbitrary
                     // values ("128ms"), which used to spill out over the ring.
                     // `Layout.maximumWidth` ALONE is a cap the layout ignores when the
-                    // Text's implicitWidth already exceeds it — the Text keeps its
+                    // Text's implicitWidth already exceeds it - the Text keeps its
                     // natural width, and with it `HorizontalFit` and `elide` both go
                     // inert, because each needs a real box to fit INTO. Pairing it with
                     // `preferredWidth` forces the layout to allocate exactly that box.
@@ -128,7 +128,7 @@ Item {
             }
         }
 
-        // History sparkline — under the ring (stacked) or beside it (wide). The
+        // History sparkline - under the ring (stacked) or beside it (wide). The
         // stacked slot always reserves its height (even while the sparkline
         // itself is hidden) so the fillHeight ring above does not visibly shrink
         // when the sparkline pops in at the 2nd sample.

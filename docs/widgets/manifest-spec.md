@@ -1,10 +1,10 @@
-# Widget Manifest Specification — Tier-0 user widgets
+# Widget Manifest Specification - Tier-0 user widgets
 
 **Status:** shipped (v1.0) · **`manifestVersion`: 1** · machine-readable schema:
 [`manifest.schema.json`](manifest.schema.json)
 
-This document specifies how a **user widget** — a widget you write yourself and
-drop into a directory, without forking the hub — is packaged, discovered,
+This document specifies how a **user widget** - a widget you write yourself and
+drop into a directory, without forking the hub - is packaged, discovered,
 validated and loaded. It is the whole of Tier-0 extensibility:
 
 | Tier | What it is | Status |
@@ -18,7 +18,7 @@ Tier-0 deliberately adds **no runtime**: a user widget is plain QML speaking the
 same host contract as shipped widgets ([authoring guide](authoring.md)). What
 the manifest adds is *packaging*: a declared type, title, sizes and config
 schema, so the hub can put your widget in the picker, size it legally, persist
-its settings and render its config form — exactly like a shipped widget.
+its settings and render its config form - exactly like a shipped widget.
 
 ---
 
@@ -26,14 +26,14 @@ its settings and render its config form — exactly like a shipped widget.
 
 ```
 $XDG_DATA_HOME/xeneon-edge-hub/widgets/<your-widget>/
-├── manifest.json      (required — this spec)
-├── <Entry>.qml        (required — the widget, named by `entry`)
-└── <icon>.svg|.png    (optional — named by `icon`)
+├── manifest.json      (required - this spec)
+├── <Entry>.qml        (required - the widget, named by `entry`)
+└── <icon>.svg|.png    (optional - named by `icon`)
 ```
 
 `$XDG_DATA_HOME` defaults to `~/.local/share`. **One directory per widget**;
 the directory name is yours to choose (only the manifest's `type` matters).
-`entry` and `icon` must be plain file names in that directory — no
+`entry` and `icon` must be plain file names in that directory - no
 subdirectories, no `..`, no absolute paths.
 
 The hub scans this directory **once at startup** (and again when a live config
@@ -86,15 +86,15 @@ A complete example:
 | Field | Type | Required | Rules |
 |---|---|---|---|
 | `manifestVersion` | integer | **yes** | Must be exactly `1`. Anything else is skipped (a future hub may speak later versions; this one does not guess). |
-| `type` | string | **yes** | The widget's unique id. **Must** match `^user\.[a-z0-9][a-z0-9_-]*$` — i.e. namespaced under `user.`. Shipped types are bare words (`cpu`, `clock`, …), so a conforming user type can never collide with one; the loader additionally rejects any collision with a shipped type outright (**shipped always wins**), and duplicate user types (first directory in name order wins). |
+| `type` | string | **yes** | The widget's unique id. **Must** match `^user\.[a-z0-9][a-z0-9_-]*$` - i.e. namespaced under `user.`. Shipped types are bare words (`cpu`, `clock`, …), so a conforming user type can never collide with one; the loader additionally rejects any collision with a shipped type outright (**shipped always wins**), and duplicate user types (first directory in name order wins). |
 | `title` | string | **yes** | Non-empty. Shown in the picker, the tile header and the expanded view. |
 | `entry` | string | **yes** | The widget's QML file: a plain `*.qml` file name that exists in the widget directory. |
-| `sizes` | string[] | **yes** | Non-empty. Every entry must be one of the **7 legal size names** defined in `ui/qml/WidgetSizes.qml`: `0.5x0.5`, `0.5x1`, `1x0.5`, `1x1`, `1x1.5`, `1x2`, `1x3`. A size is `(short × long)` relative to the *rotating* screen — declaring one is a claim that your widget renders acceptably in **both** of its physical shapes (see WidgetSizes' header comment). Duplicates are dropped; the list is re-ordered smallest → largest. The resize button and the store only ever offer/accept declared sizes. Declaring `1x1` (the baseline) is strongly recommended. |
+| `sizes` | string[] | **yes** | Non-empty. Every entry must be one of the **7 legal size names** defined in `ui/qml/WidgetSizes.qml`: `0.5x0.5`, `0.5x1`, `1x0.5`, `1x1`, `1x1.5`, `1x2`, `1x3`. A size is `(short × long)` relative to the *rotating* screen - declaring one is a claim that your widget renders acceptably in **both** of its physical shapes (see WidgetSizes' header comment). Duplicates are dropped; the list is re-ordered smallest → largest. The resize button and the store only ever offer/accept declared sizes. Declaring `1x1` (the baseline) is strongly recommended. |
 | `dflt` | string | no | The size a fresh instance gets. Must be listed in `sizes`. Default: `"1x1"` if declared, else the smallest declared size. |
 | `category` | string | no | Picker group. Default `"User"`. You may reuse a shipped category (`System`, `Time`, `Focus`, `Media`, `Data`, `Info`) or name your own. |
 | `description` | string | no | One line, shown in the expanded view header and the config panel's About section. |
 | `defaults` | object | no | Seeds a fresh instance's persisted settings (same role as a catalog entry's `defaults`). Must be a JSON object. Default `{}`. |
-| `icon` | string | no | A plain `*.svg` or `*.png` file name in the widget directory, rendered **untinted** in the picker. If absent — or declared but missing on disk — the picker shows a neutral fallback glyph instead of a blank tile. |
+| `icon` | string | no | A plain `*.svg` or `*.png` file name in the widget directory, rendered **untinted** in the picker. If absent - or declared but missing on disk - the picker shows a neutral fallback glyph instead of a blank tile. |
 | `config` | object[] | no | Config-form fields (below). |
 
 Unknown top-level keys are **ignored** (reserved for future manifest versions).
@@ -104,7 +104,7 @@ Unknown top-level keys are **ignored** (reserved for future manifest versions).
 Each entry describes one field of the widget's config form, rendered by the
 same panel shipped widgets use. Every declared field **must** be honoured by
 the widget (read it via the `cfg` pattern in the [authoring guide](authoring.md)
-— no decorative toggles).
+- no decorative toggles).
 
 | Key | Required | Rules |
 |---|---|---|
@@ -116,7 +116,7 @@ the widget (read it via the `cfg` pattern in the [authoring guide](authoring.md)
 
 The form the user sees is: your **Settings** section (if any) → the standard
 **General** (custom title) section → **About** (your `description`) → the
-universal **Widget appearance** section (accent + card backdrop) — identical
+universal **Widget appearance** section (accent + card backdrop) - identical
 composition to a shipped widget.
 
 ### The entry QML file
@@ -125,14 +125,14 @@ The entry file is a normal widget per the [authoring guide](authoring.md): the
 host injects `metrics`, `expanded`, `active`, `store`, `instanceId`,
 `sizeClass`, `tick`, `netHub`, `timeZones` onto any property you declare, and
 `theme` resolves from context. Root it in `WidgetChrome` for the shared glass
-card — qrc-bundled framework components are importable from user QML with:
+card - qrc-bundled framework components are importable from user QML with:
 
 ```qml
 import "qrc:/qml"    // WidgetChrome, AppIcon, PillButton, MetricGauge, …
 ```
 
 If the widget fetches anything, declare `property var netHub: null` and route
-every request through `netHub.request({...})` — see
+every request through `netHub.request({...})` - see
 [Security posture](#security-posture-tier-0--the-honest-version) for what that
 does and does not guarantee.
 
@@ -157,7 +157,7 @@ rules.
 | `manifest.json` missing / unreadable / over 256 KiB | Skipped: `missing manifest.json` (or unreadable/oversized). |
 | Malformed JSON | Skipped: `manifest.json is not valid JSON (…)`. |
 | `manifestVersion` ≠ 1 | Skipped: unsupported version. |
-| `type` not `user.*`-namespaced, or collides with a shipped type | Skipped — **shipped wins**, always. |
+| `type` not `user.*`-namespaced, or collides with a shipped type | Skipped - **shipped wins**, always. |
 | Duplicate `type` across two directories | First (directory name order) wins; second skipped. |
 | `entry` missing from the directory, or not a plain `.qml` name | Skipped. |
 | Illegal `sizes` entry / empty `sizes` / `dflt` not in `sizes` | Skipped. |
@@ -168,12 +168,12 @@ rules.
 
 Every skip reason is visible in **Diagnostics → Config → "User widgets
 (Tier-0)"** on the device, and is also emitted as a structured
-`[user-widgets] skipped <dir> — <reason>` warning on stderr.
+`[user-widgets] skipped <dir> - <reason>` warning on stderr.
 
 **Load order note:** user widgets register *before* the persisted layout loads,
 so a stored tile's size is validated against the manifest's declared `sizes`
 exactly like a shipped widget's. If a manifest disappears, its tiles' sizes are
-coerced to the baseline on the next load — reinstating the widget restores the
+coerced to the baseline on the next load - reinstating the widget restores the
 type but not a coerced size.
 
 The Manager does not currently render user widgets: its WYSIWYG clone shows the
@@ -181,7 +181,7 @@ standard fallback card for them. Manage their layout on the device.
 
 ---
 
-## Security posture (Tier-0) — the honest version
+## Security posture (Tier-0) - the honest version
 
 User widgets are **arbitrary code**. This section states exactly what is and is
 not guaranteed. Nothing here is a sandbox, and we do not pretend otherwise.
@@ -197,14 +197,14 @@ not guaranteed. Nothing here is a sandbox, and we do not pretend otherwise.
   construct a raw `XMLHttpRequest`, and bypass NetHub's offline switch, host
   allowlist and request counters entirely. QML cannot be meaningfully
   sandboxed, and a half-sandbox would be more dangerous than the truth. Treat
-  installing a user widget exactly like installing any other program — the same
+  installing a user widget exactly like installing any other program - the same
   trust level as a Rainmeter skin or a shell script you download: read it, or
   trust its author.
 - **The loader defaults OFF.** `enableUserWidgets` defaults to `false`, so a
   stock install never scans the directory and never loads user QML, and the
   no-egress attestation over the default configuration stays meaningful.
   Enabling the flag is an explicit opt-in that changes the trust story of the
-  install — that is the point of the flag.
+  install - that is the point of the flag.
 - **Managed/enterprise config can force it off.** The flag is a plain config
   read; a managed configuration that pins `enableUserWidgets` to `false` wins,
   regardless of what is on disk.

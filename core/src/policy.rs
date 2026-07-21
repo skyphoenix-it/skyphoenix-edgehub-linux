@@ -28,14 +28,14 @@
 //!     a usability surface, not a security one.
 //!   - `allowed_hosts` stays empty: with `net_offline` pinned on, no remote
 //!     egress happens at all, so the allowlist is moot (note that an empty
-//!     allowlist alone would mean "allow all" in NetHub's vocabulary — it is
+//!     allowlist alone would mean "allow all" in NetHub's vocabulary - it is
 //!     only safe here BECAUSE the kill switch dominates it).
 //!   - `disable_widget_types` stays empty: we cannot guess type names, and
 //!     every shipped widget's egress already routes through NetHub, which the
 //!     pinned kill switch closes.
 //!   - Unknown keys fail the parse on purpose (`deny_unknown_fields`): with
 //!     lenient parsing, a misspelled `allowed_host = [...]` would load as a
-//!     policy with NO allowlist — i.e. strictly weaker than the org wrote —
+//!     policy with NO allowlist - i.e. strictly weaker than the org wrote -
 //!     and nobody would ever notice.
 //! * **Cannot even determine whether the file exists** (e.g. the policy
 //!   directory exists but is unreadable) → fail closed too: a policy MAY be
@@ -45,7 +45,7 @@
 //!
 //! `XENEON_POLICY_PATH` overrides the path so tests never read the real
 //! `/etc`. That override is, of course, a bypass vector for any user who
-//! controls their own environment — as is `LD_PRELOAD`, patching the binary,
+//! controls their own environment - as is `LD_PRELOAD`, patching the binary,
 //! or simply not running the hub. The threat model for managed config is a
 //! managed workstation where the org controls the session (login environment,
 //! binary provenance), NOT a hostile local root or DRM. What the policy buys
@@ -56,7 +56,7 @@
 //! ## Logging discipline
 //!
 //! Never log policy contents wholesale: `allowed_hosts` may name internal
-//! infrastructure. Log field NAMES, booleans and counts only — the same rule
+//! infrastructure. Log field NAMES, booleans and counts only - the same rule
 //! as `secrets.rs`.
 
 use serde::Deserialize;
@@ -67,7 +67,7 @@ use std::path::{Path, PathBuf};
 pub const CURRENT_POLICY_VERSION: u32 = 1;
 
 /// The system policy path. Root-writable only on a correctly-deployed managed
-/// box — that, not application logic, is what makes it user-tamper-proof.
+/// box - that, not application logic, is what makes it user-tamper-proof.
 pub const POLICY_PATH: &str = "/etc/xeneon-edge-hub/policy.toml";
 
 /// Test-only path override. A real deployment relies on `/etc` being
@@ -76,7 +76,7 @@ pub const POLICY_PATH_ENV: &str = "XENEON_POLICY_PATH";
 
 /// The parsed org policy. `deny_unknown_fields`: a key this build does not
 /// know cannot be honoured, and ignoring it could only ever make the policy
-/// WEAKER than the org wrote — so it fails the parse (→ fail closed) instead.
+/// WEAKER than the org wrote - so it fails the parse (→ fail closed) instead.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Policy {
@@ -126,7 +126,7 @@ impl PolicyStatus {
     }
 }
 
-/// The most restrictive interpretation of an unusable policy file — see the
+/// The most restrictive interpretation of an unusable policy file - see the
 /// module docs for the field-by-field justification.
 pub fn fail_closed_policy() -> Policy {
     Policy {
@@ -184,7 +184,7 @@ pub fn load_policy_from(path: &Path) -> PolicyStatus {
         Err(e) => {
             // POSITION ONLY, never the parser's full message: toml's Display
             // renders a source snippet (the offending line verbatim) and serde
-            // type errors quote the offending VALUE — either would leak
+            // type errors quote the offending VALUE - either would leak
             // allowed_hosts entries (internal hostnames) into logs and the
             // Diagnostics surface. The first line of the Display is purely
             // positional ("TOML parse error at line N, column M").
@@ -204,7 +204,7 @@ pub fn load_policy_from(path: &Path) -> PolicyStatus {
         return PolicyStatus::FailClosed(reason);
     }
 
-    // Field NAMES, booleans and counts only — never host names or preset ids.
+    // Field NAMES, booleans and counts only - never host names or preset ids.
     tracing::info!(
         path = %path.display(),
         force_preset = policy.force_preset.is_some(),
@@ -377,7 +377,7 @@ disable_widget_types = ["httpjson", "kpi"]
         let dir = tempfile::tempdir().unwrap();
         let p = dir.path().join("policy.toml");
         // The classic typo: `allowed_host`. Lenient parsing would yield a
-        // policy with NO allowlist — weaker than the org wrote.
+        // policy with NO allowlist - weaker than the org wrote.
         write(
             &p,
             "policy_version = 1\nallowed_host = [\"api.internal.example\"]\n",
@@ -387,7 +387,7 @@ disable_widget_types = ["httpjson", "kpi"]
 
     // The fail-closed reason is logged and shown in Diagnostics, so it must
     // never echo file contents: allowed_hosts values are internal hostnames.
-    // Both leak shapes are covered — the parser's source-snippet rendering
+    // Both leak shapes are covered - the parser's source-snippet rendering
     // (unknown key on the same line as a host) and serde's value-quoting type
     // errors ("invalid type: string \"host\"...").
     #[test]
@@ -425,7 +425,7 @@ disable_widget_types = ["httpjson", "kpi"]
     #[test]
     fn unreadable_file_fails_closed() {
         // The "file" is a directory, so read_to_string fails (EISDIR) while
-        // try_exists succeeds — the exists-but-unreadable branch.
+        // try_exists succeeds - the exists-but-unreadable branch.
         let dir = tempfile::tempdir().unwrap();
         let p = dir.path().join("policy.toml");
         fs::create_dir(&p).unwrap();
@@ -470,7 +470,7 @@ disable_widget_types = ["httpjson", "kpi"]
         assert_eq!(v["disabledWidgetTypes"][0], "kpi");
     }
 
-    // --- Path resolution (env seam) — serialized via the crate-wide env lock.
+    // --- Path resolution (env seam) - serialized via the crate-wide env lock.
 
     #[test]
     fn policy_path_honours_env_override_else_system_path() {

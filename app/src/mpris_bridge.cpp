@@ -16,7 +16,7 @@
 static const char* kPath = "/org/mpris/MediaPlayer2";
 static const char* kPlayerIface = "org.mpris.MediaPlayer2.Player";
 static const char* kPropsIface = "org.freedesktop.DBus.Properties";
-// The bus-name prefix and every decision made from it live in mpris_state.h —
+// The bus-name prefix and every decision made from it live in mpris_state.h -
 // see the note above applyProps().
 
 // Cap on how long a D-Bus call may take before erroring. Every call here is
@@ -28,14 +28,14 @@ static constexpr int kDbusTimeoutMs = 800;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Coverage note: everything from here to the STOP marker before applyProps() is
-// D-Bus plumbing — it only executes once a real session bus has answered a real
+// D-Bus plumbing - it only executes once a real session bus has answered a real
 // method call from a real media player, which no unit test may summon (and which
 // must never be the developer's own bus/players). It is excluded on the same
 // grounds as the hidraw glue in orientation_sensor.cpp.
 //
 // This is a marker on the CONVERSATION, not on the logic. Every decision this
-// plumbing used to make inline — which player wins, what a reply means, whether
-// QML must be told — now lives in mpris_state.{h,cpp} and is counted and tested
+// plumbing used to make inline - which player wins, what a reply means, whether
+// QML must be told - now lives in mpris_state.{h,cpp} and is counted and tested
 // (tests/cpp/tst_mpris_state.cpp). If you add a *decision* below, it belongs
 // over there instead; do not grow this region.
 // GCOVR_EXCL_START
@@ -183,10 +183,10 @@ void MprisBridge::refresh() {
 
 // GCOVR_EXCL_STOP
 
-// Fold one GetAll reply into the exposed state. The two decisions here — what
+// Fold one GetAll reply into the exposed state. The two decisions here - what
 // the reply MEANS (mpris::resolveTrack: artist list-or-string, art-URL
 // validation, the availability rule) and whether QML must be told
-// (mpris::visiblyDiffers) — are pure and live in mpris_state.h, where
+// (mpris::visiblyDiffers) - are pure and live in mpris_state.h, where
 // tests/cpp/tst_mpris_state.cpp drives them without a bus. What is left is the
 // member-state fold, which is what this test seam exists to cover.
 void MprisBridge::applyProps(const QVariantMap& m) {
@@ -224,7 +224,7 @@ mpris::TrackState MprisBridge::currentTrack() const {
     return s;
 }
 
-// GCOVR_EXCL_START (D-Bus plumbing — see the note above propGetMsg)
+// GCOVR_EXCL_START (D-Bus plumbing - see the note above propGetMsg)
 void MprisBridge::fetchPosition() {
     if (m_service.isEmpty())
         return;

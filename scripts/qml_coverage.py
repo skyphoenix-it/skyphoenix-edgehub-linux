@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# qml_coverage.py — QML behavior-matrix coverage analyzer (read-only, stdlib only).
+# qml_coverage.py - QML behavior-matrix coverage analyzer (read-only, stdlib only).
 #
 # There is no trustworthy line-coverage tool for QML, so we treat QML coverage as
 # a *behavior traceability matrix*: enumerate the behaviors the source exposes
@@ -18,7 +18,7 @@
 # (instantiates the catalog, asserts its full `.length`, and loops over that same
 # collection) exercises EVERY entry, so such a claim credits every enumerated id
 # of that kind. This is restricted to the three catalogs and still requires a real
-# iteration+assertion — it is NOT a blanket pass, and only these three `*` kinds
+# iteration+assertion - it is NOT a blanket pass, and only these three `*` kinds
 # are recognised (`fn:*`, `schema:*`, etc. are rejected as unknown collections).
 #
 # Run `python3 scripts/qml_coverage.py --selftest` to verify the honesty
@@ -99,7 +99,7 @@ def component_name(path):
 def verify_sources():
     """Every declared source must exist, or the matrix lies.
 
-    `read()` swallows OSError and returns "" — so a renamed, moved or typo'd path
+    `read()` swallows OSError and returns "" - so a renamed, moved or typo'd path
     silently drops that file's behaviors from the matrix. It does not show up as a
     coverage DROP either: the file's UNCOVERED behaviors disappear from the
     denominator right along with its covered ones, so the ratio can happily stay
@@ -115,7 +115,7 @@ def verify_sources():
     ]
     missing = [p for p in declared if not os.path.isfile(os.path.join(REPO, p))]
     if missing:
-        print("FAIL: declared behavior source(s) missing — the matrix would silently")
+        print("FAIL: declared behavior source(s) missing - the matrix would silently")
         print("      shrink and still report a high ratio:")
         for p in missing:
             print("        %s" % p)
@@ -178,7 +178,7 @@ def _iterates_catalog(text, comp, coll):
     instantiates the catalog component, asserts the collection's full `.length`,
     and loops over that same collection. Together these mean every entry is
     exercised (a malformed/missing entry would fail the loop), so each entry id
-    is fairly credited. This is deliberately narrow — it is not a token match."""
+    is fairly credited. This is deliberately narrow - it is not a token match."""
     if comp not in text:
         return False
     asserts = assertion_text(text)

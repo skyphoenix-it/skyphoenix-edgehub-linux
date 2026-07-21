@@ -2,7 +2,7 @@ import QtQuick
 import QtTest
 import "../../ui/qml" as App
 
-// DashboardStore.applyExternal — the live-reload path used when the companion
+// DashboardStore.applyExternal - the live-reload path used when the companion
 // Manager app pushes a new layout over the hub's control socket.
 Item {
     width: 100; height: 100

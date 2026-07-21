@@ -5,8 +5,8 @@ import "../../ui/qml" as App
 import "../../ui/qml/widgets" as Widgets
 
 // Comprehensive coverage for the schema-driven per-widget config editor:
-//   ConfigField.qml   — renders one schema field into the right control
-//   WidgetConfigPanel.qml — sections a whole schema into a scrollable form
+//   ConfigField.qml   - renders one schema field into the right control
+//   WidgetConfigPanel.qml - sections a whole schema into a scrollable form
 //
 // ConfigField instances are built directly with Edge-sized `col` tokens
 // (ctlH 58, fontBase 17) against a dedicated store, exactly like the on-device
@@ -17,7 +17,7 @@ Item {
     id: root
     width: 1520; height: 1600
 
-    // Edge (touchscreen) colour + sizing tokens — mirrors Dashboard.qml cfgCol.
+    // Edge (touchscreen) colour + sizing tokens - mirrors Dashboard.qml cfgCol.
     property var edgeCol: ({
         textPrimary: "#E6EDF3", textSecondary: "#8B949E", bg: "#0D1117",
         accent: "#58A6FF", border: "#30363D", panel: "#161B22", panelAlt: "#1C222B",
@@ -61,7 +61,7 @@ Item {
                 && n.hasOwnProperty("hoverEnabled")
         }, [])
     }
-    // Any editable text control (TextField/TextInput/TextArea) — has cursorPosition
+    // Any editable text control (TextField/TextInput/TextArea) - has cursorPosition
     // + readOnly; the number field's display Text does NOT.
     function editablesIn(node) {
         return findAll(node, function (n) {
@@ -76,7 +76,7 @@ Item {
             return n.hasOwnProperty("text") && !n.hasOwnProperty("cursorPosition") && String(n.text) === str
         }, []).length > 0
     }
-    // Square, radius-6 button rectangles that own a MouseArea — the task toggle
+    // Square, radius-6 button rectangles that own a MouseArea - the task toggle
     // (30×30) and delete (34×34) hit areas.
     function squareButtons(node) {
         var out = []
@@ -98,7 +98,7 @@ Item {
     Component.onCompleted: cstore.load("blank")
 
     // ── Direct ConfigField instances (Edge-sized) ─────────────────────────────
-    // Column A holds every field that gets a real mouseClick — kept near the top
+    // Column A holds every field that gets a real mouseClick - kept near the top
     // so click delivery lands reliably in the offscreen window.
     Column {
         id: cfColA
@@ -110,7 +110,7 @@ Item {
         Widgets.ConfigField { id: cfAction;  width: 380; field: root.fAction;  st: cstore; instanceId: "cf"; col: root.edgeCol
             onActionRequested: function (a) { root.lastAction = a } }
         Widgets.ConfigField { id: cfTasks;   width: 380; field: root.fTasks;   st: cstore; instanceId: "cf"; col: root.edgeCol }
-        // Empty-instanceId field — used to prove edits don't land in settings[''].
+        // Empty-instanceId field - used to prove edits don't land in settings[''].
         Widgets.ConfigField { id: cfEmpty;   width: 380
             field: ({ key: "phantom", label: "Phantom", type: "toggle", dflt: false })
             st: cstore; instanceId: ""; col: root.edgeCol }
@@ -185,7 +185,7 @@ Item {
             cstore.setSetting("cf", "startHour", 23); compare(cfHour.numStr(), "23:00", "n=23")
         }
 
-        // Bug: hour is unbounded — stepping below 0 is not clamped, and numStr
+        // Bug: hour is unbounded - stepping below 0 is not clamped, and numStr
         // renders "0-1:00" garbage.
         function test_hour_clamps_low() {
             cstore.setSetting("cf", "startHour", 0)
@@ -229,7 +229,7 @@ Item {
         }
 
         // The downstream consumer (Countdown) defensively rejects an impossible
-        // date rather than producing NaN — verify it never surfaces NaN days.
+        // date rather than producing NaN - verify it never surfaces NaN days.
         function test_countdown_consumer_rejects_impossible_date() {
             var w = hCount.item
             hCount.storeCtl.patchSettings("test-instance", { date: "2026-19-45", label: "x" })
@@ -402,7 +402,7 @@ Item {
                        "task control " + btns[i].width + "×" + btns[i].height + " must be >= 44px on the Edge")
         }
 
-        // Steppers and chips DO scale with the col tokens — assert they pass.
+        // Steppers and chips DO scale with the col tokens - assert they pass.
         function test_steppers_and_chips_meet_touch_minimum() {
             var steppers = root.mouseAreasIn(cfNumber)
             verify(steppers.length >= 2, "number steppers present")
@@ -453,7 +453,7 @@ Item {
             } catch (e) {
                 threw = true
             }
-            verify(!threw, "a partial schema {} must not throw — the guard should check .sections")
+            verify(!threw, "a partial schema {} must not throw - the guard should check .sections")
         }
 
         // WheelHandler scrolls a sensible amount and StopAtBounds clamps at the top.
@@ -465,7 +465,7 @@ Item {
             mouseWheel(scrPanel, scrPanel.width / 2, scrPanel.height / 2, 0, -120)
             tryVerify(function () { return f.contentY >= 100 }, 1000,
                       "one notch scrolls >=100px, got " + f.contentY)
-            // Now scroll up hard past the top — StopAtBounds must clamp at 0.
+            // Now scroll up hard past the top - StopAtBounds must clamp at 0.
             mouseWheel(scrPanel, scrPanel.width / 2, scrPanel.height / 2, 0, 2000)
             tryVerify(function () { return f.contentY <= 0.5 }, 1000,
                       "StopAtBounds clamps at the top, got " + f.contentY)
@@ -514,7 +514,7 @@ Item {
             var trackOn = firstNamed(cfToggleT, "track")
             var trackOff = firstNamed(cfToggleF, "track")
             verify(trackOn && trackOff, "custom token track present (not default Fusion)")
-            // Behavior on color may still be settling from a prior test — wait it out.
+            // Behavior on color may still be settling from a prior test - wait it out.
             tryVerify(function () { return Qt.colorEqual(trackOn.color, root.edgeCol.accent) }, 1000,
                       "checked track = accent")
             tryVerify(function () { return Qt.colorEqual(trackOff.color, root.edgeCol.panelAlt) }, 1000,
@@ -529,7 +529,7 @@ Item {
             verify(Qt.colorEqual(track.color, root.edgeCol.panelAlt), "starts off = panelAlt")
             cstore.setSetting("cf", "format24", true)
             compare(sw.checked, true, "control tracks store")
-            // Behavior on color animates the change — wait for it to settle on accent.
+            // Behavior on color animates the change - wait for it to settle on accent.
             tryVerify(function () { return Qt.colorEqual(track.color, root.edgeCol.accent) }, 1000,
                       "track flips to accent when on")
         }
@@ -591,13 +591,13 @@ Item {
         when: windowShown
         function init() { root.resetInstance("cf") }
 
-        // Toggles in true VISUAL (top-to-bottom) order — the Repeater's `children`
+        // Toggles in true VISUAL (top-to-bottom) order - the Repeater's `children`
         // array order isn't guaranteed to match model/row order, so sort by y.
         function toggles() {
             var t = root.findAll(cfTasks, function (n) {
                 var p = n.parent
                 // The toggle checkbox is the square, radius-6, bordered (border.width 2)
-                // hit area — distinct from the borderless delete button. (Sizes now
+                // hit area - distinct from the borderless delete button. (Sizes now
                 // scale with ctlH to meet the 44px touch minimum, so match by border
                 // rather than a hardcoded 30px.)
                 return n.hasOwnProperty("containsMouse")
@@ -615,7 +615,7 @@ Item {
         }
 
         // The nested ColumnLayout may not have distributed the rows vertically the
-        // instant the delegates exist — wait until the rows occupy distinct rows.
+        // instant the delegates exist - wait until the rows occupy distinct rows.
         function rowsLaidOut() {
             var t = toggles()
             return t.length === 3
@@ -648,7 +648,7 @@ Item {
             }, 2000, "delegates rebuilt to two rows")
             mouseClick(toggles()[1])   // toggle what is now the second (bottom) row
             var items = cstore.settingsFor("cf").items
-            compare(items.length, 2, "still two items — no stale-index corruption")
+            compare(items.length, 2, "still two items - no stale-index corruption")
             for (var i = 0; i < items.length; i++)
                 verify(items[i] !== undefined && items[i].hasOwnProperty("text"),
                        "row " + i + " is a valid task object")
@@ -657,7 +657,7 @@ Item {
         }
 
         // The slider FIELD must actually drag and write through (no test dragged a
-        // slider before — the class of bug the glass slider shipped with).
+        // slider before - the class of bug the glass slider shipped with).
         function test_slider_field_drags_and_writes() {
             var slider = findChild(cfSlider, "control")
             verify(slider && slider.from !== undefined && typeof slider.moved === "function",

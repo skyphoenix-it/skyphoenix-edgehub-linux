@@ -33,8 +33,8 @@ sudo apt install ca-certificates git cmake g++ make file dpkg-dev rustc cargo \
   libgl1-mesa-dev qt6-base-dev qt6-declarative-dev qt6-svg-dev \
   qt6-virtualkeyboard-dev
 
-git clone https://github.com/skyphoenix-it/XeneonEdge_Linux.git
-cd XeneonEdge_Linux
+git clone https://github.com/skyphoenix-it/skyphoenix-edgehub-linux.git
+cd skyphoenix-edgehub-linux
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j"$(nproc)"
 ```

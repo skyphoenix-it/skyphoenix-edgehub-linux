@@ -3,9 +3,9 @@ import QtTest
 import "../../ui/qml" as App
 import "../../ui/qml/widgets" as W
 
-// Backgrounds — verifies every animated background style declared in
+// Backgrounds - verifies every animated background style declared in
 // BackgroundCatalog actually loads a real backdrop component in BackdropLayer
-// (catches a broken/missing component or catalog↔map drift — the "some styles
+// (catches a broken/missing component or catalog↔map drift - the "some styles
 // don't show" class of bug). Theme-driven visibility (e.g. high-contrast turning
 // decoration off) is a separate, intentional behaviour tested elsewhere.
 //
@@ -79,7 +79,7 @@ Item {
         }
 
         // reduce-motion / paused: the backdrop must stay PAINTED (not blank), only
-        // the animation stops — so switching a page to a style always shows it.
+        // the animation stops - so switching a page to a style always shows it.
         function test_backdrop_stays_painted_when_not_running() {
             bl.style = "aurora"
             bl.running = false
@@ -118,7 +118,7 @@ Item {
         }
 
         // reduce-motion is driven onto `running` by the host (Dashboard binds
-        // running: !reduceMotion) — assert that same wiring end-to-end here.
+        // running: !reduceMotion) - assert that same wiring end-to-end here.
         function test_inline_styles_static_under_reduce_motion_data() {
             return root.inlineStyles.map(function (s) { return { tag: s, style: s } })
         }
@@ -143,7 +143,7 @@ Item {
         }
 
         // The character styles must take their tint from the theme accent, not a
-        // hard-coded palette — that is what lets them work under ANY theme.
+        // hard-coded palette - that is what lets them work under ANY theme.
         function test_inline_styles_follow_the_accent_override_data() {
             return root.inlineStyles.map(function (s) { return { tag: s, style: s } })
         }

@@ -34,7 +34,7 @@ OrientationSensor::~OrientationSensor() {
 }
 // GCOVR_EXCL_STOP
 
-// GCOVR_EXCL_START (hardware: scans /sys/class/hidraw for the Corsair Xeneon Edge —
+// GCOVR_EXCL_START (hardware: scans /sys/class/hidraw for the Corsair Xeneon Edge -
 // no such device in headless CI; the open/read/EOF path is tested via a FIFO seam).
 QString OrientationSensor::findEdgeHidraw() {
     // The kernel exposes each hidraw as /sys/class/hidraw/hidrawN with a
@@ -100,7 +100,7 @@ bool OrientationSensor::openAndWatch(const QString& path) {
     connect(m_notifier, &QSocketNotifier::activated, this, &OrientationSensor::onReadable);
     qInfo() << "OrientationSensor: watching" << path << "for Xeneon Edge orientation";
     // The panel only pushes a report when the orientation *changes*, so actively
-    // query the current state once — otherwise the UI stays at its default (the
+    // query the current state once - otherwise the UI stays at its default (the
     // native-portrait framebuffer, so it looks portrait even when mounted
     // horizontally) until the user physically rotates the panel.
     queryInitialOrientation();
@@ -221,7 +221,7 @@ void OrientationSensor::handleDeviceLost() {
 }
 
 // GCOVR_EXCL_START (device-reappear recovery: the retry timer re-scans /sys via
-// findEdgeHidraw for the panel to return — a real-hardware unplug/replug cycle).
+// findEdgeHidraw for the panel to return - a real-hardware unplug/replug cycle).
 void OrientationSensor::tryReopen() {
     if (m_fd >= 0) {   // already recovered by a prior attempt
         m_retry.stop();
@@ -246,7 +246,7 @@ void OrientationSensor::onReadable() {
             if (errno == EAGAIN || errno == EWOULDBLOCK)
                 break;
             // GCOVR_EXCL_START (EINTR is a nondeterministic signal race; the -ENODEV
-            // fatal path requires a real hidraw unplug — the EOF equivalent IS tested).
+            // fatal path requires a real hidraw unplug - the EOF equivalent IS tested).
             if (errno == EINTR)
                 continue;
             // Fatal (e.g. -ENODEV on unplug): the fd is hung up, so the notifier

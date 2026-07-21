@@ -1,4 +1,4 @@
-//! xeneon-license-webhook — turn a purchase into a signed Pro key, automatically.
+//! xeneon-license-webhook - turn a purchase into a signed Pro key, automatically.
 //!
 //! A Lemon Squeezy `order_created` webhook lands here; this service verifies the
 //! signature, mints an `XE1` key for the buyer (reusing the SAME signing code as
@@ -6,15 +6,15 @@
 //! verifies), and e-mails it.
 //!
 //! It holds two secrets, BOTH from the environment, never on the command line:
-//!   XENEON_LICENSE_SEED       the private signing seed (base64url) — the crown jewel
+//!   XENEON_LICENSE_SEED       the private signing seed (base64url) - the crown jewel
 //!   LEMONSQUEEZY_WEBHOOK_SECRET   the webhook signing secret (verifies authenticity)
-//! Delivery (optional — if unset, the key is logged so you can send it by hand):
+//! Delivery (optional - if unset, the key is logged so you can send it by hand):
 //!   SMTP_HOST SMTP_PORT SMTP_USER SMTP_PASS  MAIL_FROM  [MAIL_BCC]
 //! And:
 //!   PORT (default 8787)
 //!
-//! Design: the security-critical core — signature verification, order parsing,
-//! minting — is pure and unit-tested. The HTTP loop and SMTP send are thin shells
+//! Design: the security-critical core - signature verification, order parsing,
+//! minting - is pure and unit-tested. The HTTP loop and SMTP send are thin shells
 //! around it. Smoke-test with a real Lemon Squeezy TEST webhook before going live
 //! (see README).
 
@@ -49,7 +49,7 @@ fn signature_ok(body: &[u8], sig_header: Option<&str>, secret: &[u8]) -> bool {
 }
 
 /// Pull the buyer out of an `order_created` payload. Returns None for any other
-/// event or a shape we do not recognise — we mint ONLY for a real order.
+/// event or a shape we do not recognise - we mint ONLY for a real order.
 fn parse_order(body: &[u8]) -> Option<Buyer> {
     let v: serde_json::Value = serde_json::from_slice(body).ok()?;
     if v["meta"]["event_name"].as_str()? != "order_created" {
@@ -102,7 +102,7 @@ fn send_key(cfg: &MailCfg, buyer: &Buyer, key: &str) -> Result<(), String> {
         "Thank you for supporting Xeneon Edge!\n\n\
          Your Pro licence key:\n\n  {key}\n\n\
          To activate: open the Xeneon Edge Manager, go to About, click Activate Pro,\n\
-         and paste the key. It verifies on your device — nothing is sent anywhere.\n\n\
+         and paste the key. It verifies on your device - nothing is sent anywhere.\n\n\
          Keep this e-mail; the key works on any machine and after a reinstall.\n"
     );
     let mut msg = Message::builder()
@@ -130,7 +130,7 @@ fn send_key(cfg: &MailCfg, buyer: &Buyer, key: &str) -> Result<(), String> {
 }
 
 fn main() {
-    // Load the two secrets up front — refuse to start without them, so the
+    // Load the two secrets up front - refuse to start without them, so the
     // service can never run in a state where it accepts webhooks but cannot mint.
     let seed_b64 = std::env::var("XENEON_LICENSE_SEED")
         .expect("XENEON_LICENSE_SEED (base64url signing seed) is required");
@@ -144,7 +144,7 @@ fn main() {
         .unwrap_or(8787);
     let mail = mail_cfg();
     if mail.is_none() {
-        eprintln!("NOTE: no SMTP_* env — keys will be LOGGED, not e-mailed. Send them by hand.");
+        eprintln!("NOTE: no SMTP_* env - keys will be LOGGED, not e-mailed. Send them by hand.");
     }
 
     let server = tiny_http::Server::http(("0.0.0.0", port))
@@ -176,7 +176,7 @@ fn main() {
             continue;
         }
         let Some(buyer) = parse_order(&body) else {
-            // A signed event we don't act on (not an order) — acknowledge so
+            // A signed event we don't act on (not an order) - acknowledge so
             // Lemon Squeezy does not retry forever.
             let _ =
                 request.respond(tiny_http::Response::from_string("ignored").with_status_code(200));
@@ -201,7 +201,7 @@ fn main() {
                 }
             },
             None => eprintln!(
-                "minted for <{}> (id {}) — SEND BY HAND:\n  KEY: {key}",
+                "minted for <{}> (id {}) - SEND BY HAND:\n  KEY: {key}",
                 buyer.email, buyer.id
             ),
         }

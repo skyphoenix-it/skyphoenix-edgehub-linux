@@ -4,9 +4,9 @@ import "../../ui/qml" as App
 import "../../ui/qml/widgets" as Wg
 
 // Comprehensive coverage for the shared metric-gauge visuals:
-//   • RingProgress.qml  — circular progress ring (Canvas)
-//   • Sparkline.qml     — area+line history chart (Canvas)
-//   • MetricGauge.qml   — the composite tile visual (ring + centre value + spark)
+//   • RingProgress.qml  - circular progress ring (Canvas)
+//   • Sparkline.qml     - area+line history chart (Canvas)
+//   • MetricGauge.qml   - the composite tile visual (ring + centre value + spark)
 //
 // These are pure visual components with no exposed "computed geometry", so the
 // interesting behaviour lives in the Canvas paint routines. We therefore drive
@@ -15,7 +15,7 @@ import "../../ui/qml/widgets" as Wg
 // via TestCase.grabImage (verified to capture Canvas output under offscreen).
 //
 // Assertions that encode the *intended* behaviour but fail against the current
-// code are deliberate — they pin the real bugs called out in the audit:
+// code are deliberate - they pin the real bugs called out in the audit:
 //   • RingProgress paints a spurious round-cap dot at 12 o'clock when value==0
 //     (Math.max(0.0001, …) floors the swept fraction even for an idle metric).
 //   • RingProgress two-colour gradient uses bounding-box coords, so the blend
@@ -444,7 +444,7 @@ Item {
         }
 
         // NOTE (W3): the gauge ring now EASES between samples (animateValue via
-        // theme.motionValue), so target values are asserted with tryCompare —
+        // theme.motionValue), so target values are asserted with tryCompare -
         // the ring lands on the same numbers, it just glides there.
         function test_value_clamped_into_ring() {
             mg.value = 1.5
@@ -461,7 +461,7 @@ Item {
         function test_value_updates_ring_smoothly() {
             mg.value = 0.1
             tryCompare(findRing(gaugeHost), "value", 0.1, 2000, "ring tracks the source value")
-            // A fresh sample GLIDES: the very next read is en route, not landed —
+            // A fresh sample GLIDES: the very next read is en route, not landed -
             // this is the W3 smoothness contract for the metric gauges.
             mg.value = 0.9
             var ring = findRing(gaugeHost)

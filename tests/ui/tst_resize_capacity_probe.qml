@@ -102,7 +102,7 @@ Item {
             var marker = store.addTile(1, "notes")
             var p1_before = store.pages()[1].tiles.length
 
-            // Shrink a tile on page 0 — frees space.
+            // Shrink a tile on page 0 - frees space.
             store.setTileSize(0, a, "0.5x0.5")
 
             verify(fitsOneScreen(), "page 0 still fits one screen after shrinking")

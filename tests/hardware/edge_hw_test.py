@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """DEPRECATED standalone hub test on the REAL Xeneon Edge.
 
-Prefer `edge_e2e.py` — it isolates XDG_CONFIG_HOME *and* XDG_RUNTIME_DIR and
+Prefer `edge_e2e.py` - it isolates XDG_CONFIG_HOME *and* XDG_RUNTIME_DIR and
 verifies the target window before injecting. THIS script still uses the REAL
 config (backup/restore) and the REAL runtime dir, and requires that no hub you
 care about is running.
@@ -10,7 +10,7 @@ SAFETY: refuses to run unless BOTH are set:
   XENEON_HW_INPUT=1    (synthetic input on the live session is opt-in)
   XENEON_HW_LEGACY=1   (acknowledge the real-config/runtime footprint)
 All injection is confined to the Edge rect (clamped VPointer) and guarded by
-the user-activity kill switch (input_guard) — any real input aborts.
+the user-activity kill switch (input_guard) - any real input aborts.
 """
 import socket, json, time, os, sys, subprocess, shutil, glob
 
@@ -190,7 +190,7 @@ try:
 except input_guard.UserActivityAbort as e:
     R['pass'] = False
     R['aborted_by_user_activity'] = str(e)
-    print('KILL SWITCH: injection aborted —', e, file=sys.stderr)
+    print('KILL SWITCH: injection aborted -', e, file=sys.stderr)
 finally:
     if vp: vp.close()
     if guard: guard.close()

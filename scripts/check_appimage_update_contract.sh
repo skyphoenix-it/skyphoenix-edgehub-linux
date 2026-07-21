@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# check_appimage_update_contract.sh — guard release provenance and AppImage updates.
+# check_appimage_update_contract.sh - guard release provenance and AppImage updates.
 #
 # WHY THIS EXISTS
 #   The AppImage zsync update path spans four files that must agree, and nothing
@@ -21,7 +21,7 @@
 #
 # WHAT WOULD MAKE THIS SCRIPT WORTHLESS
 #   Being unable to fail. Every check below is proven to fail against a mutated
-#   input — see the negative controls in the same commit. Two rules follow:
+#   input - see the negative controls in the same commit. Two rules follow:
 #     1. NEVER `exit 0` because a tool/file is missing. Absence is a FAIL here,
 #        not a skip: a check that quietly passes when its subject is gone is
 #        worse than no check, and this repo has been bitten by exactly that.
@@ -34,7 +34,7 @@ set -uo pipefail
 
 # XENEON_CONTRACT_REPO points the checks at a mutated copy of the tree. It exists
 # so the negative controls can prove each check FAILS when its invariant is
-# violated — a lint nobody has watched fail is a lint nobody knows works.
+# violated - a lint nobody has watched fail is a lint nobody knows works.
 REPO="${XENEON_CONTRACT_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 BUILD_SH="$REPO/packaging/appimage/build-appimage.sh"
 RELEASE_SH="$REPO/scripts/release.sh"
@@ -44,7 +44,7 @@ DISTRO_YML="$REPO/.github/workflows/distro.yml"
 CHECKER_QML="$REPO/ui/qml/widgets/UpdateChecker.qml"
 
 # The one repo slug the whole update path must agree on.
-readonly SLUG="skyphoenix-it/XeneonEdge_Linux"
+readonly SLUG="skyphoenix-it/skyphoenix-edgehub-linux"
 
 fails=0
 pass() { printf '  \033[1;32mok\033[0m   %s\n' "$1"; }
@@ -108,7 +108,7 @@ fi
 # 1. The artifact must be named for the RELEASE version, not project(VERSION),
 #    which CMakeLists.txt freezes at 0.1.0 across every commit. Naming it from
 #    the frozen field shipped "xeneon-edge-hub-0.1.0-x86_64.AppImage" for every
-#    release forever — two different releases, one filename.
+#    release forever - two different releases, one filename.
 #    Executed, not grepped: --print-name runs the real derivation.
 # ─────────────────────────────────────────────────────────────────────────────
 frozen="$(grep -Po 'project\(.*VERSION \K[0-9.]+' "$REPO/CMakeLists.txt" | head -1)"
@@ -124,14 +124,14 @@ fi
 # artifact (release.sh does ${VERSION#v}); "v1.0.0" and "1.0.0" must not both
 # appear across the release's filenames.
 case "$name" in
-    *-v9.9.9*) fail "artifact name keeps the leading 'v' — inconsistent with release.sh's pkgver style" ;;
+    *-v9.9.9*) fail "artifact name keeps the leading 'v' - inconsistent with release.sh's pkgver style" ;;
     *)         pass "leading 'v' is stripped from the artifact version" ;;
 esac
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 2. The binary's own version must be forced to match the filename. cmake
 #    otherwise re-derives it from git describe; in a shallow checkout that is a
-#    bare sha, which UpdateChecker.qml's SemVer parse rejects — so the AppImage
+#    bare sha, which UpdateChecker.qml's SemVer parse rejects - so the AppImage
 #    reports "no comparable version" and NEVER surfaces an update.
 # ─────────────────────────────────────────────────────────────────────────────
 folded_build="$(_fold "$BUILD_SH")"
@@ -174,7 +174,7 @@ if [ -z "$zsync_url" ]; then
     fail "release.sh has no GitHub releases URL for zsyncmake -u"
 else
     case "$zsync_url" in
-        *'/releases/latest/'*) fail "zsyncmake -u points at releases/latest — must pin the tag: $zsync_url" ;;
+        *'/releases/latest/'*) fail "zsyncmake -u points at releases/latest - must pin the tag: $zsync_url" ;;
         *'${VERSION}'*|*'$VERSION'*) pass "zsyncmake -u pins the versioned download URL" ;;
         *) fail "zsyncmake -u URL does not interpolate the release tag: $zsync_url" ;;
     esac
@@ -204,11 +204,11 @@ fi
 # The invariant is the REPO, not the exact endpoint: the checker moved from
 # /releases/latest to the LIST endpoint because GitHub's "latest" excludes
 # pre-releases and 404s when every release is one (the whole alpha/beta period).
-# Accept either, but keep pinning the slug — that is what must never drift.
+# Accept either, but keep pinning the slug - that is what must never drift.
 if grep -qE "api\.github\.com/repos/$SLUG/releases" "$CHECKER_QML"; then
     pass "UpdateChecker polls $SLUG"
 else
-    fail "UpdateChecker.qml's releasesUrl does not match $SLUG — the check and the release flow disagree"
+    fail "UpdateChecker.qml's releasesUrl does not match $SLUG - the check and the release flow disagree"
 fi
 
 # 5b. And it must NOT go back to /releases/latest: that endpoint excludes
@@ -217,7 +217,7 @@ fi
 # Match the URL STRING LITERAL, not prose: the file's own comment explains why
 # /releases/latest is avoided, and a naive grep matched that explanation.
 if grep -qE '"https://api\.github\.com/repos/[^"]*/releases/latest"' "$CHECKER_QML"; then
-    fail "UpdateChecker uses /releases/latest — it EXCLUDES pre-releases and 404s when every release is one (alpha/beta); use the list endpoint"
+    fail "UpdateChecker uses /releases/latest - it EXCLUDES pre-releases and 404s when every release is one (alpha/beta); use the list endpoint"
 else
     pass "UpdateChecker avoids /releases/latest (works during alpha/beta)"
 fi
@@ -229,7 +229,7 @@ fi
 if printf '%s' "$folded_release" | grep -q 'command -v zsyncmake'; then
     pass "release.sh preflights zsyncmake"
 else
-    fail "release.sh no longer preflights zsyncmake — an AppImage could publish without its .zsync"
+    fail "release.sh no longer preflights zsyncmake - an AppImage could publish without its .zsync"
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -358,7 +358,7 @@ fi
 
 # Release binaries must come from the immutable commit that passed the gate,
 # never from a mutable working tree or a reusable CMake cache.
-if grep -Fq 'archive --format=tar --prefix="XeneonEdge_Linux-${pkgver}/" "$tag_commit"' <<<"$folded_release" \
+if grep -Fq 'archive --format=tar --prefix="skyphoenix-edgehub-linux-${pkgver}/" "$tag_commit"' <<<"$folded_release" \
         && grep -Fq 'tar -xzf "${DIST_DIR}/${src_tarball}" -C "$RELEASE_SOURCE_DIR" --strip-components=1' <<<"$folded_release"; then
     pass "release source is materialized from the verified commit archive"
 else
@@ -384,7 +384,7 @@ fi
 
 # 8. The AppImage must EMBED update-information (X-AppImage-UpdateInformation via
 #    linuxdeploy's LDAI_UPDATE_INFORMATION). Without it AppImageUpdate/appimaged
-#    cannot find the next release AT ALL — there is no discovery path from an
+#    cannot find the next release AT ALL - there is no discovery path from an
 #    installed AppImage to the next .zsync, and the whole self-update story is
 #    dead on arrival no matter how correct the .zsync is. Must be gh-releases-zsync
 #    against the right repo, and `latest` (a versioned channel would pin the
@@ -392,10 +392,10 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────
 ui_line="$(printf '%s' "$folded_build" | grep -o 'LDAI_UPDATE_INFORMATION="[^"]*"' | head -1)"
 if [ -z "$ui_line" ]; then
-    fail "build-appimage.sh sets no LDAI_UPDATE_INFORMATION — the AppImage cannot discover updates"
+    fail "build-appimage.sh sets no LDAI_UPDATE_INFORMATION - the AppImage cannot discover updates"
 else
     case "$ui_line" in
-        *"gh-releases-zsync|skyphoenix-it|XeneonEdge_Linux|latest|"*".AppImage.zsync"*)
+        *"gh-releases-zsync|skyphoenix-it|skyphoenix-edgehub-linux|latest|"*".AppImage.zsync"*)
             pass "AppImage embeds gh-releases-zsync update-information for $SLUG (latest)" ;;
         *"|latest|"*)
             fail "update-information targets the wrong repo/pattern: $ui_line" ;;

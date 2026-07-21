@@ -6,16 +6,16 @@ import "../ui/fixtures.js" as Fx
 import "../../ui/qml/widgets" as W
 
 // ─────────────────────────────────────────────────────────────────────────
-// tst_gui_w_cal_weather — REAL, visible GUI tests (real KWin compositor, real
+// tst_gui_w_cal_weather - REAL, visible GUI tests (real KWin compositor, real
 // mouse events) for three Hub widgets: Calendar, Now/Next and Weather. Each is
 // hosted in a real rendered window via UI.WidgetHarness (the ONLY way widget
-// tiles render under qmltestrunner — the real Dashboard loads them by qrc: which
+// tiles render under qmltestrunner - the real Dashboard loads them by qrc: which
 // does not resolve here). Every network path is driven OFFLINE through the
 // `xhrFactory` seam + a FakeXHR (fixtures.js): weather ships live (Open-Meteo)
 // but is NEVER allowed a real socket in tests.
 //
 // Coverage per widget: every declared size, every config field (via the store,
-// asserting the widget's live visible output — the same contract a real
+// asserting the widget's live visible output - the same contract a real
 // ConfigField would drive), the unconfigured / "connect a source" state, the
 // configured state (events / forecast fed through the stub), the error states
 // (offline / blocked / timeout / non-JSON / empty), plus the shared chrome
@@ -67,7 +67,7 @@ Item {
         function size(h, w, hh, cls) { h.width = w; h.height = hh; h.item.sizeClass = cls }
 
         // ── ICS builders (a "now" event must span the wall clock, so build
-        //    relative to Date.now() — a fixed date would be pruned). ─────────
+        //    relative to Date.now() - a fixed date would be pruned). ─────────
         function pad2(n) { return (n < 10 ? "0" : "") + n }
         function stampLocal(d) {
             return "" + d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate())
@@ -197,7 +197,7 @@ Item {
             snap(calH, "cal_url_" + d.tag)
         }
 
-        // Config: maxEvents is a MAXIMUM — the visible row count is capped to it.
+        // Config: maxEvents is a MAXIMUM - the visible row count is capped to it.
         function test_cal_maxevents_data() {
             return [ { tag: "1", cap: 1 }, { tag: "2", cap: 2 } ]
         }
@@ -229,7 +229,7 @@ Item {
             snap(calH, "cal_body_save")
         }
 
-        // States — configured, unconfigured and every error.
+        // States - configured, unconfigured and every error.
         function test_cal_states_data() {
             return [
                 { tag: "unconfigured" }, { tag: "agenda" }, { tag: "offline" },
@@ -314,7 +314,7 @@ Item {
             verify(G.looksRendered(img), "card rendered with accent " + d.tag)
         }
 
-        // Chrome: each cardBackdrop option — "none" hides the layer, every other
+        // Chrome: each cardBackdrop option - "none" hides the layer, every other
         // shows it (theme.decorative is on by default).
         function test_cal_backdrop_data() {
             return [ { tag: "none" }, { tag: "orbs" }, { tag: "mesh" }, { tag: "aurora" },
@@ -466,7 +466,7 @@ Item {
         }
 
         // ═══════════════════════════════════════════════════════════════════
-        //  WEATHER  (live Open-Meteo in production — fully stubbed here)
+        //  WEATHER  (live Open-Meteo in production - fully stubbed here)
         // ═══════════════════════════════════════════════════════════════════
 
         function wxLoad(body) { wxH.item.refresh(); tc.lastFake.resolveWith(200, body); wait(150) }
@@ -573,7 +573,7 @@ Item {
             snap(wxH, "wx_title")
         }
 
-        // Body: real clicks — the refresh glyph and the expanded "Set location".
+        // Body: real clicks - the refresh glyph and the expanded "Set location".
         function test_wx_body_data() { return [ { tag: "refresh" }, { tag: "setlocation" } ] }
         function test_wx_body(d) {
             if (d.tag === "refresh") {
@@ -601,7 +601,7 @@ Item {
             snap(wxH, "wx_body_" + d.tag)
         }
 
-        // States — loading, loaded, feels-like, forecast reflows, and every error.
+        // States - loading, loaded, feels-like, forecast reflows, and every error.
         function test_wx_states_data() {
             return [
                 { tag: "loading" }, { tag: "loaded" }, { tag: "feels" },

@@ -1,8 +1,8 @@
-# Xeneon Edge Linux Hub — Product Vision
+# Xeneon Edge Linux Hub - Product Vision
 
-**Version:** 0.1.0-draft  
-**Status:** Historical Phase-0 discovery draft — superseded
-**Last Updated:** 2026-07-11  
+**Version:** 0.1.0-draft
+**Status:** Historical Phase-0 discovery draft - superseded
+**Last Updated:** 2026-07-11
 
 > **Historical document.** The goals below explain the original direction, but
 > its platform, packaging, performance and feature statements are not current
@@ -21,10 +21,10 @@ The application runs as a normal desktop application, places a borderless widget
 
 Secondary touchscreen displays like the Corsair Xeneon Edge lack a first-party Linux software ecosystem. Existing solutions are:
 
-- **Browser-based dashboards** — require a permanently running web server, consume excessive resources, and feel disconnected from the desktop.
-- **Electron wrappers** — bundle an entire Chromium runtime, consuming 300–500+ MB of RAM at idle.
-- **Windows-only vendor software** — Corsair iCUE and similar tools do not support Linux.
-- **DIY scripts** — fragile, require terminal expertise, and do not provide a cohesive user experience.
+- **Browser-based dashboards** - require a permanently running web server, consume excessive resources, and feel disconnected from the desktop.
+- **Electron wrappers** - bundle an entire Chromium runtime, consuming 300–500+ MB of RAM at idle.
+- **Windows-only vendor software** - Corsair iCUE and similar tools do not support Linux.
+- **DIY scripts** - fragile, require terminal expertise, and do not provide a cohesive user experience.
 
 Linux users with secondary touchscreens have no polished, performant, native option.
 
@@ -40,31 +40,31 @@ Linux users with secondary touchscreens have no polished, performant, native opt
 
 ## Core Value Proposition
 
-1. **Zero-dependency dashboard** — no browser, no web server, no Electron. One native binary.
-2. **Minimal resource use** — target <1% CPU and <150 MB RAM at idle.
-3. **Purpose-built for touch** — 48×48px minimum touch targets, gesture support, accidental-touch resistance.
-4. **Reliable multi-monitor** — the dashboard never silently appears on the wrong monitor.
-5. **First-class Linux support** — Wayland and X11, KDE and GNOME, CachyOS and Ubuntu.
-6. **Extensible** — built-in widgets today, community widget SDK later.
+1. **Zero-dependency dashboard** - no browser, no web server, no Electron. One native binary.
+2. **Minimal resource use** - target <1% CPU and <150 MB RAM at idle.
+3. **Purpose-built for touch** - 48×48px minimum touch targets, gesture support, accidental-touch resistance.
+4. **Reliable multi-monitor** - the dashboard never silently appears on the wrong monitor.
+5. **First-class Linux support** - Wayland and X11, KDE and GNOME, CachyOS and Ubuntu.
+6. **Extensible** - built-in widgets today, community widget SDK later.
 
 ## Product Principles (Priority Order)
 
-1. **Stability** — the application must not crash, freeze, or leak.
-2. **Touchscreen usability** — every interaction must work via touch alone.
-3. **Performance** — minimal CPU, GPU, memory, disk, and network use.
-4. **Correct multi-monitor behavior** — reliable display targeting across hotplugs, rotations, and sleep/wake.
-5. **Security** — widgets are sandboxed; no root required; no arbitrary command execution by default.
-6. **Maintainability** — clean architecture, documented decisions, automated tests.
-7. **Extensibility** — designed for future third-party widgets.
-8. **Visual quality** — premium, calm, readable-at-a-glance design.
-9. **Cross-distribution compatibility** — works on CachyOS, Ubuntu, Arch, Fedora, and others.
-10. **Ease of installation** — packages for major distributions, no terminal required for basic setup.
+1. **Stability** - the application must not crash, freeze, or leak.
+2. **Touchscreen usability** - every interaction must work via touch alone.
+3. **Performance** - minimal CPU, GPU, memory, disk, and network use.
+4. **Correct multi-monitor behavior** - reliable display targeting across hotplugs, rotations, and sleep/wake.
+5. **Security** - widgets are sandboxed; no root required; no arbitrary command execution by default.
+6. **Maintainability** - clean architecture, documented decisions, automated tests.
+7. **Extensibility** - designed for future third-party widgets.
+8. **Visual quality** - premium, calm, readable-at-a-glance design.
+9. **Cross-distribution compatibility** - works on CachyOS, Ubuntu, Arch, Fedora, and others.
+10. **Ease of installation** - packages for major distributions, no terminal required for basic setup.
 
 ## Non-Goals (Explicitly Out of Scope)
 
 - **Not** a browser kiosk or Electron app.
 - **Not** a replacement for Corsair iCUE on Windows.
-- **Not** a system monitoring daemon — it's a user-facing dashboard.
+- **Not** a system monitoring daemon - it's a user-facing dashboard.
 - **Not** a game overlay or injection tool.
 - **Not** a DRM bypass mechanism for streaming services.
 - **Not** a medical or therapeutic device.
@@ -94,4 +94,4 @@ This project is independently developed. It is not produced, endorsed, or suppor
 
 ## License
 
-To be determined — likely MIT or Apache 2.0 for the application core, with consideration for LGPL if Qt dependencies require it.
+To be determined - likely MIT or Apache 2.0 for the application core, with consideration for LGPL if Qt dependencies require it.

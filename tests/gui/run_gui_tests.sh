@@ -12,7 +12,7 @@
 #                  is VISIBLE on your desktop and you can watch every click.
 #                  Implies -j1 (one window to watch) and keeps the watchable
 #                  input speed. WITHOUT this flag the compositor uses
-#                  `--virtual`, which renders to an off-screen framebuffer — the
+#                  `--virtual`, which renders to an off-screen framebuffer - the
 #                  tests are just as real, but you cannot see them. That
 #                  distinction cost a review cycle; hence the flag.
 #     --fast     : mousedelay 0 (confirmation re-runs); default is visible speed
@@ -49,7 +49,7 @@ fi
 # Both shipped binaries pin the Controls style (app/src/main.cpp:271 and
 # manager/src/main.cpp:116 call QQuickStyle::setStyle("Fusion")). Without this
 # the suite runs under the user's desktop style (Breeze here), so every control
-# under test is a DIFFERENT control than ships — different indicator geometry,
+# under test is a DIFFERENT control than ships - different indicator geometry,
 # different colours, different implicit sizes. A pixel assertion tuned to Fusion
 # then fails for a reason that has nothing to do with the product.
 export QT_QUICK_CONTROLS_STYLE=Fusion
@@ -61,7 +61,7 @@ export QT_QUICK_CONTROLS_STYLE=Fusion
 #
 # Fixes the accounting hole found 2026-07-19: run_one used to start KWin and then
 # call run_bounded, making the compositor a SIBLING of the bounded process. It
-# inherited no `ulimit -v` and _rb_tree_rss_mb never counted its RSS — and
+# inherited no `ulimit -v` and _rb_tree_rss_mb never counted its RSS - and
 # Wayland client buffers live in the compositor, i.e. the leak went to the one
 # process nothing was watching. Now everything a runner can push into KWin is
 # inside the budget.
@@ -130,7 +130,7 @@ done
 case "$J" in ''|*[!0-9]*) echo "!! -jN needs a number"; exit 2 ;; esac
 [ "$J" -lt 1 ] && J=1
 # Recording captures ONE X display, so a parallel run would record only whichever
-# file happened to land on it — silently misleading. Force sequential.
+# file happened to land on it - silently misleading. Force sequential.
 if [ "$RECORD" = 1 ] && [ "$J" -gt 1 ]; then
   echo "==> --record implies -j1 (one display to capture); ignoring -j$J"
   J=1
@@ -172,7 +172,7 @@ FILES=$(ls tests/gui/tst_gui_*.qml 2>/dev/null | sort)
 [ -n "$PAT" ] && FILES=$(echo "$FILES" | grep -- "$PAT")
 [ -z "$FILES" ] && { echo "!! no test files matched '${PAT:-*}'"; exit 2; }
 
-# Per-runner resource bounds — shared implementation, see the rationale there.
+# Per-runner resource bounds - shared implementation, see the rationale there.
 # shellcheck source=../../scripts/lib/run_bounded.sh
 . "$ROOT/scripts/lib/run_bounded.sh"
 RUN_TIMEOUT=${RUN_TIMEOUT:-900}
@@ -201,7 +201,7 @@ if [ "$J" -gt 1 ] && [ -r /proc/meminfo ]; then
   fi
 fi
 
-# run_one <file> <slot> — runs one test file, writes $LOGDIR/<base>.log.
+# run_one <file> <slot> - runs one test file, writes $LOGDIR/<base>.log.
 # In parallel mode each file gets a private compositor so a crash in one cannot
 # take its neighbours' windows down with it.
 run_one() {
@@ -209,7 +209,7 @@ run_one() {
   base=$(basename "$f" .qml)
   # Bound every runner in BOTH time and memory. On 2026-07-19 a runaway scene-graph
   # walk drove one qmltestrunner to 18.8 GB RSS; the kernel OOM killer fired and took
-  # the developer's IDE down with it. An unbounded GUI runner is never acceptable —
+  # the developer's IDE down with it. An unbounded GUI runner is never acceptable -
   # a test that needs more than $RUN_MEM_MAX_MB or $RUN_TIMEOUT is a broken test.
   # Compositor + runner together inside ONE bounded tree for every job count,
   # including J=1. The memory-budget reducer can turn a requested -j8 into -j1;
@@ -297,9 +297,9 @@ for f in $FILES; do
     FAILFILES="$FAILFILES $base"
     echo "===== $base =====" >> "$FAILLOG"
     grep -E "^FAIL!" "$LOGDIR/$base.log" 2>/dev/null | grep -viE "Cannot open: qrc:" >> "$FAILLOG"
-    # A file that fails to LOAD prints no Totals line and contributes 0/0/0 —
+    # A file that fails to LOAD prints no Totals line and contributes 0/0/0 -
     # indistinguishable from a clean pass in the totals unless it is called out.
-    [ -z "$line" ] && echo "  (no Totals line — file crashed/failed to load; see $base.log)" >> "$FAILLOG"
+    [ -z "$line" ] && echo "  (no Totals line - file crashed/failed to load; see $base.log)" >> "$FAILLOG"
   fi
   if [ "${k:-0}" != "0" ]; then
     FAILFILES="$FAILFILES $base"
@@ -327,7 +327,7 @@ echo "==================================================================="
 # suite was orphaned for months; when it was finally wired up, "0 files, 0
 # failures" must not read as green. Same rule as the other guards in scripts/.
 if [ "$FILECOUNT" -eq 0 ]; then
-  echo "RESULT: FAILURE (no test files were executed — refusing to report success)"
+  echo "RESULT: FAILURE (no test files were executed - refusing to report success)"
   exit 1
 fi
 if [ "$TOTAL_PASS" -eq 0 ]; then

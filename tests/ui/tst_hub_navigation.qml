@@ -14,7 +14,7 @@ import "../../ui/qml" as App
 // COVERS: fn:main.requestHubPage, fn:main.hubCurrentPage
 //
 // Honest caveat: qmltestrunner runs offscreen with no Wayland compositor, so its
-// relayout timing differs from the device — this may not force the exact snap, but
+// relayout timing differs from the device - this may not force the exact snap, but
 // it exercises the real stack, uses the fixed geometry-committing goToPage, and
 // (with the sustained checks) locks the navigation contract against regressions.
 Item {
@@ -65,7 +65,7 @@ Item {
             compare(c.status, Component.Ready, "main.qml compiles: " + c.errorString())
             win = c.createObject(root)
             verify(win !== null, "main.qml instantiated")
-            // Force LANDSCAPE — drives contentRotation=90 and the contentRoot
+            // Force LANDSCAPE - drives contentRotation=90 and the contentRoot
             // width/height swap (the failing host on device).
             win.orientationMode = "landscape"
             compare(win.contentRotation, 90, "shell is in the landscape (swapped) orientation")
@@ -118,7 +118,7 @@ Item {
                     "hubCurrentPage reports the page reached through the shell API")
         }
 
-        // The bug: after adding pages the view must LAND on the new page and STAY —
+        // The bug: after adding pages the view must LAND on the new page and STAY -
         // not snap back to page 0 a moment later.
         function test_add_page_lands_and_stays_landscape() {
             var s = store(), sw = swipe()
@@ -181,7 +181,7 @@ Item {
         }
 
         // A rotation must PRESERVE the current page (the reflow re-projects, it does
-        // not reset navigation) — the rotation analogue of the add-page bug.
+        // not reset navigation) - the rotation analogue of the add-page bug.
         function test_nav_survives_a_rotation() {
             var s = store(), sw = swipe()
             s.load("blank")

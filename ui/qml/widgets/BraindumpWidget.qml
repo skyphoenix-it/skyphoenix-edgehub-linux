@@ -3,14 +3,14 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 // ─────────────────────────────────────────────────────────────────────────
-// Braindump — timestamped one-liners you add fast and clear often.
+// Braindump - timestamped one-liners you add fast and clear often.
 //
 // NOT a second `notes`. Notes is a scratchpad: one body of text you edit and
 // keep. This is a capture queue: many short entries, each stamped with when it
 // arrived, newest first, meant to be emptied. The distinction is the whole
-// feature — the cost of capture has to be one tap and one line, or the thought
+// feature - the cost of capture has to be one tap and one line, or the thought
 // is gone before the UI is ready for it. So: the input is always present (both
-// modes), Enter commits, and nothing else is required — no title, no category,
+// modes), Enter commits, and nothing else is required - no title, no category,
 // no confirm step.
 //
 // Entries carry `at` (epoch ms) rather than a formatted string so the display
@@ -18,19 +18,19 @@ import QtQuick.Layouts
 // rewrite history.
 //
 // Persistence: the whole list, written only on add/remove/clear. The list is
-// pruned to `maxEntries` on add — an unbounded array here would grow config.toml
+// pruned to `maxEntries` on add - an unbounded array here would grow config.toml
 // forever, and this widget is explicitly the one you dump INTO without thinking.
 //
 // Sizing (W1 wave 2b): a queue earns MORE ROWS, not bigger ones.
-//   • wide  — the capture column BESIDE the queue. Stacking a bottom bar into a
+//   • wide  - the capture column BESIDE the queue. Stacking a bottom bar into a
 //             846x306 banner leaves ~3 rows; beside it, ~5, and the field is
 //             where the eye already is.
-//   • every other shape — the queue with the capture row beneath it, as before.
+//   • every other shape - the queue with the capture row beneath it, as before.
 // The capture row is theme.touchSecondary (60) at EVERY size; it used to be a
 // fixed 40px, under theme.touchTertiary (52), which is a real miss on the one
 // control the widget exists for. Entry rows carry NO tap target on a tile
 // (removal is expanded-only, deliberately), so they are a readout and may be
-// denser — density is only free where nothing is tappable.
+// denser - density is only free where nothing is tappable.
 // ─────────────────────────────────────────────────────────────────────────
 WidgetChrome {
     id: w
@@ -47,7 +47,7 @@ WidgetChrome {
         var _ = store ? store.revision : 0
         return (store && instanceId) ? JSON.parse(JSON.stringify(store.settingsFor(instanceId))) : ({})
     }
-    // NOTE (W1 wave 2b, measured — do not "fix" this without re-measuring).
+    // NOTE (W1 wave 2b, measured - do not "fix" this without re-measuring).
     // `cfg` is a fresh deep copy on every store.revision bump, and revision is
     // GLOBAL: it bumps on ANY widget's write, including the metric tiles' `hist`
     // sparkline write every ~2s. So `entries` below IS a new array roughly every
@@ -57,7 +57,7 @@ WidgetChrome {
     // 28 realised delegates alive and does not move contentY: a ListView fed a JS
     // array diffs it against the previous one and reuses the delegates when the
     // content is equal. Pinning identity here (deriving `entries` off a JSON
-    // signature) was tried and reverted — it swapped Qt's diff for an equivalent
+    // signature) was tried and reverted - it swapped Qt's diff for an equivalent
     // JS stringify and fixed nothing observable.
     // tst_braindump's "BraindumpIdentity" case pins the property that actually
     // matters, so a future change that DOES start rebuilding delegates fails there.
@@ -88,7 +88,7 @@ WidgetChrome {
         var t = (text || "").trim()
         if (!t.length) return
         // Newest first: the thing you just captured must be the thing you see,
-        // without scrolling — otherwise a full list silently swallows the entry.
+        // without scrolling - otherwise a full list silently swallows the entry.
         var a = [{ text: t, at: Date.now() }].concat(w.entries)
         if (a.length > w.maxEntries) a = a.slice(0, w.maxEntries)
         store.setSetting(instanceId, "entries", a)
@@ -102,7 +102,7 @@ WidgetChrome {
 
     // Today → just the time; older → weekday + time. An entry with no usable
     // stamp (hand-edited config, an older schema) renders blank rather than
-    // "Invalid Date" — the text is what matters, the stamp is a nicety.
+    // "Invalid Date" - the text is what matters, the stamp is a nicety.
     function stampOf(entry) {
         if (!entry || entry.at === undefined || !isFinite(entry.at)) return ""
         var d = new Date(entry.at)
@@ -114,7 +114,7 @@ WidgetChrome {
     }
 
     // `columns` flips for a wide box: the capture column sits BESIDE the queue
-    // rather than under it. Only a reshape — the ListView is not rebuilt.
+    // rather than under it. Only a reshape - the ListView is not rebuilt.
     GridLayout {
         anchors.fill: parent
         columns: w.horiz ? 2 : 1
@@ -138,7 +138,7 @@ WidgetChrome {
                 interactive: w.expanded
                 model: w.entries
                 // Newest-first, so an add showing you the new row at the top is
-                // correct — unlike TasksWidget, which restores scroll.
+                // correct - unlike TasksWidget, which restores scroll.
                 delegate: RowLayout {
                     id: entryRow
                     required property int index
@@ -188,7 +188,7 @@ WidgetChrome {
             }
         }
 
-        // ── Capture. Always present, at every size — the capture path IS the
+        // ── Capture. Always present, at every size - the capture path IS the
         // product, so it is the one thing that never gets traded for a row.
         ColumnLayout {
             Layout.fillWidth: true

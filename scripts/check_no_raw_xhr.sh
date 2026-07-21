@@ -8,7 +8,7 @@
 # moment a new widget constructs its own XHR.
 #
 # There is no exemption list: E8 migrated the last holdouts (Weather, Calendar,
-# the Manager's config dialog) onto the gate. Do not add one — an exception here
+# the Manager's config dialog) onto the gate. Do not add one - an exception here
 # is a hole in the claim, not a lint detail.
 # ─────────────────────────────────────────────────────────────────────────────
 set -u
@@ -26,7 +26,7 @@ done < <(grep -rlE 'new[[:space:]]+XMLHttpRequest' "$ROOT/ui" "$ROOT/manager" 2>
 
 # The gate must still own exactly one construction site.
 if ! grep -qE 'new[[:space:]]+XMLHttpRequest' "$ROOT/$GATE"; then
-    echo "  ✗ $GATE no longer constructs the XHR — the gate is the one allowed site"
+    echo "  ✗ $GATE no longer constructs the XHR - the gate is the one allowed site"
     violations=$((violations + 1))
 fi
 

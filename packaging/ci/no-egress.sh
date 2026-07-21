@@ -12,17 +12,17 @@
 #   no-egress.sh weather api.open-meteo.com    -> asserts egress ONLY to that host, and that it happened
 #   no-egress.sh url:<URL> [hosts...]          -> negative control / arbitrary widget
 #
-# HOW IT OBSERVES — two independent channels, because either alone has a hole:
+# HOW IT OBSERVES - two independent channels, because either alone has a hole:
 #
-#   1. strace -f -e trace=connect  — ground truth. Records every connect(2) the
+#   1. strace -f -e trace=connect  - ground truth. Records every connect(2) the
 #      process tree makes, whether or not it resolves, routes, or completes.
 #      This is the channel that catches egress to a HARD-CODED IP, which never
 #      asks DNS and so would leave no trace in channel 2.
-#   2. A loopback DNS + TCP sink (egress_sink.py) — attribution. connect(2) to
+#   2. A loopback DNS + TCP sink (egress_sink.py) - attribution. connect(2) to
 #      127.0.0.1 does not say WHICH host was wanted; the DNS QNAME does.
 #
 # WHY A NAMESPACE AND A SINK, not just `unshare -n`: under a bare `unshare -n`
-# a phone-home fails at DNS resolution, before connect(2) — so there is nothing
+# a phone-home fails at DNS resolution, before connect(2) - so there is nothing
 # to observe and the test passes for the wrong reason. The namespace is the
 # containment (nothing can truly leave); the sink is what makes the attempt
 # observable. Neither is the assertion on its own.
@@ -46,7 +46,7 @@ if [ "${1:-}" = "__inner" ]; then
 
     # Point the resolver at the sink. Both files matter: resolv.conf alone is not
     # enough because glibc consults nsswitch.conf first, and a host whose
-    # `hosts:` line routes to systemd-resolved would answer over a UNIX socket —
+    # `hosts:` line routes to systemd-resolved would answer over a UNIX socket -
     # which a network namespace does NOT block. That would resolve real public
     # IPs, bypass the sink, and lose the hostname attribution entirely.
     printf 'nameserver 127.0.0.1\noptions timeout:1 attempts:1\n' > "$RUNDIR/resolv.conf"
@@ -82,13 +82,13 @@ if [ "${1:-}" = "__inner" ]; then
     echo "--- running hub for ${SECS}s under strace"
     # SIGKILL, not TERM: the hub's graceful shutdown can hang on sensor/socket
     # teardown (see tests/runtime/README.md). Nothing here depends on a clean
-    # exit — the evidence is already on disk.
+    # exit - the evidence is already on disk.
     timeout -s KILL "$SECS" \
         "$STRACE" -f -qq -e trace=connect -o "$LOGS/strace.log" \
         "$HUB" > "$RUNDIR/hub.out" 2>&1
     # 137 = timeout had to SIGKILL it, i.e. it was ALIVE for the whole window.
     # Recorded because a hub that died on launch also emits zero egress, and the
-    # zero-egress assertion cannot tell "sent nothing" from "never ran" — that is
+    # zero-egress assertion cannot tell "sent nothing" from "never ran" - that is
     # the vacuous green this job exists to prevent.
     echo "$?" > "$RUNDIR/rc"
     kill -9 "$SINK" 2>/dev/null
@@ -125,8 +125,8 @@ STRACE="${STRACE:-$(command -v strace 2>/dev/null)}"
 if [ -z "$STRACE" ] || [ ! -x "$STRACE" ]; then
     # Refusing to run is the only honest option: without connect(2) tracing the
     # hard-coded-IP case is unobservable, and a silently weaker attestation is
-    # worse than none — it would still print PASS.
-    echo "FAIL: strace not found — it is the ground-truth channel, not an optional extra"; exit 1
+    # worse than none - it would still print PASS.
+    echo "FAIL: strace not found - it is the ground-truth channel, not an optional extra"; exit 1
 fi
 
 RUNDIR="$(mktemp -d)"
@@ -178,7 +178,7 @@ RC=0
 HUB_RC="$(cat "$RUNDIR/rc" 2>/dev/null || echo "?")"
 if [ "$HUB_RC" != "137" ]; then
     echo "✗ NOT LIVE: the hub exited early (rc=$HUB_RC) instead of running for ${SECS}s."
-    echo "  Every assertion below would be vacuous — a dead hub sends nothing."
+    echo "  Every assertion below would be vacuous - a dead hub sends nothing."
     echo "  ── hub output ──"
     sed 's/^/    /' "$RUNDIR/hub.out" 2>/dev/null | head -30
     echo "NO-EGRESS ATTESTATION FAIL"
@@ -189,7 +189,7 @@ echo "✓ liveness: hub ran the full ${SECS}s (SIGKILLed by the timer, rc=137)"
 # A hard-coded IP is a violation in EVERY mode: an allowlist is expressed in
 # hostnames, so an address the sink never named cannot have been allowlisted.
 if [ -n "$NONLOOP" ]; then
-    echo "✗ EGRESS TO A NON-LOOPBACK ADDRESS — bypassed DNS entirely (hard-coded IP?):"
+    echo "✗ EGRESS TO A NON-LOOPBACK ADDRESS - bypassed DNS entirely (hard-coded IP?):"
     echo "$NONLOOP" | sed 's/^/    /'
     RC=1
 fi
@@ -209,11 +209,11 @@ if [ ${#EXPECTED_HOSTS[@]} -eq 0 ]; then
 else
     # ── allowlist assertion ──
     # The run must actually have reached the network. Without this, a hub that
-    # failed to start would produce an empty log and "pass" the allowlist — the
+    # failed to start would produce an empty log and "pass" the allowlist - the
     # exact vacuous green this whole job exists to prevent.
     if [ -z "$HOSTS" ]; then
         echo "✗ VACUOUS: expected egress to ${EXPECTED_HOSTS[*]} but the hub made NO request at all."
-        echo "  (the widget did not fire — this run proves nothing; check hub.out)"
+        echo "  (the widget did not fire - this run proves nothing; check hub.out)"
         RC=1
     fi
     for h in $HOSTS; do

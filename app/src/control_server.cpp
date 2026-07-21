@@ -27,7 +27,7 @@ bool ControlServer::start() {
 
     // Clear any stale node left by a previous crashed instance. Now that the path
     // is per-user-session rather than one shared /tmp name, this can only ever
-    // unlink OUR OWN leftovers — it used to unlink a live hub's socket.
+    // unlink OUR OWN leftovers - it used to unlink a live hub's socket.
     QLocalServer::removeServer(path);
 
     m_server = new QLocalServer(this);
@@ -141,7 +141,7 @@ void ControlServer::handleLine(QLocalSocket* sock, const QByteArray& line) {
         }
         // Let the owner apply the state and report whether it stuck. The signal is
         // delivered synchronously (same-thread direct connection), so `ok` holds
-        // the real result once emit returns — the ack must reflect it, otherwise
+        // the real result once emit returns - the ack must reflect it, otherwise
         // the Manager treats a failed persist as success and silently diverges.
         bool ok = false;
         emit uiStateReceived(state, &ok);

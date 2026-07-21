@@ -10,7 +10,7 @@ import QtTest
 // COVERS: fn:Manager._val, fn:Manager._lab, fn:Manager.catColor
 // COVERS: fn:Manager.refreshLicense, fn:Manager.onLicenseChanged, fn:Manager.reVerify
 //
-// manager/qml/Manager.qml (hosted with a STUBBED `backend`) —
+// manager/qml/Manager.qml (hosted with a STUBBED `backend`) -
 //   • the 5-tab StackLayout (Layout/Appearance/Images/Display/About) switches
 //   • pageTiles(): current-page tiles, revision-reactive
 //   • refreshImages(): rebuilds imagesModel from backend.listImages()
@@ -86,7 +86,7 @@ Item {
     // Walk every node under `node` exactly ONCE. The `seen` set is a correctness
     // requirement, not an optimisation: a node is reachable through BOTH
     // `children` and `data`, so without memoing every node's subtree is re-walked
-    // once per path — exponential in depth. Unmemoised, the six findPred() calls
+    // once per path - exponential in depth. Unmemoised, the six findPred() calls
     // in initTestCase below drove this file from 7 MB to 20 GB in 25 seconds
     // (2026-07-19), the same failure that caused a system-wide OOM. Keep the set.
     function eachItem(node, fn) { _walkSeen(node, fn, new Set()) }
@@ -271,7 +271,7 @@ Item {
         }
 
         // The cancel path: arming the dialog then DISMISSING it (No/Cancel) must
-        // NOT run onConfirm — nothing is deleted, the wallpaper is untouched.
+        // NOT run onConfirm - nothing is deleted, the wallpaper is untouched.
         function test_confirmDeleteImage_cancel_deletes_nothing() {
             var name = "safe.png"
             var full = backend.imageUrl(name)
@@ -300,7 +300,7 @@ Item {
             compare(_images.count, 2, "refreshImages rebuilt the model after import")
         }
 
-        // ── inline MButton (Stop hub — the hub-CONNECTED variant) ─────────────
+        // ── inline MButton (Stop hub - the hub-CONNECTED variant) ─────────────
         function test_stop_hub_button_when_connected() {
             backend.hubConnected = true                    // hub live → control becomes "Stop hub"
             var btn = findButton("Stop hub")
@@ -371,7 +371,7 @@ Item {
             verify(btn.enabled, "enabled while not starting")
             // Manager runs in its own (offscreen, non-exposed) window, so synthetic
             // mouse events don't deliver; emit the button's `clicked` signal to run
-            // its real onClicked handler — the behaviour under test.
+            // its real onClicked handler - the behaviour under test.
             btn.clicked()
             compare(backend.startHubCalled, true, "click invoked backend.startHub()")
             compare(win.hubStarting, true, "entered the 'starting…' state")
@@ -525,7 +525,7 @@ Item {
             }
         }
 
-        // scopeDetail is the single source of each scope's meaning — the pills and
+        // scopeDetail is the single source of each scope's meaning - the pills and
         // the config dialog both read it, so a label with no rule (or a typo'd one)
         // must be an empty string, never a guess.
         function test_scopeDetail_defines_each_scope_and_rejects_unknown() {
@@ -541,7 +541,7 @@ Item {
         // ── commitRename: a typed page name is never silently lost (audit F1) ──
         // The field commits on Enter only, and nothing else in the pane takes focus,
         // so switching page mid-edit used to overwrite the field with the NEW page's
-        // name — destroying the rename with no trace. The commit must land on the
+        // name - destroying the rename with no trace. The commit must land on the
         // page the text belonged to, not the page now selected.
         function test_commitRename_saves_the_edit_when_the_page_switches() {
             _store.addPage("Second")
@@ -573,7 +573,7 @@ Item {
         // With no screens the tab used to show "choose which screen…" followed by
         // blank space, so Orientation read as the answer to it.
         function test_display_shows_an_empty_state_when_no_screens() {
-            // Item.visible is recursive — a StackLayout hides its non-current
+            // Item.visible is recursive - a StackLayout hides its non-current
             // children, so the Display tab must actually be the shown one before
             // `visible` says anything about this row.
             _nav.currentIndex = 3
@@ -728,7 +728,7 @@ Item {
         }
 
         // ── C: the automatic update-check toggle is now REACHABLE in the Manager
-        // (it was buried in the hub's on-panel settings — "where is autoupdate?").
+        // (it was buried in the hub's on-panel settings - "where is autoupdate?").
         function test_update_check_toggle_persists_updateCheck() {
             _nav.currentIndex = 3   // Display & Startup
             var sw = findSwitch("Check for updates automatically")
@@ -741,7 +741,7 @@ Item {
         }
 
         // The full-control functions the Manager now exposes are present (this also
-        // backs the coverage claims — each leaf token appears in an assertion).
+        // backs the coverage claims - each leaf token appears in an assertion).
         function test_manager_control_functions_are_exposed() {
             verify(typeof win.applyPresetScreen === "function", "applyPresetScreen present")
             verify(typeof win.confirmResetLayout === "function", "confirmResetLayout present")
@@ -837,7 +837,7 @@ Item {
         //
         // Look was a plain RowLayout that pinned the preview beside the controls at a
         // hardcoded width in BOTH orientations, while Screens flips to a 1-column
-        // stack in landscape. Same component, same panel, two different layouts —
+        // stack in landscape. Same component, same panel, two different layouts -
         // which is half of "the Look configsection has a different layout than
         // Screens". Asserting the RULE (beside in portrait, above in landscape) rather
         // than pixel values, so a re-tuned width does not fail this.
@@ -845,7 +845,7 @@ Item {
         // The width assertion is not decoration: `Layout.maximumWidth: -1` looks like
         // the documented "reset" it is for *preferred* sizes, but maximumWidth takes
         // it literally and collapses the pane to nothing. That is invisible to every
-        // other test here — the tab still loads, every control still answers.
+        // other test here - the tab still loads, every control still answers.
         function test_look_tab_lays_out_like_the_screens_tab() {
             _nav.currentIndex = 1
             var pane = findPred(win, function (x) { return x && x.objectName === "lookPreviewPane" })
@@ -854,7 +854,7 @@ Item {
             verify(ctrls, "the Look control pane is present")
 
             // A GridLayout re-arranges on the polish phase, not on the property
-            // write, so every geometry read here has to be a tryVerify — a plain
+            // write, so every geometry read here has to be a tryVerify - a plain
             // verify() straight after setAppearance reads the PREVIOUS arrangement
             // and passes or fails for the wrong reason.
             _store.setAppearance("orientation", "portrait")
@@ -892,7 +892,7 @@ Item {
         }
 
         // ── A: the "can't move the glass slider" bug. The handle must track the
-        // STABLE theme.glassOpacity, not store.revision — the Appearance preview's
+        // STABLE theme.glassOpacity, not store.revision - the Appearance preview's
         // cpu/gpu/ram widgets bump store.revision every ~2s, and a revision-bound
         // value snapped the handle back mid-drag. This test BITES on the old code
         // (the old slider tracked the store, so it would not follow theme.glassOpacity).
@@ -908,8 +908,8 @@ Item {
             verify(sl, "found the glass slider")
             // The slider MUST have a real hit area. A custom handle/background without
             // implicit sizes collapses the Slider to ~0 height, so it can't be pressed
-            // or dragged — the real "stuck at 55%" bug. This guards that regression
-            // (offscreen, so a real drag can't be delivered here — height is the proxy).
+            // or dragged - the real "stuck at 55%" bug. This guards that regression
+            // (offscreen, so a real drag can't be delivered here - height is the proxy).
             verify(sl.height >= 16, "the glass slider has a pressable height (" + sl.height + ")")
             _theme.glassOpacity = 0.77
             compare(sl.value, 0.77, "the glass slider tracks theme.glassOpacity (the fix)")
@@ -1033,7 +1033,7 @@ Item {
             _nav.currentIndex = 0
         }
 
-        // The live preview must PAUSE while the surrounding controls scroll — an
+        // The live preview must PAUSE while the surrounding controls scroll - an
         // animated preview repainting every scroll frame is the Manager scroll lag.
         function test_preview_pauses_during_scroll() {
             _nav.currentIndex = 0                      // Layout tab (its clone is visible)

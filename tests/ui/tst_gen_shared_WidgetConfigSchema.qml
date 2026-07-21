@@ -18,7 +18,7 @@ import "../../ui/qml/widgets" as W
 // be asserted; ConfigField instances are rendered to exercise the real stepper
 // clamp + touch-target sizes.
 //
-// NOTE: several assertions here are EXPECTED to fail — they pin real bugs called
+// NOTE: several assertions here are EXPECTED to fail - they pin real bugs called
 // out in the audit (eod hour fields have no min/max clamp; countdown accepts
 // impossible dates; catalog.defaults() aliases; stale weather/sensors blurbs).
 // Those failures are the point; do not "fix" the test to make them green.
@@ -286,13 +286,13 @@ Item {
             compare(missing, [], "every widget gets accent + cardBackdrop fields")
         }
 
-        // A card backdrop must be a style that actually EXISTS — offering one that
+        // A card backdrop must be a style that actually EXISTS - offering one that
         // doesn't renders an empty card. It is a deliberate SUBSET, not an equality:
         // the full-screen motifs (peaks/loops/ribbons) are composed for a whole
         // panel and read as noise inside a small card, so they are not offered here.
         //
         // This used to compare the schema against a HARD-CODED literal list while
-        // claiming it matched "the styles BackdropLayer implements" — so it passed
+        // claiming it matched "the styles BackdropLayer implements" - so it passed
         // no matter how far the two drifted, which is exactly what happened. It now
         // checks against the real catalog.
         function test_cardBackdrop_options_all_exist_as_real_styles() {
@@ -488,7 +488,7 @@ Item {
             compare(w.validHours, true, "8→16 is a valid window")
         }
 
-        // The device editor clamps hours to 0..23 / 1..24 with a ≥1h span — the
+        // The device editor clamps hours to 0..23 / 1..24 with a ≥1h span - the
         // behaviour the config-panel stepper SHOULD match.
         function test_device_editor_clamps_hours() {
             var w = hEod.item

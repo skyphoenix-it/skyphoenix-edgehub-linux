@@ -13,7 +13,7 @@
 | 2 | **Datenschutzerklärung** (GDPR/DSGVO Art. 13) | `datenschutz.md` | Required whenever you process personal data (checkout, analytics, server logs). |
 | 3 | **AGB / Terms + EULA** | `agb.md` | Terms of sale + software licence for the paid build. Optional but strongly advised. |
 | 4 | **Widerrufsbelehrung** (right of withdrawal) | `widerruf.md` | EU consumer right for digital goods; include the **explicit waiver** so buyers get instant access and forfeit withdrawal. |
-| 5 | **Cookie/consent banner** | — | Only if you set non-essential cookies or load third-party scripts. The current static site sets none; keep it that way and you may not need a banner (still disclose essential/checkout cookies in the privacy policy). |
+| 5 | **Cookie/consent banner** | - | Only if you set non-essential cookies or load third-party scripts. The current static site sets none; keep it that way and you may not need a banner (still disclose essential/checkout cookies in the privacy policy). |
 | 6 | **VAT handling** | see `../LICENSING_STRATEGY.md` §4 | Use a **Merchant of Record** (Paddle / Lemon Squeezy / Gumroad) so VAT is collected/remitted for you and MoR appears on invoices. |
 
 ## The single most important shortcut
@@ -30,7 +30,7 @@ The marketing site already links **Impressum · Datenschutz · AGB · Widerruf**
 footer (currently `#` anchors). Wire each to a real page rendering the finished text.
 On a static host, that's four small HTML pages; the content comes from these files.
 
-## Before launch — quick checklist
+## Before launch - quick checklist
 
 - [ ] Impressum filled + reachable from every page (footer link) ✅ links exist
 - [ ] Datenschutzerklärung filled; matches what you actually collect

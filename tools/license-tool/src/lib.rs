@@ -1,5 +1,5 @@
 //! Shared minting logic for the licence issuer tooling. NOT part of the shipped
-//! app — this is the SIGNING half, used by the `xeneon-license` CLI and the
+//! app - this is the SIGNING half, used by the `xeneon-license` CLI and the
 //! purchase webhook. Reusing one implementation is the whole point: the webhook
 //! that turns a sale into a key produces byte-identical output to a hand-minted
 //! one, and to what `core/src/license.rs` verifies.
@@ -38,7 +38,7 @@ pub fn json_escape(s: &str) -> String {
 }
 
 /// Build the licence payload JSON. `expires` is `"null"` (perpetual) or a Unix
-/// timestamp as a decimal string — the caller has already validated it.
+/// timestamp as a decimal string - the caller has already validated it.
 pub fn build_payload(tier: &str, expires: &str, issued_to: &str, id: &str) -> String {
     format!(
         r#"{{"tier":"{}","expires":{},"issued_to":"{}","id":"{}"}}"#,
@@ -50,7 +50,7 @@ pub fn build_payload(tier: &str, expires: &str, issued_to: &str, id: &str) -> St
 }
 
 /// Sign a payload into a full `XE1.<b64(payload)>.<b64(sig)>` key. The signature
-/// covers the ENCODED form — the exact bytes `license.rs` reconstructs and
+/// covers the ENCODED form - the exact bytes `license.rs` reconstructs and
 /// verifies. Never sign the raw JSON.
 pub fn sign_payload(seed: &[u8; 32], payload: &str) -> String {
     let sk = SigningKey::from_bytes(seed);
@@ -59,7 +59,7 @@ pub fn sign_payload(seed: &[u8; 32], payload: &str) -> String {
     format!("{}.{}", signed, b64url_encode(&sig.to_bytes()))
 }
 
-/// Mint a perpetual Pro key for a buyer — the one call the webhook needs.
+/// Mint a perpetual Pro key for a buyer - the one call the webhook needs.
 pub fn mint_pro(seed: &[u8; 32], issued_to: &str, id: &str) -> String {
     sign_payload(seed, &build_payload("pro", "null", issued_to, id))
 }
@@ -73,7 +73,7 @@ mod tests {
         // ed25519 is deterministic (RFC 8032): the same seed + message always
         // yields the same signature. This exact seed (bytes 0..31) + payload was
         // cross-checked against the `xeneon-license` CLI, which in turn shares
-        // this code — so a drift here that changed the key would fail both this
+        // this code - so a drift here that changed the key would fail both this
         // and the app's verifier. The reference below is that CLI's output.
         let seed: [u8; 32] = std::array::from_fn(|i| i as u8);
         let key = mint_pro(&seed, "Ada", "XE-1");

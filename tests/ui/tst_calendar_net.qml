@@ -4,16 +4,16 @@ import "fixtures.js" as Fx
 import "../../ui/qml/widgets" as W
 
 // ─────────────────────────────────────────────────────────────────────────
-// tst_calendar_net — network path of ui/qml/widgets/CalendarWidget.qml, driven
+// tst_calendar_net - network path of ui/qml/widgets/CalendarWidget.qml, driven
 // offline through the `xhrFactory` seam (handed to NetHub, which the widget
 // routes its fetch through). A FakeXHR (fixtures.js) captures the request URL
-// and resolves ONLY on an explicit test call — no wall-clock waits, no real
+// and resolves ONLY on an explicit test call - no wall-clock waits, no real
 // sockets.
 //
 // Covers: request URL (pass-through + webcal:// → https:// rewrite), empty-URL
 // short-circuit, every fixture → widget state mapping (valid ICS → events
 // parsed, non-200 → fetch error, empty calendar → "No upcoming events",
-// un-readable body → read error, timeout → timed out), and — since E8 — that
+// un-readable body → read error, timeout → timed out), and - since E8 - that
 // the egress gate's kill switch and host allowlist actually govern the fetch.
 // ─────────────────────────────────────────────────────────────────────────
 Item {
@@ -155,7 +155,7 @@ Item {
     // ── egress gate (E8) ─────────────────────────────────────────────────
     // Calendar used to build its own XHR, which put the ICS subscription fetch
     // outside the offline switch and the allowlist entirely. Now that it routes
-    // through NetHub it must be refusable centrally — that is the whole point of
+    // through NetHub it must be refusable centrally - that is the whole point of
     // the migration, so assert it rather than trusting the call site.
     TestCase {
         name: "CalendarNetGate"
@@ -211,7 +211,7 @@ Item {
 
         // webcal:// is rewritten to https:// BEFORE the gate sees it. If it were
         // not, NetHub would classify the unknown scheme as a local file and wave
-        // it through — a private calendar fetch escaping the kill switch.
+        // it through - a private calendar fetch escaping the kill switch.
         function test_webcal_is_gated_on_its_real_https_host() {
             var w = h.item
             gate.offline = true

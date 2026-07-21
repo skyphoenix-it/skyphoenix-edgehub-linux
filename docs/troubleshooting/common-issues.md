@@ -1,6 +1,6 @@
 # Troubleshooting Guide
 
-**Work in progress** — This guide will be expanded as common issues are identified during development and testing.
+**Work in progress** - This guide will be expanded as common issues are identified during development and testing.
 
 ---
 
@@ -88,7 +88,7 @@ passes them.
 
 **Fixes:**
 1. Enable safe mode to disable all widgets, then re-enable one by one.
-2. Check for widgets with graph/chart history — reduce retention.
+2. Check for widgets with graph/chart history - reduce retention.
 3. Restart application: memory leak may be in a specific widget.
 4. Report the issue with memory profiling data.
 
@@ -154,7 +154,7 @@ If the above steps don't resolve your issue:
 
 1. Capture terminal output from `RUST_LOG=debug xeneon-edge-hub --diagnostics` and
    remove any private paths or configured feed URLs before sharing it.
-2. Check existing [GitHub Issues](https://github.com/skyphoenix-it/XeneonEdge_Linux/issues).
+2. Check existing [GitHub Issues](https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/issues).
 3. Open a new issue with:
    - Distribution and version
    - Desktop environment and session type

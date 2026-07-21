@@ -13,7 +13,7 @@ DNS is what attributes it to a HOSTNAME rather than an anonymous 127.0.0.1.
 
   * DNS (udp/53) answers every A query with 127.0.0.1 and logs the QNAME.
     The QNAME *is* the host the hub wanted to reach.
-  * TCP (80/443) accepts, logs, and closes. TLS is never completed — proving
+  * TCP (80/443) accepts, logs, and closes. TLS is never completed - proving
     the attempt is the goal, not reading the payload, so no cert is needed.
 
 Both logs are append-only, one entry per line, and are the artifact a customer

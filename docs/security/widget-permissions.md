@@ -1,8 +1,8 @@
 # Widget Permissions Model
 
-**Version:** 0.1.0-draft  
-**Status:** Phase 0 — Discovery (Design Only; Implementation in Phase 7)  
-**Last Updated:** 2026-07-11  
+**Version:** 0.1.0-draft
+**Status:** Phase 0 - Discovery (Design Only; Implementation in Phase 7)
+**Last Updated:** 2026-07-11
 
 ---
 
@@ -16,13 +16,13 @@ The widget permissions model defines what capabilities a widget may request and 
 
 ## Design Principles
 
-1. **Deny by Default** — A widget has zero capabilities unless explicitly granted.
-2. **User Consent** — Permissions are requested in the widget installation UI; the user must approve.
-3. **Least Privilege** — Widgets should request only the permissions they need.
-4. **Explainability** — Each permission includes a human-readable description of why it is needed.
-5. **Revocability** — Users can revoke any permission at any time; the widget must handle this gracefully.
-6. **Auditability** — Permission usage is logged and visible in widget details.
-7. **No Silent Escalation** — A widget cannot gain new permissions without user re-approval.
+1. **Deny by Default** - A widget has zero capabilities unless explicitly granted.
+2. **User Consent** - Permissions are requested in the widget installation UI; the user must approve.
+3. **Least Privilege** - Widgets should request only the permissions they need.
+4. **Explainability** - Each permission includes a human-readable description of why it is needed.
+5. **Revocability** - Users can revoke any permission at any time; the widget must handle this gracefully.
+6. **Auditability** - Permission usage is logged and visible in widget details.
+7. **No Silent Escalation** - A widget cannot gain new permissions without user re-approval.
 
 ---
 
@@ -155,9 +155,9 @@ The widget permissions model defines what capabilities a widget may request and 
 When a permission is revoked:
 
 1. Widget receives a `permission_revoked(permission)` signal.
-2. Widget must handle this gracefully — show "Permission required" placeholder.
+2. Widget must handle this gracefully - show "Permission required" placeholder.
 3. Subsequent calls to that capability return `Error::PermissionDenied`.
-4. Widget does NOT crash or enter an error state — it degrades.
+4. Widget does NOT crash or enter an error state - it degrades.
 5. User can re-grant permission at any time.
 
 ---

@@ -1,6 +1,6 @@
 name: Distro Packages
 
-# Builds against each distro's OWN Qt6 packages — deliberately NOT the
+# Builds against each distro's OWN Qt6 packages - deliberately NOT the
 # jurplel/install-qt-action Qt used by ci.yml. ci.yml answers "does the code
 # compile against upstream Qt 6.7"; this answers "can a Fedora/Ubuntu user
 # actually install and run it", which is a different question and the one that
@@ -8,8 +8,8 @@ name: Distro Packages
 #
 # GitHub runners are Ubuntu-only, so each distro runs in a container.
 # Every job is two stages on purpose:
-#   build   — install -devel packages, compile, cpack
-#   install — a CLEAN container that installs ONLY the artifact
+#   build   - install -devel packages, compile, cpack
+#   install - a CLEAN container that installs ONLY the artifact
 # The clean stage is the point. Installing in the build container proves nothing:
 # the -devel packages already dragged in the whole Qt runtime, so a package with
 # missing Requires/Depends would still "work" there.
@@ -28,7 +28,7 @@ on:
       - '.github/workflows/distro.yml'
   schedule:
     - cron: '17 5 * * 1'   # weekly drift check (Mon 05:17 UTC)
-  # Before tagging a release: run this manually (workflow_dispatch) — a release
+  # Before tagging a release: run this manually (workflow_dispatch) - a release
   # must never ship an unproven matrix, and scripts/release.sh's checklist says so.
   workflow_dispatch:
 
@@ -99,7 +99,7 @@ jobs:
           path: pkg
 
       - name: Install the RPM with no Qt preinstalled
-        # Resolves Requires from the repos only — this is what proves the
+        # Resolves Requires from the repos only - this is what proves the
         # declared dependency list is complete and installable.
         run: dnf -y install ./pkg/*.rpm
 
@@ -124,17 +124,17 @@ jobs:
       - uses: actions/checkout@v5
         with:
           # NOT optional, and not a caching nicety. build-appimage.sh names the
-          # artifact — and stamps the binary's appVersion() — from `git describe
+          # artifact - and stamps the binary's appVersion() - from `git describe
           # --tags`. checkout's default fetch-depth: 1 fetches NO tags, and
           # `--always` then degrades to a bare commit sha rather than failing.
           # UpdateChecker.qml cannot SemVer-order a sha against a release tag, so
-          # it reports "no comparable version" and never surfaces an update — in
+          # it reports "no comparable version" and never surfaces an update - in
           # the one install kind that is actually pointed at the .zsync path.
           # Guarded by scripts/check_appimage_update_contract.sh.
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
 
-      # Deliberately NOT 24.04's apt Qt (6.4.2 — too old for QtQuick.Effects).
+      # Deliberately NOT 24.04's apt Qt (6.4.2 - too old for QtQuick.Effects).
       # Upstream Qt 6.7 on 24.04's old glibc is exactly what an AppImage wants:
       # a modern Qt with the lowest practical glibc floor. Building on a newer
       # distro would raise that floor and defeat the format.
@@ -178,7 +178,7 @@ jobs:
     runs-on: ubuntu-24.04
     # The whole promise of an AppImage is running where nothing is installed, so
     # smoking it on the build runner (which has a full Qt) would prove nothing at
-    # all. This container has no Qt and no Rust — only the graphics/font stack
+    # all. This container has no Qt and no Rust - only the graphics/font stack
     # that linuxdeploy intentionally excludes and every real desktop provides.
     container: ubuntu:24.04
     env:
@@ -202,18 +202,18 @@ jobs:
       - name: Assert the container really has no Qt
         run: |
           if ls /usr/lib/*/libQt6Core.so* >/dev/null 2>&1; then
-            echo "FAIL: this container has a system Qt — the smoke would be meaningless"; exit 1
+            echo "FAIL: this container has a system Qt - the smoke would be meaningless"; exit 1
           fi
           echo "confirmed: no system Qt present"
 
       - name: Smoke the AppImage (offscreen)
         run: bash packaging/ci/smoke-appimage.sh pkg/*.AppImage "$(pwd)"
 
-      - name: Negative control — smoke must FAIL if a QML module is missing
+      - name: Negative control - smoke must FAIL if a QML module is missing
         # A smoke test that cannot fail proves nothing. Deleting QtQuick.Effects
         # still yields a clean 10s launch (main.qml never imports it; it is
         # reached through a lazily-loaded widget), so this also proves the module
-        # check — not just the launch — is what catches a mis-bundled AppImage.
+        # check - not just the launch - is what catches a mis-bundled AppImage.
         run: |
           cd /tmp
           cp "$GITHUB_WORKSPACE"/pkg/*.AppImage ./neg.AppImage
@@ -228,7 +228,7 @@ jobs:
           export SRC_ROOT="$GITHUB_WORKSPACE"
           export LC_ALL=C.UTF-8
           if bash "$GITHUB_WORKSPACE/packaging/ci/smoke.sh" > /tmp/neg.log 2>&1; then
-            echo "FAIL: smoke PASSED with QtQuick.Effects deleted — the check is not working"
+            echo "FAIL: smoke PASSED with QtQuick.Effects deleted - the check is not working"
             cat /tmp/neg.log; exit 1
           fi
           grep -q 'MISSING: QtQuick.Effects' /tmp/neg.log || {

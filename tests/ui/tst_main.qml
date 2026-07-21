@@ -5,7 +5,7 @@ import QtTest
 //         fn:main.onDisplayDisconnectedChanged,
 //         fn:main.onDisplaySelectionRequestedChanged
 //
-// ui/qml/main.qml — bindStackItem (binds/rebinds cleanly, skips null +
+// ui/qml/main.qml - bindStackItem (binds/rebinds cleanly, skips null +
 // items without the shell properties) and the readonly `contentRotation`
 // mapping for every orientation mode (portrait 0 / landscape 90 /
 // inverted-portrait 180 / inverted-landscape 270 / auto-follows-sensor), plus
@@ -16,7 +16,7 @@ import QtTest
 // window resolves them through the context scope (exactly as the widget harness
 // feeds `theme`/`store` to widgets), then instantiate the REAL main.qml. Its
 // initialItem is a qrc: URL that isn't registered under qmltestrunner, so the
-// StackView starts empty — irrelevant here: we drive bindStackItem with our own
+// StackView starts empty - irrelevant here: we drive bindStackItem with our own
 // stub item and assert the rotation binding directly (props, never pixels).
 Item {
     id: root
@@ -113,14 +113,14 @@ Item {
         // W5 finding 6: bindStackItem resolves the Dashboard's egress gate for
         // a Diagnostics page. With no dashboard on the stack (--diagnostics
         // start; here the StackView is empty) the page's netHub must STAY null
-        // — the Network tab then shows its honest "not available" state.
+        // - the Network tab then shows its honest "not available" state.
         function test_bindStackItem_leaves_netHub_null_without_a_dashboard() {
             // The stack must ACTUALLY be empty for this to mean anything. It used
-            // to be empty by accident — main.qml's initialItem was a qrc: URL that
+            // to be empty by accident - main.qml's initialItem was a qrc: URL that
             // could not resolve under qmltestrunner, so no Dashboard ever loaded
             // and this assertion passed without exercising the branch. Now that
             // the Dashboard does load, empty the stack deliberately.
-            // Single axis (`children` only) — no visited set needed, and
+            // Single axis (`children` only) - no visited set needed, and
             // scripts/check_tree_walks.py only flags multi-axis descents.
             function findStack(n) {
                 if (!n) return null
@@ -205,7 +205,7 @@ Item {
         // The rotating container (main.qml contentRoot) swaps width/height
         // (portrait↔landscape aspect) only for the 90°/270° quarter turns. We
         // tree-walk the window for the REAL contentRoot (the object exposing
-        // `swapped`) and read its actual `swapped`/`width`/`height` — so a broken
+        // `swapped`) and read its actual `swapped`/`width`/`height` - so a broken
         // `swapped:` predicate OR a broken width/height swap fails here.
         function test_content_root_swaps_aspect_at_quarter_turns() {
             var cr = findPred(win.contentItem, function (n) {
@@ -214,28 +214,28 @@ Item {
             // Distinct window dimensions so an actual width/height swap is observable.
             win.width = 300; win.height = 500
 
-            // 0° portrait — upright, keeps the window aspect (not swapped).
+            // 0° portrait - upright, keeps the window aspect (not swapped).
             win.orientationMode = "portrait"
             compare(win.contentRotation, 0)
             compare(cr.swapped, false, "0° is not swapped")
             compare(cr.width, win.width, "0°: contentRoot width tracks the window width")
             compare(cr.height, win.height, "0°: contentRoot height tracks the window height")
 
-            // 90° landscape — swapped: width takes the window HEIGHT and vice-versa.
+            // 90° landscape - swapped: width takes the window HEIGHT and vice-versa.
             win.orientationMode = "landscape"
             compare(win.contentRotation, 90)
             compare(cr.swapped, true, "90° is a swapped (landscape) orientation")
             compare(cr.width, win.height, "90°: contentRoot width takes the window HEIGHT (aspect swapped)")
             compare(cr.height, win.width, "90°: contentRoot height takes the window WIDTH")
 
-            // 180° inverted-portrait — back to the portrait aspect (not swapped).
+            // 180° inverted-portrait - back to the portrait aspect (not swapped).
             win.orientationMode = "inverted-portrait"
             compare(win.contentRotation, 180)
             compare(cr.swapped, false, "180° keeps the portrait aspect (not swapped)")
             compare(cr.width, win.width, "180°: contentRoot width back to the window width")
             compare(cr.height, win.height, "180°: contentRoot height back to the window height")
 
-            // 270° inverted-landscape — swapped again.
+            // 270° inverted-landscape - swapped again.
             win.orientationMode = "inverted-landscape"
             compare(win.contentRotation, 270)
             compare(cr.swapped, true, "270° is a swapped (landscape) orientation")
@@ -244,12 +244,12 @@ Item {
         }
 
         // (Full-shell add-page navigation is covered in tst_hub_navigation.qml, which
-        // pushes the real Dashboard into this shell by relative URL — main.qml's qrc:
+        // pushes the real Dashboard into this shell by relative URL - main.qml's qrc:
         // initialItem can't resolve under qmltestrunner.)
 
         // ── onContentRotationChanged (reorient fx) ────────────────────────────
         // A contentRotation change fires main.qml's Connections handler
-        // `onContentRotationChanged`, which — when motion is allowed — restarts the
+        // `onContentRotationChanged`, which - when motion is allowed - restarts the
         // reorient fx that briefly dips contentRoot's scale/opacity before easing it
         // back to full. We drive a real rotation change on the REAL contentRoot and
         // observe that dip-then-settle, proving the handler ran (not just the binding).

@@ -4,7 +4,7 @@ import QtTest
 // COVERS: schema:date, schema:label, schema:repeatYearly
 
 // ─────────────────────────────────────────────────────────────────────────
-// Comprehensive tests for widget:countdown — ui/qml/widgets/CountdownWidget.qml
+// Comprehensive tests for widget:countdown - ui/qml/widgets/CountdownWidget.qml
 //
 // Drives config through the shared DashboardStore (setSetting / patchSettings on
 // "test-instance") exactly the way the live dashboard does, and asserts on the
@@ -19,13 +19,13 @@ import QtTest
 //     month instead of being rejected,
 //   • a repeatYearly Feb-29 anniversary drifts to Mar-1 in non-leap years,
 //   • a large day count overflows/clips the narrow collapsed tile.
-// Those failures are the point — they are left in.
+// Those failures are the point - they are left in.
 // ─────────────────────────────────────────────────────────────────────────
 Item {
     id: root
     width: 520; height: 900
 
-    // Expanded instance — header + settings visible, big number rendered.
+    // Expanded instance - header + settings visible, big number rendered.
     WidgetHarness {
         id: hCd; anchors.fill: parent
         widgetFile: "CountdownWidget.qml"; expanded: true
@@ -105,7 +105,7 @@ Item {
             verify(findText(w, "Set a date below") !== null, "prompt text is shown")
         }
 
-        // Parsing "YYYY-MM-DD" must use LOCAL midnight — no UTC off-by-one.
+        // Parsing "YYYY-MM-DD" must use LOCAL midnight - no UTC off-by-one.
         function test_today_local_midnight_is_zero() {
             var w = hCd.item
             set("date", offsetStr(0))
@@ -211,7 +211,7 @@ Item {
         }
 
         // On the exact anniversary day, days===0 ("Today"), NOT rolled to next
-        // year — guards the strict `< today0` comparison.
+        // year - guards the strict `< today0` comparison.
         function test_exact_anniversary_is_today_not_next_year() {
             var w = hCd.item
             set("repeatYearly", true)
@@ -248,7 +248,7 @@ Item {
         function set(k, v) { hCd.storeCtl.setSetting("test-instance", k, v) }
 
         // Editing the date through the store (a store.revision bump) must update
-        // the displayed day count WITHOUT any manual tick — the cfg binding tracks
+        // the displayed day count WITHOUT any manual tick - the cfg binding tracks
         // store.revision. This is the Manager/companion-edit path.
         function test_store_edit_updates_without_tick() {
             var w = hCd.item
@@ -338,7 +338,7 @@ Item {
         }
 
         // BUG (medium): Feb-31 passes the crude d<1||d>31 check and rolls over via
-        // new Date(y,1,31) to early March — a plausible countdown to a date the
+        // new Date(y,1,31) to early March - a plausible countdown to a date the
         // user never entered. It should be treated as invalid.
         function test_feb31_is_rejected_not_rolled() {
             var w = hCd.item
@@ -403,7 +403,7 @@ Item {
     // ── Per-sizeClass structure (W1) ──────────────────────────────────────────
     // Fixed-size hosts at real projected cell footprints; the Dashboard injects
     // sizeClass, so the tests assign it the same way and pin what each size
-    // shows — a future edit can't silently collapse the sizes back into one
+    // shows - a future edit can't silently collapse the sizes back into one
     // stretched number-in-a-void.
     Item { id: cMicroWrap; width: 344; height: 416
         WidgetHarness { id: hCMicro; anchors.fill: parent; widgetFile: "CountdownWidget.qml"; expanded: false } }
@@ -429,7 +429,7 @@ Item {
             return ds
         }
 
-        // 0.5x0.5 — the count + one caption line, nothing else.
+        // 0.5x0.5 - the count + one caption line, nothing else.
         function test_micro_count_and_caption_only() {
             tryVerify(function () { return hCMicro.ready }, 3000)
             seed(hCMicro, 10)
@@ -440,7 +440,7 @@ Item {
             compare(w.showProgress, false, "micro has no progress bar")
         }
 
-        // 1x1 — count + caption + the target-date row; still no progress bar.
+        // 1x1 - count + caption + the target-date row; still no progress bar.
         function test_baseline_shows_date_row() {
             tryVerify(function () { return hCBase.ready }, 3000)
             seed(hCBase, 10)
@@ -455,7 +455,7 @@ Item {
                    "the formatted target date is rendered")
         }
 
-        // wide — count beside caption/date/progress, in BOTH projections of the
+        // wide - count beside caption/date/progress, in BOTH projections of the
         // class (1x0.5 portrait 696x416, 1x1.5 landscape 1264x696).
         function test_wide_shows_progress_both_orientations() {
             tryVerify(function () { return hCWide.ready }, 3000)
@@ -472,7 +472,7 @@ Item {
             cWideWrap.width = 696; cWideWrap.height = 416
         }
 
-        // tall — stacked, with date + progress (0.5x1 / 1x1.5 portrait).
+        // tall - stacked, with date + progress (0.5x1 / 1x1.5 portrait).
         function test_tall_shows_date_and_progress() {
             tryVerify(function () { return hCTall.ready }, 3000)
             seed(hCTall, 10)
@@ -484,7 +484,7 @@ Item {
         }
 
         // A repeatYearly countdown carries its own honest baseline (the year
-        // cycle) — the progress bar works with no dateSetEpoch at all.
+        // cycle) - the progress bar works with no dateSetEpoch at all.
         function test_yearly_progress_needs_no_stamp() {
             tryVerify(function () { return hCTall.ready }, 3000)
             var s = hCTall.storeCtl.settingsFor("test-instance")
@@ -501,7 +501,7 @@ Item {
         }
 
         // The widget stamps its own baseline when a date is stored (the tile and
-        // the overlay are two instances — only the active one writes).
+        // the overlay are two instances - only the active one writes).
         function test_widget_stamps_dateSet_baseline() {
             tryVerify(function () { return hCBase.ready }, 3000)
             var s = hCBase.storeCtl.settingsFor("test-instance")

@@ -14,7 +14,7 @@ QT=/usr/lib/qt6/bin/qmltestrunner; command -v qmltestrunner >/dev/null 2>&1 && Q
 # Both shipped binaries pin the Controls style (app/src/main.cpp:271 and
 # manager/src/main.cpp:116 call QQuickStyle::setStyle("Fusion")). Without this
 # the suite runs under the user's desktop style (Breeze here), so every control
-# under test is a DIFFERENT control than ships — different indicator geometry,
+# under test is a DIFFERENT control than ships - different indicator geometry,
 # different colours, different implicit sizes. A pixel assertion tuned to Fusion
 # then fails for a reason that has nothing to do with the product.
 export QT_QUICK_CONTROLS_STYLE=Fusion
@@ -33,12 +33,12 @@ done
 [ -S "$XDG_RUNTIME_DIR/$SOCK" ] || { echo "!! Wayland socket $SOCK never appeared"; tail "$TMP/kwin.log"; exit 3; }
 sleep 1
 # Evidence writes are relative to CWD (repo root); redirect them into TMP by
-# running from TMP with symlinks back to the repo imports is overkill — instead
+# running from TMP with symlinks back to the repo imports is overkill - instead
 # just let PNGs land in ./gui-evidence but into a private subdir via a symlinked
 # CWD. Simplest: run from repo root; tests save under gui-evidence/... which we
 # do NOT clean here. Agents should ignore evidence during validation.
 # Bounded: this script is run per-file by authoring agents, dozens of times a
-# day, on the developer's own desktop — the exact configuration whose unbounded
+# day, on the developer's own desktop - the exact configuration whose unbounded
 # runner triggered the system-wide OOM that killed IntelliJ on 2026-07-19.
 # shellcheck source=../../scripts/lib/run_bounded.sh
 RUN_TIMEOUT=${RUN_TIMEOUT:-600}
@@ -52,7 +52,7 @@ run_bounded WAYLAND_DISPLAY="$SOCK" QT_QPA_PLATFORM=wayland QT_LOGGING_RULES="qt
   | grep -viE "radv|Vulkan|Cannot open: qrc:|conflicting anchors|No such file or directory"
 rc=${PIPESTATUS[0]}
 case "$rc" in
-  97) echo "!! MEMKILLed (>${RUN_MEM_MAX_MB} MiB RSS) — this file leaks; fix before committing it" ;;
-  98) echo "!! TIMEKILLed (>${RUN_TIMEOUT}s) — this file hangs" ;;
+  97) echo "!! MEMKILLed (>${RUN_MEM_MAX_MB} MiB RSS) - this file leaks; fix before committing it" ;;
+  98) echo "!! TIMEKILLed (>${RUN_TIMEOUT}s) - this file hangs" ;;
 esac
 exit "$rc"

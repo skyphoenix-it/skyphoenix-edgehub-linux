@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""e2e_buildup.py — incremental build-up scenario on the REAL Edge panel.
+"""e2e_buildup.py - incremental build-up scenario on the REAL Edge panel.
 
 Owner-requested (2026-07-19): strip the dashboard to nothing, then add things
 back ONE AT A TIME, checking the real hub on the real panel after every single
@@ -11,7 +11,7 @@ being driven incrementally over the REAL control socket, with the rendered panel
 checked after each mutation. Everything else either drives a stub (the GUI
 suite's ManagerHarness), or asserts store facts with nothing rendered
 (tests/runtime), or changes many things at once. A build-up is what catches
-"step 7 is fine alone but breaks after step 6" — coherence, not units.
+"step 7 is fine alone but breaks after step 6" - coherence, not units.
 
 Every step does three things:
   1. push ONE change over IPC,
@@ -57,7 +57,7 @@ WIDGET_WALK = [
 # the new shipped default (D1).
 THEME_WALK = ["nord", "dark", "light", "high_contrast",
               "trilby_key_check", "catppuccin", "matrix"]
-# `trilby_key_check` is not a key — replaced below. Keys stayed as the distro
+# `trilby_key_check` is not a key - replaced below. Keys stayed as the distro
 # spellings on purpose (see ui/qml/Theme.qml naming policy); the DISPLAY name is
 # what changed. Asserting the key still works is the point of including it.
 THEME_WALK[4] = "fedora"
@@ -72,7 +72,7 @@ SETTLE = float(os.environ.get("XENEON_BUILDUP_SETTLE", "0.25"))
 
 
 def grid_sig(path, n=8):
-    """An n x n grid of average colours — a cheap render fingerprint that is
+    """An n x n grid of average colours - a cheap render fingerprint that is
     sensitive to WHERE things are, not just the overall tint. Two frames with
     the same average but different layout (a widget present vs an empty page)
     have very different grid signatures."""
@@ -100,7 +100,7 @@ class BuildUp:
 
         min_render_delta (optional): the grabbed frame must differ from the
         empty-page baseline by at least this much. This is what makes a WIDGET
-        test a real GUI test — it asserts the widget actually RENDERED, not just
+        test a real GUI test - it asserts the widget actually RENDERED, not just
         that the hub's state reports it. The 65/65 run before this existed showed
         an empty page for every 'widget added' step because the content was on a
         page the hub was not displaying."""
@@ -131,7 +131,7 @@ class BuildUp:
                 if d < min_render_delta:
                     ok = False
                     detail = ("STATE ok but NOT RENDERED: frame differs from the "
-                              "empty page by only %.0f (need >=%.0f) — the content "
+                              "empty page by only %.0f (need >=%.0f) - the content "
                               "is not on screen" % (d, min_render_delta))
                 else:
                     detail += " [rendered, delta=%.0f]" % d
@@ -164,12 +164,12 @@ def main():
     try:
         # Seed the config BEFORE launching: without first_run_complete the hub
         # boots into the First-Run Wizard, the Dashboard never loads, and every
-        # probe/grab shows the same wizard — which reads as "distance 0, the hub
+        # probe/grab shows the same wizard - which reads as "distance 0, the hub
         # is not on the Edge" when in fact it is, just showing another screen.
         h.write_config(doc([page("Blank", [])]))
         h.launch_hub()
         if not h.verify_target_window():
-            print("!! could not verify the hub is the window on the Edge — aborting")
+            print("!! could not verify the hub is the window on the Edge - aborting")
             return 2
 
         # THROUGHOUT: the page under test is page 0 ("Home"), because the hub
@@ -205,7 +205,7 @@ def main():
 
         names = ["Home"] + extra   # full set, Home first
 
-        # ── 2. WIDGETS onto the VISIBLE page — asserts they RENDER ───────────
+        # ── 2. WIDGETS onto the VISIBLE page - asserts they RENDER ───────────
         placed = []
         for i, (wtype, family) in enumerate(WIDGET_WALK, start=1):
             placed.append(tile("bu-%s" % wtype, wtype, "1x1"))
@@ -243,7 +243,7 @@ def main():
         # The canonical tile format is a `size` STRING ("1x1", "1x1.5"), not
         # integer w/h. Every widget declares its own legal set in
         # ui/qml/WidgetCatalog.qml and the hub coerces DOWN to the nearest legal
-        # size (DashboardStore.qml:144) — so a resize test MUST use sizes that
+        # size (DashboardStore.qml:144) - so a resize test MUST use sizes that
         # are actually legal for the widget, or it only ever tests coercion.
         # The clock's set is ["0.5x0.5","0.5x1","1x0.5","1x1","1x1.5"].
         for sz in ("0.5x0.5", "0.5x1", "1x0.5", "1x1.5", "1x1"):
@@ -340,7 +340,7 @@ def main():
                    lambda st, style=style: (appearance_of(st).get("bgStyle") == style,
                                             "hub bgStyle=%r" % appearance_of(st).get("bgStyle")))
 
-        # animatedBg off — the calm default. Proves the switch actually gates.
+        # animatedBg off - the calm default. Proves the switch actually gates.
         b.step("bg-animated-off",
                lambda: push_appearance(themeMode="nord", bgStyle="orbs", animatedBg=False),
                lambda st: (appearance_of(st).get("animatedBg") is False,

@@ -9,7 +9,7 @@
 
 // Single-instance guard. Running two hubs (or two managers) concurrently races
 // the shared ~/.config/xeneon-edge-hub/config.toml and corrupts it (empty
-// appearance, shuffled layout — observed with 2 hubs + 3 managers up at once).
+// appearance, shuffled layout - observed with 2 hubs + 3 managers up at once).
 // Each app acquires a per-app QLockFile; if another LIVE instance already holds
 // it, the new process should exit. QLockFile auto-reclaims a lock whose owning
 // PID is gone (crash recovery). Skipped in QA/grab mode (XENEON_GRAB) so headless
@@ -32,7 +32,7 @@ inline std::unique_ptr<QLockFile> acquireSingleInstance(const QString& appKey, b
     if (grabMode)
         return lock;                    // never block QA/headless captures
     if (lock->tryLock(0))
-        return lock;                    // acquired — we are the only instance
+        return lock;                    // acquired - we are the only instance
     return nullptr;                     // another live instance holds it
 }
 

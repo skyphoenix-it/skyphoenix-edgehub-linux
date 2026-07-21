@@ -1,25 +1,25 @@
 #!/usr/bin/env bash
-# Scenario 02 — org policy enforcement (E9) on the real hub.
+# Scenario 02 - org policy enforcement (E9) on the real hub.
 #
 # Uses the XENEON_POLICY_PATH test seam (core/src/policy.rs) and a loopback
 # HTTP sink as the egress observation channel. Four launches over the same
 # seed (an httpjson tile polling the sink every 2 s + a Focus tile one step
-# from a natural completion — the proven save trigger):
+# from a natural completion - the proven save trigger):
 #
-#   1. CONTROL (no policy)     — the sink IS hit and the config IS rewritten.
+#   1. CONTROL (no policy)     - the sink IS hit and the config IS rewritten.
 #      Establishes both observation channels; every later "zero" is
 #      meaningful only because this run proves the same seed produces
 #      non-zero without a policy.
-#   2. FORCED PRESET           — force_preset=system-monitor: the user's
+#   2. FORCED PRESET           - force_preset=system-monitor: the user's
 #      layout is replaced for the session (its httpjson tile never runs →
 #      zero sink hits) and the user's config.toml is NOT overwritten
 #      (byte-identical afterwards; the Focus trigger that persisted in run 1
 #      persists nothing under the lock).
-#   3. NET_OFFLINE PIN         — net_offline=true, no forced preset: the
+#   3. NET_OFFLINE PIN         - net_offline=true, no forced preset: the
 #      user's layout IS live (the Focus trigger persists, same as control)
-#      but the sink gets ZERO hits — the kill switch dominates while the
+#      but the sink gets ZERO hits - the kill switch dominates while the
 #      session runs normally.
-#   4. PIN vs CONFIG EDIT      — persisted appearance.netOffline is forced
+#   4. PIN vs CONFIG EDIT      - persisted appearance.netOffline is forced
 #      to false between launches (the "lift it from disk" attack); the
 #      relaunch under the same policy still produces zero hits. Run 1
 #      already proved netOffline=false without a policy DOES reach the sink,
@@ -56,28 +56,28 @@ EOF
 
 focus_done() { rt_json "$(rt_read_config "$1")" 'd["ui_state"]["settings"]["focus-1"]["doneToday"]'; }
 
-# ── 1. CONTROL: no policy — both observation channels must fire ─────────────
-echo "Run 1 — control (no policy): egress flows, config persists"
+# ── 1. CONTROL: no policy - both observation channels must fire ─────────────
+echo "Run 1 - control (no policy): egress flows, config persists"
 rt_mkroot control; seed "$RT_CFG"
 before="$(rt_sink_count)"
 rt_run_hub "$RT_ROOT" 8
 rt_assert_live "control" "$RT_ROOT" || fail=1
 hits=$(( $(rt_sink_count) - before ))
 if [ "$hits" -gt 0 ]; then
-    echo "  [control] PASS: sink received $hits request(s) — egress channel observable"
+    echo "  [control] PASS: sink received $hits request(s) - egress channel observable"
 else
-    echo "  [control] FAIL: sink got no requests — every later zero would be vacuous"
+    echo "  [control] FAIL: sink got no requests - every later zero would be vacuous"
     fail=1
 fi
 if [ "$(focus_done "$RT_CFG")" = "4" ]; then
-    echo "  [control] PASS: config rewritten (focus 3 -> 4) — persistence channel observable"
+    echo "  [control] PASS: config rewritten (focus 3 -> 4) - persistence channel observable"
 else
     echo "  [control] FAIL: config not rewritten; persistence channel dead"
     fail=1
 fi
 
 # ── 2. FORCED PRESET: layout replaced, user's file untouched ────────────────
-echo "Run 2 — force_preset=system-monitor: session layout replaced, config NOT overwritten"
+echo "Run 2 - force_preset=system-monitor: session layout replaced, config NOT overwritten"
 rt_mkroot forced; seed "$RT_CFG"
 cp "$RT_CFG/config.toml" "$RT_WORK/forced-seed.toml"
 before="$(rt_sink_count)"
@@ -90,20 +90,20 @@ else
 fi
 hits=$(( $(rt_sink_count) - before ))
 if [ "$hits" -eq 0 ]; then
-    echo "  [forced] PASS: 0 sink hits — the user's httpjson tile is not running (layout replaced)"
+    echo "  [forced] PASS: 0 sink hits - the user's httpjson tile is not running (layout replaced)"
 else
-    echo "  [forced] FAIL: $hits sink hit(s) — the user's layout is still live under a forced preset"
+    echo "  [forced] FAIL: $hits sink hit(s) - the user's layout is still live under a forced preset"
     fail=1
 fi
 if cmp -s "$RT_WORK/forced-seed.toml" "$RT_CFG/config.toml"; then
-    echo "  [forced] PASS: config.toml byte-identical — user's saved layout not overwritten"
+    echo "  [forced] PASS: config.toml byte-identical - user's saved layout not overwritten"
 else
     echo "  [forced] FAIL: config.toml changed under the forced-preset lock"
     fail=1
 fi
 
 # ── 3. NET_OFFLINE PIN: user layout live, egress dead ───────────────────────
-echo "Run 3 — net_offline pinned: user layout runs, zero egress"
+echo "Run 3 - net_offline pinned: user layout runs, zero egress"
 rt_mkroot pin; seed "$RT_CFG"
 before="$(rt_sink_count)"
 rt_run_hub "$RT_ROOT" 8 XENEON_POLICY_PATH="$RT_WORK/policy-pin.toml"
@@ -116,14 +116,14 @@ else
     fail=1
 fi
 if [ "$(focus_done "$RT_CFG")" = "4" ]; then
-    echo "  [pin] PASS: focus 3 -> 4 persisted — the user layout WAS live (zero hits ≠ dead session)"
+    echo "  [pin] PASS: focus 3 -> 4 persisted - the user layout WAS live (zero hits ≠ dead session)"
 else
     echo "  [pin] FAIL: user layout did not run under the pin; the zero-hit assertion is vacuous"
     fail=1
 fi
 
 # ── 4. The persisted appearance cannot lift the pin ─────────────────────────
-echo "Run 4 — edit persisted appearance.netOffline=false, relaunch under the pin"
+echo "Run 4 - edit persisted appearance.netOffline=false, relaunch under the pin"
 python3 - "$RT_CFG" <<'EOF'
 import json, re, sys, tomllib
 cfg = sys.argv[1] + "/config.toml"
@@ -142,12 +142,12 @@ rt_run_hub "$RT_ROOT" 8 XENEON_POLICY_PATH="$RT_WORK/policy-pin.toml"
 rt_assert_live "lift" "$RT_ROOT" || fail=1
 hits=$(( $(rt_sink_count) - before ))
 if [ "$hits" -eq 0 ]; then
-    echo "  [lift] PASS: still 0 sink hits — persisted config cannot lift the org pin"
+    echo "  [lift] PASS: still 0 sink hits - persisted config cannot lift the org pin"
 else
-    echo "  [lift] FAIL: $hits sink hit(s) — a config edit lifted the pinned kill switch"
+    echo "  [lift] FAIL: $hits sink hit(s) - a config edit lifted the pinned kill switch"
     fail=1
 fi
 
 echo
 if [ "$fail" -ne 0 ]; then echo "RESULT: FAILURE"; exit 1; fi
-echo "RESULT: SUCCESS — forced preset preserves the user's file; net_offline pin survives config edits"
+echo "RESULT: SUCCESS - forced preset preserves the user's file; net_offline pin survives config edits"

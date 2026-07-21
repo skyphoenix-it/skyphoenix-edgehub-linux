@@ -2,21 +2,21 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// PillButton — uniform, touch-friendly button used across all widgets.
+// PillButton - uniform, touch-friendly button used across all widgets.
 //
 // SIZING (why the box is what it is):
 // The pill hosts two runs with genuinely different font metrics, and the box is
 // derived from BOTH rather than sized for latin and hoped-for by the glyph:
-//   • a latin label run — at pixelSize 18 its box is 25 tall (ascent 1.068em +
+//   • a latin label run - at pixelSize 18 its box is 25 tall (ascent 1.068em +
 //     descent 0.293em ≈ 1.39em) and its ink sits INSIDE that box with real side
 //     bearing.
-//   • an emoji glyph run — Noto Color Emoji is a CBDT bitmap strike, so Qt
+//   • an emoji glyph run - Noto Color Emoji is a CBDT bitmap strike, so Qt
 //     reports line height 1.0em and advance 1.0625em. At pixelSize 18 that box
 //     is 19.125x18 and the ink FILLS it: measured ink bbox (2,-1)-(17,17), i.e.
 //     zero bearing, overshooting the reported box by a pixel at the top.
 // So an emoji has no slack to give. Two consequences are designed for here:
 //   1. the glyph is sized RELATIVE to the label (below), never fixed, and
-//   2. under width pressure the LABEL elides — the glyph is atomic and can only
+//   2. under width pressure the LABEL elides - the glyph is atomic and can only
 //      be cut, so it must never be the thing that gives way.
 Rectangle {
     id: btn
@@ -26,14 +26,14 @@ Rectangle {
     property bool primary: false      // filled vs. outline
     property bool danger: false
     property bool enabledState: true
-    // A caller's floor for a HERO action — "this one is large, do not shrink-wrap
+    // A caller's floor for a HERO action - "this one is large, do not shrink-wrap
     // it to its text". A FLOOR, exactly like theme.touchSecondary below: content
     // wins whenever it is wider, so a longer label can never be capped by it.
     //
     // This is what `implicitWidth: <n>` at a call site was reaching for and got
     // wrong in KIND, not in value. An assigned implicitWidth is the box, full
     // stop: it silently CAPS the content it was meant to be generous to, and the
-    // pill has nothing left to give — the row is bounded by btn.width (below), so
+    // pill has nothing left to give - the row is bounded by btn.width (below), so
     // the label just elides inside a button that had no reason to be that narrow.
     property int minWidth: 0
     signal clicked()
@@ -47,7 +47,7 @@ Rectangle {
     readonly property int glyphPx: Math.round(theme.fontLabel * 1.2)
 
     // Horizontal padding, halved from the old single spacingXl term so the total
-    // (2 * 12 = 24) is unchanged — the pill keeps its current width at every
+    // (2 * 12 = 24) is unchanged - the pill keeps its current width at every
     // existing call site.
     readonly property int _padH: Math.round(theme.spacingXl / 2)
 

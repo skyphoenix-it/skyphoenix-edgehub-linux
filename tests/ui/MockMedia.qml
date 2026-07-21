@@ -1,6 +1,6 @@
 import QtQuick
 
-// MockMedia — stands in for the C++ MprisBridge (`media` context property) so
+// MockMedia - stands in for the C++ MprisBridge (`media` context property) so
 // MediaWidget can be tested without a real MPRIS player on the session bus.
 // Mirrors the bridge's Q_PROPERTY / Q_INVOKABLE surface.
 QtObject {

@@ -6,7 +6,7 @@
 #include <QVariantMap>
 
 // ─────────────────────────────────────────────────────────────────────────────
-// mpris_state — the PURE half of the MPRIS bridge.
+// mpris_state - the PURE half of the MPRIS bridge.
 //
 // Everything here is a decision, not a conversation: which player to show, and
 // what the now-playing card should say. None of it needs a session bus, so per
@@ -23,8 +23,8 @@ namespace mpris {
 
 // Is this bus name an MPRIS player service? (The ListNames filter.) A player
 // registers itself as org.mpris.MediaPlayer2.<name>; that prefix is private to
-// mpris_state.cpp, so the two rules that depend on it — this filter and
-// playerNameFromService below — cannot drift apart.
+// mpris_state.cpp, so the two rules that depend on it - this filter and
+// playerNameFromService below - cannot drift apart.
 bool isMprisService(const QString& busName);
 
 // "org.mpris.MediaPlayer2.spotify" -> "spotify".
@@ -32,7 +32,7 @@ QString playerNameFromService(const QString& service);
 
 // Pick the active player from the discovered services:
 //   1. prefer the first candidate (in `order`) whose status is "Playing";
-//   2. else keep `current`, if it is still present — otherwise two idle players
+//   2. else keep `current`, if it is still present - otherwise two idle players
 //      would make the card flap on every 3s rescan;
 //   3. else take the first.
 // `statuses` maps service -> PlaybackStatus, with "" for a player that did not
@@ -57,11 +57,11 @@ struct TrackState {
 // Handles, in order:
 //   * xesam:artist arriving as a list OR a plain string (both real; see the
 //     fallback in the implementation);
-//   * mpris:artUrl with a file:// scheme — VALIDATED against the filesystem and
+//   * mpris:artUrl with a file:// scheme - VALIDATED against the filesystem and
 //     CLEARED when unreadable, because Chromium advertises stale art paths and
 //     QML's Image would emit "Cannot open". http(s) is passed through untouched.
 //     This is the filesystem touch noted above.
-//   * the availability rule — a service can be on the bus with no track loaded
+//   * the availability rule - a service can be on the bus with no track loaded
 //     (a browser tab that merely *can* play audio, or a just-stopped player).
 //     `available` therefore requires a real title OR a Playing/Paused status;
 //     otherwise every metadata field is blanked, so the UI shows "nothing
@@ -69,7 +69,7 @@ struct TrackState {
 TrackState resolveTrack(const QVariantMap& props, const QString& service);
 
 // Do two states differ in any field the user can SEE? (Deliberately ignores
-// lengthUs, which is not rendered on its own — position is notified separately.)
+// lengthUs, which is not rendered on its own - position is notified separately.)
 //
 // This is the dirty-check: applyProps runs on every 3s rescan, and emitting
 // changed() unconditionally re-fires every property NOTIFY, restarting the QML

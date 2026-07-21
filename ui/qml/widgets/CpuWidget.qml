@@ -1,16 +1,16 @@
 import QtQuick
 import QtQuick.Layouts
 
-// CPU utilization + temperature — real data from the Rust core (metricsJson).
+// CPU utilization + temperature - real data from the Rust core (metricsJson).
 //
 // Sizing (W1 wave 2a): layout keys off the injected `sizeClass`, never off
 // `expanded`. The shared MetricGauge carries the ring; each size earns its box:
-//   • 0.5x0.5 (micro) — headerless bare ring + the one number. No sparkline.
-//   • 1x1 (baseline)  — header + ring + the classic sparkline strip.
-//   • wide            — ring beside the sparkline, which finally gets real width.
-//   • tall            — bigger sparkline share + an avg/peak line inside the
+//   • 0.5x0.5 (micro) - headerless bare ring + the one number. No sparkline.
+//   • 1x1 (baseline)  - header + ring + the classic sparkline strip.
+//   • wide            - ring beside the sparkline, which finally gets real width.
+//   • tall            - bigger sparkline share + an avg/peak line inside the
 //                       ring: genuinely more information, not a stretched void.
-//   • full (overlay)  — the expanded gauge (core count sub-line).
+//   • full (overlay)  - the expanded gauge (core count sub-line).
 WidgetChrome {
     id: w
     property var metrics: ({})
@@ -37,14 +37,14 @@ WidgetChrome {
                          && metrics.cpu_usage_percent !== null
                          && metrics.cpu_usage_percent >= 0
     property real v: avail ? metrics.cpu_usage_percent : 0
-    // A genuine 0 °C reading is real data — only undefined/null is "missing".
+    // A genuine 0 °C reading is real data - only undefined/null is "missing".
     property real temp: (metrics.cpu_temp_celsius === undefined || metrics.cpu_temp_celsius === null)
                         ? -1 : metrics.cpu_temp_celsius
     status: (w.showTemp && temp >= 0) ? temp.toFixed(0) + "°C" : ""
     // Header temperature colour tracks the ring exactly, so both signals switch
     // at the same threshold (no 5 °C band where they disagree).
     statusColor: w.col(w.v)
-    // Temperature is the real warning signal — escalate the WHOLE gauge (ring +
+    // Temperature is the real warning signal - escalate the WHOLE gauge (ring +
     // number) on it, not just the tiny header text. Otherwise reflect load, in the
     // widget's own accent while comfortable.
     function col(p) {
@@ -56,7 +56,7 @@ WidgetChrome {
     }
 
     // Rolling history. Mirrored into the shared store (keyed by instanceId) so a
-    // tile and its expanded overlay — two separate instances — share one graph.
+    // tile and its expanded overlay - two separate instances - share one graph.
     property var hist: []
     function _seedHist() {
         if (w.store && w.instanceId && (!w.hist || w.hist.length === 0)) {
@@ -68,7 +68,7 @@ WidgetChrome {
     onInstanceIdChanged: _seedHist()
     onMetricsChanged: {
         // Honour `active` (hidden/off-page tiles must not churn) and only record
-        // a sample when the frame actually carried a reading — never a fake 0%.
+        // a sample when the frame actually carried a reading - never a fake 0%.
         // Availability/value are computed from `metrics` directly here: the bound
         // `avail`/`v` properties re-evaluate lazily and would read one frame stale
         // inside this handler.
@@ -81,7 +81,7 @@ WidgetChrome {
         if (w.store && w.instanceId) w.store.setSetting(w.instanceId, "hist", h)
     }
 
-    // avg/peak over the retained history — the extra line a tall tile earns.
+    // avg/peak over the retained history - the extra line a tall tile earns.
     // Needs ≥2 samples (one reading has no "average" story to tell).
     readonly property string histStats: {
         if (!w.showHistory || !w.hist || w.hist.length < 2) return ""
@@ -99,7 +99,7 @@ WidgetChrome {
         ok: w.avail
         value: Math.min(w.v / 100, 1)
         big: w.avail ? w.v.toFixed(0) + "%" : "N/A"
-        // Temp lives in the header (top-right) — the sub-line only adds core count
+        // Temp lives in the header (top-right) - the sub-line only adds core count
         // in the overlay, so the reading isn't printed twice. Hide it when the
         // count is absent/0 rather than printing a misleading "0 cores". Tall
         // tiles (room, but not the overlay) use the line for avg/peak instead.

@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 
-// GPU utilization + temperature — real data (amdgpu sysfs via the Rust core).
+// GPU utilization + temperature - real data (amdgpu sysfs via the Rust core).
 // Shows "N/A" gracefully when no discrete GPU is discoverable.
 //
 // Sizing (W1 wave 2a): layout keys off the injected `sizeClass` (see CpuWidget
@@ -38,7 +38,7 @@ WidgetChrome {
     status: (w.showTemp && temp > 0) ? temp.toFixed(0) + "°C" : ""
     statusColor: temp > w.warnTemp ? theme.error : temp > w.warnTemp - 17 ? theme.warning : theme.textSecondary
     // Temperature escalates the whole gauge; otherwise reflect load in the accent.
-    // Thermal escalation is a safety signal — it must survive even when the temp
+    // Thermal escalation is a safety signal - it must survive even when the temp
     // text is hidden (showTemp only governs the header status, not the ring). The
     // amber band matches the header's (warnTemp-17) so number and ring never disagree.
     function col(p) {
@@ -50,7 +50,7 @@ WidgetChrome {
     }
 
     // Rolling history. Mirrored into the shared store (keyed by instanceId) so a
-    // tile and its expanded overlay — two separate instances — draw one graph
+    // tile and its expanded overlay - two separate instances - draw one graph
     // instead of the overlay opening blank (S5). `hist` is an EPHEMERAL store key,
     // so the per-sample write bumps reactivity but never touches disk.
     property var hist: []
@@ -71,7 +71,7 @@ WidgetChrome {
         if (w.store && w.instanceId) w.store.setSetting(w.instanceId, "hist", h)
     }
 
-    // avg/peak over the retained history — the extra line a tall tile earns.
+    // avg/peak over the retained history - the extra line a tall tile earns.
     readonly property string histStats: {
         if (!w.showHistory || !w.hist || w.hist.length < 2) return ""
         var sum = 0, peak = 0
@@ -88,7 +88,7 @@ WidgetChrome {
         ok: w.avail
         value: Math.min(w.v / 100, 1)
         big: w.avail ? w.v.toFixed(0) + "%" : "N/A"
-        // Temp shows in the header — don't repeat it in the sub-line. Tall
+        // Temp shows in the header - don't repeat it in the sub-line. Tall
         // tiles use the line for avg/peak (genuinely more information).
         sub: (!w.expanded && w.avail && w.big) ? w.histStats : ""
         color: w.col(w.v)

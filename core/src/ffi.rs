@@ -4,7 +4,7 @@
 //! All string returns are owned by the caller and must be freed with `xeneon_string_free`.
 //! All struct pointers must be freed with their corresponding `_free` function.
 //!
-//! Raw pointer dereferencing is inherent to FFI — functions accept and manipulate
+//! Raw pointer dereferencing is inherent to FFI - functions accept and manipulate
 //! raw pointers passed from C/C++ callers.
 
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
@@ -360,7 +360,7 @@ pub extern "C" fn xeneon_config_get_license_key(handle: *const ConfigHandle) -> 
 }
 
 /// Set (or clear) the stored licence key. Pass NULL or an empty string to clear
-/// it (revert to the free tier). Does NOT verify — the caller verifies via
+/// it (revert to the free tier). Does NOT verify - the caller verifies via
 /// `xeneon_license_verify_json`; this only persists what the user entered so the
 /// tier survives a restart. Returns 0 on success, -1 on a null handle.
 #[no_mangle]
@@ -383,7 +383,7 @@ pub extern "C" fn xeneon_config_set_license_key(
 
 /// Verify the STORED licence key and describe the effective entitlement, as the
 /// same JSON shape as `xeneon_license_verify_json` (state/tier/issuedTo/id/
-/// expires). With no stored key — or any bad key — this is the free tier. This
+/// expires). With no stored key - or any bad key - this is the free tier. This
 /// is the convenience the UI uses at startup: "given what is persisted, am I
 /// Pro?" Caller must free with `xeneon_string_free`.
 #[no_mangle]
@@ -628,7 +628,7 @@ pub extern "C" fn xeneon_config_get_ui_state(handle: *const ConfigHandle) -> *mu
 }
 
 /// Set the opaque UI-state JSON document (pass null to clear).
-/// Does not save to disk on its own — call `xeneon_config_save`.
+/// Does not save to disk on its own - call `xeneon_config_save`.
 #[no_mangle]
 pub extern "C" fn xeneon_config_set_ui_state(
     handle: *mut ConfigHandle,
@@ -745,7 +745,7 @@ pub extern "C" fn xeneon_metrics_get_cpu_usage(handle: *const MetricsHandle) -> 
 
 /// Get CPU temperature in Celsius. Returns NaN if unavailable.
 ///
-/// "Unavailable" (no sensor / unreadable) is signalled with NaN — the C++ side
+/// "Unavailable" (no sensor / unreadable) is signalled with NaN - the C++ side
 /// must check `isnan()`, never `== -1.0`. Every genuine reading is passed
 /// through intact, INCLUDING a real `-1.0` °C (which is a valid sub-zero
 /// temperature, not a sentinel): only `None` maps to NaN. A null handle still
@@ -812,8 +812,8 @@ pub extern "C" fn xeneon_metrics_get_gpu_usage(handle: *const MetricsHandle) -> 
 
 /// Get GPU temperature in Celsius. Returns NaN if unavailable.
 ///
-/// Uses NaN (check `isnan()`) for "unavailable"; every real reading — including
-/// a genuine `-1.0` °C — is passed through, only `None` maps to NaN. See
+/// Uses NaN (check `isnan()`) for "unavailable"; every real reading - including
+/// a genuine `-1.0` °C - is passed through, only `None` maps to NaN. See
 /// `xeneon_metrics_get_cpu_temp`. A null handle still returns `-1.0` for
 /// backward compatibility.
 #[no_mangle]
@@ -904,7 +904,7 @@ pub extern "C" fn xeneon_metrics_to_json(handle: *const MetricsHandle) -> *mut c
 ///
 /// Resolving here rather than in QML is deliberate: QML cannot read the process
 /// environment at all, and keeping resolution behind the FFI means the resolved
-/// value only ever exists transiently in the caller's frame — never in
+/// value only ever exists transiently in the caller's frame - never in
 /// `ui_state`, and so never in `config.toml`.
 #[no_mangle]
 pub extern "C" fn xeneon_secret_resolve(
@@ -932,7 +932,7 @@ pub extern "C" fn xeneon_secret_resolve(
     match crate::secrets::resolve(raw_str) {
         Ok(v) => to_c_string(v),
         Err(e) => {
-            // e's Display carries the var name / path only — never the value.
+            // e's Display carries the var name / path only - never the value.
             if !err_out.is_null() {
                 unsafe { *err_out = to_c_string(e.to_string()) };
             }
@@ -969,7 +969,7 @@ pub extern "C" fn xeneon_secret_is_plaintext(raw: *const c_char) -> i32 {
 ///   "packageCount": 1461, "unsupportedReason": null,
 ///   "updates": null, "installEpoch": 1752191590 }
 /// ```
-/// `packageCount`, `updates` and `installEpoch` are `null` — never `0` or `-1` —
+/// `packageCount`, `updates` and `installEpoch` are `null` - never `0` or `-1` -
 /// when unknown, so a sentinel can never render as a real measurement.
 ///
 /// This is READ-ONLY: it opens files and lists directories. It never mutates a
@@ -1002,7 +1002,7 @@ pub extern "C" fn xeneon_distro_probe_json(root: *const c_char) -> *mut c_char {
 /// `state` is `licensed` | `expired` | `unlicensed`. `expired` is deliberately
 /// NOT `unlicensed`: the signature is genuine and the user should be asked to
 /// renew, not told their key is bad. `tier` is what to actually unlock, and is
-/// `free` for every non-`licensed` state — callers should gate on `tier` and use
+/// `free` for every non-`licensed` state - callers should gate on `tier` and use
 /// `state` only for what they say to the user.
 ///
 /// `reason` is a short failure description on `unlicensed`, else null. It names
@@ -1010,13 +1010,13 @@ pub extern "C" fn xeneon_distro_probe_json(root: *const c_char) -> *mut c_char {
 /// null unless the signature verified.
 ///
 /// This never returns null for a bad key, never panics, and never blocks: an
-/// unreadable key is simply the free tier. It performs NO network I/O — the
+/// unreadable key is simply the free tier. It performs NO network I/O - the
 /// public key is compiled in, so the result is identical under `unshare -n`.
 ///
 /// `issuedTo` is holder data: it is returned for display and must not be logged.
 #[no_mangle]
 pub extern "C" fn xeneon_license_verify_json(key: *const c_char) -> *mut c_char {
-    // A null or non-UTF-8 key is just "no licence" — same as an empty box.
+    // A null or non-UTF-8 key is just "no licence" - same as an empty box.
     let key_str: &str = if key.is_null() {
         ""
     } else {
@@ -1033,7 +1033,7 @@ pub extern "C" fn xeneon_license_verify_json(key: *const c_char) -> *mut c_char 
 /// Load the org policy and describe the EFFECTIVE result as JSON.
 ///
 /// Reads `/etc/xeneon-edge-hub/policy.toml` (or `$XENEON_POLICY_PATH`, a
-/// test-only seam — a real deployment relies on `/etc` being root-owned).
+/// test-only seam - a real deployment relies on `/etc` being root-owned).
 ///
 /// Returns an owned JSON object (free with `xeneon_string_free`):
 /// ```json
@@ -1043,12 +1043,12 @@ pub extern "C" fn xeneon_license_verify_json(key: *const c_char) -> *mut c_char 
 ///   "disableUserWidgets": false, "disabledWidgetTypes": [] }
 /// ```
 /// `source` is `absent` | `policy` | `fail-closed`. No file → `absent`,
-/// `active: false`, every field at its permissive default — behaviour is then
+/// `active: false`, every field at its permissive default - behaviour is then
 /// byte-for-byte the unmanaged default. A file that exists but is unusable
 /// (unreadable / unparseable / unknown key / unsupported `policy_version`)
 /// FAILS CLOSED: `active: true`, `netOffline: true`,
 /// `disableUserWidgets: true`, with `reason` naming the failure mode (never
-/// echoing file contents — `allowedHosts` may name internal infrastructure).
+/// echoing file contents - `allowedHosts` may name internal infrastructure).
 ///
 /// Never returns null and never panics: an unusable policy is a fail-closed
 /// answer, not an error.
@@ -1111,7 +1111,7 @@ mod tests {
         }
     }
 
-    // A NULL root means "the real system" — it must return a parseable probe on
+    // A NULL root means "the real system" - it must return a parseable probe on
     // whatever box this runs on, never a null pointer.
     #[test]
     fn distro_probe_over_ffi_handles_null_root_as_the_real_system() {
@@ -1175,7 +1175,7 @@ mod tests {
     }
 
     // The whole point of the module is that a secret never escapes into a place
-    // it can be persisted or logged — an error string is one of those places.
+    // it can be persisted or logged - an error string is one of those places.
     #[test]
     fn secret_resolve_error_never_contains_the_secret_value() {
         unsafe {
@@ -1209,7 +1209,7 @@ mod tests {
     // These assert the FFI *contract* only. The verifier's own behaviour (valid
     // / tampered / wrong-issuer / expired) is proven in license.rs against a
     // test issuer; it cannot be reached from here, because this path is pinned
-    // to the compiled-in issuer key and no test may redirect it — which is
+    // to the compiled-in issuer key and no test may redirect it - which is
     // exactly the property that stops a licence bypass.
 
     fn license_json(key: &str) -> serde_json::Value {
@@ -1271,7 +1271,7 @@ mod tests {
     }
 
     // While the issuer key is the unissued placeholder, even a well-formed key
-    // must resolve to free — the shipped default is "Pro is not unlockable".
+    // must resolve to free - the shipped default is "Pro is not unlockable".
     #[test]
     fn license_verify_json_is_free_while_the_issuer_key_is_a_placeholder() {
         let v = license_json("XE1.eyJ0aWVyIjoicHJvIn0.AAAA");
@@ -1295,7 +1295,7 @@ mod tests {
     // --- Managed / org policy (E9) ---
     //
     // The FFI contract only: parse/fail-closed behaviour is proven in
-    // policy.rs. These hold the crate env lock — XENEON_POLICY_PATH is
+    // policy.rs. These hold the crate env lock - XENEON_POLICY_PATH is
     // process-global.
 
     #[test]
@@ -1552,7 +1552,7 @@ mod tests {
         let ui = cstr(r#"{"pages":[1]}"#);
         assert_eq!(xeneon_config_set_ui_state(p, ui.as_ptr()), 0);
 
-        // starter_layout has a dedicated getter — round-trip it.
+        // starter_layout has a dedicated getter - round-trip it.
         let got_layout = unsafe { take(xeneon_config_get_starter_layout(p)) };
         assert_eq!(got_layout, "gaming");
 
@@ -1897,7 +1897,7 @@ mod tests {
         assert_eq!(xeneon_config_is_first_run(p), 0);
 
         let mode = unsafe { take(xeneon_config_get_theme_mode(p)) };
-        // Tracks default_theme_mode() in config.rs — the calm default (D1).
+        // Tracks default_theme_mode() in config.rs - the calm default (D1).
         assert_eq!(mode, "nord");
 
         // config_dir does not require a handle and always returns a non-empty path.
@@ -2224,7 +2224,7 @@ mod tests {
         std::env::set_var("XDG_CONFIG_HOME", dir.path());
 
         let h = xeneon_config_load();
-        // With the placeholder (all-zero) issuer key, EVERY key resolves to free —
+        // With the placeholder (all-zero) issuer key, EVERY key resolves to free -
         // so the stored-key convenience and the pasted-key path must return the
         // SAME free-tier JSON. When a real issuer key is embedded, this same test
         // continues to assert they never diverge.

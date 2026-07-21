@@ -10,12 +10,12 @@ import "../../ui/qml" as App
 // as well as the rendered MetricGauge (centre "big" text, "sub" line, ring).
 //
 // Some assertions target the audited bugs and are EXPECTED to fail against the
-// current code — those are marked in the report as likely-real-bug.
+// current code - those are marked in the report as likely-real-bug.
 Item {
     id: root
     width: 460; height: 640
 
-    // Main harness — expanded tile; metrics are driven directly per-test.
+    // Main harness - expanded tile; metrics are driven directly per-test.
     WidgetHarness { id: hRam;   width: 420; height: 520; widgetFile: "RamWidget.qml"; expanded: true }
     // Compact half-width portrait tile (non-expanded) for the gb-mode overflow test.
     WidgetHarness { id: hSmall; width: 340; height: 560; widgetFile: "RamWidget.qml"; expanded: false }
@@ -148,7 +148,7 @@ Item {
         }
 
         function test_gb_labelled_gb_matches_decimal_hardware_size() {
-            // Corrected: memory is measured in binary units — a "32 GB" module is
+            // Corrected: memory is measured in binary units - a "32 GB" module is
             // 32 GiB (34359738368 bytes, exactly what ram_total_bytes reports), so
             // the 2^30 divisor is right and a 32 GiB stick reads 32.0 GB. The old
             // 32e9-byte (decimal) premise contradicted test_gb_uses_gibibyte_divisor.
@@ -348,13 +348,13 @@ Item {
 
         // The value's box spans the ring's inner width (so it can shrink-to-fit),
         // and the box is itself centred in the ring. So a SHORT value ("4%") only
-        // looks centred if the TEXT is centre-aligned WITHIN that box — otherwise
+        // looks centred if the TEXT is centre-aligned WITHIN that box - otherwise
         // it left-aligns and sits visibly off-centre. That exact regression (the
         // overflow fix's wide box + a missing horizontalAlignment) is what the
         // marketing screenshots caught. The offset lives in the text's content
         // position, which can only be read via ink metrics (unreliable headless),
-        // so pin the alignment PROPERTY — it is the fix, and Text renders directly
-        // from it — plus prove the box really is wider than the value, so the
+        // so pin the alignment PROPERTY - it is the fix, and Text renders directly
+        // from it - plus prove the box really is wider than the value, so the
         // alignment is load-bearing rather than moot.
         function test_gauge_value_is_centred_in_the_ring() {
             var w = hSmall.item
@@ -390,7 +390,7 @@ Item {
                                     ram_used_bytes: 23218000000,
                                     ram_total_bytes: 34359738368 })
 
-        // 0.5x0.5 — headerless bare ring: only the one number.
+        // 0.5x0.5 - headerless bare ring: only the one number.
         function test_micro_is_bare_ring() {
             tryVerify(function () { return hMicro.ready }, 3000)
             var w = hMicro.item
@@ -400,7 +400,7 @@ Item {
             compare(w.showHeader, false, "micro hides the header")
             var g = gaugeOf(w)
             compare(g.showSpark, false, "micro reserves no sparkline slot")
-            compare(g.sub, "", "micro drops the used/total line — the number IS the tile")
+            compare(g.sub, "", "micro drops the used/total line - the number IS the tile")
             verify(g.bigMax > 60, "the headerless number may fill its box")
         }
 
@@ -420,7 +420,7 @@ Item {
             wideWrap.width = 696; wideWrap.height = 416
         }
 
-        // tall — sparkline earns the height below a squared ring.
+        // tall - sparkline earns the height below a squared ring.
         function test_tall_hands_spark_the_height() {
             tryVerify(function () { return hTall.ready }, 3000)
             var w = hTall.item

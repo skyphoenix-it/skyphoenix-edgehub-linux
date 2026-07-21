@@ -1,17 +1,17 @@
-# Builds THIS CHECKOUT as an installable Arch package — the dev/dogfood path
+# Builds THIS CHECKOUT as an installable Arch package - the dev/dogfood path
 # (`scripts/update-local.sh` drives it). The AUR PKGBUILD in ../aur/ is the
 # published one: it builds signed release tarballs, not your working tree.
 #
 # pkgver() derives from `git describe --tags`, so every commit yields a new
-# <tag>.r<n>.g<sha> and pacman sees a real upgrade — no manual bumping, no sed.
+# <tag>.r<n>.g<sha> and pacman sees a real upgrade - no manual bumping, no sed.
 # It must stay TAG-derived: a hardcoded base silently rots the moment a release
-# tag moves past it (it did — see the comment on pkgver()).
+# tag moves past it (it did - see the comment on pkgver()).
 pkgname=xeneon-edge-hub
 pkgver=1.0.0.alpha.2.r246.g684cddb   # overwritten by pkgver() at build time
 pkgrel=1
 pkgdesc="Native Linux widget dashboard for the Corsair Xeneon Edge (local working-tree build)"
 arch=('x86_64')
-url="https://github.com/skyphoenix-it/XeneonEdge_Linux"
+url="https://github.com/skyphoenix-it/skyphoenix-edgehub-linux"
 license=('MIT' 'Apache-2.0')
 depends=('qt6-base' 'qt6-declarative' 'qt6-svg' 'qt6-virtualkeyboard' 'qt6-wayland' 'hicolor-icon-theme')
 makedepends=('cmake' 'rust' 'git')
@@ -20,14 +20,14 @@ source=()
 sha256sums=()
 
 # The repo root, resolved from the PKGBUILD's own location so the recipe works
-# from any clone — never a hardcoded home path.
+# from any clone - never a hardcoded home path.
 _repo() { realpath "$startdir/../.."; }
 
 pkgver() {
   cd "$(_repo)"
   # Derive from the newest TAG, never a hardcoded base. The old form was a
   # literal `0.1.0.r<count>`, written when the project really was 0.1.0 and
-  # never touched again — so once v1.0.0-alpha.2 shipped, the dogfood build
+  # never touched again - so once v1.0.0-alpha.2 shipped, the dogfood build
   # versioned BELOW the installed release: `pacman -U` reported the freshly
   # built local tree as a *downgrade*, and the next `yay -Syu` would have
   # silently reverted the owner to the AUR release mid-session.
@@ -37,7 +37,7 @@ pkgver() {
   d="$(git describe --long --tags 2>/dev/null)" || d=""
   if [ -z "$d" ]; then
     # No tags reachable (shallow clone): fall back to a 0.0.0 base, which is
-    # honest — an untagged tree makes no claim to be newer than any release.
+    # honest - an untagged tree makes no claim to be newer than any release.
     printf '0.0.0.r%s.g%s' "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
     return
   fi

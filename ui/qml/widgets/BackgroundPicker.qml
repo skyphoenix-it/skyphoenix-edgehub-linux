@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 
-// BackgroundPicker — ONE control for choosing a background, so the scattered
+// BackgroundPicker - ONE control for choosing a background, so the scattered
 // "animated style" / "wallpaper" / "set as wallpaper" options collapse into a
 // single, obvious, mutually-exclusive choice. Works for the GLOBAL default
 // (pageIndex < 0) or a PER-PAGE override (pageIndex >= 0), which makes the
@@ -14,7 +14,7 @@ Item {
     id: bp
     // Named `st`, NOT `store`: a call site binding `store: store` from an
     // enclosing scope resolves the RHS to this component's OWN property (the QML
-    // self-binding trap), leaving it undefined — every write then threw
+    // self-binding trap), leaving it undefined - every write then threw
     // "Cannot call method 'setAppearance' of undefined" and the picker silently
     // did nothing. That is exactly what happened in the hub's SettingsPanel, so
     // the on-panel Background picker could not change the background at all.
@@ -26,7 +26,7 @@ Item {
     property var wpCatalog
     property var uploadedImages: []
 
-    // Hover-preview hooks for animated styles (the host — e.g. the Manager — wires
+    // Hover-preview hooks for animated styles (the host - e.g. the Manager - wires
     // these to a live preview without committing). Unconnected in the hub, which is
     // harmless.
     signal previewStyle(string v)
@@ -34,7 +34,7 @@ Item {
 
     implicitHeight: col2.implicitHeight
 
-    // Text legible on an accent fill — prefer a theme token so a dark accent can't
+    // Text legible on an accent fill - prefer a theme token so a dark accent can't
     // make the selected chip's label vanish; fall back to the historic literal.
     function onAccent() { return (col && col.textOnAccent) ? col.textOnAccent : "#0D1117" }
 
@@ -79,7 +79,7 @@ Item {
         // Animated styles (+ "Use global" for pages).
         Flow {
             Layout.fillWidth: true; spacing: 8
-            // "Use global" — only meaningful for a page override.
+            // "Use global" - only meaningful for a page override.
             Rectangle {
                 id: globalChip
                 visible: bp.pageIndex >= 0
@@ -87,7 +87,7 @@ Item {
                 property bool sel: bp.selGlobal()
                 color: sel ? bp.col.accent : bp.col.panelAlt
                 border.width: sel ? 2 : 1; border.color: sel ? bp.col.accent : bp.col.border
-                // Reference the chip's `sel` via its id — this Rectangle is NOT a
+                // Reference the chip's `sel` via its id - this Rectangle is NOT a
                 // delegate/component root, so a bare `sel` in the child Text doesn't
                 // resolve (it threw "sel is not defined").
                 Text { id: gLbl; anchors.centerIn: parent; text: "Use global"

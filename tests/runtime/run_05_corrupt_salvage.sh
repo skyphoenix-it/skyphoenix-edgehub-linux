@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
-# Scenario 05 — corrupt-config salvage (core/src/config.rs semantics).
+# Scenario 05 - corrupt-config salvage (core/src/config.rs semantics).
 #
-# Garbles config.toml the way a torn write does (valid head, junk tail — the
+# Garbles config.toml the way a torn write does (valid head, junk tail - the
 # shape config.rs's own tests use), launches the real hub, and asserts the
 # salvage contract:
 #
 #   * the corrupt file is preserved under a TIMESTAMPED config.toml.corrupt-*.bak,
-#     byte-identical — nothing the user had is destroyed;
+#     byte-identical - nothing the user had is destroyed;
 #   * the canonical good backup (config.toml.bak) is NOT clobbered by the
 #     corrupt content;
 #   * the hub comes up and stays up (liveness: full window + control server);
-#   * first_run_complete survives salvage — the first-run wizard is NOT
+#   * first_run_complete survives salvage - the first-run wizard is NOT
 #     re-triggered by corruption;
 #   * the hub recovers to a WORKING persisted state: the post-run config.toml
 #     is valid TOML with a parseable ui_state.
 #
 # KNOWN, DELIBERATELY-NOT-ASSERTED LIMIT: salvage_partial_config() recovers the
 # `ui_state` line only when it is a double-quoted TOML string, but the hub
-# itself serializes ui_state as a SINGLE-QUOTED literal — so on today's code
+# itself serializes ui_state as a SINGLE-QUOTED literal - so on today's code
 # the dashboard LAYOUT does not survive into the live config (it is re-seeded;
 # the only copy of the user's layout is the .corrupt-*.bak). That is a product
 # gap in core/src/config.rs, outside this scenario's ownership; asserting
@@ -35,7 +35,7 @@ fail=0
 
 rt_mkroot c
 # A config in the hub's own on-disk shape (nested tables, single-quoted
-# ui_state literal — matches what save_config writes, verified by probe).
+# ui_state literal - matches what save_config writes, verified by probe).
 python3 "$HERE/seed_config.py" "$RT_CFG" >/dev/null <<EOF
 {"version":1,"appearance":{"mode":"dark","accent":"#58A6FF"},
  "settings":{},
@@ -56,7 +56,7 @@ rt_assert_live "salvage" "$RT_ROOT" || fail=1
 if grep -aq "Config parse failed; backing up and salvaging" "$RT_ROOT/hub.log"; then
     echo "  [salvage] PASS: hub hit the salvage path (log)"
 else
-    echo "  [salvage] FAIL: salvage path never engaged — did the corruption parse?"
+    echo "  [salvage] FAIL: salvage path never engaged - did the corruption parse?"
     fail=1
 fi
 
@@ -90,7 +90,7 @@ else
     if [ "$frc" = "True" ]; then
         echo "  [wizard] PASS: first_run_complete survived salvage (wizard not re-triggered)"
     else
-        echo "  [wizard] FAIL: corruption reset first_run_complete — wizard would reappear"
+        echo "  [wizard] FAIL: corruption reset first_run_complete - wizard would reappear"
         fail=1
     fi
     if [ "$has_ui" = "True" ]; then
@@ -103,4 +103,4 @@ fi
 
 echo
 if [ "$fail" -ne 0 ]; then echo "RESULT: FAILURE"; exit 1; fi
-echo "RESULT: SUCCESS — corruption is backed up, survives no data destruction, and the hub recovers"
+echo "RESULT: SUCCESS - corruption is backed up, survives no data destruction, and the hub recovers"

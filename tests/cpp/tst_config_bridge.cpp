@@ -220,7 +220,7 @@ private slots:
         QCOMPARE(r["value"].toString(), QStringLiteral("file-token"));
     }
 
-    // A missing ref must fail with a reason — not silently resolve to empty, which
+    // A missing ref must fail with a reason - not silently resolve to empty, which
     // would send an unauthenticated request that looks like a server-side 401.
     void resolveSecret_missingRefReportsWhy() {
         qunsetenv("XENEON_BRIDGE_ABSENT");
@@ -242,7 +242,7 @@ private slots:
         QCOMPARE(r["plaintext"].toBool(), true);
     }
 
-    // An unconfigured token is a success with no value — not an error, and not a
+    // An unconfigured token is a success with no value - not an error, and not a
     // plaintext warning about a secret that does not exist.
     void resolveSecret_emptyIsANoOpSuccess() {
         ConfigBridge b(cfg_);

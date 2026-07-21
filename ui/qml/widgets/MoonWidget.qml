@@ -1,27 +1,27 @@
 import QtQuick
 import QtQuick.Layouts
 
-// Moon phase — computed locally from the current date (synodic month).
+// Moon phase - computed locally from the current date (synodic month).
 //
 // Sizing (W1 wave 2a): layout keys off the injected `sizeClass`. The tile
 // stays headerless (the glyph IS the header); each size earns its box:
-//   • 0.5x0.5 (micro) — the glyph alone, scaled to the box.
-//   • 1x1 (baseline)  — glyph + phase name + "% illuminated" (the old 58px
+//   • 0.5x0.5 (micro) - the glyph alone, scaled to the box.
+//   • 1x1 (baseline)  - glyph + phase name + "% illuminated" (the old 58px
 //                       emoji floated tiny in a third of the screen).
-//   • wide            — glyph beside a name / illumination / age column.
-//   • tall            — glyph + name + illumination/age + next new/full dates
+//   • wide            - glyph beside a name / illumination / age column.
+//   • tall            - glyph + name + illumination/age + next new/full dates
 //                       (the dates used to be locked behind the overlay).
-//   • full (overlay)  — the full readout, header shown, sized by the pane it is
+//   • full (overlay)  - the full readout, header shown, sized by the pane it is
 //                       actually given (see glyphPx). It is NOT a full screen:
 //                       Dashboard hosts it in a live-preview pane beside the
-//                       config form — ~941x456 landscape, ~656x980 portrait —
+//                       config form - ~941x456 landscape, ~656x980 portrait -
 //                       so "full" is a class like any other and reads its own
 //                       box rather than a set of literals.
 //
 // `showHeader: expanded` is the one thing here that is legitimately keyed off the
 // MODE rather than the room, and it stays: it is chrome-header CONTENT, not a
 // dimension. The tile is headerless AT EVERY SIZE by design (the glyph is the
-// header — see above); only the overlay, which is a titled view of one widget,
+// header - see above); only the overlay, which is a titled view of one widget,
 // shows a header. That is a mode question and `expanded` answers it correctly.
 WidgetChrome {
     id: w
@@ -75,7 +75,7 @@ WidgetChrome {
     readonly property bool horiz: sizeClass === "wide"
     readonly property bool tallish: sizeClass === "tall" || sizeClass === "large"
     // Has this instance got room to spare? The overlay is a size CLASS ("full",
-    // injected by Dashboard alongside expanded), not a mode — so it belongs in
+    // injected by Dashboard alongside expanded), not a mode - so it belongs in
     // this predicate rather than in a `w.expanded ?` branch scattered across the
     // file. `large` is unreachable for the sizes this type declares (0.5x0.5,
     // 0.5x1, 1x0.5, 1x1) but is kept so a forced class degrades sanely.
@@ -86,7 +86,7 @@ WidgetChrome {
     // The `expanded ? 150` this used to lead with was frozen twice over: it
     // ignored the box it was actually handed, and it never noticed when W5 shrank
     // the overlay's live-preview pane to 38% of the width in landscape. That pane
-    // is ~941x456 landscape / ~656x980 portrait, not a 2560x720 screen — fed
+    // is ~941x456 landscape / ~656x980 portrait, not a 2560x720 screen - fed
     // through the general term below they ask for 173 and 190, and 150 was
     // neither. Dropping the branch entirely lets "full" fall through to the same
     // two-axis term every other non-wide class uses; no tile class changes.
@@ -94,20 +94,20 @@ WidgetChrome {
         : horiz ? Math.min(width * 0.30, height * 0.55, 170)
         : Math.min(width * 0.42, height * 0.38, 190)
     // Illumination context: the sizes that have room add the lunar age. (`|| expanded`
-    // dropped — `roomy` already covers sizeClass "full", which is what the overlay
+    // dropped - `roomy` already covers sizeClass "full", which is what the overlay
     // is injected as, so the mode term was dead weight.)
     readonly property string illumLine: (horiz || roomy)
         ? w.illum + "% illuminated  ·  " + w.ageDays.toFixed(1) + " days old"
         : w.illum + "% illuminated"
     // The phase name and the illumination line are sized by the BOX, with the
-    // ceiling — not the mode — widening where there is room for it. The old
+    // ceiling - not the mode - widening where there is room for it. The old
     // `expanded ? 26` / `expanded ? 16` pinned the overlay to one number for two
     // very differently-shaped panes; a height term separates them AND, being the
     // right question, gives the taller pane the bigger name (656x980 -> 29.5 >
     // 941x456 -> 27.4). Portrait tiles are unchanged (their width term binds well
     // below both the height term and the cap); the one deliberate shift is the
     // wide LANDSCAPE half-cell (846x306 / 423x306), whose name eases from 24 to
-    // ~18 because a 306px-tall box genuinely has less vertical room — the same
+    // ~18 because a 306px-tall box genuinely has less vertical room - the same
     // room-driven logic, not a regression.
     readonly property real namePx: Math.max(14, Math.min(width * 0.045, height * 0.06,
                                                          roomy ? 34 : 24))
@@ -137,7 +137,7 @@ WidgetChrome {
             visible: !w.micro
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignVCenter
-            spacing: w.roomy ? 14 : 4          // room, not mode — see rowSpacing above
+            spacing: w.roomy ? 14 : 4          // room, not mode - see rowSpacing above
 
             // fillWidth (not maximumWidth): a non-fill Text caps the nested
             // column's own stretch, which pinned the whole block to the left.
@@ -153,7 +153,7 @@ WidgetChrome {
                 text: w.illumLine
                 font.pixelSize: Math.round(w.illumPx)
                 color: theme.textTertiary }
-            // Next new/full dates — the overlay's readout, now also earned by
+            // Next new/full dates - the overlay's readout, now also earned by
             // tall tiles (genuinely more information, not a stretched glyph).
             // `roomy` is exactly the old `w.expanded || w.tallish`: Dashboard
             // injects "full" for the overlay, so the mode term said nothing the

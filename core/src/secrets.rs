@@ -2,14 +2,14 @@
 //!
 //! A widget's `authToken` (and any future credential) is stored in `ui_state`,
 //! which is serialised verbatim into `config.toml`. A literal token there is a
-//! plaintext secret on disk — so instead the config should hold only a
+//! plaintext secret on disk - so instead the config should hold only a
 //! *reference*, resolved to the real value at request time and never persisted:
 //!
 //! | form                  | meaning                                      |
 //! |-----------------------|----------------------------------------------|
 //! | `${env:VAR}`          | read environment variable `VAR`              |
 //! | `file:/path/to/token` | read the file's contents (trimmed)           |
-//! | `secret://svc/key`    | OS keyring — Phase B, not yet implemented    |
+//! | `secret://svc/key`    | OS keyring - Phase B, not yet implemented    |
 //! | anything else         | a legacy plaintext literal (still honoured)  |
 //!
 //! Plaintext is deliberately still honoured: E1 shipped a token field, so real
@@ -17,7 +17,7 @@
 //! worse than the exposure they already have. `is_plaintext` lets the UI flag it
 //! so they can migrate. See [`resolve`].
 //!
-//! NOTHING in this module may log a secret's value — only its *kind* and, on
+//! NOTHING in this module may log a secret's value - only its *kind* and, on
 //! failure, the reference (which is a variable name or path, not the secret).
 
 use std::fs;
@@ -26,11 +26,11 @@ use std::path::Path;
 /// What a stored credential string denotes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SecretRef<'a> {
-    /// `${env:VAR}` — resolved from the process environment.
+    /// `${env:VAR}` - resolved from the process environment.
     Env(&'a str),
-    /// `file:/path` — resolved by reading the file.
+    /// `file:/path` - resolved by reading the file.
     File(&'a str),
-    /// `secret://service/key` — OS keyring (Phase B).
+    /// `secret://service/key` - OS keyring (Phase B).
     Keyring(&'a str),
     /// A bare literal: the legacy plaintext form.
     Plaintext(&'a str),
@@ -62,7 +62,7 @@ pub fn classify(raw: &str) -> SecretRef<'_> {
         if let Some(var) = rest.strip_suffix('}') {
             return SecretRef::Env(var.trim());
         }
-        // "${env:FOO" with no closing brace — the user meant a ref, so treat it
+        // "${env:FOO" with no closing brace - the user meant a ref, so treat it
         // as one (and fail loudly) rather than send a malformed literal as a
         // Bearer token to a remote host.
         return SecretRef::Env(rest.trim());
@@ -78,7 +78,7 @@ pub fn classify(raw: &str) -> SecretRef<'_> {
 
 /// True when the stored value is a bare secret sitting in `config.toml`.
 ///
-/// An empty value is NOT plaintext — nothing is stored, so there is nothing to
+/// An empty value is NOT plaintext - nothing is stored, so there is nothing to
 /// warn about (that is just an unconfigured widget).
 pub fn is_plaintext(raw: &str) -> bool {
     !raw.trim().is_empty() && matches!(classify(raw), SecretRef::Plaintext(_))
@@ -134,7 +134,7 @@ mod tests {
     }
 
     // A token that merely starts with letters resembling a scheme must stay a
-    // literal — otherwise a real token could be silently reinterpreted as a path.
+    // literal - otherwise a real token could be silently reinterpreted as a path.
     #[test]
     fn a_literal_resembling_a_scheme_is_still_a_literal() {
         assert_eq!(
@@ -215,7 +215,7 @@ mod tests {
 
     #[test]
     fn plaintext_still_resolves_to_itself() {
-        // Legacy values must keep working — breaking a user's widget is worse
+        // Legacy values must keep working - breaking a user's widget is worse
         // than the exposure they already have; the UI warns instead.
         assert_eq!(resolve("ghp_literal").unwrap(), "ghp_literal");
     }

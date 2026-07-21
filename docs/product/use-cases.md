@@ -1,8 +1,8 @@
 # Use Cases
 
-**Version:** 0.1.0-draft  
-**Status:** Historical Phase-0 discovery draft — superseded
-**Last Updated:** 2026-07-11  
+**Version:** 0.1.0-draft
+**Status:** Historical Phase-0 discovery draft - superseded
+**Last Updated:** 2026-07-11
 
 > **Historical document.** This captures early product intent and is not the
 > current release contract. MVP labels and acceptance criteria below were written
@@ -14,9 +14,9 @@
 
 ## UC-01: First-Run Setup and Display Selection
 
-**Actor:** Any user (first launch)  
-**Priority:** Critical (P0)  
-**Precondition:** Application installed, at least two displays connected (one is Xeneon Edge).  
+**Actor:** Any user (first launch)
+**Priority:** Critical (P0)
+**Precondition:** Application installed, at least two displays connected (one is Xeneon Edge).
 
 ### Main Flow
 1. User launches the application for the first time.
@@ -39,10 +39,10 @@
 10. Application opens the dashboard on the selected display.
 
 ### Alternate Flows
-- **A1: Only one display detected** — warn user, still allow selection, suggest connecting secondary display.
-- **A2: No Xeneon-like display detected** — show all displays, let user manually select.
-- **A3: User skips wizard** — open on primary display in windowed mode, show setup reminder.
-- **A4: Touchscreen not detected** — warn that touch input may not work, proceed anyway.
+- **A1: Only one display detected** - warn user, still allow selection, suggest connecting secondary display.
+- **A2: No Xeneon-like display detected** - show all displays, let user manually select.
+- **A3: User skips wizard** - open on primary display in windowed mode, show setup reminder.
+- **A4: Touchscreen not detected** - warn that touch input may not work, proceed anyway.
 
 ### Acceptance Criteria
 - Wizard is fully usable via touch.
@@ -54,9 +54,9 @@
 
 ## UC-02: Dashboard in Landscape Orientation
 
-**Actor:** Any user  
-**Priority:** Critical (P0)  
-**Precondition:** Dashboard display selected, display in landscape (2560×720).  
+**Actor:** Any user
+**Priority:** Critical (P0)
+**Precondition:** Dashboard display selected, display in landscape (2560×720).
 
 ### Main Flow
 1. Application opens borderless fullscreen window on selected display.
@@ -77,15 +77,15 @@
 
 ## UC-03: Dashboard in Portrait Orientation
 
-**Actor:** Any user  
-**Priority:** Critical (P0)  
-**Precondition:** Dashboard display selected, display in portrait (720×2560).  
+**Actor:** Any user
+**Priority:** Critical (P0)
+**Precondition:** Dashboard display selected, display in portrait (720×2560).
 
 ### Main Flow
 1. Application detects portrait orientation.
 2. Dashboard renders widgets in a vertical-responsive grid optimized for 720×2560.
 3. Widgets are arranged top-to-bottom.
-4. Layout differs from landscape — not merely a rotated landscape layout.
+4. Layout differs from landscape - not merely a rotated landscape layout.
 5. Touch input maps correctly.
 6. Swiping navigates between pages vertically.
 
@@ -98,9 +98,9 @@
 
 ## UC-04: Add, Move, Resize, and Configure Widgets (Edit Mode)
 
-**Actor:** Any user  
-**Priority:** Critical (P0)  
-**Precondition:** Dashboard is running in view mode.  
+**Actor:** Any user
+**Priority:** Critical (P0)
+**Precondition:** Dashboard is running in view mode.
 
 ### Main Flow
 1. User enters Edit mode (long-press on empty area or tap edit button).
@@ -115,10 +115,10 @@
 10. User exits Edit mode; dashboard returns to view mode.
 
 ### Alternate Flows
-- **A1: Remove widget** — long-press widget in edit mode, tap remove.
-- **A2: Duplicate widget** — long-press, tap duplicate.
-- **A3: Undo/Redo** — available during edit session.
-- **A4: Accidental action prevention** — widget actions (taps) are disabled in edit mode.
+- **A1: Remove widget** - long-press widget in edit mode, tap remove.
+- **A2: Duplicate widget** - long-press, tap duplicate.
+- **A3: Undo/Redo** - available during edit session.
+- **A4: Accidental action prevention** - widget actions (taps) are disabled in edit mode.
 
 ### Acceptance Criteria
 - All edit operations work via touch.
@@ -131,9 +131,9 @@
 
 ## UC-05: Display Disconnection and Reconnection
 
-**Actor:** Any user  
-**Priority:** Critical (P0)  
-**Precondition:** Dashboard running on selected display.  
+**Actor:** Any user
+**Priority:** Critical (P0)
+**Precondition:** Dashboard running on selected display.
 
 ### Main Flow (Disconnect)
 1. User physically disconnects the dashboard display (unplug cable, power off, etc.).
@@ -151,10 +151,10 @@
 5. If no match: notification guides user to re-run display selection.
 
 ### Alternate Flows
-- **A1: Same display, different connector** — match by EDID hash, reopen.
-- **A2: Different display of same model** — prompt user to confirm or re-select.
-- **A3: User dismisses notification** — application remains hidden until manually reopened.
-- **A4: User explicitly opens on primary** — allowed only via settings override.
+- **A1: Same display, different connector** - match by EDID hash, reopen.
+- **A2: Different display of same model** - prompt user to confirm or re-select.
+- **A3: User dismisses notification** - application remains hidden until manually reopened.
+- **A4: User explicitly opens on primary** - allowed only via settings override.
 
 ### Acceptance Criteria
 - Dashboard never silently appears on primary monitor.
@@ -166,9 +166,9 @@
 
 ## UC-06: System Metrics Display
 
-**Actor:** Alex, Marcus  
-**Priority:** High (P1)  
-**Precondition:** Dashboard running, system metrics widget added.  
+**Actor:** Alex, Marcus
+**Priority:** High (P1)
+**Precondition:** Dashboard running, system metrics widget added.
 
 ### Main Flow
 1. User adds a CPU usage widget.
@@ -189,9 +189,9 @@
 
 ## UC-07: Focus Timer (Pomodoro)
 
-**Actor:** Alex, Jordan  
-**Priority:** High (P1)  
-**Precondition:** Dashboard running, focus timer widget added.  
+**Actor:** Alex, Jordan
+**Priority:** High (P1)
+**Precondition:** Dashboard running, focus timer widget added.
 
 ### Main Flow
 1. Widget displays a large, readable countdown/up timer.
@@ -202,10 +202,10 @@
 6. Widget tracks sessions completed.
 
 ### Alternate Flows
-- **A1: Configure duration** — tap settings to adjust focus/break durations.
-- **A2: Pause** — tap timer to pause/resume.
-- **A3: Skip** — tap skip to move to next phase.
-- **A4: Reset** — long-press to reset session count.
+- **A1: Configure duration** - tap settings to adjust focus/break durations.
+- **A2: Pause** - tap timer to pause/resume.
+- **A3: Skip** - tap skip to move to next phase.
+- **A4: Reset** - long-press to reset session count.
 
 ### Acceptance Criteria
 - Timer is accurate to within 1 second.
@@ -217,9 +217,9 @@
 
 ## UC-08: Media Controls via MPRIS
 
-**Actor:** Alex, Taylor, Marcus  
-**Priority:** High (P1)  
-**Precondition:** Dashboard running, MPRIS-compatible media player active.  
+**Actor:** Alex, Taylor, Marcus
+**Priority:** High (P1)
+**Precondition:** Dashboard running, MPRIS-compatible media player active.
 
 ### Main Flow
 1. Media widget detects active MPRIS player (e.g., Spotify, Firefox, VLC).
@@ -243,9 +243,9 @@
 
 ## UC-09: Gaming Profile Auto-Switch
 
-**Actor:** Marcus  
-**Priority:** Medium (P2)  
-**Precondition:** Gaming profile configured, game process names defined.  
+**Actor:** Marcus
+**Priority:** Medium (P2)
+**Precondition:** Gaming profile configured, game process names defined.
 
 ### Main Flow
 1. Application monitors process list (configurable polling interval, default: 5s).
@@ -267,9 +267,9 @@
 
 ## UC-10: Theme Configuration
 
-**Actor:** Sam, Jordan  
-**Priority:** Medium (P2)  
-**Precondition:** Dashboard running.  
+**Actor:** Sam, Jordan
+**Priority:** Medium (P2)
+**Precondition:** Dashboard running.
 
 ### Main Flow
 1. User opens Settings → Appearance.
@@ -290,9 +290,9 @@
 
 ## UC-11: Multiple Dashboard Pages
 
-**Actor:** All users  
-**Priority:** Medium (P2)  
-**Precondition:** Dashboard running.  
+**Actor:** All users
+**Priority:** Medium (P2)
+**Precondition:** Dashboard running.
 
 ### Main Flow
 1. User enters Edit mode.
@@ -312,9 +312,9 @@
 
 ## UC-12: Application Launcher Widget
 
-**Actor:** All users  
-**Priority:** Medium (P2)  
-**Precondition:** Dashboard running, launcher widget added.  
+**Actor:** All users
+**Priority:** Medium (P2)
+**Precondition:** Dashboard running, launcher widget added.
 
 ### Main Flow
 1. User adds application launcher widget.
@@ -333,9 +333,9 @@
 
 ## UC-13: Settings and Diagnostics
 
-**Actor:** All users  
-**Priority:** High (P1)  
-**Precondition:** Dashboard running.  
+**Actor:** All users
+**Priority:** High (P1)
+**Precondition:** Dashboard running.
 
 ### Main Flow
 1. User opens Settings (from dashboard menu or primary window).
@@ -355,9 +355,9 @@
 
 ## UC-14: Widget Failure Handling
 
-**Actor:** Any user  
-**Priority:** High (P1)  
-**Precondition:** Dashboard running, widget misbehaving.  
+**Actor:** Any user
+**Priority:** High (P1)
+**Precondition:** Dashboard running, widget misbehaving.
 
 ### Main Flow
 1. A widget exceeds its CPU time budget or crashes.
@@ -377,9 +377,9 @@
 
 ## UC-15: Configuration Import/Export
 
-**Actor:** Sam, Alex  
-**Priority:** Low (P3)  
-**Precondition:** Dashboard configured.  
+**Actor:** Sam, Alex
+**Priority:** Low (P3)
+**Precondition:** Dashboard configured.
 
 ### Main Flow
 1. User opens Settings → Dashboards → Export.

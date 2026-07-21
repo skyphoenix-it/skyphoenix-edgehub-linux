@@ -74,7 +74,7 @@ Item {
         // COVERS: fn:NetHub._hasScheme, fn:NetHub._isRemote
         // REGRESSION: _isLocal used to be "not http and not https", so EVERY
         // unknown scheme counted as a local file read and skipped both the offline
-        // kill switch and the allowlist. webcal:// is not hypothetical — it is what
+        // kill switch and the allowlist. webcal:// is not hypothetical - it is what
         // Apple/iCloud hands you for a private calendar, so the kill switch had a
         // hole exactly where a secret URL goes.
         function test_unknown_schemes_are_not_local() {
@@ -133,7 +133,7 @@ Item {
                           onDone: function () { fail("must not succeed") },
                           onError: function (r) { err = r } })
             lastFake.resolveWith(304, "")
-            compare(err, "http 304", "304 is not a 2xx — still an error")
+            compare(err, "http 304", "304 is not a 2xx - still an error")
         }
 
         // ── success path ─────────────────────────────────────────────────────
@@ -261,7 +261,7 @@ Item {
             compare(hub._resolveToken("file:/x").ok, false, "a ref without a resolver fails closed")
         }
 
-        // A plaintext token still works, but the user is told — once. The warning
+        // A plaintext token still works, but the user is told - once. The warning
         // is about a STORED value, so repeating it every poll would be log spam.
         function test_plaintext_token_warns_once_not_every_poll() {
             hub.secretResolver = { resolveSecret: function (raw) {
@@ -326,7 +326,7 @@ Item {
             verify(("" + err).indexOf("secret:") === 0, "got: " + err)
         }
 
-        // A legacy plaintext token still works with no resolver — E1 shipped the
+        // A legacy plaintext token still works with no resolver - E1 shipped the
         // field, so breaking it would break real users' widgets.
         function test_legacy_plaintext_token_still_authenticates() {
             hub.secretResolver = null

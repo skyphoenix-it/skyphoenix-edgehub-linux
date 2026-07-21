@@ -1,13 +1,13 @@
 import QtQuick
 
 // ─────────────────────────────────────────────────────────────────────────
-// DashboardStore — the single source of truth for the dashboard.
+// DashboardStore - the single source of truth for the dashboard.
 //
 // Owns the persisted UI-state document (layout + per-widget settings +
 // appearance) and mediates all reads/writes. Persistence goes through the C++
 // `configBridge` (→ Rust config, atomic XDG write). Reactivity is provided by
 // `revision`: every mutation bumps it, so widgets that bind through it re-read
-// automatically — this is what lets a tile and its expanded overlay (two
+// automatically - this is what lets a tile and its expanded overlay (two
 // separate instances) share the same live state.
 //
 // Document schema (JSON):
@@ -23,8 +23,8 @@ import QtQuick
 // It replaced the old `w`/`h` span pair, and it is a NEW KEY rather than a
 // reinterpretation of the old ones for one decisive reason: a new key makes an
 // old document STRUCTURALLY DETECTABLE. `size === undefined` ⇒ pre-migration,
-// full stop. Reusing `w`/`h` would have silently reinterpreted them — old `h:2`
-// meant "twice as tall as my siblings", new means "two thirds of the screen" —
+// full stop. Reusing `w`/`h` would have silently reinterpreted them - old `h:2`
+// meant "twice as tall as my siblings", new means "two thirds of the screen" -
 // and there would have been no way to tell a migrated tile from a stale one.
 // `version` cannot serve as that guard: it is WRITTEN (here and by
 // PresetCatalog) but never read or branched on anywhere in the codebase, so
@@ -62,19 +62,19 @@ Item {
     // Setting keys that hold volatile, per-session runtime state (metric sparkline
     // history + session peaks). They are shared in memory so the compact tile and
     // its expanded overlay draw the same sparkline, but they must NEVER be persisted
-    // or schedule a disk write — otherwise the metric widgets rewrite config.toml on
+    // or schedule a disk write - otherwise the metric widgets rewrite config.toml on
     // every sample (~2s), which is constant flash wear on the device and races the
     // Manager's own save (transient ENOENT). They're also stripped from the on-disk
     // document, so a genuine save never carries stale history across restarts (S4).
     // Volatile per-session keys that must NEVER reach config.toml. `hist`/`peakRx`/
     // `peakTx` back the metric sparklines; `http*` back the HTTP/JSON + KPI polling
-    // primitives (value/text/error/list) — a poll every N seconds must not rewrite
+    // primitives (value/text/error/list) - a poll every N seconds must not rewrite
     // the config (flash wear + a save race with the Manager).
     readonly property var _ephemeralKeys: ({ "hist": true, "peakRx": true, "peakTx": true,
         "httpVal": true, "httpText": true, "httpErr": true, "httpList": true, "httpAt": true })
     function _isEphemeralKey(k) { return store._ephemeralKeys[k] === true }
 
-    // Deep copy of the document with all ephemeral runtime keys removed — the exact
+    // Deep copy of the document with all ephemeral runtime keys removed - the exact
     // bytes written to disk.
     function _persistableData() {
         var d = _clone(store.data)
@@ -98,14 +98,14 @@ Item {
             configBridge.saveUiState(JSON.stringify(store._persistableData()))
     }
 
-    // Force an immediate (non-debounced) save — used on structural edits.
+    // Force an immediate (non-debounced) save - used on structural edits.
     function flushNow() { saveTimer.stop(); _flush() }
 
     function _clone(o) { return JSON.parse(JSON.stringify(o)) }
 
     // ── Tile sizes ───────────────────────────────────────────────────────────
     // The size vocabulary itself lives in WidgetSizes; which sizes a given widget
-    // TYPE may legally take lives in WidgetCatalog. The store owns neither — it
+    // TYPE may legally take lives in WidgetCatalog. The store owns neither - it
     // only enforces them on the way in.
     property QtObject _sizes: WidgetSizes {}
     property QtObject _catalog: WidgetCatalog {}
@@ -138,14 +138,14 @@ Item {
     //
     // This is what an unsupported size coerces to, and the distinction from the
     // type's default is the whole point: a stored size the type cannot render still
-    // carries one recoverable fact — that the tile was THIS BIG — and the default
+    // carries one recoverable fact - that the tile was THIS BIG - and the default
     // throws it away. Migration maps a preset's old `h:2` to `1x2`, which `focus`,
     // `media` and `clock` do not declare (they top out at `1x1.5`); defaulting sent
     // them to `1x1` and calm-focus silently lost its hero timer. Coercing DOWN keeps
     // the emphasis at the largest shape the widget can actually render.
     //
-    // Ranked by AREA — share of the screen, the same measure `_nearestSize` preserves
-    // — never by declaration order, which is a convention the catalog is free to
+    // Ranked by AREA - share of the screen, the same measure `_nearestSize` preserves
+    // - never by declaration order, which is a convention the catalog is free to
     // break. Ties (0.5x1 and 1x0.5 are both 1/6) keep the WIDER short axis, matching
     // the shortFrac bias in `_migratedSize`: a coercion may shrink a tile only
     // because the widget cannot render the shape, never by preference.
@@ -160,8 +160,8 @@ Item {
             var area = store._sizes.area(name)
             if (area > want + 1e-9) continue
             // NOT `var short`: `short` is an ECMAScript future-reserved word, and
-            // Qt 6.7's V4 parser (what CI runs) rejects it as an identifier —
-            // "Expected token `identifier'" — while 6.11 (the dev box) accepts it.
+            // Qt 6.7's V4 parser (what CI runs) rejects it as an identifier -
+            // "Expected token `identifier'" - while 6.11 (the dev box) accepts it.
             // The .short PROPERTY read below is fine; only the declaration breaks.
             var shortAxis = store._sizes.table[name].short
             if (area > bestArea + 1e-9 ||
@@ -173,12 +173,12 @@ Item {
     }
 
     // Geometry → the closest legal size name.
-    //   shortFrac  — fraction of the short screen axis (the axis has exactly two
+    //   shortFrac  - fraction of the short screen axis (the axis has exactly two
     //                stops: 0.5 and 1)
-    //   longThirds — count of thirds along the long axis
+    //   longThirds - count of thirds along the long axis
     // An exact match wins. Otherwise the tile's SHARE OF THE SCREEN (area) is
     // preserved, because that is the closest honest proxy for the emphasis the
-    // old sibling-ratio encoded: e.g. a half-wide two-thirds-tall tile (0.5x2 —
+    // old sibling-ratio encoded: e.g. a half-wide two-thirds-tall tile (0.5x2 -
     // not a legal size, the short axis has no 2-thirds partner) and `1x1` both
     // occupy exactly a third of the screen, so the tile keeps its weight even
     // though it changes shape.
@@ -202,8 +202,8 @@ Item {
     //
     // Old `w` was a column span against the page's declared column count, so it
     // IS recoverable as a fraction: w/cols. Old `h` was a row span against
-    // siblings — its on-screen height depended on how many rows the page happened
-    // to pack, which nothing on disk records — whereas the new long axis is a
+    // siblings - its on-screen height depended on how many rows the page happened
+    // to pack, which nothing on disk records - whereas the new long axis is a
     // fixed count of thirds of the screen. So `h` is mapped 1:1 onto thirds
     // (h:1 → a third, h:2 → two thirds), which is exactly right only for a page
     // whose rows already totalled three, and merely proportional otherwise.
@@ -227,7 +227,7 @@ Item {
         var note = ""
         if (tile.size === undefined) {
             // No `size` key ⇒ pre-migration. The vast majority of stored tiles are
-            // a bare {id,type} — `addTile` never wrote w/h — and carry no sizing
+            // a bare {id,type} - `addTile` never wrote w/h - and carry no sizing
             // intent at all, so they land on whatever the page's column count
             // implies (with the default 1-column grid: the `1x1` baseline).
             var carriedIntent = (tile.w !== undefined || tile.h !== undefined)
@@ -244,7 +244,7 @@ Item {
             // Coerce DOWN, not to the default: keep "this tile was big" at the
             // largest shape the widget declares. Only a type that declares nothing
             // this small (or an unknown type, which declares nothing at all) falls
-            // back to the default — and a legal-but-unsupported size is still
+            // back to the default - and a legal-but-unsupported size is still
             // REPORTED either way, because the tile did change shape.
             var down = store._sizes.isLegal(bad)
                      ? store._largestSupportedAtMost(tile.type, bad) : ""
@@ -289,7 +289,7 @@ Item {
             // The column count the old `w` span was measured against: the page
             // override, else the global grid setting, else 1 (Dashboard's own
             // resolution order). Dashboard additionally clamped this by the runtime
-            // WIDTH — information that does not exist on disk and is unknowable
+            // WIDTH - information that does not exist on disk and is unknowable
             // here, so the declared count is the best available truth.
             var declaredCols = Number(p.cols) || Number(doc.appearance.gridCols) || 1
             var srcTiles = Array.isArray(p.tiles) ? p.tiles : []
@@ -298,7 +298,7 @@ Item {
                 var t = srcTiles[j]
                 if (_isPlainObject(t) && typeof t.id === "string" && t.id !== "") {
                     // Every tile entering `data` leaves here with a legal, supported
-                    // `size` — migrated from w/h, or coerced if the document handed
+                    // `size` - migrated from w/h, or coerced if the document handed
                     // us junk. This runs on load AND applyExternal (another process
                     // pushes that one), so it is the hostile-input boundary too.
                     var note = _coerceTileSize(t, declaredCols)
@@ -309,7 +309,7 @@ Item {
             p.tiles = cleanTiles
             // `cols` chose how many columns the page laid its tiles out in. The grid
             // is now FIXED at WidgetSizes.shortHalves (2 half-cells) across the short
-            // axis, because a size is a fraction of the SCREEN — a user-chosen column
+            // axis, because a size is a fraction of the SCREEN - a user-chosen column
             // count would make `1x1` mean something different per page, which is the
             // exact property the size model exists to remove. So the key is dead, and
             // it is dropped HERE rather than left to rot: it is read one last time
@@ -327,7 +327,7 @@ Item {
         // height was a sibling-ratio may well have changed its share of the screen,
         // and that is not something to hide.
         //
-        // A migrated page may exceed the screen's 6 long half-cells — six bare
+        // A migrated page may exceed the screen's 6 long half-cells - six bare
         // {id,type} tiles become 6 × `1x1` = 12, two screens' worth. That is fine
         // and deliberate: the store does not do capacity. Forcing tiles to fit here
         // would silently destroy the layout this function exists to preserve, so a
@@ -342,7 +342,7 @@ Item {
         // but a config that already carries two identical page names (the real "two
         // Page 5 tabs" bug) was never reconciled. Walk in order, keep the first
         // occurrence, and disambiguate later duplicates deterministically by
-        // appending " 2", " 3", … — tiles/order/all other fields are untouched.
+        // appending " 2", " 3", … - tiles/order/all other fields are untouched.
         var seenNames = Object.create(null)
         for (var n = 0; n < doc.pages.length; n++) {
             var pg = doc.pages[n]
@@ -389,7 +389,7 @@ Item {
 
     // ── Managed / org policy (E9): forced-preset lock ───────────────────
     // When non-empty, the layout was seeded from this preset by org policy:
-    //   • NOTHING is persisted while the lock holds (see _flush) — session
+    //   • NOTHING is persisted while the lock holds (see _flush) - session
     //     edits to the forced layout evaporate on restart, and the user's own
     //     saved layout in config.toml survives untouched underneath;
     //   • a Manager push is refused (see applyExternal).
@@ -420,15 +420,15 @@ Item {
         if (raw && raw.length) {
             try { parsed = JSON.parse(raw) } catch (e) { parsed = null }
         }
-        // Honour any valid saved layout — including an intentionally-blank
-        // pages:[] — consistently with applyExternal(); only re-seed when there
+        // Honour any valid saved layout - including an intentionally-blank
+        // pages:[] - consistently with applyExternal(); only re-seed when there
         // is no usable document at all.
         if (parsed && parsed.pages) {
             data = _normaliseDoc(parsed)
         } else {
             // Seeded docs are normalised too: the curated presets still declare the
             // old w/h vocabulary, so this is what gives a fresh install's tiles a
-            // `size` — the invariant "every tile in `data` has one" must hold on
+            // `size` - the invariant "every tile in `data` has one" must hold on
             // EVERY path into `data`, not just the load-from-disk one.
             data = _normaliseDoc(seed(seedLayout && seedLayout.length ? seedLayout : "starter"))
             _flush()
@@ -441,10 +441,10 @@ Item {
 
     // Apply a UI-state document pushed from the companion Manager app (over the
     // hub's control socket). Reassigns `data` and bumps reactivity so the live
-    // dashboard rebuilds — WITHOUT persisting again (the hub already saved it).
+    // dashboard rebuilds - WITHOUT persisting again (the hub already saved it).
     function applyExternal(json) {
         // E9: a Manager push must not override an org-forced preset any more
-        // than a local edit may — IPC is just another editing surface.
+        // than a local edit may - IPC is just another editing surface.
         if (policyLockedPreset !== "") return false
         var parsed = null
         try { parsed = JSON.parse(json) } catch (e) { parsed = null }
@@ -470,7 +470,7 @@ Item {
 
     // ── Per-widget settings ─────────────────────────────────────────────────
     // NON-mutating read: returns the live settings object when it exists, else a
-    // throwaway empty default. Must NOT create a persisted entry — it is called
+    // throwaway empty default. Must NOT create a persisted entry - it is called
     // inside widget bindings (with a possibly-empty instanceId), and materialising
     // ghost `{}`/`settings['']` entries would grow and poison the document.
     function settingsFor(id) {
@@ -485,7 +485,7 @@ Item {
         return data.settings[id]
     }
     // Seed defaults for an instance without clobbering existing values. Bumps
-    // revision (so a second instance — the expanded overlay — re-reads the seeded
+    // revision (so a second instance - the expanded overlay - re-reads the seeded
     // values) and schedules a save (so defaults survive an immediate close).
     function ensureSettings(id, defaults) {
         var s = _bucket(id)
@@ -559,7 +559,7 @@ Item {
     }
     // A supported size for `type` whose SHORT axis is `targetShort` (1 or 0.5), with
     // the long axis closest to `currentSize`'s. "" if the type declares none that
-    // wide (e.g. focus has no 0.5-wide size) — the caller then keeps the old size.
+    // wide (e.g. focus has no 0.5-wide size) - the caller then keeps the old size.
     function _sizeAtShort(type, currentSize, targetShort) {
         var fn = store._catalogFn("sizesFor")
         var legal = fn ? fn(type) : []
@@ -585,7 +585,7 @@ Item {
         }
         return base
     }
-    // Set a page's column mode and REFLOW its tiles to that width — but only if the
+    // Set a page's column mode and REFLOW its tiles to that width - but only if the
     // reflow still fits one screen (it must never create overflow). Narrowing to 2
     // columns always fits; widening to 1 column is applied only when it does.
     function setPageColumns(pageIdx, n) {
@@ -605,7 +605,7 @@ Item {
     }
 
     // ── UI helpers for the add-widget affordances ────────────────────────────
-    // A page is full when not even the smallest widget (0.5x0.5) fits — the next
+    // A page is full when not even the smallest widget (0.5x0.5) fits - the next
     // widget added here will start a NEW screen (see addTile). Drives the Hub's
     // edit-mode add slot and the picker's "will start a new screen" hint.
     function pageIsFull(pageIdx) { return !pageHasRoomFor(pageIdx, "0.5x0.5") }
@@ -621,7 +621,7 @@ Item {
     }
     // The size a NEW `type` should take on `pageIdx`: its preferred (column-aware)
     // size if that fits, else the LARGEST supported size smaller than it that fits,
-    // else "" — the page is too full for even the smallest, so the caller starts a
+    // else "" - the page is too full for even the smallest, so the caller starts a
     // new screen. This is what lets "add" degrade gracefully into the space left
     // (a widget that would be 1x1 slots into a leftover 0.5x1 gap) instead of
     // refusing, while never overflowing the one-screen budget.
@@ -643,7 +643,7 @@ Item {
             if (pageHasRoomFor(pageIdx, cands[j])) return cands[j]
         return ""
     }
-    // Append a fresh, blank single-column screen and return its index. No commit —
+    // Append a fresh, blank single-column screen and return its index. No commit -
     // the caller (addTile) commits once after placing the tile.
     function _appendBlankPage() {
         data.pages.push({ "name": _uniquePageName(), "tiles": [], "columns": 1 })
@@ -660,7 +660,7 @@ Item {
         return -1
     }
 
-    // Add a tile. It lands on `pageIdx` if it fits there — at its preferred size, or
+    // Add a tile. It lands on `pageIdx` if it fits there - at its preferred size, or
     // the largest smaller size that fits the space left. If NOTHING fits, a NEW
     // screen is appended and the tile lands there at its default size. A page never
     // scrolls, and adding never fails for lack of room (only a bad index returns
@@ -690,13 +690,13 @@ Item {
             }
         }
     }
-    // Set a tile's NAMED size (a WidgetSizes name — not a w/h span). Rejects a
+    // Set a tile's NAMED size (a WidgetSizes name - not a w/h span). Rejects a
     // size the widget type does not support, so the picker/drag UI cannot put a
     // tile into a shape its widget was never built to render. Returns whether the
     // size was applied.
     // The subset of a tile's DECLARED sizes that would actually FIT the page
     // (i.e. that setTileSize would accept). The resize drag preview uses this so
-    // it can only ever offer a size that fits — you can never drag a widget
+    // it can only ever offer a size that fits - you can never drag a widget
     // bigger than the space left, which is exactly what makes "a screen always
     // stays one screen" true DURING the drag, not just on release. Always
     // includes the tile's current size so the preview never snaps to nothing.
@@ -821,7 +821,7 @@ Item {
         _commitStructure()   // force-flushes; no extra save needed
     }
 
-    // Append a single-page preset ("screen") as a NEW page. Additive — unlike
+    // Append a single-page preset ("screen") as a NEW page. Additive - unlike
     // resetTo, it never replaces the user's other pages and NEVER writes
     // data.appearance (the global theme/accent/offline/reduceMotion stay put). It
     // re-keys tile ids against the live document (so they can't collide with an
@@ -886,7 +886,7 @@ Item {
     function _blankDoc() {
         return { "version": 1, "appearance": {}, "settings": {}, "pages": [ { "name": "Home", "tiles": [] } ] }
     }
-    // The recommended few-screen starter a fresh install / wizard begins with —
+    // The recommended few-screen starter a fresh install / wizard begins with -
     // work, system, and home (each a single-page screen), composed by buildBundle.
     readonly property var _starterBundle: ["productivity", "system-monitor", "home-ambient"]
     function seed(which) {
@@ -897,7 +897,7 @@ Item {
         }
         // A KNOWN preset id seeds that one screen (legacy ids "productivity",
         // "gaming", "minimal" still resolve, so old configs keep working); anything
-        // else — empty or unknown, i.e. the default — starts from the starter bundle.
+        // else - empty or unknown, i.e. the default - starts from the starter bundle.
         if (which && _presetCatalog.has(which)) {
             var doc = _presetCatalog.buildDoc(which)
             return doc ? doc : _blankDoc()

@@ -4,7 +4,7 @@ import QtTest
 // COVERS: schema:category, schema:customText
 
 // ─────────────────────────────────────────────────────────────────────────
-// Comprehensive tests for widget:quote — ui/qml/widgets/QuoteWidget.qml
+// Comprehensive tests for widget:quote - ui/qml/widgets/QuoteWidget.qml
 // (the "Daily Quote" rotating-quote widget).
 //
 // Drives config through the shared DashboardStore (setSetting/patchSettings on
@@ -17,7 +17,7 @@ import QtTest
 //   • parseCustom does not split on the common " - " ASCII-hyphen form.
 //   • editing customText after a manual shuffle silently repoints the pinned
 //     quote (manualIdx is a bare index, never revalidated against identity).
-// Those failing assertions are the point — they are left in.
+// Those failing assertions are the point - they are left in.
 // ─────────────────────────────────────────────────────────────────────────
 Item {
     id: root
@@ -130,7 +130,7 @@ Item {
 
         function test_emdash_separator() {
             var w = hQuote.item
-            patch({ category: "custom", customText: "Stay hungry — Steve Jobs" })
+            patch({ category: "custom", customText: "Stay hungry - Steve Jobs" })
             compare(w.pool[0].t, "Stay hungry", "text before em-dash")
             compare(w.pool[0].a, "Steve Jobs", "author after em-dash")
         }
@@ -149,7 +149,7 @@ Item {
             compare(w.pool[0].a, "Captain")
         }
 
-        // BUG (low): parseCustom recognizes " — ", " -- ", " | " but NOT the very
+        // BUG (low): parseCustom recognizes " - ", " -- ", " | " but NOT the very
         // common single ASCII-hyphen " - " form that on-device keyboards produce.
         function test_ascii_hyphen_separator() {
             var w = hQuote.item
@@ -193,7 +193,7 @@ Item {
         function test_dailyIdx_matches_day_of_year_mod_pool() {
             var w = hQuote.item
             var n = new Date()
-            // DST-safe day-of-year (UTC calendar midnights) — matches the widget's
+            // DST-safe day-of-year (UTC calendar midnights) - matches the widget's
             // fixed computation; a raw local ms delta drifts an hour across DST.
             var doy = Math.round((Date.UTC(n.getFullYear(), n.getMonth(), n.getDate())
                                   - Date.UTC(n.getFullYear(), 0, 0)) / 86400000)
@@ -351,7 +351,7 @@ Item {
     // ── Per-sizeClass structure (W1) ─────────────────────────────────────────
     // Fixed-size hosts at real projected cell footprints; the Dashboard injects
     // sizeClass, so the tests assign it the same way and pin what each size
-    // shows — a future edit can't silently collapse the sizes back into one
+    // shows - a future edit can't silently collapse the sizes back into one
     // stretched layout.
     Item { id: qMicroWrap; width: 344; height: 416
         WidgetHarness { id: hQMicro; anchors.fill: parent; widgetFile: "QuoteWidget.qml"; expanded: false } }
@@ -366,7 +366,7 @@ Item {
         name: "QuoteSizes"
         when: windowShown
 
-        // 0.5x0.5 — the quote text alone: no glyph, no author, no controls
+        // 0.5x0.5 - the quote text alone: no glyph, no author, no controls
         // competing for a twelfth of the screen.
         function test_micro_is_text_only() {
             tryVerify(function () { return hQMicro.ready }, 3000)
@@ -380,7 +380,7 @@ Item {
             verify(glyph === null || !glyph.visible, "the glyph is not rendered at micro")
         }
 
-        // 1x1 — glyph + quote + author + a touch-token shuffle.
+        // 1x1 - glyph + quote + author + a touch-token shuffle.
         function test_baseline_full_quote_card() {
             tryVerify(function () { return hQBase.ready }, 3000)
             var w = hQBase.item
@@ -391,7 +391,7 @@ Item {
             compare(w.showAuthor, true, "the baseline shows the author")
             compare(w.showShuffleTile, true, "the baseline has the tile shuffle")
             // The tile shuffle is a real touch target (>= the tertiary token).
-            // (The expanded pill ALSO carries a 🔀 glyph — the tile control is
+            // (The expanded pill ALSO carries a 🔀 glyph - the tile control is
             // the 🔀 whose direct parent is the circular Rectangle.)
             var icon = null
             function scan(n) {
@@ -406,7 +406,7 @@ Item {
             verify(icon.parent.visible, "and visible")
         }
 
-        // wide — glyph beside a left-aligned quote column, in BOTH projections
+        // wide - glyph beside a left-aligned quote column, in BOTH projections
         // of the class (1x0.5 portrait 696x416, 0.5x1 landscape 840x344).
         function test_wide_lays_glyph_beside_text_both_orientations() {
             tryVerify(function () { return hQWide.ready }, 3000)
@@ -423,7 +423,7 @@ Item {
             qWideWrap.width = 696; qWideWrap.height = 416
         }
 
-        // tall — the roomiest tile reading: most lines, bigger type than micro.
+        // tall - the roomiest tile reading: most lines, bigger type than micro.
         function test_tall_earns_more_lines() {
             tryVerify(function () { return hQTall.ready }, 3000)
             var w = hQTall.item

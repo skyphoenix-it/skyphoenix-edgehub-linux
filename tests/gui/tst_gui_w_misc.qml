@@ -3,16 +3,16 @@ import QtTest
 import "../ui" as UI
 import "GuiUtil.js" as G
 
-// Visible GUI tests for three "Info" Hub widgets — Countdown, End of Day, Daily
-// Quote — hosted one at a time in a REAL KWin-composited window via
+// Visible GUI tests for three "Info" Hub widgets - Countdown, End of Day, Daily
+// Quote - hosted one at a time in a REAL KWin-composited window via
 // UI.WidgetHarness and driven with real mouse/keyboard events. Every case
 // asserts an OBJECTIVE, GUI-observable outcome (item visibility/geometry,
 // on-screen text, grabImage pixel colour, store-setting → visible output) and
 // saves a PNG to gui-evidence/ as morning-video evidence.
 //
 // Deterministic seams (seed, never sleep on the wall clock):
-//   • countdown/quote — bump item.tick and set store `date`/`customText`.
-//   • eod             — set item.nowOverride (a Date) so window math is fixed.
+//   • countdown/quote - bump item.tick and set store `date`/`customText`.
+//   • eod             - set item.nowOverride (a Date) so window math is fixed.
 //
 // Data-driven throughout to reach volume; every test_*_data() has its consumer.
 Item {
@@ -521,7 +521,7 @@ Item {
         // author/body asserted ON SCREEN (exercises the fixed em-dash separator).
         function test_qt_4_separators_data() {
             return [
-                { tag: "em-dash",      text: "Make it — Me",  author: "Me" },
+                { tag: "em-dash",      text: "Make it - Me",  author: "Me" },
                 { tag: "double-hyphen",text: "Make it -- You", author: "You" },
                 { tag: "pipe",         text: "Make it | Her",  author: "Her" },
                 { tag: "ascii-hyphen", text: "Make it - Him",  author: "Him" }

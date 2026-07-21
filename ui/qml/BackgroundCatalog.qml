@@ -1,6 +1,6 @@
 import QtQuick
 
-// BackgroundCatalog — the list of animated background styles, shared by the hub's
+// BackgroundCatalog - the list of animated background styles, shared by the hub's
 // SettingsPanel, the Manager's pickers, and BackdropLayer's style→component map.
 // `v` is the persisted value (appearance.bgStyle / page.bg.style); `l` the label.
 QtObject {
@@ -15,7 +15,7 @@ QtObject {
         { v: "grid",   l: "Neon Grid" },
 
         // Character styles. Each is ORIGINAL abstract geometry that gestures at a
-        // distribution's shape language — none reproduces, traces or approximates
+        // distribution's shape language - none reproduces, traces or approximates
         // anyone's logo, and all of them take their colour from the theme accent
         // rather than a distributor's palette, so they work under any theme.
         // Names are nominative where that is uncontroversial, and evocative for

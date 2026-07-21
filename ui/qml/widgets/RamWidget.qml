@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 
-// Memory usage — real data from the Rust core.
+// Memory usage - real data from the Rust core.
 //
 // Sizing (W1 wave 2a): layout keys off the injected `sizeClass` (see CpuWidget
 // for the pattern). micro = headerless bare ring + the one number; baseline =
@@ -28,7 +28,7 @@ WidgetChrome {
     readonly property bool showHistory: cfg.showHistory !== undefined ? cfg.showHistory : true
 
     // Availability: a real usage reading has actually arrived (mirror GpuWidget).
-    // Before the first frame — or on a partial frame missing the percent — the
+    // Before the first frame - or on a partial frame missing the percent - the
     // tile must show a placeholder, not a confident fabricated 0%.
     property bool avail: metrics.ram_usage_percent !== undefined
                          && metrics.ram_usage_percent !== null
@@ -41,7 +41,7 @@ WidgetChrome {
     function gb(b) { return (b / 1073741824).toFixed(1) }
 
     // Rolling history. Mirrored into the shared store (keyed by instanceId) so a
-    // tile and its expanded overlay — two separate instances — draw one graph
+    // tile and its expanded overlay - two separate instances - draw one graph
     // instead of the overlay opening blank (S5). `hist` is an EPHEMERAL store key,
     // so the per-sample write bumps reactivity but never touches disk.
     property var hist: []

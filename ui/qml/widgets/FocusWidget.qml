@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 
-// Focus / Pomodoro — ADHD-friendly, feature-complete, fully persistent.
+// Focus / Pomodoro - ADHD-friendly, feature-complete, fully persistent.
 //
 // All timer state lives in the store (phase, running, an absolute end-epoch,
 // paused-remaining, sessions-done-today), so the tile and the expanded view are
@@ -11,25 +11,25 @@ import QtQuick.Layouts
 //
 // Sizing (W1 wave 3): layout keys off the injected `sizeClass`. This widget
 // declares only `1x1` and `1x1.5` because the ring needs a roughly SQUARE cell
-// and a Pomodoro tile you cannot start is not a Pomodoro tile — every half size
+// and a Pomodoro tile you cannot start is not a Pomodoro tile - every half size
 // is wide-short or narrow-tall in one orientation, which collides the ring with
 // the ≥52px control row. The two it does declare now earn their box:
-//   • 1x1 (compact, both orientations) — the ring in a cell that STOPS above the
+//   • 1x1 (compact, both orientations) - the ring in a cell that STOPS above the
 //     control row instead of running under it, with the clock sized from the
 //     ring (it used to cap at 34px and float in a 819px box).
-//   • 1x1.5 tall (portrait) — the same ring, plus the momentum readout that was
+//   • 1x1.5 tall (portrait) - the same ring, plus the momentum readout that was
 //     locked in the overlay (sessions/goal, dots, points) + the nudge, + "+5".
-//   • 1x1.5 wide (landscape) — ring BESIDE that column, so 1269px of width is
+//   • 1x1.5 wide (landscape) - ring BESIDE that column, so 1269px of width is
 //     content rather than air either side of a centred ring.
-//   • full (overlay) — unchanged: the preset switcher and the 4-button row are
+//   • full (overlay) - unchanged: the preset switcher and the 4-button row are
 //     genuinely modal and stay there.
 //
 // Three things stay keyed off the MODE rather than the room, and all are correct:
 // `showHeader: expanded` (chrome-header CONTENT, not a dimension), and the
-// tile/overlay VIEW split (`visible: !expanded` / `visible: expanded`) — the
+// tile/overlay VIEW split (`visible: !expanded` / `visible: expanded`) - the
 // overlay is a different view (preset switcher + big ring + a 4-button transport
 // row), not the tile at a larger scale, so room does not turn one into the other.
-// The one SIZE that was wearing the mode's clothes was the celebration banner —
+// The one SIZE that was wearing the mode's clothes was the celebration banner -
 // see celebratePx.
 WidgetChrome {
     id: w
@@ -115,7 +115,7 @@ WidgetChrome {
     function toggle() { running ? pause() : start() }
     function addFive() {
         // Running without a persisted endEpoch (e.g. state pushed mid-flight)
-        // would make `cfg.endEpoch + 300000` NaN — rebuild it from `remaining`.
+        // would make `cfg.endEpoch + 300000` NaN - rebuild it from `remaining`.
         if (running) save({ endEpoch: (cfg.endEpoch || Date.now() + remaining * 1000) + 300000 })
         else save({ pausedRemaining: remaining + 300 })
     }
@@ -124,7 +124,7 @@ WidgetChrome {
         save({ phase: ph, pausedRemaining: secs, running: run, endEpoch: run ? Date.now() + secs * 1000 : 0 })
     }
     // Reset restarts the timer for the current phase; it must NOT wipe today's
-    // session count / points — that's the day's earned momentum, not timer state.
+    // session count / points - that's the day's earned momentum, not timer state.
     function reset() { loadPhase("work", false) }
     // Switching preset re-seeds the timer to the new work length but likewise
     // preserves today's count (changing technique mid-day shouldn't erase it).
@@ -140,7 +140,7 @@ WidgetChrome {
             if (natural) {
                 done = cw + 1
                 // Reward: points per session (+ a ONE-TIME bonus for the session
-                // that reaches the daily goal), and a celebration — a small, honest
+                // that reaches the daily goal), and a celebration - a small, honest
                 // dopamine hit. The goal bonus/celebration fires only on the session
                 // that CROSSES the goal (done === dailyGoal), not on every session
                 // at/after it; later sessions get the ordinary per-session reward.
@@ -179,7 +179,7 @@ WidgetChrome {
     // Qt.callLater() and its invocation, and the callback then runs against a
     // half-destroyed object: "Property 'phaseSeconds' ... is not a function
     // (exception occurred during delayed function evaluation)". Harmless in
-    // effect — the save it was going to do is moot for a dying tile — but it is
+    // effect - the save it was going to do is moot for a dying tile - but it is
     // a real uncaught exception, and now that widgets actually load in the test
     // suites the diagnostics gate fails on it.
     property bool _alive: true
@@ -210,14 +210,14 @@ WidgetChrome {
             NumberAnimation { to: 0.0; duration: 500 }
         }
     }
-    // Celebration message — pops in on a completed session (dopamine kick).
+    // Celebration message - pops in on a completed session (dopamine kick).
     //
     // The banner spans the whole CARD, so the card is what sizes it. `expanded ?
     // 34 : 18` asked the wrong question and got both answers wrong: a 696x819
     // baseline tile has more room than the overlay's live-preview pane and still
     // popped at 18, while the overlay kept its 34 after W5 shrank that pane to 38%
     // of the width in landscape (~941x456 there, ~656x980 stacked in portrait).
-    // Both axes bind — a wide-but-short pane must not overreach — and 34 stays the
+    // Both axes bind - a wide-but-short pane must not overreach - and 34 stays the
     // designed ceiling, which the tile classes this type declares (1x1, 1x1.5) all
     // reach. HorizontalFit + minimumPixelSize keep a long message inside the card.
     readonly property real celebratePx: Math.max(12, Math.min(width * 0.055,
@@ -250,7 +250,7 @@ WidgetChrome {
     readonly property bool tallish: sizeClass === "tall" || sizeClass === "large"
     // The momentum readout (sessions/goal, dots, points) and the nudge are the
     // overlay's content; 1x1.5 has the room to earn them for the TILE. 1x1 does
-    // not — a ring big enough to read plus a real 52px control row fills it, and
+    // not - a ring big enough to read plus a real 52px control row fills it, and
     // squeezing a stats block in would just shrink the clock.
     readonly property bool showMomentum: tallish || horiz
 
@@ -259,7 +259,7 @@ WidgetChrome {
 
         GridLayout {
             anchors.fill: parent
-            // Wide reflows the SAME children into two columns — the ring keeps a
+            // Wide reflows the SAME children into two columns - the ring keeps a
             // square cell and the stats/controls column takes the width that a
             // centred ring used to waste.
             columns: w.horiz ? 2 : 1
@@ -273,7 +273,7 @@ WidgetChrome {
             // fillHeight path) centres the RING and strands the stats at the
             // bottom edge, a third of a screen away from what they describe.
             // These spacers are invisible in the other classes, and an invisible
-            // item is skipped by GridLayout — so they never consume a cell in the
+            // item is skipped by GridLayout - so they never consume a cell in the
             // 2-column (wide) arrangement.
             Item { Layout.fillWidth: true; Layout.fillHeight: true; visible: w.tallish }
 
@@ -306,7 +306,7 @@ WidgetChrome {
                         Layout.alignment: Qt.AlignHCenter
                         // Sized from the RING, not a magic 34px cap: the old cap
                         // left a 34px clock floating inside a 626px ring.
-                        // preferredWidth (not a bare maximumWidth — Qt 6.7 ignores
+                        // preferredWidth (not a bare maximumWidth - Qt 6.7 ignores
                         // that) so HorizontalFit has a width to fit against.
                         Layout.preferredWidth: ringCell.inner
                         horizontalAlignment: Text.AlignHCenter
@@ -341,7 +341,7 @@ WidgetChrome {
             //    Layout derives its implicit maximumWidth from its children, and
             //    the control row's own `Layout.alignment` pins that row's maximum
             //    to its implicit width. That maximum propagates UP and silently
-            //    caps this column at ~164px even with fillWidth set — so the
+            //    caps this column at ~164px even with fillWidth set - so the
             //    buttons landed under the ring's left edge, not its centre.
             ColumnLayout {
                 Layout.fillWidth: true
@@ -352,7 +352,7 @@ WidgetChrome {
                 // Centre the column against the ring when side-by-side.
                 Item { Layout.fillHeight: true; visible: w.horiz }
 
-                // Momentum — earned by 1x1.5, not shown at 1x1.
+                // Momentum - earned by 1x1.5, not shown at 1x1.
                 ColumnLayout {
                     visible: w.showMomentum
                     Layout.fillWidth: true
@@ -367,7 +367,7 @@ WidgetChrome {
                         Text { visible: w.rewardPoints; text: "·  ⭐ " + w.points + " pts"
                             font.pixelSize: theme.fontCaption; color: theme.textSecondary }
                     }
-                    // Goal progress dots — the glanceable streak bar. The model is
+                    // Goal progress dots - the glanceable streak bar. The model is
                     // an int derived from CONFIG, so a tick never rebuilds it.
                     RowLayout {
                         Layout.alignment: Qt.AlignHCenter
@@ -394,7 +394,7 @@ WidgetChrome {
                     }
                 }
 
-                // Controls — operate the timer straight from the tile (no expand).
+                // Controls - operate the timer straight from the tile (no expand).
                 // The PillButton default height (theme.touchSecondary) stands: the
                 // old `implicitHeight: 36` override undercut the touch minimum.
                 RowLayout {
@@ -455,7 +455,7 @@ WidgetChrome {
                     Text { visible: w.rewardPoints; text: "·  ⭐ " + w.points + " pts"
                         font.pixelSize: 12; color: theme.textSecondary }
                 }
-                // Goal progress dots — a glanceable "streak" bar.
+                // Goal progress dots - a glanceable "streak" bar.
                 RowLayout {
                     Layout.alignment: Qt.AlignHCenter; spacing: 4; Layout.topMargin: 2
                     Repeater {

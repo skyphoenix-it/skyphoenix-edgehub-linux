@@ -8,7 +8,7 @@ How to let other people install this, and your options for making money.
 
 **Runtime:** a Linux desktop with **Qt6 ≥ 6.5** (Quick, QuickControls2, Svg, DBus,
 Network, VirtualKeyboard) and a working GPU/compositor. No web browser, no server.
-The ≥ 6.5 floor is real — the widgets use `QtQuick.Effects`, which does not exist
+The ≥ 6.5 floor is real - the widgets use `QtQuick.Effects`, which does not exist
 before it.
 
 **Build:** a C++17 toolchain, CMake ≥ 3.22, the Rust toolchain (`cargo`), and the
@@ -44,7 +44,7 @@ practical distro gives the widest reach, while the bundled Qt still has to be
 ≥ 6.5 for `QtQuick.Effects`. ~46 MB, bundles 41 Qt libraries.
 
 **What it does not bundle, by design:** `libGL`/`libGLX`/`libOpenGL`/`libEGL` and
-`libfontconfig` + fonts. `linuxdeploy` excludes the graphics stack on purpose — a
+`libfontconfig` + fonts. `linuxdeploy` excludes the graphics stack on purpose - a
 bundled `libGL` breaks on a host with a different (e.g. NVIDIA) driver, so GL must
 come from the host. Every normal desktop already has these; a bare container does
 not, which is why `appimage-smoke` installs exactly that set (and nothing from Qt)
@@ -54,7 +54,7 @@ The AppImage workflow checks a bare `ubuntu:24.04` container with no Qt or Rust,
 an offscreen launch, and all imported QML modules. That check must be rerun for
 the exact candidate; it does not exercise a published zsync update.
 
-The AppImage cannot install the auto-rotate udev rule (no package manager hooks) —
+The AppImage cannot install the auto-rotate udev rule (no package manager hooks) -
 users install `packaging/udev/99-xeneon-edge.rules` by hand. Everything else works.
 
 #### The two traps this recipe encodes
@@ -63,14 +63,14 @@ Both were hit for real while getting it to build, and both fail *silently*:
 
 1. **No `--executable`** → `linuxdeploy` scans nothing, the Qt plugin reports
    `Found Qt modules:` (empty), and you get a ~29 MB "AppImage" containing **no Qt
-   and no QML at all** — which still exits 0 and looks like a successful build.
+   and no QML at all** - which still exits 0 and looks like a successful build.
 2. **Qt not on `LD_LIBRARY_PATH`** → same silent-empty outcome (or
    `Could not find dependency: libQt6DBus.so.6`), because a Qt outside the ldconfig
    cache (`/opt/Qt/...`) is invisible to dependency resolution.
 
 `QML_SOURCES_PATHS` is equally load-bearing: the QML is compiled into the binaries
 via qrc, so `qmlimportscanner` has no `.qml` files to read and must be pointed at
-the source tree — otherwise the lazily-imported modules are dropped and the app
+the source tree - otherwise the lazily-imported modules are dropped and the app
 **still starts cleanly**, then fails when a widget loads.
 
 ### Do they need sudo?
@@ -89,9 +89,9 @@ Config lives in `~/.config/xeneon-edge-hub/`. Metrics come from world-readable
 
 **Sudo is needed only for two optional things:**
 
-1. **A system-wide install** (`sudo cmake --install build`) — or install to
+1. **A system-wide install** (`sudo cmake --install build`) - or install to
    `~/.local` with `-DCMAKE_INSTALL_PREFIX=~/.local` and skip sudo entirely.
-2. **Auto-rotate** — the Edge's orientation sensor lives on a root-only HID node,
+2. **Auto-rotate** - the Edge's orientation sensor lives on a root-only HID node,
    so the one-time udev rule in `packaging/udev/99-xeneon-edge.rules` must be
    installed with sudo:
    ```sh
@@ -137,9 +137,9 @@ EdgeHub never self-replaces its own binaries in any format.
 | Format | How it updates |
 |---|---|
 | **AUR** | `paru`/`yay` (or `git pull && makepkg -si`). The PKGBUILD verifies the source tarball signature via `validpgpkeys`. |
-| **.deb / .rpm** | The distro's package manager (`apt`, `dnf`), like any other package. No self-update — that would fight dpkg/rpm ownership of the files. |
-| **Flatpak** *(future)* | Flathub's native mechanism: `flatpak update` / GNOME Software / Discover. This is the format's own update path — do **not** bolt zsync or an in-app downloader onto it. |
-| **AppImage** | Download the new file — or delta-update via **zsync** (below), which transfers only the blocks that changed instead of the whole ~46 MB. |
+| **.deb / .rpm** | The distro's package manager (`apt`, `dnf`), like any other package. No self-update - that would fight dpkg/rpm ownership of the files. |
+| **Flatpak** *(future)* | Flathub's native mechanism: `flatpak update` / GNOME Software / Discover. This is the format's own update path - do **not** bolt zsync or an in-app downloader onto it. |
+| **AppImage** | Download the new file - or delta-update via **zsync** (below), which transfers only the blocks that changed instead of the whole ~46 MB. |
 
 ### AppImage + zsync
 
@@ -150,33 +150,33 @@ EdgeHub never self-replaces its own binaries in any format.
 > builds an AppImage but only uploads it as a workflow artifact (which expires);
 > attaching it to a release is a manual `--extra` step that has not been done.
 > Everything below describes the *designed* contract, not an observed one.
-> Exercising it end-to-end is an **RC exit criterion** — see BACKLOG.md.
+> Exercising it end-to-end is an **RC exit criterion** - see BACKLOG.md.
 
 Every release that ships an AppImage also ships `<name>.AppImage.zsync`,
 generated by `scripts/release.sh` when the AppImage is passed as an `--extra`
 artifact (the build script `packaging/appimage/build-appimage.sh` deliberately
-does not generate it — the `.zsync` must embed the release tag's download URL,
+does not generate it - the `.zsync` must embed the release tag's download URL,
 which only the release flow knows). Properties worth knowing:
 
 - The `.zsync` is generated from the exact bytes in `dist/`, **before**
   `SHA256SUMS` is written, so it is checksummed and covered by the release
   signature like every other artifact.
 - Its `-u` URL pins the **versioned** download
-  (`releases/download/<tag>/<name>.AppImage`), never `releases/latest/` — a
+  (`releases/download/<tag>/<name>.AppImage`), never `releases/latest/` - a
   `.zsync` names the bytes it indexes, and "latest" changes meaning.
 - Updating with the zsync client:
   ```sh
-  zsync https://github.com/skyphoenix-it/XeneonEdge_Linux/releases/download/<tag>/<name>.AppImage.zsync \
+  zsync https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/releases/download/<tag>/<name>.AppImage.zsync \
         -i ./your-current-EdgeHub.AppImage        # seeds unchanged blocks locally
   ```
   Tools like `AppImageUpdate` can consume the same file.
 - **Tool dependency:** `zsyncmake` must be on the maintainer's machine
   (Arch/CachyOS: `zsync` from the AUR; Debian/Ubuntu/Fedora: `zsync`).
   `release.sh` checks this in preflight and **refuses the release** rather
-  than publishing an AppImage without its `.zsync` — a missing `.zsync`
+  than publishing an AppImage without its `.zsync` - a missing `.zsync`
   silently breaks delta updates for everyone on the previous release.
 - The AppImage embeds
-  `gh-releases-zsync|skyphoenix-it|XeneonEdge_Linux|latest|xeneon-edge-hub-*-x86_64.AppImage.zsync`
+  `gh-releases-zsync|skyphoenix-it|skyphoenix-edgehub-linux|latest|xeneon-edge-hub-*-x86_64.AppImage.zsync`
   as `X-AppImage-UpdateInformation` (via linuxdeploy-plugin-appimage's
   `LDAI_UPDATE_INFORMATION`). `AppImageUpdate` / `appimaged` can therefore
   discover the newest matching release and its `.zsync` without a manually
@@ -185,7 +185,7 @@ which only the release flow knows). Properties worth knowing:
 
 ### The in-app update check (opt-in, and why it is off)
 
-`ui/qml/widgets/UpdateChecker.qml` is a check-only service — it reports, it
+`ui/qml/widgets/UpdateChecker.qml` is a check-only service - it reports, it
 never downloads or installs. The privacy constraint is structural, not a
 preference:
 
@@ -196,7 +196,7 @@ preference:
   flag.
 - **One request, through the gate.** When (and only when) opted in, the check
   performs one GET of
-  `https://api.github.com/repos/skyphoenix-it/XeneonEdge_Linux/releases` through
+  `https://api.github.com/repos/skyphoenix-it/skyphoenix-edgehub-linux/releases` through
   `NetHub.request()`. The list endpoint is deliberate: GitHub's `latest`
   endpoint excludes pre-releases, so it cannot represent the alpha/beta/RC
   train. The same audited choke point as every widget applies the global
@@ -205,14 +205,14 @@ preference:
   inherently carries. It re-checks daily while enabled, plus a manual "Check
   now".
 - **Install-type honest.** An AppImage sets `$APPIMAGE` in the environment
-  (read via the audited `${env:}` resolver on ConfigBridge — QML cannot read
+  (read via the audited `${env:}` resolver on ConfigBridge - QML cannot read
   the environment itself); only then does the result line point at the
   zsync/download path. Anything else is told to **update via your package
-  manager** — the app never suggests bypassing the distro.
+  manager** - the app never suggests bypassing the distro.
 - **Version-compare honest.** `tag_name` is ordered against
   `ConfigBridge.appVersion()` with SemVer pre-release rules
   (`1.0.0-alpha.2 < 1.0.0-beta.1 < 1.0.0-rc.1 < 1.0.0`, numeric identifiers
-  numerically — a naive string compare calls `v1.0.0-alpha.2` *newer* than
+  numerically - a naive string compare calls `v1.0.0-alpha.2` *newer* than
   `v1.0.0`). Unversioned `dev` builds report the latest tag without claiming
   an update. Pinned by `tests/ui/tst_update_checker.qml`.
 
@@ -225,7 +225,7 @@ preference:
 | | |
 |---|---|
 | **Fingerprint** | `2F0CAD36DC1D46F3347B7EF293CDC77EACF98990` |
-| **Short id** | `93CDC77EACF98990` (display only — **never** use a short id to decide trust; they are forgeable by construction) |
+| **Short id** | `93CDC77EACF98990` (display only - **never** use a short id to decide trust; they are forgeable by construction) |
 | **UID** | SKYPhoenix IT `<simon.kreitmayer@skyphoenix-it.com>` |
 | **Type** | ed25519, created 2026-07-15, **expires 2028-07-14** |
 | **Public half** | [`packaging/edgehub-signing.pub`](../packaging/edgehub-signing.pub) in this repo, and <https://github.com/SimonKreitmayer.gpg> |
@@ -236,7 +236,7 @@ preference:
 | Release | Signed? |
 |---|---|
 | `v0.1.0` | ❌ predates the key |
-| `v1.0.0-alpha.1` | ❌ predates the key — checksum-only, and its release notes say so |
+| `v1.0.0-alpha.1` | ❌ predates the key - checksum-only, and its release notes say so |
 | `v1.0.0-alpha.2` | ✅ signed tag; release page documents signed checksums |
 | later releases | Must pass the signing/release gate; never assume |
 
@@ -246,18 +246,18 @@ record is that it shipped before the key existed. Its notes stay as they are.
 
 Per release, `scripts/release.sh` signs:
 
-- **`SHA256SUMS.asc`** — a detached armored signature over the checksum list. One
+- **`SHA256SUMS.asc`** - a detached armored signature over the checksum list. One
   signature covers every artifact transitively: sign the list, and the list
   fixes the files.
-- **`<tarball>.tar.gz.sig`** — a detached binary signature over the source
+- **`<tarball>.tar.gz.sig`** - a detached binary signature over the source
   tarball, which is what `packaging/aur/PKGBUILD` verifies via `validpgpkeys`.
 
 Binaries themselves are not individually signed, and there is no Secure Boot /
-kernel-module signing story — there's nothing here that needs one.
+kernel-module signing story - there's nothing here that needs one.
 
 ### The policy: signing is interactive, local, and never automated
 
-**The passphrase belongs to the maintainer and is never delegated** — not to a CI
+**The passphrase belongs to the maintainer and is never delegated** - not to a CI
 secret, not to an environment variable, not to a script. `scripts/release.sh`
 runs on the maintainer's own machine and gpg prompts a human, who answers.
 
@@ -280,7 +280,7 @@ Consequences worth stating plainly:
   tree extracted from the verified commit archive, not the mutable checkout or a
   reusable CMake cache.
 - **A compromised CI cannot forge a release.** It can forge an *unsigned* one, so
-  users must check the signature — which is why the verification steps are in the
+  users must check the signature - which is why the verification steps are in the
   README and not buried here.
 - **`release.sh` refuses rather than degrades.** Every path that cannot sign exits
   non-zero *before* any artifact is written. An unsigned release that looks
@@ -306,7 +306,7 @@ Consequences worth stating plainly:
 
 The key **expires 2028-07-14**. Expiry is a dead-man's switch: if the key is lost
 or abandoned, it stops being trusted on its own rather than staying valid
-forever. It is not a deadline to dread — extending is routine:
+forever. It is not a deadline to dread - extending is routine:
 
 ```sh
 gpg --edit-key 2F0CAD36DC1D46F3347B7EF293CDC77EACF98990   # > expire > save
@@ -314,14 +314,14 @@ gpg --export --armor 2F0CAD36DC1D46F3347B7EF293CDC77EACF98990 > packaging/edgehu
 ```
 
 Extending keeps the fingerprint, so every published signature and
-`validpgpkeys` entry stays valid — **prefer this over rotating.** Re-export the
+`validpgpkeys` entry stays valid - **prefer this over rotating.** Re-export the
 public key afterwards, or users importing from the repo will still see the old
 expiry.
 
 Rotate to a *new* key only on compromise or loss. That is expensive and should be
 treated as such: the new fingerprint must be published in the README,
 `packaging/edgehub-signing.pub`, `packaging/aur/PKGBUILD` (`validpgpkeys`),
-`scripts/release.sh` (`RELEASE_KEY`), and this file — and, if the old key is
+`scripts/release.sh` (`RELEASE_KEY`), and this file - and, if the old key is
 compromised rather than merely lost, users must be told which releases predate
 the rotation, via the revocation certificate above.
 
@@ -332,19 +332,19 @@ Calendar note: **check the expiry at the 2028 GA planning point**, not on
 
 ## 3. Licensing (the part that decides your money options)
 
-- **This project is MIT OR Apache-2.0** (`LICENSE-MIT`, `LICENSE-APACHE`) — both
+- **This project is MIT OR Apache-2.0** (`LICENSE-MIT`, `LICENSE-APACHE`) - both
   are permissive licenses. You may sell
   it, ship binaries, and build a business on it. So can everyone else (MIT lets
   others redistribute too), which is why the usual model here is **goodwill +
   donations + paid extras**, not locked-down sales.
-- **Qt6 is LGPLv3** (or a paid Qt commercial license). Dynamically linking it — as
-  this app does — is fine for both open-source and commercial distribution, as
+- **Qt6 is LGPLv3** (or a paid Qt commercial license). Dynamically linking it - as
+  this app does - is fine for both open-source and commercial distribution, as
   long as users can replace/relink the Qt libraries. AppImage/Flatpak that ship Qt
   as separate `.so` files satisfy this. You do **not** need a paid Qt license.
 - **Rust crates** are MIT/Apache-2.0; **Phosphor icons** are MIT. The whole stack
   is commercial-friendly.
 - The Edge orientation protocol was **independently reverse-engineered from your
-  own device's HID reports** — no third-party (e.g. GPL) code was copied, so it
+  own device's HID reports** - no third-party (e.g. GPL) code was copied, so it
   doesn't encumber the MIT license.
 
 > If you ever want to sell a **closed-source "Pro" edition**, keep the open core
@@ -355,22 +355,22 @@ Calendar note: **check the expiry at the 2028 GA planning point**, not on
 
 ## 4. Making money (you want to, but don't have to)
 
-Low-friction, community-friendly options — you can stack several:
+Low-friction, community-friendly options - you can stack several:
 
 **Donations (easiest, keeps everything free & open):**
-- **GitHub Sponsors** — zero fees, shows on the repo, monthly or one-off.
-- **Ko-fi / Buy Me a Coffee** — one-off tips, no account needed by donors.
-- **Liberapay / Open Collective** — recurring, transparent, FOSS-friendly.
+- **GitHub Sponsors** - zero fees, shows on the repo, monthly or one-off.
+- **Ko-fi / Buy Me a Coffee** - one-off tips, no account needed by donors.
+- **Liberapay / Open Collective** - recurring, transparent, FOSS-friendly.
 - Add a `.github/FUNDING.yml` so a **Sponsor** button appears on the repo, and a
   "Support this project" section in the README with the links.
 
 **Paid, while staying open:**
-- **Flathub + donation link** — reach + a prominent donate button.
+- **Flathub + donation link** - reach + a prominent donate button.
 - **Sell convenience, not the code:** paid AppImage/installer on **itch.io** or
   **Gumroad** ("pay what you want", suggested price), pre-built & signed, so people
   who don't want to compile just buy it. The source stays free.
-- **Paid support / setup / custom widgets** — consulting or commissioned widgets.
-- **A "Pro" widget pack** (proprietary module on the MIT core) — advanced/branded
+- **Paid support / setup / custom widgets** - consulting or commissioned widgets.
+- **A "Pro" widget pack** (proprietary module on the MIT core) - advanced/branded
   widgets, integrations (Home Assistant, stocks, calendars), sold once or as a
   small subscription.
 

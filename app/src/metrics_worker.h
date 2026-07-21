@@ -7,7 +7,7 @@
 
 #include "display_match.h"
 
-// MetricsWorker — runs the (potentially slow) Rust metrics collection + JSON
+// MetricsWorker - runs the (potentially slow) Rust metrics collection + JSON
 // serialization on a dedicated thread so the 2s poll never blocks/janks the GUI
 // event loop. It emits the compact JSON to the GUI thread, which pushes it onto
 // the QML roots. begin()/stop() run ON the worker thread (invoked via the thread's

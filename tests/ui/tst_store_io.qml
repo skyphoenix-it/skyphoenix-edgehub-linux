@@ -79,7 +79,7 @@ Item {
         }
 
         // ensureSettings must NOT schedule a save when every default is already
-        // present — otherwise each tile-Loader rebuild (e.g. after applyExternal)
+        // present - otherwise each tile-Loader rebuild (e.g. after applyExternal)
         // re-runs it and triggers a redundant flash write echoing the pushed doc.
         function test_ensureSettings_no_save_when_nothing_added() {
             store.load("blank")

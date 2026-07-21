@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Register the Xeneon Edge Pro purchase webhook on Lemon Squeezy.
 
-This automates the part that's genuinely better as code — pointing Lemon Squeezy's
+This automates the part that's genuinely better as code - pointing Lemon Squeezy's
 `order_created` event at your deployed mint service, with the signing secret. The
 product itself (name, price, description, image, tax category) you create once in
 the Lemon Squeezy dashboard: it needs human input anyway and the dashboard is the
@@ -66,7 +66,7 @@ def main():
     # Verify the key + resolve the store.
     stores = api("/stores", key)["data"]
     if not stores:
-        sys.exit("No stores on this account — create one in the dashboard first.")
+        sys.exit("No stores on this account - create one in the dashboard first.")
     store_id = args.store or stores[0]["id"]
     store_name = next((s["attributes"]["name"] for s in stores if s["id"] == store_id), "?")
     print(f"Store: {store_name} (id {store_id})")

@@ -6,7 +6,7 @@ import QtQuick.Layouts
 // The number is FACTUAL, not decorative: it is a count of real entries in
 // /var/lib/pacman/local or /var/lib/dpkg/status, resolved by the Rust core and
 // probed off-thread (see app/src/distro_bridge.h). The distro NAME shown beside
-// it is whatever /etc/os-release reports about this machine — reported, never
+// it is whatever /etc/os-release reports about this machine - reported, never
 // guessed, and never illustrated with anyone's logo.
 WidgetChrome {
     id: w
@@ -58,7 +58,7 @@ WidgetChrome {
     // Same defaults as the schema `dflt`.
     readonly property bool showDistro: cfg.showDistro !== undefined ? cfg.showDistro : true
 
-    // Group a big number: 1461 -> "1 461". A thin space, not a comma/point —
+    // Group a big number: 1461 -> "1 461". A thin space, not a comma/point -
     // those mean different things either side of the Atlantic, and this is a
     // count read across a room, not a parsed value.
     function groupDigits(n) {
@@ -80,7 +80,7 @@ WidgetChrome {
         Text {
             Layout.alignment: Qt.AlignHCenter
             // preferredWidth (not merely maximumWidth) so HorizontalFit has a
-            // fixed box to shrink into — a bare cap is ignored for an oversized
+            // fixed box to shrink into - a bare cap is ignored for an oversized
             // implicitWidth on some Qt versions and the number overflows.
             Layout.preferredWidth: w.width - 2 * w.contentMargins
             Layout.maximumWidth: w.width - 2 * w.contentMargins
@@ -105,7 +105,7 @@ WidgetChrome {
         }
 
         // The distro name, in the body only when the header isn't showing it
-        // (expanded hides `status`) — never both.
+        // (expanded hides `status`) - never both.
         Text {
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: w.width * 0.9
@@ -117,7 +117,7 @@ WidgetChrome {
             elide: Text.ElideRight
         }
 
-        // WHY the number is absent, verbatim from the core — so an RPM user sees
+        // WHY the number is absent, verbatim from the core - so an RPM user sees
         // "we don't read your package db" instead of a silent dash.
         Text {
             Layout.alignment: Qt.AlignHCenter

@@ -23,7 +23,7 @@
 #
 # Updates (E10): the .zsync control file is deliberately NOT generated here.
 # It must embed the release tag's download URL, which only the release flow
-# knows — scripts/release.sh generates it (via zsyncmake) when this AppImage
+# knows - scripts/release.sh generates it (via zsyncmake) when this AppImage
 # is passed as an --extra artifact. Keeping this script zsync-free also keeps
 # the CI appimage job's dependencies unchanged.
 set -euo pipefail
@@ -34,7 +34,7 @@ cd "$REPO"
 # VERSION must be the RELEASE version, not project(... VERSION 0.1.0): that field
 # is deliberately frozen across commits (see CMakeLists.txt) and is NOT what a
 # release is called. Deriving the filename from it named EVERY release's AppImage
-# "xeneon-edge-hub-0.1.0-x86_64.AppImage" — indistinguishable between releases —
+# "xeneon-edge-hub-0.1.0-x86_64.AppImage" - indistinguishable between releases -
 # and, because the value was never passed back to cmake, the binary's own
 # appVersion() disagreed with the filename on top of that. scripts/release.sh
 # already documents this exact trap for cpack and overrides it there; the same
@@ -47,7 +47,7 @@ cd "$REPO"
 #
 # NOTE for CI: git describe needs TAGS. actions/checkout@v4 defaults to
 # fetch-depth 1, which fetches none, and `--always` then silently degrades to a
-# bare commit sha — which UpdateChecker.qml cannot order against a release tag,
+# bare commit sha - which UpdateChecker.qml cannot order against a release tag,
 # so the AppImage would never report an available update. The appimage job in
 # .github/workflows/distro.yml pins fetch-depth: 0 for exactly this reason.
 VERSION="${XENEON_VERSION:-$(git -C "$REPO" describe --tags --always --dirty 2>/dev/null || true)}"
@@ -68,13 +68,13 @@ export OUTPUT="xeneon-edge-hub-${VERSION}-${ARCH}.AppImage"
 # so AppImageUpdate/appimaged can find and delta-patch to the newest release
 # WITHOUT the user knowing any URL. `latest` = always the newest GitHub release;
 # the wildcard matches the versioned artifact name (the version is part of it, by
-# design — see the pkgver trap). This is the DISCOVERY half; the .zsync that this
+# design - see the pkgver trap). This is the DISCOVERY half; the .zsync that this
 # points at carries the versioned target URL for the actual byte delta (release.sh
 # builds it with zsyncmake -u against the versioned download). Both halves are
 # required and are checked together by scripts/check_appimage_update_contract.sh.
 # LDAI_* is what linuxdeploy's appimage plugin reads; UPDATE_INFORMATION is the
-# older appimagetool name — set both so it works regardless of tool vintage.
-export LDAI_UPDATE_INFORMATION="gh-releases-zsync|skyphoenix-it|XeneonEdge_Linux|latest|xeneon-edge-hub-*-${ARCH}.AppImage.zsync"
+# older appimagetool name - set both so it works regardless of tool vintage.
+export LDAI_UPDATE_INFORMATION="gh-releases-zsync|skyphoenix-it|skyphoenix-edgehub-linux|latest|xeneon-edge-hub-*-${ARCH}.AppImage.zsync"
 export UPDATE_INFORMATION="$LDAI_UPDATE_INFORMATION"
 
 if [ "${1:-}" = "--print-name" ]; then
@@ -102,7 +102,7 @@ echo "==> Building (Release) into an AppDir ($OUTPUT)"
 # -DXENEON_VERSION_OVERRIDE is what makes the binary's ConfigBridge.appVersion()
 # agree with the filename above. Without it cmake re-derives its own version from
 # git describe, which in a shallow CI checkout is a bare sha that
-# UpdateChecker.qml cannot order against a release tag — so the in-app check
+# UpdateChecker.qml cannot order against a release tag - so the in-app check
 # would report "no comparable version" and never surface an update, in the one
 # install kind that is actually pointed at the .zsync path.
 cmake -B "$BUILD" -S "$REPO" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr \
@@ -114,12 +114,12 @@ DESTDIR="$APPDIR" cmake --install "$BUILD"
 # linuxdeploy resolves each ELF's NEEDED entries against the loader search path.
 # A Qt that is not in the ldconfig cache (aqtinstall, /opt/Qt/...) is invisible
 # without this, and the qt plugin fails with "Could not find dependency:
-# libQt6DBus.so.6" — or worse, reports "Found Qt modules:" (empty) and silently
+# libQt6DBus.so.6" - or worse, reports "Found Qt modules:" (empty) and silently
 # produces an AppImage with no Qt in it at all.
 export LD_LIBRARY_PATH="$QT_LIBS:${LD_LIBRARY_PATH:-}"
 
 # The QML is compiled into the binaries via qrc, so there are no external .qml for
-# qmlimportscanner to read — point QML_SOURCES_PATHS at the source tree so the Qt
+# qmlimportscanner to read - point QML_SOURCES_PATHS at the source tree so the Qt
 # plugin still bundles the right QML runtime modules (QtQuick, Controls, Effects,
 # Shapes, Dialogs, VirtualKeyboard, …). Without this the lazily-imported modules
 # are missing and the app STILL starts cleanly, then fails when a widget loads.
@@ -149,5 +149,5 @@ echo "    libOpenGL/libEGL/libfontconfig + fonts. Every normal desktop has them;
 echo "    bare container does not (see the appimage-smoke job)."
 echo
 echo "    Note: the orientation-sensor udev rule (auto-rotate) still has to be"
-echo "    installed on the host — an AppImage cannot ship a udev rule. See"
+echo "    installed on the host - an AppImage cannot ship a udev rule. See"
 echo "    packaging/udev/99-xeneon-edge.rules."

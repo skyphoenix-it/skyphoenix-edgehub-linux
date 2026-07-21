@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# check_no_manager_compositor_tests.sh — the Manager is NEVER tested inside a
+# check_no_manager_compositor_tests.sh - the Manager is NEVER tested inside a
 # nested KDE Wayland compositor. This gate makes that permanent.
 #
 # WHY THIS EXISTS
@@ -13,7 +13,7 @@
 #      it was not that the shipped Manager works.
 #
 #   2. The measurements it did make were false. Qt's `TestCase.grabImage(item)`
-#      grabs the WINDOW and crops at (0,0) to the item's SIZE — it never maps
+#      grabs the WINDOW and crops at (0,0) to the item's SIZE - it never maps
 #      the item's POSITION. The Look tab's preview sits at x=264, so every
 #      "did the preview repaint?" assertion was sampling the Manager's nav
 #      sidebar, which never changes. Measured 2026-07-20: naive grab distance
@@ -24,13 +24,13 @@
 # A compositor layer that adds no fidelity and silently corrupts pixel
 # assertions is worse than no layer: it spends review trust without earning it.
 #
-# THE REPLACEMENT is tests/hardware/manager_*.py — the REAL installed Manager,
+# THE REPLACEMENT is tests/hardware/manager_*.py - the REAL installed Manager,
 # talking to a REAL hub over the control socket, on the REAL Edge. If Manager
 # coverage is wanted, it goes there. See tests/hardware/README.md.
 #
 # This gate is narrow on purpose: it only forbids Manager tests under the
 # nested compositor. It says nothing about tests/ui (offscreen component tests
-# of Manager QML are fine — they make no pixel/compositor claims).
+# of Manager QML are fine - they make no pixel/compositor claims).
 set -uo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -67,15 +67,15 @@ fi
 
 # ANTI-VACUITY: this gate must always have a subject directory to check. If
 # tests/gui vanishes or is renamed, a silent pass here would look identical to
-# compliance — which is precisely the failure mode this repo keeps hitting.
+# compliance - which is precisely the failure mode this repo keeps hitting.
 if [ ! -d tests/gui ]; then
-    echo "!! FAIL: tests/gui/ does not exist — this gate had nothing to check."
+    echo "!! FAIL: tests/gui/ does not exist - this gate had nothing to check."
     echo "   Refusing to report success for a directory that is not there."
     exit 1
 fi
 gui_files=$(ls tests/gui/tst_gui_*.qml 2>/dev/null | wc -l)
 if [ "$gui_files" -eq 0 ]; then
-    echo "!! FAIL: tests/gui/ contains no tst_gui_*.qml at all — nothing checked."
+    echo "!! FAIL: tests/gui/ contains no tst_gui_*.qml at all - nothing checked."
     exit 1
 fi
 

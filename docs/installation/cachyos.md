@@ -34,8 +34,8 @@ build dependencies `cmake` and `rust`.
 sudo pacman -S --needed base-devel git cmake rust \
   qt6-base qt6-declarative qt6-svg qt6-virtualkeyboard qt6-wayland \
   hicolor-icon-theme
-git clone https://github.com/skyphoenix-it/XeneonEdge_Linux.git
-cd XeneonEdge_Linux
+git clone https://github.com/skyphoenix-it/skyphoenix-edgehub-linux.git
+cd skyphoenix-edgehub-linux
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j"$(nproc)"
 ./build/xeneon-edge-hub

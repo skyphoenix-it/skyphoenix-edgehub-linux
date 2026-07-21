@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""manager_page_mirror_test.py — the hub mirrors the Manager's selected screen (O1).
+"""manager_page_mirror_test.py - the hub mirrors the Manager's selected screen (O1).
 
 Owner-reported bug: "adding screens via the Manager always jumps to screen #1;
-the hub never mirrors what is selected on the Manager — always screen #1."
+the hub never mirrors what is selected on the Manager - always screen #1."
 
 Root cause was that nothing told the hub which screen the Manager had selected:
 the protocol had no active-page concept, and the hub's SwipeView reset to page 0

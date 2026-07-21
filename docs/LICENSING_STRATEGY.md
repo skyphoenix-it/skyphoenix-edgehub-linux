@@ -1,21 +1,21 @@
-# EdgeHub — Licensing & Distribution Strategy
+# EdgeHub - Licensing & Distribution Strategy
 
 _Practical guidance for selling EdgeHub while it stays open source, and how the AUR
-fits. Not legal advice — confirm specifics (trademark, VAT status) with a
+fits. Not legal advice - confirm specifics (trademark, VAT status) with a
 professional before you charge money._
 
-## TL;DR recommendation — Open-core + Merchant-of-Record, AUR for the free build
+## TL;DR recommendation - Open-core + Merchant-of-Record, AUR for the free build
 
 1. **Keep the core open source** (current MIT/Apache-2.0). Publish a **free AUR
-   source package** — that's your Linux reach and credibility.
+   source package** - that's your Linux reach and credibility.
 2. **Don't paywall the core.** Sell a **separate, genuinely proprietary tier**:
    prebuilt + auto-update + support + a **Premium Theme/Wallpaper pack** and
    optional **Pro-only widgets**. Assets and closed plugins are the part MIT can't
    undercut.
 3. **Sell through a Merchant of Record** (Paddle / Lemon Squeezy) so EU VAT is
-   handled for you — important as a German solo seller.
-4. **Add low-pressure donations** — Buy Me a Coffee (one-off), Patreon (recurring),
-   GitHub Sponsors — for people who'd rather just chip in. Confirm tax treatment of
+   handled for you - important as a German solo seller.
+4. **Add low-pressure donations** - Buy Me a Coffee (one-off), Patreon (recurring),
+   GitHub Sponsors - for people who'd rather just chip in. Confirm tax treatment of
    tips with your Steuerberater.
 5. **Trademark "EdgeHub"**, market as **"EdgeHub by SKYPhoenix IT"**, keep the one
    nominative "compatible with … / not affiliated with Corsair" notice.
@@ -33,7 +33,7 @@ So:
   is the encouraged, community-friendly path and costs nothing.
 - **Proprietary / paid binaries → allowed, with a catch.** The AUR *does* host
   packages for proprietary software (many commercial apps have one). But you may not
-  redistribute a paid binary *through* the AUR — the PKGBUILD must download it from
+  redistribute a paid binary *through* the AUR - the PKGBUILD must download it from
   **your official server**. If that download is behind a paywall, the standard
   patterns are:
   - the PKGBUILD expects the user to have already downloaded the file (points at
@@ -44,12 +44,12 @@ So:
 
 **Bottom line:** the AUR is fundamentally a free/community channel. Use it for the
 open build (source pkg `edgehub`, plus optionally `edgehub-bin` that pulls your free
-prebuilt AppImage). Do the *paid* selling on your own store — don't try to make the
+prebuilt AppImage). Do the *paid* selling on your own store - don't try to make the
 AUR your paywall.
 
 ## 2. The core tension (why this needs a decision)
 
-MIT/Apache means **anyone may rebuild and redistribute EdgeHub for free** — including
+MIT/Apache means **anyone may rebuild and redistribute EdgeHub for free** - including
 repackaging your prebuilt binaries. So you cannot "sell the bits" of an MIT app; you
 sell things MIT doesn't cover. Three coherent models:
 
@@ -60,28 +60,28 @@ sell things MIT doesn't cover. Three coherent models:
 | **C. Proprietary product** | The whole app, closed, license-keyed | Yes | 😐 Weakest on Linux |
 
 **Recommended: B.** It keeps the goodwill and AUR reach of OSS while giving you a part
-that's actually paywallable — because **assets you create (themes, wallpapers) and a
+that's actually paywallable - because **assets you create (themes, wallpapers) and a
 closed Pro plugin are separately licensable even when the core is MIT.** Code license
 ≠ asset license.
 
 ## 3. Concrete setup for Open-core (Model B)
 
 **Repo licensing**
-- Core code stays **MIT OR Apache-2.0** (dual — the Rust ecosystem norm; keep
+- Core code stays **MIT OR Apache-2.0** (dual - the Rust ecosystem norm; keep
   `LICENSE`).
 - Put premium assets in a **separate** repo/dir under a **proprietary/commercial
-  asset license** (e.g. "EdgeHub Premium Assets — licensed, not redistributable").
+  asset license** (e.g. "EdgeHub Premium Assets - licensed, not redistributable").
   Bundled free themes stay open; the *premium pack* is the paid content.
 - A **Pro plugin** (extra widgets / cloud sync / etc.), if you build one, is a closed
   binary loaded by the open core through a stable plugin ABI. The core stays OSS; the
   plugin is commercial.
 
-**License keys (light touch — Linux users hate DRM)**
+**License keys (light touch - Linux users hate DRM)**
 - Issue an **offline, signed license token** (an Ed25519-signed blob containing
   email + tier + optional expiry). The app verifies the signature locally with a
   bundled public key and unlocks the premium pack / Pro plugin. No phone-home, works
   offline, can't be forged without your private key.
-- Don't fingerprint hardware or lock to machines — a simple, honest "supporter key"
+- Don't fingerprint hardware or lock to machines - a simple, honest "supporter key"
   converts far better and won't get ripped apart on r/linux.
 
 **Distribution channels**
@@ -91,7 +91,7 @@ closed Pro plugin are separately licensable even when the core is MIT.** Code li
   pack/Pro plugin download. Optionally an `edgehub-pro` AUR pkg that pulls the Pro
   plugin from your server using their token.
 
-## 4. Getting paid as a German solo dev — use a Merchant of Record
+## 4. Getting paid as a German solo dev - use a Merchant of Record
 
 Selling digital goods to EU (and global) consumers triggers **VAT** obligations
 (EU OSS/MOSS; VAT is due in the buyer's country). You do **not** want to register and
@@ -101,11 +101,11 @@ file VAT across the EU yourself.
   the legal seller, collect and remit VAT/sales tax worldwide, handle invoices,
   refunds, and even license-key issuance. You just get a payout. This is the standard
   for indie/solo software and removes almost all the tax burden.
-- **Gumroad** also acts as MoR and is the simplest to start — good for launch.
+- **Gumroad** also acts as MoR and is the simplest to start - good for launch.
 - **Raw Stripe/PayPal** = *you* are the seller and owe the VAT compliance (Stripe Tax
   helps compute, but you still register/file). Only worth it later at scale.
 - German notes: **Kleinunternehmer (§19 UStG)** simplifies *domestic* VAT but does
-  **not** exempt cross-border EU digital sales — another reason an MoR is the clean
+  **not** exempt cross-border EU digital sales - another reason an MoR is the clean
   path. Talk to a *Steuerberater* once revenue is real.
 
 ## 5. Trademark & the Corsair angle

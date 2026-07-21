@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""manager_gui_test.py — drive the REAL Manager on the REAL desktop, with real
+"""manager_gui_test.py - drive the REAL Manager on the REAL desktop, with real
 synthetic input, and verify the effect reaches the REAL hub on the Edge.
 
 This closes the largest coverage gap in the repo. Until now:
@@ -7,33 +7,33 @@ This closes the largest coverage gap in the repo. Until now:
     (ManagerHarness.qml: screensJson()="[]", metricsJson()="{}"), inside a
     nested compositor. It is not the Manager as shipped.
   * tests/hardware/edge_e2e.py runs the Manager as
-    `timeout -s KILL 10 MANAGER` — launch, screenshot, kill. Zero interaction.
+    `timeout -s KILL 10 MANAGER` - launch, screenshot, kill. Zero interaction.
   * Nothing anywhere connects the real Manager binary to the real hub binary.
 
 So: real Manager, real hub, real clicks, real socket, real panel.
 
 ────────────────────────────────────────────────────────────────────────────
-SAFETY — what stops this clicking somewhere it should not
+SAFETY - what stops this clicking somewhere it should not
 ────────────────────────────────────────────────────────────────────────────
 Owner constraint (2026-07-19): "I approve that my cursor moves around, as long
 as the clicks and so on are focused on the applications that are actually being
 tested."
 
-  1. SEPARATE GATE — XENEON_HW_INPUT_DESKTOP=1. The Edge gate alone does not
+  1. SEPARATE GATE - XENEON_HW_INPUT_DESKTOP=1. The Edge gate alone does not
      enable this; the cursor never leaves the Edge without this second opt-in.
-  2. WINDOW-PRECISE CLAMP — every event is clamped to the Manager's OWN window
+  2. WINDOW-PRECISE CLAMP - every event is clamped to the Manager's OWN window
      rect, parsed from the rect the Manager logs at placement
      (manager/src/main.cpp). Not the monitor: on a 5120x1440 screen "confined to
      the monitor" would still allow clicking whatever else is open there.
-  3. CONTAINMENT CHECK — the parsed rect must lie inside a real non-Edge screen,
+  3. CONTAINMENT CHECK - the parsed rect must lie inside a real non-Edge screen,
      or we refuse to inject (a stale/bogus rect must never become a click).
-  4. RENDER PROBE — the rect must visibly change when the Manager changes state,
+  4. RENDER PROBE - the rect must visibly change when the Manager changes state,
      proving the window is actually there, before the first event is emitted.
-  5. KILL SWITCH — input_guard aborts injection for the rest of the run on ANY
+  5. KILL SWITCH - input_guard aborts injection for the rest of the run on ANY
      real input from the owner. Watch, do not touch.
   6. The hub runs with an isolated XDG_CONFIG_HOME/XDG_RUNTIME_DIR, so the live
      hub's config and socket are untouched. The MANAGER, however, is the real
-     binary against that same isolated config — that is the point.
+     binary against that same isolated config - that is the point.
 
 Run (after approval):
     XENEON_HW_INPUT=1 XENEON_HW_INPUT_DESKTOP=1 \\
@@ -62,7 +62,7 @@ class ManagerGui:
         self.name, self.x, self.y, self.w, self.hgt = rect
         self.n = 0
         cw, ch = dt.canvas_size()
-        # The kill switch is MANDATORY — UinputSink refuses to construct without
+        # The kill switch is MANDATORY - UinputSink refuses to construct without
         # one, by design. require_user_idle blocks until the owner has been
         # hands-off, and any real input afterwards aborts injection for the rest
         # of the run.
@@ -92,7 +92,7 @@ class ManagerGui:
             return False
         ok = self.active_row(p) is not None
         try:
-            os.unlink(p)          # a check, not evidence — do not litter
+            os.unlink(p)          # a check, not evidence - do not litter
         except OSError:
             pass
         return ok
@@ -114,7 +114,7 @@ class ManagerGui:
         time.sleep(settle)
         return True
 
-    # The accent-row detector lives in manager_window.py — ONE implementation,
+    # The accent-row detector lives in manager_window.py - ONE implementation,
     # shared with the four other Manager suites. It was briefly duplicated here;
     # two copies of the one thing that decides "am I even looking at the
     # Manager?" is exactly the drift this repo keeps paying for.
@@ -141,7 +141,7 @@ class ManagerGui:
         and the run reported Manager bugs that did not exist. Worse than the
         false result, we injected six clicks into an unrelated application.
 
-        `manager-rect-verified` could not catch this — it only asserts the rect
+        `manager-rect-verified` could not catch this - it only asserts the rect
         lies on a real non-Edge screen. A stale-but-plausible rect, an occluded
         window and a correct one all look identical to it.
 
@@ -150,7 +150,7 @@ class ManagerGui:
         is live-connected to the hub, so pushing an appearance change through
         the hub repaints its Edge preview. If those pixels do not move, either
         the Manager is occluded, or it is not connected, or it is not rendering
-        — and in all three cases injecting would be firing blind. Refuse.
+        - and in all three cases injecting would be firing blind. Refuse.
         """
         from PIL import Image
         before = self.shot("verify-a")
@@ -186,7 +186,7 @@ class ManagerGui:
             if not ok:
                 print("     The Manager is not the window rendering in that rect "
                       "(occluded by another window?), or it is not connected to "
-                      "the hub. Refusing to inject — see verify_owns_its_rect().",
+                      "the hub. Refusing to inject - see verify_owns_its_rect().",
                       flush=True)
             return ok
         finally:
@@ -271,10 +271,10 @@ def main():
 
         # NOTHING may be clicked until the Manager is proven to be the window
         # rendering in its own rect. Without this the clamp happily fires into
-        # whatever is stacked on top of it — it did, into the owner's browser.
+        # whatever is stacked on top of it - it did, into the owner's browser.
         if not gui.verify_owns_its_rect():
             h.check("manager-window-owns-its-rect", False,
-                    "occluded or not repainting — refused to inject")
+                    "occluded or not repainting - refused to inject")
             print("\n!! Bring the Manager to the front (or close windows covering "
                   "it on that screen) and re-run. No events were emitted.",
                   flush=True)
@@ -293,7 +293,7 @@ def main():
         # Fractions MEASURED from a real 1440x1300 capture (not guessed): the
         # five sidebar rows sit at y = 164/220/276/332/388 px, i.e. 0.126 with a
         # 0.043 step, at x = 85 px (0.059). The first version used
-        # 0.18 + i*0.07, which put entries 2-4 BELOW the menu entirely — they
+        # 0.18 + i*0.07, which put entries 2-4 BELOW the menu entirely - they
         # clicked dead space, the screen never changed, and the frames came back
         # byte-identical. Derive coordinates from a capture; do not estimate.
         tabs = ["Screens", "Look", "Images", "Device", "About"]
@@ -303,7 +303,7 @@ def main():
         for i, name in enumerate(tabs):
             if not gui.click_rel(SIDEBAR_X, SIDEBAR_Y0 + i * SIDEBAR_DY):
                 h.check("manager-window-stayed-in-front", False,
-                        "lost the window before clicking '%s' — no event emitted" % name)
+                        "lost the window before clicking '%s' - no event emitted" % name)
                 break
             p = gui.shot("tab-%d-%s" % (i, name.lower()))
             if not p:
@@ -314,7 +314,7 @@ def main():
             active = gui.active_row(p)
 
             # OCCLUSION IS NOT A PRODUCT FAILURE. `active_row` returning None
-            # means NO row carries the accent fill — the Manager always has
+            # means NO row carries the accent fill - the Manager always has
             # exactly one selected, so None means we are not looking at the
             # Manager at all. On 2026-07-20 the owner's browser raised itself
             # over the Manager MID-RUN: rows 2-5 reported "the click did not
@@ -324,7 +324,7 @@ def main():
             # "no row highlighted" (we lost the window) and stop, because every
             # further click would land in someone else's application.
             if active is None:
-                print("\n!! OCCLUDED: no sidebar row carries the accent in %s —"
+                print("\n!! OCCLUDED: no sidebar row carries the accent in %s -"
                       " the Manager is no longer the window in its own rect."
                       % os.path.basename(p), flush=True)
                 print("!! Aborting before the next click. This is an environment"
@@ -332,12 +332,12 @@ def main():
                       " NOT a Manager defect. Re-run with that screen clear.",
                       flush=True)
                 h.check("manager-window-stayed-in-front", False,
-                        "lost the window at tab '%s' — remaining clicks skipped" % name)
+                        "lost the window at tab '%s' - remaining clicks skipped" % name)
                 break
 
             ok = (dup is None) and (active == name)
             if dup is not None:
-                why = "IDENTICAL to '%s' — the click did not change tabs" % dup
+                why = "IDENTICAL to '%s' - the click did not change tabs" % dup
             elif active != name:
                 why = "clicked '%s' but the SELECTED row is %r" % (name, active)
             else:

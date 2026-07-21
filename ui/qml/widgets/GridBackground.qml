@@ -1,10 +1,10 @@
 import QtQuick
 
-// GridBackground — a subtle synthwave perspective grid: horizontal lines that
+// GridBackground - a subtle synthwave perspective grid: horizontal lines that
 // bunch toward a horizon (lower third) plus vertical lines converging to a central
 // vanishing point, in a translucent theme.accent colour. Only the horizontal lines
 // scroll, so the STATIC verticals + horizon are painted ONCE into their own Canvas
-// (a cached GPU texture) and only the scrolling lines repaint on the ~20fps timer —
+// (a cached GPU texture) and only the scrolling lines repaint on the ~20fps timer -
 // roughly halving per-frame raster work vs redrawing the whole grid each tick. When
 // `active` is false the timer stops and the last frame stays painted.
 Item {
@@ -15,7 +15,7 @@ Item {
     property color tint: accent
     clip: true
 
-    // Scroll phase (0..1) — one unit == one row of forward motion; loops seamlessly.
+    // Scroll phase (0..1) - one unit == one row of forward motion; loops seamlessly.
     property real phase: 0.0
 
     readonly property real vx: width / 2                 // vanishing point x (centre)
@@ -54,7 +54,7 @@ Item {
         onWidthChanged: requestPaint()
         onHeightChanged: requestPaint()
         Component.onCompleted: requestPaint()
-        // `tint` lives on root, not the Canvas — repaint the statics when it changes.
+        // `tint` lives on root, not the Canvas - repaint the statics when it changes.
         Connections { target: root; function onTintChanged() { staticGrid.requestPaint() } }
     }
 
@@ -81,7 +81,7 @@ Item {
         onHeightChanged: requestPaint()
         Component.onCompleted: requestPaint()
         // When motion is off the timer is stopped, so nothing else repaints this
-        // layer — react to tint changes explicitly so a theme/accent switch takes.
+        // layer - react to tint changes explicitly so a theme/accent switch takes.
         Connections { target: root; function onTintChanged() { dynamicGrid.requestPaint() } }
     }
 }

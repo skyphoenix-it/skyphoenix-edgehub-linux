@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# coverage.sh — measure and gate test coverage across all layers.
+# coverage.sh - measure and gate test coverage across all layers.
 #
 #   Rust : cargo llvm-cov (LLVM source-based line coverage), gate >= 95%
 #   C++  : gcovr over the selected CMake test build,             gate >= 95%

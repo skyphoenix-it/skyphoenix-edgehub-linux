@@ -12,7 +12,7 @@ import "../../ui/qml/widgets" as Wg
 // the "gpu" config schema, and the universal appearance keys (accent / title).
 //
 // Assertions that encode the *intended* behaviour but fail against the current
-// code are deliberate — they pin real bugs called out in the audit:
+// code are deliberate - they pin real bugs called out in the audit:
 //   • the header amber threshold (warnTemp-17) and the ring amber threshold
 //     (warnTemp-12) disagree by 5°C, so a warning-coloured number can sit inside
 //     a calm ring;
@@ -142,7 +142,7 @@ Item {
         when: windowShown
 
         function test_ring_clamps_value_to_unit_interval() {
-            // Eased since W3 — assert the landed targets.
+            // Eased since W3 - assert the landed targets.
             gauge.ok = true
             gauge.value = 1.5
             var ring = findRing(gauge)
@@ -303,7 +303,7 @@ Item {
         function test_gauge_colour_matches_col() {
             var w = h.item
             feed(95)
-            // The gauge colour cross-fades to the threshold tone (W3) — wait for
+            // The gauge colour cross-fades to the threshold tone (W3) - wait for
             // it to land, then confirm it matches col(v) exactly.
             tryVerify(function () { return String(findGauge().color) === String(w.col(w.v)) },
                       2000, "gauge paints with col(v)")
@@ -382,9 +382,9 @@ Item {
             var w = h.item
             feed(40); flush()
             compare(w.hist.length, 1, "one available tick → one sample")
-            feed(null); flush()             // GPU drops out — no sample
+            feed(null); flush()             // GPU drops out - no sample
             compare(w.hist.length, 1, "no history pushed on an unavailable tick")
-            feed(); flush()                 // key absent — still nothing
+            feed(); flush()                 // key absent - still nothing
             compare(w.hist.length, 1)
         }
         function test_showHistory_off_still_accumulates() {
@@ -474,7 +474,7 @@ Item {
             return found
         }
 
-        // 0.5x0.5 — headerless bare ring: the one number (or a dimmed N/A).
+        // 0.5x0.5 - headerless bare ring: the one number (or a dimmed N/A).
         function test_micro_is_bare_ring() {
             tryVerify(function () { return hMicro.ready }, 3000)
             var w = hMicro.item
@@ -488,7 +488,7 @@ Item {
             verify(g.bigMax > 60, "the headerless number may fill its box")
         }
 
-        // wide — ring beside the sparkline in both projections.
+        // wide - ring beside the sparkline in both projections.
         function test_wide_puts_spark_beside_ring() {
             tryVerify(function () { return hWide.ready }, 3000)
             var w = hWide.item
@@ -503,7 +503,7 @@ Item {
             wideWrap.width = 696; wideWrap.height = 416
         }
 
-        // tall — full-height sparkline + avg/peak caption inside the ring.
+        // tall - full-height sparkline + avg/peak caption inside the ring.
         function test_tall_earns_height_and_avg_peak() {
             tryVerify(function () { return hTall.ready }, 3000)
             var w = hTall.item
@@ -531,7 +531,7 @@ Item {
         function init() { tryVerify(function () { return h.ready }, 3000); reset() }
 
         // BUG (audit, low): header amber threshold is warnTemp-17 but the ring's
-        // is warnTemp-12 — a 5°C band where the number is amber inside a calm ring.
+        // is warnTemp-12 - a 5°C band where the number is amber inside a calm ring.
         function test_header_and_ring_amber_thresholds_agree() {
             var w = h.item
             h.storeCtl.setSetting("test-instance", "warnTemp", 90)

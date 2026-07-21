@@ -3,8 +3,8 @@ import QtTest
 import "../../ui/qml" as App
 
 // ─────────────────────────────────────────────────────────────────────────
-// tst_gen_media — COMPREHENSIVE coverage for area "widget:media"
-// (ui/qml/widgets/MediaWidget.qml, driven by the MPRIS `media` bridge —
+// tst_gen_media - COMPREHENSIVE coverage for area "widget:media"
+// (ui/qml/widgets/MediaWidget.qml, driven by the MPRIS `media` bridge -
 // mocked here by MockMedia).
 //
 // Covers: the effAccent binding-loop bug (MediaWidget is the only widget that
@@ -20,7 +20,7 @@ import "../../ui/qml" as App
 // artist is empty; progress animation ignoring reduceMotion). Those failures
 // are the point and are reported as likelyRealBug.
 //
-// NOT covered here (C++-only, needs the real MprisBridge — MockMedia cannot
+// NOT covered here (C++-only, needs the real MprisBridge - MockMedia cannot
 // model them): GetAll-timeout debounce, Identity→friendly-name mapping, the
 // Seeked-while-paused signal, and tile-level tap-to-expand propagation.
 // ─────────────────────────────────────────────────────────────────────────
@@ -31,12 +31,12 @@ Item {
     id: root
     width: 1300; height: 2400
 
-    // Main expanded harness — accent, subtitle, progress, transport, placeholder.
+    // Main expanded harness - accent, subtitle, progress, transport, placeholder.
     WidgetHarness {
         id: h; x: 0; y: 0; width: 420; height: 760
         widgetFile: "MediaWidget.qml"; expanded: true
     }
-    // Compact tile harness — compact play/pause click + compact touch target.
+    // Compact tile harness - compact play/pause click + compact touch target.
     // 423x306 is the REAL 0.5x0.5 landscape half-cell (see WidgetSizes). It was
     // 360x120, a box the size model cannot produce: the smallest footprint any
     // tile ever gets is the half-cell (348x409 portrait / 423x306 landscape).
@@ -47,7 +47,7 @@ Item {
         widgetFile: "MediaWidget.qml"; expanded: false
     }
 
-    // Resizable host for the per-sizeClass structure tests (W1 wave 3) — the
+    // Resizable host for the per-sizeClass structure tests (W1 wave 3) - the
     // REAL projected footprints of media's five declared sizes:
     //   0.5x0.5 → 348x409 portrait · 423x306 landscape   (compact, micro)
     //   0.5x1   → 348x819 portrait (tall) · 846x306 landscape (wide)
@@ -161,7 +161,7 @@ Item {
         }
 
         // The expanded play button fills with effAccent and paints a near-black
-        // (#0D1117) glyph on top — under the loop both are ~black, so the glyph
+        // (#0D1117) glyph on top - under the loop both are ~black, so the glyph
         // is invisible. Assert real contrast between button fill and glyph.
         function test_play_button_glyph_has_contrast() {
             seed(h, "Song", "Artist", "Album")
@@ -372,7 +372,7 @@ Item {
 
     // ── header status ────────────────────────────────────────────────────────
     // NOTE: the C++ bridge exposes the raw D-Bus service suffix as playerName
-    // (a real medium bug) — not reproducible via MockMedia, which supplies a
+    // (a real medium bug) - not reproducible via MockMedia, which supplies a
     // friendly name. Here we pin the avail-gating of the header status.
     TestCase {
         name: "MediaHeaderStatus"
@@ -400,7 +400,7 @@ Item {
             // it WidgetChrome falls back to its geometric default (height > 240 →
             // "tall"), which for a half-cell is simply the wrong class: the widget
             // then renders the header + full transport of a tall tile into a
-            // 306px box, and the overflow is clipped by the chrome body — so the
+            // 306px box, and the overflow is clipped by the chrome body - so the
             // click landed on nothing.
             hC.item.sizeClass = "compact"
             hC.mediaCtl.clearTrack()
@@ -560,7 +560,7 @@ Item {
                 var bx = w.mapFromItem(btns[0], 0, 0).x
                 verify(bx >= artRight - 1,
                        "transport sits right of the art (art ends " + artRight + ", controls " + bx + ")")
-                // And the whole stack fits the box — the audit's actual failure.
+                // And the whole stack fits the box - the audit's actual failure.
                 verify(artBottom <= w.height,
                        "art fits inside the " + cases[i][1] + "px box (ends " + artBottom + ")")
             }
@@ -576,18 +576,18 @@ Item {
             var aMicro = art(micro).width
             verify(aTall > aBase, "a taller box earns bigger art (" + aBase + " → " + aTall + ")")
             verify(aMicro < aBase, "the half-cell shrinks it (" + aMicro + ")")
-            // The old cap: 696*0.5 = 348, capped to 260 — identical for both.
+            // The old cap: 696*0.5 = 348, capped to 260 - identical for both.
             verify(aTall > 260, "the tall tile is no longer pinned at the old 260px cap")
         }
 
-        // 0.5x0.5 — art, title, ONE play target. No shrunken hit areas.
+        // 0.5x0.5 - art, title, ONE play target. No shrunken hit areas.
         function test_micro_keeps_one_full_size_play_target_only() {
             var w = shape(423, 306, "compact")
             compare(w.micro, true, "a 423x306 compact box is the half-cell")
             compare(w.showHeader, false, "micro drops the header")
             compare(w.rich, false, "micro carries the readout, not the full transport")
             var btns = transport(w)
-            compare(btns.length, 1, "exactly one control survives — play")
+            compare(btns.length, 1, "exactly one control survives - play")
             verify(btns[0].height >= hS.theme.touchTertiary,
                    "and it is a REAL hit area (" + btns[0].height + "px), not a shrunken one")
             // Everything stays inside the 306px box.
@@ -595,7 +595,7 @@ Item {
             verify(b <= w.height, "the play target fits the box (ends " + b + ")")
         }
 
-        // 1x1 — the baseline earns the full transport + progress, and type that
+        // 1x1 - the baseline earns the full transport + progress, and type that
         // is not 13px dust in a 696x819 box.
         function test_baseline_earns_transport_progress_and_real_type() {
             var w = shape(696, 819, "compact")

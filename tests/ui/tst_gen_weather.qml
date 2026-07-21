@@ -5,13 +5,13 @@ import "../../ui/qml" as App
 // COVERS: schema:forecastDays, schema:lat, schema:lon, schema:place, schema:units
 
 // ─────────────────────────────────────────────────────────────────────────
-// tst_gen_weather — COMPREHENSIVE coverage for area "widget:weather"
-// (ui/qml/widgets/WeatherWidget.qml — Open-Meteo forecast tile).
+// tst_gen_weather - COMPREHENSIVE coverage for area "widget:weather"
+// (ui/qml/widgets/WeatherWidget.qml - Open-Meteo forecast tile).
 //
 // The widget's data comes from the network; these tests never rely on a live
 // fetch. Instead they drive config through the store (revision → cfg → derived
 // props) and, where a "loaded" render is required, seed the widget's own plain
-// data properties (loaded/curTemp/feels/curCode/days) directly — every one of
+// data properties (loaded/curTemp/feels/curCode/days) directly - every one of
 // those states is reachable at runtime, so rendering them is fair game.
 //
 // Several assertions encode the CORRECT expected behaviour and therefore FAIL
@@ -24,24 +24,24 @@ Item {
     id: root
     width: 760; height: 1200
 
-    // Primary harness: expanded, roomy — logic / config / reactivity / render.
+    // Primary harness: expanded, roomy - logic / config / reactivity / render.
     WidgetHarness {
         id: h; x: 0; y: 0; width: 460; height: 420
         widgetFile: "WeatherWidget.qml"; expanded: true
     }
-    // 720px-wide portrait "panel" harness — forecast-row clipping.
+    // 720px-wide portrait "panel" harness - forecast-row clipping.
     WidgetHarness {
         id: hPanel; x: 0; y: 440; width: 720; height: 400
         widgetFile: "WeatherWidget.qml"; expanded: true
     }
-    // Second expanded instance sharing the same store as `h` — proves an
+    // Second expanded instance sharing the same store as `h` - proves an
     // unrelated instance's mutation does not perturb h's location key.
     WidgetHarness {
         id: hOther; x: 0; y: 860; width: 300; height: 300
         widgetFile: "WeatherWidget.qml"; expanded: true; instanceId: "other-instance"
     }
 
-    // Resizable host for the per-sizeClass structure tests (W1 wave 3) — the
+    // Resizable host for the per-sizeClass structure tests (W1 wave 3) - the
     // REAL projected footprints of weather's five declared sizes:
     //   0.5x0.5 → 348x409 portrait · 423x306 landscape   (compact, micro)
     //   0.5x1   → 348x819 portrait (tall) · 846x306 landscape (wide)
@@ -76,7 +76,7 @@ Item {
             if (/^-?\d+°[CF]$/.test(t[i].text)) return t[i]
         return null
     }
-    // Forecast day/night lines look like "26°C / 12°C" — count = forecast tiles.
+    // Forecast day/night lines look like "26°C / 12°C" - count = forecast tiles.
     function forecastTemps(harness) {
         var t = allTexts(harness), out = []
         for (var i = 0; i < t.length; i++)
@@ -267,7 +267,7 @@ Item {
 
         // AUDIT (line 27, medium): degSym flips synchronously with `units`, but
         // curTemp still holds the previously-fetched Celsius number until a full
-        // network round-trip completes — so the tile shows "20°F" where 20 is a
+        // network round-trip completes - so the tile shows "20°F" where 20 is a
         // Celsius reading. A correct widget would never present the stale number
         // under the new unit (e.g. it would invalidate the reading first).
         function test_toggle_does_not_show_wrong_unit_number() {
@@ -471,7 +471,7 @@ Item {
         }
 
         // THE HONESTY CONSTRAINT. The forecast request asks for `current` +
-        // `daily` and never `hourly`, so no size may grow an hourly chart — the
+        // `daily` and never `hourly`, so no size may grow an hourly chart - the
         // data to draw one does not exist, and adding it would be new egress.
         // This test guards the URL, which is what bounds every layout below.
         function test_the_request_never_asks_for_an_hourly_series() {
@@ -484,10 +484,10 @@ Item {
             verify(seen.indexOf("&current=") >= 0, "the reading comes from `current`")
             verify(seen.indexOf("&daily=") >= 0, "the forecast comes from `daily`")
             compare(seen.indexOf("hourly"), -1,
-                    "NO hourly series is requested — so no tile may draw one: " + seen)
+                    "NO hourly series is requested - so no tile may draw one: " + seen)
         }
 
-        // 0.5x0.5 — glyph + temperature + place. Nothing it cannot back.
+        // 0.5x0.5 - glyph + temperature + place. Nothing it cannot back.
         function test_micro_is_the_reading_only() {
             var w = shape(423, 306, "compact")
             compare(w.micro, true, "a 423x306 compact box is the half-cell")
@@ -497,7 +497,7 @@ Item {
             verify(w.glyphPx > 34, "the glyph scales with the box (" + w.glyphPx + "px)")
         }
 
-        // 1x1 — the baseline earns "feels like" + the daily rows that fit.
+        // 1x1 - the baseline earns "feels like" + the daily rows that fit.
         function test_baseline_earns_feels_and_daily_rows() {
             var w = shape(696, 819, "compact", 4)
             compare(w.rich, true, "the baseline shows 'feels like'")
@@ -506,7 +506,7 @@ Item {
             verify(w.tempPx > 28, "the temperature scales with the box (" + w.tempPx + "px)")
         }
 
-        // wide — the forecast goes BESIDE the reading, as columns: 0.5x1
+        // wide - the forecast goes BESIDE the reading, as columns: 0.5x1
         // landscape is 306px tall and daily ROWS would not fit.
         function test_wide_lays_the_forecast_beside_the_reading() {
             var cases = [[696, 409], [846, 306]]
@@ -518,7 +518,7 @@ Item {
             }
         }
 
-        // tall — the daily list is what a tall weather tile grows.
+        // tall - the daily list is what a tall weather tile grows.
         function test_tall_grows_the_daily_list() {
             var w = shape(696, 1228, "tall", 7)
             compare(w.tallish, true)
@@ -536,7 +536,7 @@ Item {
         // Where the cap actually bites: the wide projections lay the forecast out
         // as columns across a bounded width, so a 7-day fetch does not fit and
         // the tile shows the ones that do rather than overflowing the card.
-        // (Every stacked size has the height for all 7 — measured, not assumed.)
+        // (Every stacked size has the height for all 7 - measured, not assumed.)
         function test_a_narrow_box_drops_days_rather_than_overflowing() {
             var wide = shape(696, 409, "wide", 7)
             compare(wide.futureDays, 7, "seven days were fetched")

@@ -1,8 +1,8 @@
-// SystemSettingsProbe — the OS reduce-motion read (XDG settings portal).
+// SystemSettingsProbe - the OS reduce-motion read (XDG settings portal).
 //
 // These tests drive the PARSING SEAM (unwrapDBusVariant / interpretSetting /
 // applySetting) with crafted variants, so they are independent of the host's
-// actual desktop settings — the exact values the portal would deliver are
+// actual desktop settings - the exact values the portal would deliver are
 // reproduced here as literals (shapes verified against a live KDE Plasma
 // portal, Settings v2: ReadOne returns v(x), legacy Read returns v(v(x)),
 // SettingChanged carries v(x)). CTest runs this executable under its own
@@ -15,7 +15,7 @@
 
 #include "system_settings_probe.h"
 
-// Refuse to run outside a sandbox — see hermetic.h (a raw run once destroyed a
+// Refuse to run outside a sandbox - see hermetic.h (a raw run once destroyed a
 // developer's real config).
 #include "hermetic.h"
 XENEON_REQUIRE_HERMETIC_ENV();

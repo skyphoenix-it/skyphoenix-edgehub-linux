@@ -127,11 +127,11 @@ pub struct WidgetInstance {
 
 /// The shipped default theme.
 ///
-/// `nord`, not `dark` (owner decision D1, 2026-07-19 — "Calm as the default").
+/// `nord`, not `dark` (owner decision D1, 2026-07-19 - "Calm as the default").
 /// The Edge sits in peripheral vision beside a main monitor all day, which in
 /// Weiser & Brown's sense makes it a calm-technology surface: it must be
 /// attunable WITHOUT being attended to. The measurable lever for that is chroma,
-/// not hue or brightness — saturation dominates self-rated arousal (Wilms &
+/// not hue or brightness - saturation dominates self-rated arousal (Wilms &
 /// Oberfeld 2018, partial eta-squared 0.69 vs 0.46 for brightness; Valdez &
 /// Mehrabian 1994 load saturation ~2x brightness with opposite sign).
 ///
@@ -420,7 +420,7 @@ pub fn save_config(config: &AppConfig) -> Result<(), ConfigError> {
     // otherwise a crash between rename and writeback can leave a truncated file.
     //
     // Mode 0600, set at CREATION (not chmod'd after): ui_state can carry user
-    // secrets — the HTTP/JSON and KPI widgets have a Bearer-token field, and the
+    // secrets - the HTTP/JSON and KPI widgets have a Bearer-token field, and the
     // calendar takes a secret ICS URL. `File::create` uses 0666 & ~umask, i.e.
     // 0644 on a default box, leaving those readable by every local user. Creating
     // the temp file 0600 also closes the window where the token is briefly
@@ -518,8 +518,8 @@ fn copy_config_owner_only(
 /// Back up `path` to a fixed `<name>.toml.bak` beside it. Extracted for testing.
 ///
 /// This is the *canonical* good-config backup (single, overwritten each time a
-/// known-good config is backed up). Corrupt configs must NOT use this — see
-/// `backup_corrupt_config` — or they would clobber the last recoverable copy.
+/// known-good config is backed up). Corrupt configs must NOT use this - see
+/// `backup_corrupt_config` - or they would clobber the last recoverable copy.
 fn backup_config_of(path: &std::path::Path) -> Result<(), ConfigError> {
     if !path.exists() {
         return Ok(());
@@ -564,11 +564,11 @@ fn backup_corrupt_config(path: &std::path::Path) -> Result<PathBuf, ConfigError>
 ///
 /// `--reset` and `--reset-wizard` are one word apart, and what separates them is
 /// the user's entire layout: reset throws it away, reset-wizard keeps it. This
-/// used to `remove_file` outright, so a mistyped flag was unrecoverable — while
+/// used to `remove_file` outright, so a mistyped flag was unrecoverable - while
 /// the *corruption* path (which discards strictly less trustworthy data) has
 /// always kept a backup. That asymmetry was an oversight, not a decision.
 ///
-/// A config being reset is by definition known-good — it is the live one — so
+/// A config being reset is by definition known-good - it is the live one - so
 /// this is `backup_config_of`'s canonical `<name>.toml.bak`, NOT the timestamped
 /// corrupt backup, which exists precisely so corrupt content never clobbers this
 /// copy.
@@ -756,7 +756,7 @@ instances = []
         // Correct behavior: the loader should NOT silently discard the user's
         // completed-setup flag and dashboard layout. Today it returns
         // AppConfig::default(), re-triggering the first-run wizard and dropping
-        // ui_state — a data-loss regression.
+        // ui_state - a data-loss regression.
         assert!(
             cfg.first_run_complete,
             "BUG: corrupt config silently resets first_run_complete → wizard reappears"
@@ -1174,7 +1174,7 @@ version = 1
         // config.toml exists but is a directory, so reset cannot proceed.
         // (This was named `..._remove_failure_...` when reset went straight to
         // remove_file. Reset now backs up FIRST, so the copy is what fails here
-        // and the old name no longer described what ran — renamed rather than
+        // and the old name no longer described what ran - renamed rather than
         // left as a test whose name asserts a path it stopped taking.)
         let target = config_path();
         fs::create_dir_all(&target).unwrap();

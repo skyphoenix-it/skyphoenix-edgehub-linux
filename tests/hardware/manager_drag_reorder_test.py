@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""manager_drag_reorder_test.py — drag a tile onto another to REORDER it, for real.
+"""manager_drag_reorder_test.py - drag a tile onto another to REORDER it, for real.
 
 The last untested interaction. The Manager's own help text says "Drag a tile onto
-another to reorder", and tests/ui/tst_edgeclone_drag.qml exercises it OFFSCREEN —
+another to reorder", and tests/ui/tst_edgeclone_drag.qml exercises it OFFSCREEN -
 i.e. exactly where pointer physics do not exist. Nothing had ever performed a
 real press-move-release on the real Manager and checked the order on the real hub.
 
 Seeds three visually distinct widgets in a known order, drags the FIRST onto the
 LAST with a real pointer drag, and asserts the hub's tile order actually changed
-— and changed to something sane (same three tiles, none lost or duplicated).
+- and changed to something sane (same three tiles, none lost or duplicated).
 
 Safety: identical to the other desktop tests (XENEON_HW_INPUT_DESKTOP gate, clamp
 to the Manager window rect, idle kill switch). Portrait is pinned so the preview
@@ -137,7 +137,7 @@ def main():
         after = order_of(h.get_state())
         print("  order: %s  ->  %s" % (before, after))
 
-        # 1. The order actually changed — a drag that does nothing is the bug.
+        # 1. The order actually changed - a drag that does nothing is the bug.
         h.check("drag-reordered-on-hub", after != before and len(after) == 3,
                 "hub tile order after dragging tile 1 onto tile 3: %s" % after)
         # 2. And it stayed sane: same three tiles, none lost or duplicated.

@@ -1,31 +1,31 @@
 import QtQuick
 import QtQuick.Layouts
 
-// Hydration — count glasses toward a daily goal. Persisted; auto-resets daily.
+// Hydration - count glasses toward a daily goal. Persisted; auto-resets daily.
 //
-// Sizing (W1 wave 2b): the tile is a CONTROL surface — logging a glass has to be
-// one tap — so the +1 target is never shrunk to make a layout fit. Every declared
+// Sizing (W1 wave 2b): the tile is a CONTROL surface - logging a glass has to be
+// one tap - so the +1 target is never shrunk to make a layout fit. Every declared
 // size can hold it at >= theme.touchTertiary, so every size keeps it; what changes
 // is how much context surrounds it.
-//   • 0.5x0.5 (micro) — headerless: the count as a big number, and +1. The glass
+//   • 0.5x0.5 (micro) - headerless: the count as a big number, and +1. The glass
 //                       grid is dropped (8 droplets at 16px in a 348x409 tile is
 //                       mush, not a readout) along with the streak line.
-//   • 1x1 (baseline)  — the glass grid + count + streak + −/+1, all scaled to the
+//   • 1x1 (baseline)  - the glass grid + count + streak + −/+1, all scaled to the
 //                       box instead of the old fixed 16px/12px in a 696x819 tile.
-//   • wide            — the grid BESIDE the count/controls column (1x0.5 portrait
+//   • wide            - the grid BESIDE the count/controls column (1x0.5 portrait
 //                       is 696x409; stacked, that is three cramped bands).
-//   • tall            — the grid above a comfortable count + controls.
-//   • full (overlay)  — the big block with tappable glasses, sized by the pane
+//   • tall            - the grid above a comfortable count + controls.
+//   • full (overlay)  - the big block with tappable glasses, sized by the pane
 //                       it is actually given (see the ovl* derivation below).
 //
 // FIXED (was a KNOWN DEFECT): the expanded ColumnLayout at the bottom of this
-// file used to be built from literals — a 110px count, 88px glass cells, a 42px
-// droplet, spacingXl between ~6 rows — chosen for a "full screen" that does not
+// file used to be built from literals - a 110px count, 88px glass cells, a 42px
+// droplet, spacingXl between ~6 rows - chosen for a "full screen" that does not
 // exist. "full" is NOT a full screen: Dashboard hosts the overlay in a pane
 // beside the config form, ~941x456 in landscape and ~656x980 stacked in portrait,
 // and the real device is 2560x720 landscape. Summed at goal 8 those literals
 // asked for ~612px (812 at goal 20) and overran the 456-tall landscape pane at
-// both ends — the count clipped off the top and the goal controls off the bottom,
+// both ends - the count clipped off the top and the goal controls off the bottom,
 // unreachably, at any goal past ~12. The overlay's hero sizes are now DERIVED
 // from the pane (ovlCountPx / ovlCell / ovlDropPx / ovlSpacing), like every tile
 // class above: a short pane shrinks the count and glasses so the column fits
@@ -75,7 +75,7 @@ WidgetChrome {
     // Overfilling past the goal is allowed (extra-credit dopamine); capped only to
     // keep the glass grid sane.
     // Credit today's goal attainment into `patch` (streak + lastGoalDay) and
-    // celebrate — but only the FIRST time the goal is reached today. Re-crossing
+    // celebrate - but only the FIRST time the goal is reached today. Re-crossing
     // the same day keeps the streak and does not replay the celebration.
     function _creditGoalReached(patch) {
         var firstToday = cfg.lastGoalDay !== todayKey
@@ -99,7 +99,7 @@ WidgetChrome {
         var ng = Math.max(1, Math.min(20, g))
         var patch = { "goal": ng }
         // Lowering the goal to at/below the current count meets it just like a
-        // glass tap would — credit the streak (only if it wasn't already met).
+        // glass tap would - credit the streak (only if it wasn't already met).
         if (w.count < w.goal && w.count >= ng) _creditGoalReached(patch)
         store.patchSettings(instanceId, patch)
     }
@@ -112,18 +112,18 @@ WidgetChrome {
     // The count line is the readout micro is built around, so it scales to the
     // box there and stays a caption everywhere else. The caption measures against
     // its own COLUMN (wide puts it beside the grid, so the full width would
-    // over-read) and only gently against height — keying it to height alone
+    // over-read) and only gently against height - keying it to height alone
     // collapsed it to 12px in a 846x306 wide box that had room to spare.
     readonly property real countPx: w.micro
         ? Math.max(20, Math.min(width * 0.30, height * 0.26, 76))
         : Math.max(13, Math.min((w.horiz ? width * 0.5 : width) * 0.055,
                                 height * 0.075, 26))
-    // Droplet size follows the box AND the goal — 20 glasses in a half tile are
+    // Droplet size follows the box AND the goal - 20 glasses in a half tile are
     // not the same glyph as 6 in a baseline one.
     //
     // The `w.expanded ? 42` this used to open with was DEAD CODE, not merely
     // mode-keyed: glassPx feeds only glassCell/glassCols and the droplet delegate,
-    // all of which live inside the tile GridLayout below — and that layout is
+    // all of which live inside the tile GridLayout below - and that layout is
     // `visible: !w.expanded`. The overlay draws its own glasses from its own
     // literals (see the expanded ColumnLayout), so the 42 never rendered anywhere.
     // Its existence is what made this read like a mode decision.
@@ -139,7 +139,7 @@ WidgetChrome {
 
     // Celebration pop (mirrors FocusWidget).
     //
-    // The banner spans the whole CARD, so the card is what sizes it — the same
+    // The banner spans the whole CARD, so the card is what sizes it - the same
     // shape HabitWidget uses. `expanded ? 40 : 20` asked the wrong question and
     // got both answers wrong: a 696x819 baseline tile has more room than the
     // overlay's live-preview pane and still popped at 20, while the overlay kept
@@ -163,7 +163,7 @@ WidgetChrome {
         id: celebrateLabel; anchors.centerIn: parent; z: 20
         // Bounded to the card and allowed to wrap/elide. It had no width, no
         // wrapMode and no elide, so a centred banner wider than the card had
-        // nowhere to go and simply spilled out of both edges — celebrateNow()
+        // nowhere to go and simply spilled out of both edges - celebrateNow()
         // takes an arbitrary string, and the only thing keeping this honest was
         // that today's ("🎉 Goal reached!") happens to be short. The 40px ceiling
         // makes that a real risk, not a theoretical one: at 40px on the narrowest
@@ -187,7 +187,7 @@ WidgetChrome {
     }
 
     // ── Tile (every non-overlay size) ──
-    // `columns` flips for a wide box; that only RESHAPES — the glass delegates
+    // `columns` flips for a wide box; that only RESHAPES - the glass delegates
     // are not rebuilt (their model is the goal COUNT, an int, so a tap moves the
     // bound values and nothing is recreated).
     GridLayout {
@@ -239,7 +239,7 @@ WidgetChrome {
                 text: "🔥 " + w.streakDisplay + "-day streak"
                 font.pixelSize: Math.max(10, Math.round(w.countPx * 0.85))
                 color: theme.textTertiary }
-            // −1 / +1 — PillButton is theme.touchSecondary (60) tall, above the
+            // −1 / +1 - PillButton is theme.touchSecondary (60) tall, above the
             // 52 minimum, and it is kept at EVERY size: logging a glass in one tap
             // is what this widget is for. Micro drops the −1 (it is the undo, not
             // the job) rather than shrinking either target to fit.
@@ -263,11 +263,11 @@ WidgetChrome {
     // ── Overlay room derivation (fit) ────────────────────────────────────────
     // "full" is NOT a full screen. Dashboard hosts the overlay in a live-preview
     // pane (~941x456 landscape / ~656x980 portrait) and the real device is
-    // 2560x720 landscape — none of them the tall screen the old 110px count /
+    // 2560x720 landscape - none of them the tall screen the old 110px count /
     // 88px cell / spacingXl literals imagined. Those summed to ~612px at goal 8
     // (812 at goal 20) and overran the 456-tall landscape pane at BOTH ends,
-    // clipping the count off the top and the goal controls — the overlay's whole
-    // point — off the bottom, unreachably, at any goal past ~12. So every hero
+    // clipping the count off the top and the goal controls - the overlay's whole
+    // point - off the bottom, unreachably, at any goal past ~12. So every hero
     // size here now scales to the pane. The two −/+ control rows are PillButtons
     // (touchSecondary tall at every size, like the rest of this widget) and are
     // the fixed floor; the count, the glasses and the air scale around them so
@@ -332,15 +332,15 @@ WidgetChrome {
             }
         }
 
-        // The overlay's hero actions. These are deliberately LARGE — far wider
+        // The overlay's hero actions. These are deliberately LARGE - far wider
         // than their text needs (measured: "Remove" wants 99px at textScale 1.0
-        // and 141 at the 1.6 maximum; "Add a glass" 133 and 193) — because this
+        // and 141 at the 1.6 maximum; "Add a glass" 133 and 193) - because this
         // is the full-screen view of a widget whose entire job is one tap. That
         // generosity was written as `implicitWidth: 170` / `240`, which states it
         // as the BOX rather than as a MINIMUM: the pill was pinned to exactly
         // that width and could never grow past it, so a longer label (a
         // translation, a relabel) would elide inside a button with no reason to
-        // be narrow. `minWidth` says the same thing as a floor — identical
+        // be narrow. `minWidth` says the same thing as a floor - identical
         // rendering today at every reachable textScale, and content wins if it
         // ever exceeds it. They are NOT a matched pair and never were: 170 != 240,
         // and nothing in the column aligns to either number.

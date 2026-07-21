@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# mint-license.sh — issue a Xeneon Edge Pro licence key.
+# mint-license.sh - issue a Xeneon Edge Pro licence key.
 #
 # Thin wrapper over the issuer tool (tools/license-tool). The SECRET signing seed
 # is NEVER passed on the command line (it would land in your shell history and
@@ -10,7 +10,7 @@
 #   XENEON_LICENSE_SEED_FILE=~/.secrets/xeneon-license-seed \
 #     ./scripts/mint-license.sh --to "Ada Lovelace <ada@x.io>" --id XE-0007
 #
-# First time only — create the keypair, paste the PUBLIC key into
+# First time only - create the keypair, paste the PUBLIC key into
 # core/src/license.rs, and store the PRIVATE seed in your password manager:
 #
 #   cargo run -q --manifest-path tools/license-tool/Cargo.toml -- keygen

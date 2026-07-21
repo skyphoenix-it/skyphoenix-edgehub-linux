@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Scenario 03 — the update check is OFF by default (E10 privacy contract).
+# Scenario 03 - the update check is OFF by default (E10 privacy contract).
 #
 # Launches the real hub on a default-shaped config (no updateCheck key
 # anywhere) and lets it idle well past the only startup-time check window
@@ -7,14 +7,14 @@
 # timer, honestly out of scope for a test).
 #
 # Assertions, strongest available first:
-#   REAL  — packaging/ci/no-egress.sh default: the hub runs in a network
+#   REAL  - packaging/ci/no-egress.sh default: the hub runs in a network
 #           namespace under strace with a DNS/TCP sink, and the attestation
 #           asserts ZERO egress of any kind. Run when the environment can
 #           (unprivileged user namespaces + strace); its verdict is binding.
-#   PROXY — always run: after a real save round-trip, the persisted
+#   PROXY - always run: after a real save round-trip, the persisted
 #           appearance carries no enabled updateCheck key, and the hub log
 #           shows no update-check activity (no releases URL, no check
-#           failure). This is the honest local proxy — this scenario cannot
+#           failure). This is the honest local proxy - this scenario cannot
 #           observe sockets without the namespace, and says so.
 #
 # The script prints which of the two actually ran.
@@ -29,7 +29,7 @@ trap 'rm -rf "$RT_WORK"' EXIT
 fail=0
 
 # ── PROXY: default config, idle past the startup window, inspect what persists ──
-echo "Proxy assertion — persisted config and hub log after an idle run"
+echo "Proxy assertion - persisted config and hub log after an idle run"
 rt_mkroot idle
 TODAY="$(date +%F)"
 # Default-shaped doc + the Focus save trigger, so the post-run config.toml is
@@ -42,7 +42,7 @@ EOF
 rt_run_hub "$RT_ROOT" 10
 rt_assert_live "idle" "$RT_ROOT" || fail=1
 if ! grep -aq "Configuration saved" "$RT_ROOT/hub.log"; then
-    echo "  [idle] FAIL: no save happened — the persisted-key assertion would be vacuous"
+    echo "  [idle] FAIL: no save happened - the persisted-key assertion would be vacuous"
     fail=1
 else
     config_json=""
@@ -71,7 +71,7 @@ NOEGRESS="$RT_PROJECT_DIR/packaging/ci/no-egress.sh"
 real_ran=no
 if [ -x "$NOEGRESS" ] || [ -f "$NOEGRESS" ]; then
     if command -v strace >/dev/null 2>&1 && unshare --net --mount --map-root-user true 2>/dev/null; then
-        echo "Real assertion — packaging/ci/no-egress.sh default (netns + strace + DNS sink)"
+        echo "Real assertion - packaging/ci/no-egress.sh default (netns + strace + DNS sink)"
         if XENEON_HUB="$HUB" XENEON_EGRESS_SECS="${XENEON_EGRESS_SECS:-10}" bash "$NOEGRESS" default > "$RT_WORK/no-egress.out" 2>&1; then
             if grep -qx 'NO-EGRESS ATTESTATION PASS' "$RT_WORK/no-egress.out" && \
                grep -q '^✓ liveness:' "$RT_WORK/no-egress.out" && \
@@ -86,7 +86,7 @@ if [ -x "$NOEGRESS" ] || [ -f "$NOEGRESS" ]; then
         else
             rc=$?
             if [ "$rc" -eq 77 ]; then
-                echo "  no-egress.sh skipped (77) — proxy assertion stands alone"
+                echo "  no-egress.sh skipped (77) - proxy assertion stands alone"
             else
                 echo "  FAIL: the no-egress attestation failed (rc=$rc):"
                 tail -25 "$RT_WORK/no-egress.out" | sed 's/^/    /'
@@ -94,10 +94,10 @@ if [ -x "$NOEGRESS" ] || [ -f "$NOEGRESS" ]; then
             fi
         fi
     else
-        echo "Real assertion unavailable (no strace or no unprivileged user namespaces) — proxy only"
+        echo "Real assertion unavailable (no strace or no unprivileged user namespaces) - proxy only"
     fi
 else
-    echo "Real assertion unavailable (packaging/ci/no-egress.sh not found) — proxy only"
+    echo "Real assertion unavailable (packaging/ci/no-egress.sh not found) - proxy only"
 fi
 
 echo
@@ -107,4 +107,4 @@ if [ "${XENEON_RELEASE_GATE:-0}" = "1" ] && [ "$real_ran" != "yes" ]; then
     fail=1
 fi
 if [ "$fail" -ne 0 ]; then echo "RESULT: FAILURE"; exit 1; fi
-echo "RESULT: SUCCESS — update check stays off and silent on a default config"
+echo "RESULT: SUCCESS - update check stays off and silent on a default config"

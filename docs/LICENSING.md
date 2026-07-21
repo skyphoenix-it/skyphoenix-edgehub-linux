@@ -1,21 +1,21 @@
-# Licensing — the Pro tier
+# Licensing - the Pro tier
 
 Xeneon Edge is free and fully functional. **Pro** is a low-cost "supporter" tier
-that unlocks cosmetic/convenience extras — premium themes, premium preset packs,
+that unlocks cosmetic/convenience extras - premium themes, premium preset packs,
 and custom user widgets. Nothing functional is ever gated: every widget
 (including the live-data HTTP/JSON and KPI ones), all accessibility, the base
 themes and the base preset library stay free.
 
 ## How it works (and why it's private)
 
-A Pro key is an **offline, signed token** — `XE1.<payload>.<signature>` — verified
+A Pro key is an **offline, signed token** - `XE1.<payload>.<signature>` - verified
 against a public key compiled into the app (`core/src/license.rs`,
 `ISSUER_PUBLIC_KEY`). Verifying a key:
 
-- opens **no socket, reads no file, uses no hardware fingerprint** — the answer is
+- opens **no socket, reads no file, uses no hardware fingerprint** - the answer is
   identical under `unshare -n`. There is no "phone home" and no activation server.
-- **fails soft**: any bad key — empty, garbage, forged, expired, or signed for a
-  future format — resolves to the free tier. It never panics and never blocks the
+- **fails soft**: any bad key - empty, garbage, forged, expired, or signed for a
+  future format - resolves to the free tier. It never panics and never blocks the
   app.
 - is a **sensitive bearer entitlement**: possession of a valid key unlocks Pro,
   and its signed payload contains the holder label and licence id. It is stored
@@ -62,11 +62,11 @@ Both can auto-deliver a licence key on purchase. Two integration shapes:
 - **Automated:** deploy the mint webhook (`tools/license-webhook`) and register it
   with `scripts/setup-lemonsqueezy.py`. On every purchase it verifies the webhook
   signature, mints the buyer's key (same signing code as the CLI), and e-mails it.
-  The seed lives only in that service's environment — never here, never in CI, and
+  The seed lives only in that service's environment - never here, never in CI, and
   never with anyone else. See `tools/license-webhook/README.md`.
 
 Create the product (name, price, description, image) once in the Lemon Squeezy
-dashboard — it needs human input and the dashboard is the right place. The price
+dashboard - it needs human input and the dashboard is the right place. The price
 does not affect the app. Point the app's in-Manager "Get Pro" button at the
 product URL.
 
@@ -96,7 +96,7 @@ hide a secret that its caller has already placed in the process argument list.
 
 Options: `--to <name/email>` and `--id <id>` are required; `--tier` defaults to
 `pro`; `--expires` defaults to `never` (a one-time purchase shouldn't silently
-expire — pass a Unix timestamp for a subscription).
+expire - pass a Unix timestamp for a subscription).
 
 The buyer pastes the key into **Manager → About → Activate Pro**. It verifies
 offline as they type (they see "unlocks Pro for <name>" before committing).
@@ -105,7 +105,7 @@ offline as they type (they see "unlocks Pro for <name>" before committing).
 
 Generate a new keypair, ship the new public key in an app update, and every key
 signed with the old seed stops verifying (fails soft to free). Re-issue current
-customers' keys under the new seed. This is why every key carries an `id` —
+customers' keys under the new seed. This is why every key carries an `id` -
 support and re-issue.
 
 ## What's Pro (adjustable)

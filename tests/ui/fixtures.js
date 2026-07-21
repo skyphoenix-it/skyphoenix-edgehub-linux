@@ -1,12 +1,12 @@
 // ─────────────────────────────────────────────────────────────────────────
-// fixtures.js — network payloads + a FakeXHR for the QML network tests
+// fixtures.js - network payloads + a FakeXHR for the QML network tests
 // (tst_weather_net.qml, tst_calendar_net.qml).
 //
 // The widgets fetch over XMLHttpRequest; these tests never touch a real socket.
-// The widgets expose an `xhrFactory` seam (property var xhrFactory: null) —
+// The widgets expose an `xhrFactory` seam (property var xhrFactory: null) -
 // production uses the real `new XMLHttpRequest()`, tests inject makeFakeXHR().
 // The FakeXHR captures the request (method/url/sent/aborted) and resolves ONLY
-// on an explicit test call (resolveWith / fireTimeout) — no wall-clock waits.
+// on an explicit test call (resolveWith / fireTimeout) - no wall-clock waits.
 // ─────────────────────────────────────────────────────────────────────────
 
 // ── Open-Meteo forecast payloads (weather) ───────────────────────────────
@@ -52,7 +52,7 @@ function icsStamp(d) {
          + "T" + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
 }
 // Three upcoming timed VEVENTs (+2/+3/+5 days at 09:00 local) + one DAILY
-// recurrence — a realistic "valid VEVENT set".
+// recurrence - a realistic "valid VEVENT set".
 function icsValid() {
     var mk = function (days) {
         var d = new Date(); d.setDate(d.getDate() + days); d.setHours(9, 0, 0, 0); return d;
@@ -72,7 +72,7 @@ var ICS_EMPTY = "BEGIN:VCALENDAR\nX-WR-CALNAME:Empty\nEND:VCALENDAR\n";
 // ── FakeXHR ───────────────────────────────────────────────────────────────
 // Implements the XMLHttpRequest surface the widgets use: open(method,url),
 // send(), abort(), timeout, ontimeout, onreadystatechange, readyState, status,
-// responseText. It does NOT resolve on its own — the test drives it:
+// responseText. It does NOT resolve on its own - the test drives it:
 //   resolveWith(status, body) → readyState=DONE(4), fire onreadystatechange
 //   fireTimeout()             → fire ontimeout
 // and records the captured request for URL assertions.

@@ -18,13 +18,13 @@ import "../../ui/qml" as App
 //
 // REGRESSION 2 (below): a reorder TELEPORTED the tile. `model: clone.placements`
 // handed the Repeater a fresh JS array on every re-pack, which resets its whole
-// delegate model — so the tile that should have travelled was destroyed and a new
+// delegate model - so the tile that should have travelled was destroyed and a new
 // one appeared already at the destination. Proven before the fix: the identity
 // guard failed. The Repeater now takes a ListModel synced by id.
 //
 // EdgeClone resolves store/catalog/theme/media/backend from the Manager scope; we
 // provide them on this wrapper (backend is a light stub, copied from tst_manager)
-// and load the REAL EdgeClone.qml via a Loader — exactly as tst_edgeclone.qml does.
+// and load the REAL EdgeClone.qml via a Loader - exactly as tst_edgeclone.qml does.
 Item {
     id: root
     width: 560; height: 860
@@ -71,7 +71,7 @@ Item {
             return x && x.effSize !== undefined && x.pvSize !== undefined && x.tileId !== undefined
         })
     }
-    // Keyed on the STORE tile index the delegate carries — deliberately not on the
+    // Keyed on the STORE tile index the delegate carries - deliberately not on the
     // Repeater's row number. Rows are patched in place by _syncPlacements, so after a
     // reorder row order is no longer tile order; a helper that assumed otherwise
     // would quietly hand back the wrong tile.
@@ -79,7 +79,7 @@ Item {
     // Ghosts are skipped for the SAME reason EdgeClone.targetAt skips them: a removal
     // shifts every later store index down, and a dying row is not in that packing any
     // more, so its `tileIdx` is stale. Looking a tile up BY the index death
-    // invalidates has to ignore the dead — this helper handed back a ghost of an
+    // invalidates has to ignore the dead - this helper handed back a ghost of an
     // earlier test's tile until it did.
     function tileAtIdx(i) {
         var ds = tileDelegates()
@@ -94,7 +94,7 @@ Item {
         return null
     }
     // The drag/select overlay MouseArea (`ma`) carries `dragging`; the resize-handle
-    // MouseArea does not — so `dragging !== undefined` disambiguates them.
+    // MouseArea does not - so `dragging !== undefined` disambiguates them.
     function dragMA(i) {
         var t = tileAtIdx(i)
         if (!t) return null
@@ -116,7 +116,7 @@ Item {
         store.addTile(0, "focus")
     }
     // Two 1x1 tiles = 4 of the 6 long half-cells, leaving room for exactly one more
-    // (a page is one screen now — addTile refuses once it is full, so the add-a-tile
+    // (a page is one screen now - addTile refuses once it is full, so the add-a-tile
     // tests must start from a page that still has room).
     function seed2() {
         store.load("blank")
@@ -155,7 +155,7 @@ Item {
             var ma = dragMA(0)
 
             // Press near tile-0 centre (in the MouseArea's local space, which shares
-            // tile-0's origin — the overlay is anchors.fill).
+            // tile-0's origin - the overlay is anchors.fill).
             var px = t0.width / 2, py = t0.height / 2
             // A point that maps (tile-0 local → grid) onto tile-2's centre, so the
             // handler's targetAt() reports index 2 (grid coords are what it compares).
@@ -178,7 +178,7 @@ Item {
 
             mouseRelease(ma, overX, overY)
 
-            // ── after drop: the REGRESSION — drag state cleared, name-tag hidden ──
+            // ── after drop: the REGRESSION - drag state cleared, name-tag hidden ──
             tryVerify(function () { return ld.item.dragIdx === -1 }, 2000,
                       "dragIdx reset to -1 on drop")
             compare(ld.item.targetIdx, -1, "targetIdx reset to -1 on drop")
@@ -201,8 +201,8 @@ Item {
         // (they fade in) and ghosts now LINGER (they fade out), and this suite shares
         // one Loader across every test, so a probe that only waited for width > 0
         // handed tests a page that was still moving: a tile measured mid-entrance was
-        // at lifeOpacity 0, and the previous test's ghosts — killed by seed3's
-        // store.load("blank") — were still on screen being counted. Both bit for real
+        // at lifeOpacity 0, and the previous test's ghosts - killed by seed3's
+        // store.load("blank") - were still on screen being counted. Both bit for real
         // before this waited properly. So: exactly three tiles, no ghost, all whole.
         function _laidOut3() {
             seed3()
@@ -230,7 +230,7 @@ Item {
 
         // The two halves of the sync asserted directly: `_row` maps one packer
         // placement onto the model's roles, and `_syncPlacements` reconciles the whole
-        // model to the current packing — idempotently, because the rows ARE the
+        // model to the current packing - idempotently, because the rows ARE the
         // delegates' identity, so re-running it must churn nothing.
         function test_placement_row_and_sync_map_the_packing_onto_the_model() {
             _laidOut3()
@@ -250,7 +250,7 @@ Item {
 
             var a = tileAtIdx(0)
             compare(c._syncPlacements(), 3, "_syncPlacements holds one row per placed tile")
-            compare(c._syncPlacements(), 3, "_syncPlacements is idempotent — no duplicate rows")
+            compare(c._syncPlacements(), 3, "_syncPlacements is idempotent - no duplicate rows")
             verify(tileAtIdx(0) === a, "and it rebuilt nothing: same delegate after two syncs")
         }
 
@@ -263,11 +263,11 @@ Item {
             var a = tileById(ids[0]), b = tileById(ids[1]), c = tileById(ids[2])
             verify(a && b && c, "all three delegates found")
             compare(b.pl, 2, "precondition: b is the second tile down the long axis")
-            // b's widget Loader — the object that OWNS the widget instance's lifetime.
+            // b's widget Loader - the object that OWNS the widget instance's lifetime.
             // (The widget itself cannot be asserted on here: every catalog source is a
             // `qrc:` path and this harness has no compiled resources, so no tile widget
             // ever instantiates offscreen. The Loader surviving with an unchanged `wId`
-            // is exactly the condition under which its widget survives — a reload needs
+            // is exactly the condition under which its widget survives - a reload needs
             // either the Loader destroyed or its source key changed.)
             var bLoader = findPred(b, function (x) { return x && x.wId === ids[1] })
             verify(bLoader !== null, "found b's widget Loader")
@@ -281,14 +281,14 @@ Item {
             verify(tileById(ids[0]) === a, "a's tile is the SAME object after the reorder")
             verify(tileById(ids[2]) === c, "the untouched tile c is the SAME object too")
             var bLoader2 = findPred(tileById(ids[1]), function (x) { return x && x.wId === ids[1] })
-            verify(bLoader2 === bLoader, "b's Loader is the SAME object — its widget was never torn down")
+            verify(bLoader2 === bLoader, "b's Loader is the SAME object - its widget was never torn down")
             compare(bLoader2.wId, ids[1], "and its source key never changed, so it never reloaded")
             compare(tileDelegates().length, 3, "still exactly three tiles")
             compare(tileById(ids[1]).tileIdx, 0, "b's store index tracked the reorder")
         }
 
         // A move EASES: the surviving delegate leaves its old pixels behind gradually.
-        // (The eye can only follow a tile it can see travelling — that is the fix.)
+        // (The eye can only follow a tile it can see travelling - that is the fix.)
         function test_reorder_eases_the_tile_to_its_new_slot() {
             theme.reduceMotionPreference = "off"
             compare(theme.motionPage, 250, "precondition: move easing enabled")
@@ -300,8 +300,8 @@ Item {
 
             store.moveTile(0, 1, 0)
 
-            // Frame 0: the TARGET slot is already the new one, but the eased mirror —
-            // and therefore the pixels — have not jumped.
+            // Frame 0: the TARGET slot is already the new one, but the eased mirror -
+            // and therefore the pixels - have not jumped.
             compare(b.pl, 0, "b's target slot updated immediately")
             verify(b.animL > 0, "but it has NOT teleported: the eased mirror is still en route")
             fuzzyCompare(b.y, startY, 1.0, "and its pixels are still at the old slot on frame 0")
@@ -311,7 +311,7 @@ Item {
             verify(b.y < startY - 1, "b ended up further up the page than it started")
         }
 
-        // REDUCE MOTION: smooth is not more motion. The move must be INSTANT — not a
+        // REDUCE MOTION: smooth is not more motion. The move must be INSTANT - not a
         // 0ms animation that still lands a frame late.
         function test_reduce_motion_makes_a_reorder_instant() {
             theme.reduceMotionPreference = "on"
@@ -326,9 +326,9 @@ Item {
             // No tryVerify: with the Behavior disabled the write is direct, so the new
             // slot is already in the pixels on this very line.
             compare(b.pl, 0, "b's target slot updated")
-            compare(b.animL, 0, "and the mirror is ALREADY there — no animation ran")
+            compare(b.animL, 0, "and the mirror is ALREADY there - no animation ran")
             verify(b.y < startY - 1, "b's pixels moved instantly, in the same event")
-            verify(tileById(ids[1]) === b, "instant, but still the same delegate — not a rebuild")
+            verify(tileById(ids[1]) === b, "instant, but still the same delegate - not a rebuild")
             theme.reduceMotionPreference = "auto"
         }
 
@@ -339,12 +339,12 @@ Item {
             var ids = tileIds()
             var a = tileById(ids[0]), c = tileById(ids[2])
 
-            // Remove the MIDDLE tile — c must slide up, not be reborn there.
+            // Remove the MIDDLE tile - c must slide up, not be reborn there.
             store.removeTile(0, ids[1])
             tryVerify(function () { return tileDelegates().length === 2 }, 4000, "b's tile is gone")
             verify(tileById(ids[1]) === null, "b really is removed")
             verify(tileById(ids[0]) === a, "a survived the removal")
-            verify(tileById(ids[2]) === c, "c MOVED into the freed slot — same object, not a rebuild")
+            verify(tileById(ids[2]) === c, "c MOVED into the freed slot - same object, not a rebuild")
             tryVerify(function () { return tileById(ids[2]).pl === 2 }, 4000, "c's placement closed the gap")
 
             store.addTile(0, "disk")
@@ -356,7 +356,7 @@ Item {
         // THE ROW-ORDER GUARD, and the reason `targetAt` reports a tileIdx rather than
         // a row number. _syncPlacements patches rows IN PLACE, so after one reorder row
         // order is no longer tile order. Any code that read `placements[rowNumber]`
-        // would now address the wrong tile — silently, and only after the first drag.
+        // would now address the wrong tile - silently, and only after the first drag.
         // So: reorder once to desynchronise the rows, then drag and check the RIGHT
         // tile moved.
         function test_a_second_drag_is_correct_after_rows_stop_matching_tile_order() {
@@ -366,7 +366,7 @@ Item {
             tryVerify(function () { return tileAtIdx(0) && tileAtIdx(0).pl === 0 }, 4000,
                       "the page re-packed after the priming reorder")
 
-            // PRECONDITION — without this the test would pass vacuously on the old
+            // PRECONDITION - without this the test would pass vacuously on the old
             // row==tile assumption and prove nothing.
             var rows = tileDelegates().map(function (d) { return d.tileIdx })
             verify(rows.join(",") !== "0,1,2",
@@ -397,7 +397,7 @@ Item {
         // ── THE POP GUARD ───────────────────────────────────────────────────────
         // PREMISE CHECK, run RED before the fix: a removed tile vanished in the same
         // event the store dropped it, while its neighbours glided into the space it
-        // left — the only motion on screen belonged to everything EXCEPT the thing
+        // left - the only motion on screen belonged to everything EXCEPT the thing
         // the user had just acted on. Its delegate must now OUTLIVE the packing that
         // dropped it, so there is something left to fade.
         function test_a_removed_tile_fades_out_instead_of_popping() {
@@ -411,9 +411,9 @@ Item {
             store.removeTile(0, ids[1])
 
             // Frame 0: the store has let the tile go, but the GHOST is still on screen
-            // and still fully opaque — nothing has popped.
+            // and still fully opaque - nothing has popped.
             var ghost = tileById(ids[1])
-            verify(ghost === b, "the delegate OUTLIVED its removal — same object, not gone")
+            verify(ghost === b, "the delegate OUTLIVED its removal - same object, not gone")
             verify(ghost.dying, "and it knows it is dying")
             compare(ghost.lifeOpacity, 1.0, "the fade starts from fully visible, so the eye can follow it out")
 
@@ -445,7 +445,7 @@ Item {
         }
 
         // REDUCE MOTION: the DURATION TOKEN does the work, not a gate. A removal must
-        // be INSTANT — gone in the same event, not a 0ms fade that still lands late.
+        // be INSTANT - gone in the same event, not a 0ms fade that still lands late.
         function test_reduce_motion_removes_a_tile_instantly() {
             theme.reduceMotionPreference = "on"
             compare(theme.motionRemove, 0, "precondition: reduce-motion collapses the exit token")
@@ -455,7 +455,7 @@ Item {
             store.removeTile(0, ids[1])
 
             // No tryVerify: the row is already gone on this very line.
-            compare(tileById(ids[1]), null, "the tile is gone in the same event — no ghost, no fade")
+            compare(tileById(ids[1]), null, "the tile is gone in the same event - no ghost, no fade")
             compare(tileDelegates().length, 2, "and the two survivors are all that is left")
             theme.reduceMotionPreference = "auto"
         }
@@ -468,7 +468,7 @@ Item {
             _laidOut3()
             var ids = tileIds()
             var b = tileById(ids[1])
-            // The document as it stands WITH b — exactly what an undo would restore.
+            // The document as it stands WITH b - exactly what an undo would restore.
             var withB = JSON.stringify(store.data)
 
             store.removeTile(0, ids[1])
@@ -481,7 +481,7 @@ Item {
                 var t = tileById(ids[1]); return t && !t.dying
             }, 1000, "the resurrected row is live again, not dying")
 
-            // The fade's own duration has now comfortably elapsed — the tile must still
+            // The fade's own duration has now comfortably elapsed - the tile must still
             // be here and whole.
             wait(400)
             var back = tileById(ids[1])
@@ -490,7 +490,7 @@ Item {
             theme.reduceMotionPreference = "auto"
         }
 
-        // _reapRow closes the row a fade opened — it is NOT a general-purpose delete,
+        // _reapRow closes the row a fade opened - it is NOT a general-purpose delete,
         // which is what makes a resurrected row safe from its own stale animation.
         // Pinned on a LIVE row on purpose: asserted on an unknown id instead, this
         // would pass with the `dying` recheck deleted and prove nothing.
@@ -521,7 +521,7 @@ Item {
             var t = tileAtIdx(2)
             // It fades in AT its slot: the packer put it where it belongs, so there is
             // no truthful place to fly in from.
-            compare(t.animL, t.pl, "it is born AT its slot — it does not fly in from anywhere")
+            compare(t.animL, t.pl, "it is born AT its slot - it does not fly in from anywhere")
             verify(t.lifeOpacity < 1.0, "and it is arriving, not simply already there")
             tryVerify(function () { return tileAtIdx(2) && tileAtIdx(2).lifeOpacity === 1.0 }, 2000,
                       "the entrance completes")
@@ -538,20 +538,20 @@ Item {
             store.addTile(0, "disk")
             tryVerify(function () { return tileAtIdx(2) !== null }, 4000, "the new tile is placed")
             compare(tileAtIdx(2).lifeOpacity, 1.0,
-                    "it is whole immediately — no entrance ran, not even a 0ms one")
+                    "it is whole immediately - no entrance ran, not even a 0ms one")
             theme.reduceMotionPreference = "auto"
         }
 
         // OPACITY HAS TWO OWNERS. A tile being dragged is held at 0.3; a tile coming or
         // going is faded. Those are independent facts, and an animation ASSIGNS a
-        // property — so a fade that wrote `opacity` directly (the hub's shape, where
+        // property - so a fade that wrote `opacity` directly (the hub's shape, where
         // opacity means only one thing) would destroy the drag's binding for the rest
         // of the delegate's life. This drags a tile that has ALREADY animated.
         function test_a_tile_that_has_faded_in_still_dims_when_dragged() {
             theme.reduceMotionPreference = "off"
             _laidOut2()   // room for one more
 
-            // Add a tile and let its ENTRANCE run to completion — an animation has now
+            // Add a tile and let its ENTRANCE run to completion - an animation has now
             // owned this delegate's fade property.
             store.addTile(0, "disk")
             tryVerify(function () {
@@ -585,13 +585,13 @@ Item {
 
             ld.item.pageIndex = 1
             // Frame 0 after the switch: page 1's tile is simply THERE, and page 0's tile
-            // is simply GONE. A page switch is not an edit — the user asked to look
+            // is simply GONE. A page switch is not an edit - the user asked to look
             // somewhere else, and neither set is being added or removed.
             compare(tileDelegates().length, 1, "exactly one tile: no ghost of page 0 lingering")
             var t = tileDelegates()[0]
             compare(t.tileId, store.pages()[1].tiles[0].id, "and it is page 1's tile")
             verify(!t.dying, "page 0's row was not left dying on page 1")
-            compare(t.lifeOpacity, 1.0, "page 1's tile did not fade IN — it was already there to look at")
+            compare(t.lifeOpacity, 1.0, "page 1's tile did not fade IN - it was already there to look at")
 
             ld.item.pageIndex = 0
             theme.reduceMotionPreference = "auto"
@@ -600,7 +600,7 @@ Item {
         // THE GHOST/TARGET MAPPING GUARD. `targetAt` reports a STORE tile index, and a
         // removal SHIFTS every later store index down. A dying row keeps its old
         // `tileIdx`, so a ghost that answered a hit-test would report an index that now
-        // addresses a DIFFERENT tile — a drop onto empty air would silently move the
+        // addresses a DIFFERENT tile - a drop onto empty air would silently move the
         // wrong widget. A ghost is not a drop target.
         function test_a_fading_ghost_is_not_a_drop_target() {
             theme.reduceMotionPreference = "off"
@@ -614,7 +614,7 @@ Item {
             var ghost = tileById(ids[1])
             verify(ghost && ghost.dying, "precondition: the ghost is still occupying those pixels")
             compare(ghost.tileIdx, 1, "precondition: and still carries its now-STALE store index 1")
-            // Store index 1 is now tile c — hit-testing the ghost's pixels must never
+            // Store index 1 is now tile c - hit-testing the ghost's pixels must never
             // report it.
             compare(ld.item.targetAt(gx, gy), -1,
                     "the ghost's pixels target NOTHING: it is not a tile any more")
@@ -625,7 +625,7 @@ Item {
         // moveTile, so a drop can never race its own re-pack. The other way in is a
         // removal from OUTSIDE (a live push, the ✕ on a second clone): the tile being
         // held is deleted mid-drag. Its ghost is `enabled: false`, so the MouseArea's
-        // grab dies with it and onReleased never runs — which is exactly how the
+        // grab dies with it and onReleased never runs - which is exactly how the
         // stranded name-tag (REGRESSION 1, above) came back. So a tile that dies while
         // it is being dragged ends the drag itself.
         function test_removing_the_dragged_tile_mid_drag_ends_the_drag() {
@@ -668,7 +668,7 @@ Item {
             var px = t0.width / 2, py = t0.height / 2
 
             mousePress(ma, px, py)
-            mouseMove(ma, px + 3, py + 3)                 // 3px — below the 8px threshold
+            mouseMove(ma, px + 3, py + 3)                 // 3px - below the 8px threshold
             mouseMove(ma, px + 5, py + 2)                 // still under threshold
             // never entered a drag → name-tag must stay hidden
             compare(ld.item.dragIdx, -1, "no drag started for a sub-threshold move")

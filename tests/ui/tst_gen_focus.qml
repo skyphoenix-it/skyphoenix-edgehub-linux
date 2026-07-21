@@ -5,7 +5,7 @@ import QtTest
 // COVERS: schema:showNudges, schema:workMin
 
 // ─────────────────────────────────────────────────────────────────────────
-// Comprehensive tests for widget:focus — ui/qml/widgets/FocusWidget.qml
+// Comprehensive tests for widget:focus - ui/qml/widgets/FocusWidget.qml
 // (the Focus / Pomodoro timer).
 //
 // Drives config through the shared DashboardStore (setSetting/patchSettings on
@@ -16,7 +16,7 @@ import QtTest
 // Everything lives in ONE TestCase: this widget draws a per-second Canvas ring
 // and restarts flash/celebration animations on every completion, and the
 // offscreen scenegraph crashes at a TestCase boundary once enough of that state
-// has accumulated — a single TestCase has no mid-run boundaries. active:false
+// has accumulated - a single TestCase has no mid-run boundaries. active:false
 // also keeps the widget's 1-second driving Timer OFF so it never auto-advances
 // between assertions; every completion is driven by calling advance()/skip()
 // directly, and `remaining` is derived from the absolute endEpoch (read on
@@ -25,7 +25,7 @@ import QtTest
 // Some assertions encode the INTENDED behaviour and currently FAIL because of
 // real bugs in the widget (skip counting as a completed session, Reset/preset
 // wiping the daily count, custom accent not reaching the content, addFive NaN).
-// Those failures are the point — they are left in. (The former ">= goal"
+// Those failures are the point - they are left in. (The former ">= goal"
 // re-celebration bug is now fixed: the bonus fires once, on the crossing session.)
 // ─────────────────────────────────────────────────────────────────────────
 Item {
@@ -37,7 +37,7 @@ Item {
         widgetFile: "FocusWidget.qml"; expanded: true; active: false
     }
 
-    // Fixed-size hosts for the per-sizeClass structure tests (W1 wave 3) — the
+    // Fixed-size hosts for the per-sizeClass structure tests (W1 wave 3) - the
     // REAL projected footprints of the two sizes focus declares (half-cell ≈
     // 348x409 portrait / 423x306 landscape, per WidgetSizes):
     //   1x1    → 696x819 portrait · 846x612 landscape   (compact in BOTH: the
@@ -50,8 +50,8 @@ Item {
             widgetFile: "FocusWidget.qml"; expanded: false; active: false } }
     // The OVERLAY host, resized between the two boxes Dashboard actually gives it:
     // the live-preview pane beside the config form, ~941x456 landscape and
-    // ~656x980 portrait. `expanded: true` AND sizeClass "full" — the real pairing
-    // Dashboard produces — because a mode-keyed literal can only be caught with
+    // ~656x980 portrait. `expanded: true` AND sizeClass "full" - the real pairing
+    // Dashboard produces - because a mode-keyed literal can only be caught with
     // the mode switched ON. One host, resized, rather than two: this widget's
     // per-second Canvas ring is exactly the state the header warns about.
     Item { id: ovlWrap; width: 941; height: 456
@@ -117,16 +117,16 @@ Item {
             return hSize.item
         }
 
-        // 1x1 — the ring + a real control row, and NOTHING else: no room is
+        // 1x1 - the ring + a real control row, and NOTHING else: no room is
         // left over to earn the stats block.
         function test_1x1_is_ring_plus_controls_only() {
             var w = shape(696, 819, "compact")
             compare(w.micro, false, "a 696x819 compact box is the baseline third, not the half-cell")
-            compare(w.showHeader, false, "the tile stays headerless — the ring is the content")
+            compare(w.showHeader, false, "the tile stays headerless - the ring is the content")
             compare(w.horiz, false, "stacked")
             compare(w.showMomentum, false, "1x1 does not pretend to have room for the stats block")
             compare(root.pillLabels(w).sort(), ["Skip", "Start"],
-                    "1x1 offers exactly Start + Skip — no third button squeezed in")
+                    "1x1 offers exactly Start + Skip - no third button squeezed in")
         }
 
         // The clock is sized from the RING, not a 34px cap floating in the box.
@@ -155,7 +155,7 @@ Item {
         // tile-vs-tile comparison would be 34 > 34 dressed up as a guard. The
         // panes below are the boxes where the term genuinely binds.
         //
-        // Both reads are expanded AND "full"; only the BOX differs — the real
+        // Both reads are expanded AND "full"; only the BOX differs - the real
         // live-preview panes beside the config form, NOT a 2560x720 screen. A
         // literal returns one number for both, so asserting the two differ is
         // exactly the mode/size conflation, caught. (Holding the mode at false
@@ -173,7 +173,7 @@ Item {
             }
             // A real event-loop turn, not wait(0): this host defaults to "tall"
             // (height > 240) and only becomes "full" above, and a wait(0) read
-            // reports pre-change geometry. waitForRendering is not the tool —
+            // reports pre-change geometry. waitForRendering is not the tool -
             // offscreen never swaps a frame.
             ovlWrap.width = 941; ovlWrap.height = 456
             wait(16)
@@ -215,13 +215,13 @@ Item {
                 var pillTop = w.mapFromItem(pills[0], 0, 0).y
                 verify(ringBottom <= pillTop + 1,
                        sizes[i][0] + "x" + sizes[i][1] + ": ring ends at " + ringBottom
-                       + ", controls start at " + pillTop + " — no overlap")
+                       + ", controls start at " + pillTop + " - no overlap")
             }
         }
 
         // The stacked control row sits under the MIDDLE of the ring, not hugged
         // against the left edge (a Layout.alignment on the stats column would
-        // cancel its fillWidth and collapse it — caught on the real panel).
+        // cancel its fillWidth and collapse it - caught on the real panel).
         function test_stacked_controls_are_centred_under_the_ring() {
             var cases = [[696, 819, "compact"], [696, 1228, "tall"]]
             for (var i = 0; i < cases.length; i++) {
@@ -252,10 +252,10 @@ Item {
             }
         }
 
-        // 1x1.5 portrait — the extra half-third buys the overlay's momentum
+        // 1x1.5 portrait - the extra half-third buys the overlay's momentum
         // readout for the tile, plus the +5 control.
         function test_1x1_5_tall_earns_the_momentum_readout() {
-            // hSize is its own harness with its own store — patch THAT one.
+            // hSize is its own harness with its own store - patch THAT one.
             hSize.storeCtl.patchSettings("test-instance",
                 { doneToday: 2, day: root.todayStr(), points: 30, dailyGoal: 4 })
             var w = shape(696, 1228, "tall")
@@ -289,7 +289,7 @@ Item {
                    "stats+controls stay under the ring (gap " + (controlsBottom - ringBottom) + "px)")
         }
 
-        // 1x1.5 landscape — the SAME content, laid beside the ring instead of a
+        // 1x1.5 landscape - the SAME content, laid beside the ring instead of a
         // centred ring with ~350px of air either side.
         function test_1x1_5_wide_puts_the_stats_beside_the_ring() {
             var w = shape(1269, 612, "wide")

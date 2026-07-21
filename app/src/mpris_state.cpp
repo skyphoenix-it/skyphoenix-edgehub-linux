@@ -34,13 +34,13 @@ TrackState resolveTrack(const QVariantMap& props, const QString& service) {
     s.title = meta.value(QStringLiteral("xesam:title")).toString();
 
     // xesam:artist is "as" in the spec and arrives as a QDBusArgument, which
-    // qdbus_cast demarshals. A few players send a bare string instead — that
+    // qdbus_cast demarshals. A few players send a bare string instead - that
     // ALSO works, but via qdbus_cast's own fall-through to QVariant's
     // QString->QStringList conversion, NOT via the toStringList() line below.
     //
     // That line is vestigial, and measured to be so (2026-07-17): it only runs
     // when the cast yields an empty list, which happens solely for an absent
-    // key, an empty list, or a wrong-typed value — and toStringList() yields
+    // key, an empty list, or a wrong-typed value - and toStringList() yields
     // empty for all three, so it cannot change the result. It is kept only
     // because it is harmless and removing it is a behaviour change nobody has a
     // reason to risk on an exotic QDBusArgument shape. Do not mistake it for the
@@ -72,7 +72,7 @@ TrackState resolveTrack(const QVariantMap& props, const QString& service) {
     s.playerName = playerNameFromService(service);
 
     // A service can be registered on the bus (CanControl: true) with no track
-    // actually loaded — e.g. a browser tab with audio capability but nothing
+    // actually loaded - e.g. a browser tab with audio capability but nothing
     // played yet, or a player that was just stopped. Treat that as genuinely
     // "nothing playing" rather than showing a blank card: require either a real
     // title or an active Playing/Paused status.

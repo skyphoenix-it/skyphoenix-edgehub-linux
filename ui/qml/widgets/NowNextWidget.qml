@@ -3,20 +3,20 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 // ─────────────────────────────────────────────────────────────────────────
-// Now / Next — the two questions an agenda actually gets asked: what am I
+// Now / Next - the two questions an agenda actually gets asked: what am I
 // supposed to be doing, and what is coming.
 //
 // WHY IT EMBEDS CalendarWidget. Calendar already answers this: its `events` model
 // is expanded, sorted, recurrence-aware, EXDATE-aware, TZID-aware and horizon-
 // bounded. Re-deriving now/next from a second, simpler ICS parser would mean two
-// implementations of "when is this event, really" — and the one in Calendar took
+// implementations of "when is this event, really" - and the one in Calendar took
 // DST-safe day stepping, webcal rewriting and a supersede guard to get right. So
 // this widget instantiates a headless CalendarWidget (zero-sized, invisible) purely
 // as an agenda MODEL and reads `events` off it. The nested instance is passed our
 // own `instanceId`, so it reads the same `url` setting and there is exactly one
 // source of truth per tile.
 //
-// EGRESS. Nothing new: the nested Calendar fetches through the injected NetHub —
+// EGRESS. Nothing new: the nested Calendar fetches through the injected NetHub -
 // the same gate, the same kill switch, the same allowlist, the same counters, and
 // the same 15-minute poll gated on `active`. This widget constructs no XHR of its
 // own (`check_no_raw_xhr.sh` would fail the build if it did). It is honestly ONE
@@ -25,15 +25,15 @@ import QtQuick.Layouts
 // Dashboard is a bigger change than this widget's remit.
 //
 // Sizing (W1 wave 2b): there are exactly TWO blocks, ever, so this widget cannot
-// earn a size with more rows — it earns it with LEGIBILITY. The type was a flat
+// earn a size with more rows - it earns it with LEGIBILITY. The type was a flat
 // 17px on every tile and 44px in the overlay, so a 696x819 baseline tile rendered
 // the same cramped pair as a 348x819 sliver.
-//   • wide  — NOW and NEXT side by side. A 846x306 banner stacked into two blocks
+//   • wide  - NOW and NEXT side by side. A 846x306 banner stacked into two blocks
 //             leaves each ~120px; beside each other they get the full height.
-//   • every other shape — stacked, with the type scaled to the box.
-//   • full (overlay) — as before, plus the URL editor (genuinely modal, so that
+//   • every other shape - stacked, with the type scaled to the box.
+//   • full (overlay) - as before, plus the URL editor (genuinely modal, so that
 //             one stays keyed off `expanded`).
-// (No 0.5x0.5 is declared, so `micro` is never true here — see WidgetCatalog.)
+// (No 0.5x0.5 is declared, so `micro` is never true here - see WidgetCatalog.)
 // ─────────────────────────────────────────────────────────────────────────
 WidgetChrome {
     id: w
@@ -77,7 +77,7 @@ WidgetChrome {
     function refresh() { agenda.refresh() }
 
     // An all-day event carries DTEND exclusive, and CalendarWidget leaves dur = 0
-    // when there is no DTEND at all — so `end` can equal `start` (midnight) and a
+    // when there is no DTEND at all - so `end` can equal `start` (midnight) and a
     // naive start<=now<end would say an all-day event is never happening. Give it
     // its whole day.
     function endOf(ev) {
@@ -178,7 +178,7 @@ WidgetChrome {
         rowSpacing: w.expanded ? theme.spacingXl : theme.spacingSm
         columnSpacing: theme.spacingLg
 
-        // NOW — the accent block. It is the answer to "am I meant to be somewhere".
+        // NOW - the accent block. It is the answer to "am I meant to be somewhere".
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -218,7 +218,7 @@ WidgetChrome {
             color: theme.cardBorder
         }
 
-        // NEXT — deliberately quieter than NOW.
+        // NEXT - deliberately quieter than NOW.
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true

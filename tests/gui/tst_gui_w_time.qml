@@ -3,23 +3,23 @@ import QtTest
 import "../ui" as UI
 import "GuiUtil.js" as G
 
-// Visible GUI tests for the three time-family Hub widgets — Clock, Analog Clock,
-// Moon Phase — each hosted in a real KWin-composited window via WidgetHarness and
+// Visible GUI tests for the three time-family Hub widgets - Clock, Analog Clock,
+// Moon Phase - each hosted in a real KWin-composited window via WidgetHarness and
 // driven with real store mutations + geometry/pixel assertions.
 //
 // Seams used (inspected in source, NOT wall-clock sleeps):
-//   • sizeClass  — plain writable property on WidgetChrome; pinned per size case.
-//   • timeZones  — ClockWidget.property var timeZones (the C++ TimeZoneBridge is
+//   • sizeClass  - plain writable property on WidgetChrome; pinned per size case.
+//   • timeZones  - ClockWidget.property var timeZones (the C++ TimeZoneBridge is
 //                  absent under qmltestrunner); a deterministic fake is injected so
 //                  world-clock zone chips resolve.
-//   • _cyclePos  — MoonWidget.property real _cyclePos; assigned directly to pin the
+//   • _cyclePos  - MoonWidget.property real _cyclePos; assigned directly to pin the
 //                  phase to a known new/full moon without depending on today's date.
 //   • tick stays 0 in the harness (no timer), so both Canvas faces render statically
-//     — deterministic pixels for the analog second-hand / numeral cases.
+//     - deterministic pixels for the analog second-hand / numeral cases.
 //
 // The harness does NOT wire titleOverride/accentName/cardBackdrop/timeZones the way
 // Dashboard.injectWidget does, so wire() reproduces exactly those bindings on the
-// loaded item — config edits via store.setSetting then drive the widget end-to-end.
+// loaded item - config edits via store.setSetting then drive the widget end-to-end.
 Item {
     id: root
     width: 1040; height: 1080

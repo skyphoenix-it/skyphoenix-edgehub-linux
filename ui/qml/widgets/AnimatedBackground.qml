@@ -1,11 +1,11 @@
 import QtQuick
 import QtQuick.Shapes
 
-// AnimatedBackground — a subtle, living backdrop: a few large, soft, slowly
+// AnimatedBackground - a subtle, living backdrop: a few large, soft, slowly
 // drifting colour orbs (aurora / lava-lamp feel). GPU-rendered (QtQuick.Shapes),
 // low opacity, very slow easing so it reads as ambient, not busy. When `active`
 // is false (reduce-motion / animation off) the orbs stay painted but stop
-// drifting — matching the static-canvas behaviour of the waves/stars backdrops.
+// drifting - matching the static-canvas behaviour of the waves/stars backdrops.
 Item {
     id: ab
     property bool active: true

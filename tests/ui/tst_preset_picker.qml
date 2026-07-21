@@ -3,10 +3,10 @@ import QtTest
 import "../../ui/qml" as App
 import "../../ui/qml/widgets" as Wg
 
-// PresetPicker (ui/qml/widgets/PresetPicker.qml) — the post-setup "Screens"
+// PresetPicker (ui/qml/widgets/PresetPicker.qml) - the post-setup "Screens"
 // surface (W5 finding 3). Assert the full interaction contract:
 //   • every catalog preset renders a card (plus the blank slate);
-//   • a tap only ARMS a selection — the confirm bar appears, nothing applies;
+//   • a tap only ARMS a selection - the confirm bar appears, nothing applies;
 //   • Cancel disarms without emitting; confirm emits applyRequested(id);
 //   • reopening never inherits a half-armed confirm;
 //   • under an org-forced preset (locked) the surface is ABSENT, not greyed;
@@ -57,7 +57,7 @@ Item {
         name: "PresetPicker"
         when: windowShown
 
-        // Cards live in a clipped Flickable — bring a target into view before
+        // Cards live in a clipped Flickable - bring a target into view before
         // clicking (a click outside the viewport lands nowhere).
         function clickTarget(target) {
             var scroll = root.findPred(picker, function (n) {
@@ -72,7 +72,7 @@ Item {
             mouseClick(target)
         }
 
-        // Arm a card and wait for the confirm bar to be laid out — it becomes
+        // Arm a card and wait for the confirm bar to be laid out - it becomes
         // visible on the arming frame, but its geometry lands on the next
         // layout polish, and a click on a 0-height item goes nowhere.
         function armCard(cardName) {
@@ -108,7 +108,7 @@ Item {
             verify(bar.visible, "…and the confirm bar appears")
             verify(picker.pendingTitle.indexOf("Developer") >= 0,
                    "the confirm names the preset (" + picker.pendingTitle + ")")
-            compare(root.applyCount, 0, "a first tap NEVER applies — the layout replace needs a confirm")
+            compare(root.applyCount, 0, "a first tap NEVER applies - the layout replace needs a confirm")
         }
 
         function test_cancel_disarms_without_applying() {

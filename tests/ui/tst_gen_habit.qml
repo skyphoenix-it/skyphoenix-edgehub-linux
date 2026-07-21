@@ -424,7 +424,7 @@ Item {
             compare(cfg().streak, 40, "the streak number is persisted independently")
         }
 
-        // (b) A milestone past 14 (30) is reachable — impossible while the streak
+        // (b) A milestone past 14 (30) is reachable - impossible while the streak
         // was capped at ~28.
         function test_milestone_30_is_reachable() {
             var w = hHabit.item
@@ -456,13 +456,13 @@ Item {
             compare(w.celebrateMsg, "🔥 1 day!", "no false milestone on the reset")
         }
 
-        // (d) Checking in when today is already counted is idempotent — it must
+        // (d) Checking in when today is already counted is idempotent - it must
         // not double-increment the stored number.
         function test_same_day_checkin_is_idempotent() {
             var w = hHabit.item
             var today = w.key(new Date())
             // Defensive state: streak recorded for today, but today's key absent
-            // from the (pruned) array — the check-in branch must still not bump.
+            // from the (pruned) array - the check-in branch must still not bump.
             hHabit.storeCtl.patchSettings("test-instance",
                 { checkins: [], streak: 5, lastCheckinDay: today, bestStreak: 5 })
             w.toggleToday()   // check-in branch, but today is already the last day
@@ -473,7 +473,7 @@ Item {
 
         // (e) A legacy config that only has a long `checkins` array (no stored
         // streak/lastCheckinDay) derives a sensible initial streak and then keeps
-        // maintaining the number forward — no crash, no reset.
+        // maintaining the number forward - no crash, no reset.
         function test_legacy_config_derives_then_maintains() {
             var w = hHabit.item
             // 25-day consecutive run ending today; ONLY the array is stored.
@@ -516,14 +516,14 @@ Item {
         WidgetHarness { id: bBase; anchors.fill: parent; widgetFile: "HabitWidget.qml"; expanded: false } }
     Item { id: bWideWrap; width: 696; height: 409
         WidgetHarness { id: bWide; anchors.fill: parent; widgetFile: "HabitWidget.qml"; expanded: false } }
-    // 1x1.5 — a half screen, at BOTH of its real projections.
+    // 1x1.5 - a half screen, at BOTH of its real projections.
     Item { width: 696; height: 1229
         WidgetHarness { id: bRoomyP; anchors.fill: parent; widgetFile: "HabitWidget.qml"; expanded: false } }
     Item { width: 1269; height: 612
         WidgetHarness { id: bRoomyL; anchors.fill: parent; widgetFile: "HabitWidget.qml"; expanded: false } }
 
     // The OVERLAY, at the two boxes Dashboard actually gives it. `expanded: true`
-    // and sizeClass "full" — the real pairing — because a mode-keyed literal can
+    // and sizeClass "full" - the real pairing - because a mode-keyed literal can
     // only be caught with the mode switched ON. These are the live-preview pane
     // beside the config form (Dashboard: 38% of the width in landscape, a <=46%-
     // tall band stacked in portrait), NOT a 2560x720 screen.
@@ -565,7 +565,7 @@ Item {
                        && n.hasOwnProperty("primary") }, [])[0]
         }
 
-        // 0.5x0.5 — the streak and the tap. 28 cells are not legible here.
+        // 0.5x0.5 - the streak and the tap. 28 cells are not legible here.
         function test_micro_is_streak_plus_checkin() {
             tryVerify(function () { return bMicro.ready }, 3000)
             var b = bMicro.item
@@ -579,10 +579,10 @@ Item {
             var p = pill(bMicro)
             verify(p.visible, "micro keeps the check-in button")
             verify(p.height >= bMicro.theme.touchTertiary,
-                   "…at >= touchTertiary (" + p.height + ") — never shrunk to fit")
+                   "…at >= touchTertiary (" + p.height + ") - never shrunk to fit")
         }
 
-        // 1x1 — the heatmap is EARNED (it used to be overlay-only).
+        // 1x1 - the heatmap is EARNED (it used to be overlay-only).
         function test_baseline_earns_the_heatmap() {
             tryVerify(function () { return bBase.ready }, 3000)
             var b = bBase.item
@@ -601,7 +601,7 @@ Item {
             compare(cells.length, 28, "all 28 days are rendered")
         }
 
-        // wide — the streak/button column moves beside the heatmap; the cells are
+        // wide - the streak/button column moves beside the heatmap; the cells are
         // the SAME objects (the literal-28 model never rebuilds).
         function test_wide_puts_streak_beside_heatmap() {
             tryVerify(function () { return bWide.ready }, 3000)
@@ -623,7 +623,7 @@ Item {
 
     // ── 1x1.5 (W1 wave 2c) ─────────────────────────────────────────────────
     // A half screen. It projects to 696x1229 "tall" in portrait and 1269x612
-    // "wide" in landscape, and the bar is that BOTH are designed — not one
+    // "wide" in landscape, and the bar is that BOTH are designed - not one
     // layout stretched to fill whichever box turns up.
     TestCase {
         name: "HabitRoomy"
@@ -639,7 +639,7 @@ Item {
             host.storeCtl.patchSettings(host.instanceId,
                 { checkins: arr, streak: 5, lastCheckinDay: arr[0], bestStreak: 9 })
         }
-        // The INNER grid — the one whose DIRECT children are the day cells. The
+        // The INNER grid - the one whose DIRECT children are the day cells. The
         // outer grid also has columns/rowSpacing and also contains all 28 cells
         // (via the inner one), so a descendant-based predicate matches it first
         // and silently reads the wrong `columns`. The sibling helper above gets
@@ -663,7 +663,7 @@ Item {
             tryVerify(function () { return bRoomyP.ready && bRoomyL.ready && bBase.ready }, 3000)
         }
 
-        // The size is offered at all — a widget that renders it but never declares
+        // The size is offered at all - a widget that renders it but never declares
         // it is unreachable, and one that declares it without rendering it is the
         // W1 failure.
         function test_catalog_offers_1x1_5_for_habit() {
@@ -672,7 +672,7 @@ Item {
             verify(sizes.indexOf("1x1.5") >= 0,
                    "habit declares 1x1.5 (got " + JSON.stringify(sizes) + ")")
             verify(sizes.indexOf("1x2") < 0 && sizes.indexOf("1x3") < 0,
-                   "…and stops there — the history is pruned to 28 days, so a bigger "
+                   "…and stops there - the history is pruned to 28 days, so a bigger "
                    + "tile would only inflate the map (got " + JSON.stringify(sizes) + ")")
             cat.destroy()
         }
@@ -692,7 +692,7 @@ Item {
             compare(cells.length, 28, "still all 28 days")
         }
 
-        // Landscape: the SAME size is a different card — the wide one.
+        // Landscape: the SAME size is a different card - the wide one.
         function test_roomy_landscape_is_the_wide_card() {
             var b = bRoomyL.item
             b.sizeClass = "wide"
@@ -719,7 +719,7 @@ Item {
             verify(line && line.visible,
                    "the record line actually renders on a 1x1.5 tile")
 
-            // …and the baseline third, with genuinely less room, does not — so the
+            // …and the baseline third, with genuinely less room, does not - so the
             // line is a size difference rather than something shown everywhere.
             var base = bBase.item
             base.sizeClass = "compact"
@@ -853,7 +853,7 @@ Item {
         // the ONLY shape that can: the sibling test above holds the mode fixed at
         // false, where a surviving `w.expanded ? 40 : <derived>` never fires its
         // literal at all and the derived branch keeps the assertion green. (That
-        // is not hypothetical — this test was written second, after restoring the
+        // is not hypothetical - this test was written second, after restoring the
         // literal left the room test passing.)
         //
         // Both hosts are expanded AND "full"; only the BOX differs. A literal
@@ -868,10 +868,10 @@ Item {
             // sizeClass "tall" (height > 240) and only become "full" on the line
             // above; wait(0) returns BEFORE the layout re-polishes, so a rendered
             // read then still reports the tall map's 69px cells against the
-            // freshly-recomputed heatCell of 58.8 — a failure that says nothing
+            // freshly-recomputed heatCell of 58.8 - a failure that says nothing
             // about the widget. Caught here as a genuine flake: the same
             // assertion passed and failed on consecutive runs.
-            // waitForRendering is not the tool — offscreen never swaps a frame.
+            // waitForRendering is not the tool - offscreen never swaps a frame.
             wait(16)
             compare(land.expanded, true, "precondition: this IS the overlay")
             compare(port.expanded, true, "…and so is this one")
@@ -886,7 +886,7 @@ Item {
                    "…and so is the heatmap cell (941x456 -> "
                    + land.heatCell.toFixed(1) + ", 656x980 -> "
                    + port.heatCell.toFixed(1) + ")")
-            // The taller pane is the roomier one for both readouts — direction,
+            // The taller pane is the roomier one for both readouts - direction,
             // not just difference, so a scrambled binding cannot pass.
             verify(port.streakPx > land.streakPx,
                    "the 980-tall pane earns the bigger number ("
@@ -899,7 +899,7 @@ Item {
             var cell = root.findAll(port, function (n) {
                 return n.hasOwnProperty("dk") && n.hasOwnProperty("on") }, [])[0]
             verify(cell, "a day cell resolves in the portrait pane")
-            // The cell's RENDERED width — not its Layout.preferredWidth, which is
+            // The cell's RENDERED width - not its Layout.preferredWidth, which is
             // merely the hint that feeds it and would stay green if the grid
             // ignored it.
             compare(cell.width, Math.round(port.heatCell),
@@ -938,7 +938,7 @@ Item {
             compare(mBanner.font.pixelSize, Math.round(micro.celebratePx),
                     "…and on a micro tile")
             verify(bBanner.font.pixelSize > mBanner.font.pixelSize,
-                   "a 696x819 tile pops bigger than a 348x409 one — the banner reads "
+                   "a 696x819 tile pops bigger than a 348x409 one - the banner reads "
                    + "the card, not the mode (" + bBanner.font.pixelSize + " vs "
                    + mBanner.font.pixelSize + ")")
             // It still has to FIT: it wraps to at most 2 lines inside the card.

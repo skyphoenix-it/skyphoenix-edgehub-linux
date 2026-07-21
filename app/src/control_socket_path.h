@@ -3,20 +3,20 @@
 
 // The one place that decides where the hub's control socket lives.
 //
-// Both ends of the IPC contract include this header — the hub's ControlServer
+// Both ends of the IPC contract include this header - the hub's ControlServer
 // (app/src/control_server.cpp) and the Manager's client
 // (manager/src/manager_backend.h). It is a header, not a pair of constants,
 // because the two sides MUST agree: when they drifted, they didn't fail loudly,
 // they just stopped seeing each other.
 //
 // WHY AN ABSOLUTE PATH. A bare QLocalServer name (no '/') is resolved by Qt via
-// QDir::tempPath(), i.e. /tmp — NOT $XDG_RUNTIME_DIR, whatever a comment may
+// QDir::tempPath(), i.e. /tmp - NOT $XDG_RUNTIME_DIR, whatever a comment may
 // once have claimed here. That gave one shared, world-writable node per machine:
 // any test run bound and removeServer()'d the same path as a live hub, unlinking
 // its socket while it kept its listening fd (so it logged nothing and looked
 // healthy while no client could reach it again), and any local user could
 // pre-create or replace the node. Returning an absolute path under
-// $XDG_RUNTIME_DIR — 0700 and per-user-session by definition — fixes both.
+// $XDG_RUNTIME_DIR - 0700 and per-user-session by definition - fixes both.
 
 #include <QByteArray>
 #include <QDebug>
@@ -49,7 +49,7 @@ inline QString controlSocketBasename() {
         }                                                \
     } while (false)
 
-// Fallback directory for the (rare) sessions with no XDG_RUNTIME_DIR — headless
+// Fallback directory for the (rare) sessions with no XDG_RUNTIME_DIR - headless
 // logins, `su`, some cron/systemd contexts. It must be per-user and not
 // world-writable, so we do NOT drop the socket straight into /tmp as the old
 // bare name did: we use a uid-suffixed subdirectory of the temp dir, created
@@ -57,7 +57,7 @@ inline QString controlSocketBasename() {
 // uid alone (so both sides compute it identically without coordinating).
 //
 // Returns "" if the directory can't be created or is not a private directory we
-// own — a squatted /tmp/xeneon-edge-hub-<uid> is exactly the hijack this change
+// own - a squatted /tmp/xeneon-edge-hub-<uid> is exactly the hijack this change
 // exists to prevent, so we refuse rather than bind into it.
 inline QString controlSocketFallbackDir() {
     const QString dir = QDir::tempPath() + QStringLiteral("/xeneon-edge-hub-") +
@@ -78,16 +78,16 @@ inline QString controlSocketFallbackDir() {
     }
     if (!S_ISDIR(st.st_mode) || st.st_uid != ::getuid() || (st.st_mode & 0077) != 0) {
         XENEON_SOCKET_WARN_ONCE(QStringLiteral("ControlSocket: refusing fallback dir ") + dir +
-                                QStringLiteral(" — not a private directory owned by this user"));
+                                QStringLiteral(" - not a private directory owned by this user"));
         return QString();
     }
     return dir;
 }
 
-// A Unix socket path must fit sockaddr_un::sun_path — 108 bytes including the
+// A Unix socket path must fit sockaddr_un::sun_path - 108 bytes including the
 // NUL. Qt reports an overflow only as "QLocalServer::listen: Name error", which
 // tells you nothing; diagnose it here instead. Real runtime dirs (/run/user/UID)
-// leave ~70 bytes of headroom, so this fires for deep/unusual roots — e.g. a
+// leave ~70 bytes of headroom, so this fires for deep/unusual roots - e.g. a
 // sandbox nested inside a build tree.
 inline bool controlSocketPathFits(const QString& path) {
     return QFile::encodeName(path).size() < 108;

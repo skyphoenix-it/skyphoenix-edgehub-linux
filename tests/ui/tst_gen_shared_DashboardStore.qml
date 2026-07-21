@@ -245,7 +245,7 @@ Item {
         }
 
         // (BUG) load() discards a valid saved doc with pages:[] and re-seeds,
-        // while applyExternal() honours it — an inconsistency the audit flags.
+        // while applyExternal() honours it - an inconsistency the audit flags.
         function test_load_honours_empty_pages_like_applyExternal() {
             // Prove applyExternal honours pages:[].
             store.applyExternal(docStr({ version: 1, appearance: {}, settings: {}, pages: [] }))
@@ -564,7 +564,7 @@ Item {
 
         // Direct tile/page mutators name themselves on the assertion of their effect.
         function test_setTileSize_addPage_rename_remove() {
-            // `tasks` because it declares 1x2 — setTileSize is gated on the TYPE, so a
+            // `tasks` because it declares 1x2 - setTileSize is gated on the TYPE, so a
             // subject that cannot render the size would prove the rejection, not the apply.
             var tid = store.addTile(0, "tasks")
             store.setTileSize(0, tid, "1x2")

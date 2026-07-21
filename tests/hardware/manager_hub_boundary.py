@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""manager_hub_boundary.py — genuine Manager -> Hub, and the no-overflow boundary.
+"""manager_hub_boundary.py - genuine Manager -> Hub, and the no-overflow boundary.
 
 The real Manager, driven with real clicks, adding widgets via its "Add widget"
 picker, with EVERY add verified on the real hub over the control socket. This is
@@ -11,20 +11,20 @@ THE BOUNDARY under test (the Manager's own words, Screens tab):
     "a screen always stays one screen (it never scrolls)."
 So as widgets are added past what fits, they must SPILL TO A NEW SCREEN, never
 overflow the current one. The store enforces this on the addTile() path
-(DashboardStore.qml:663 — "If NOTHING fits, a NEW screen"), which is exactly the
-path the Manager's picker uses — and exactly the path a raw setUiState BYPASSES
+(DashboardStore.qml:663 - "If NOTHING fits, a NEW screen"), which is exactly the
+path the Manager's picker uses - and exactly the path a raw setUiState BYPASSES
 (DashboardStore.qml:332, "the store does not do capacity ... SCROLLS"). Earlier
 runs pushed raw state and saw 3-of-7 widgets scroll off; that was the wrong path.
 
 Observable assertions on the HUB after each Manager click:
-  1. PROPAGATION — the hub's total widget count goes up by exactly 1. Proves the
+  1. PROPAGATION - the hub's total widget count goes up by exactly 1. Proves the
      Manager actually drives the hub.
-  2. SPILL — once widgets stop fitting, the hub's PAGE count grows. Proves
+  2. SPILL - once widgets stop fitting, the hub's PAGE count grows. Proves
      overflow becomes a new screen.
-  3. NO-OVERFLOW — no single page keeps growing forever; the first page's widget
+  3. NO-OVERFLOW - no single page keeps growing forever; the first page's widget
      count plateaus, then later widgets land on later pages.
 
-Safety: identical to manager_gui_test — XENEON_HW_INPUT_DESKTOP gate, clamp to
+Safety: identical to manager_gui_test - XENEON_HW_INPUT_DESKTOP gate, clamp to
 the Manager's own window rect, render-verified hub on the Edge, idle kill switch.
 
 Run (after approval):
@@ -58,7 +58,7 @@ ADD_WIDGET_BTN = (0.74, 0.208)
 # card (top-LEFT): that overlaps the left-side live preview, so if the picker
 # ever failed to open, the same coordinate clicked the preview TILE and opened a
 # "Configure" dialog that then blocked every following click. Network sits over
-# the right column when the picker is closed — harmless, no modal.
+# the right column when the picker is closed - harmless, no modal.
 # Two Y positions for the Network card: the normal grid, and the grid shifted
 # DOWN when the "This screen is full - your next widget will start a new screen"
 # banner appears (the banner proves the no-overflow boundary AND pushes the cards
@@ -95,7 +95,7 @@ def main():
         # Hub on the Edge, one empty screen, 1-column (fills fastest). PORTRAIT:
         # this test's Manager coordinates (Add widget, picker) assume the
         # beside-the-config layout; O2 moves the config BELOW the preview in
-        # landscape, so pin portrait to keep the layout — and the coordinates —
+        # landscape, so pin portrait to keep the layout - and the coordinates -
         # deterministic. This test is not about orientation.
         h.write_config(doc([page("Home", [])],
                            appearance={"themeMode": "nord", "orientation": "portrait"}))
@@ -157,7 +157,7 @@ def main():
 
         def add_one_widget():
             """Click Add widget -> first picker card, and WAIT for the hub total
-            to actually grow. Retries once — a synthetic click can miss on real
+            to actually grow. Retries once - a synthetic click can miss on real
             hardware, and a UI boundary test must not be flaky on that. Returns
             the new hub state, or None if both attempts missed."""
             before = widgets_total(h.get_state())
@@ -208,11 +208,11 @@ def main():
         h.check("enough-adds-landed", landed >= 8,
                 "%d of %d Manager adds reached the hub" % (landed, MAX_ADDS))
 
-        # B: SPILL — overflow became a NEW screen.
+        # B: SPILL - overflow became a NEW screen.
         h.check("boundary-spilled-to-new-screen", spilled_at is not None,
                 "a 2nd screen appeared at add #%s" % spilled_at)
 
-        # C: NO-OVERFLOW — the first screen plateaued instead of swallowing every
+        # C: NO-OVERFLOW - the first screen plateaued instead of swallowing every
         #    widget. If page 1 kept growing to `total`, the Manager overflowed one
         #    screen instead of spilling. "a screen always stays one screen."
         cap = max(first_page_counts) if first_page_counts else 0
@@ -220,7 +220,7 @@ def main():
         h.check("boundary-first-screen-plateaus", plateaued,
                 "first-page counts: %s (cap %d, total %d)" % (first_page_counts, cap, total))
 
-        # D: NO page ever exceeded the first screen's proven capacity — a direct
+        # D: NO page ever exceeded the first screen's proven capacity - a direct
         #    statement of the no-overflow invariant across ALL screens.
         worst = max((max(c) for c in page_counts_over_time if c), default=0)
         h.check("boundary-no-page-exceeds-capacity", worst <= cap,

@@ -19,8 +19,8 @@ cannot run a native system-Qt build of the current UI.
 ## Build and run without installing
 
 ```sh
-git clone https://github.com/skyphoenix-it/XeneonEdge_Linux.git
-cd XeneonEdge_Linux
+git clone https://github.com/skyphoenix-it/skyphoenix-edgehub-linux.git
+cd skyphoenix-edgehub-linux
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j"$(nproc)"
 ./build/xeneon-edge-hub

@@ -5,7 +5,7 @@ import "../../ui/qml" as App
 // COVERS: schema:maxEvents, schema:url
 
 // ─────────────────────────────────────────────────────────────────────────
-// tst_gen_calendar — COMPREHENSIVE coverage for area "widget:calendar"
+// tst_gen_calendar - COMPREHENSIVE coverage for area "widget:calendar"
 // (ui/qml/widgets/CalendarWidget.qml, an ICS agenda widget).
 //
 // Exercises DTSTART/zone parsing, recurrence expansion (DAILY/WEEKLY/BYDAY/
@@ -25,12 +25,12 @@ Item {
     id: root
     width: 1700; height: 2600
 
-    // Main harness: expanded — parsing / config / reactivity / accent.
+    // Main harness: expanded - parsing / config / reactivity / accent.
     WidgetHarness {
         id: h; x: 0; y: 0; width: 460; height: 700
         widgetFile: "CalendarWidget.qml"; expanded: true
     }
-    // Compact tile — the collapsed face (maxEvents cap behaviour). 696x819 is
+    // Compact tile - the collapsed face (maxEvents cap behaviour). 696x819 is
     // the REAL 1x1 portrait footprint; it was 320x220, a box the size model
     // cannot produce (calendar's smallest declared size is 0.5x1 / 1x0.5, and
     // the half-cell is 348x409). That matters here specifically: at 220px tall
@@ -40,7 +40,7 @@ Item {
         id: hTile; x: 700; y: 0; width: 696; height: 819
         widgetFile: "CalendarWidget.qml"; expanded: false
     }
-    // Resizable host for the per-sizeClass structure tests (W1 wave 3) — the
+    // Resizable host for the per-sizeClass structure tests (W1 wave 3) - the
     // REAL projected footprints of calendar's five declared sizes:
     //   0.5x1  → 348x819 portrait (tall) · 846x306 landscape (wide)
     //   1x0.5  → 696x409 portrait (wide) · 423x612 landscape (tall)
@@ -135,7 +135,7 @@ Item {
             var exp = new Date(2026, 6, 12)
             compare(got.getTime(), exp.getTime(), "VALUE=DATE → local midnight")
         }
-        // AUDIT (high): DTSTART;TZID=… is ignored — parsed as floating-local. A
+        // AUDIT (high): DTSTART;TZID=… is ignored - parsed as floating-local. A
         // correct parser must treat the named zone differently from a floating
         // wall time, so on any host NOT in that zone the two instants differ.
         function test_tzid_is_not_treated_as_floating_local() {
@@ -403,7 +403,7 @@ Item {
             var w = h.item
             var now = new Date()
             // Construct events by CALENDAR DATE at noon (not now+Nh): an hour-offset
-            // is time-of-day fragile — e.g. after ~22:00 wall-clock, now+26h rolls
+            // is time-of-day fragile - e.g. after ~22:00 wall-clock, now+26h rolls
             // into the day AFTER tomorrow, and near midnight now+1h rolls into
             // tomorrow. Noon on the target date is always that date, DST-safe.
             function atNoon(dayOffset) {
@@ -608,7 +608,7 @@ Item {
         // maxEvents is a MAXIMUM the user asks for; the size decides how many of
         // those actually fit.
 
-        // 1. NEVER more than the user asked for — however much room there is.
+        // 1. NEVER more than the user asked for - however much room there is.
         function test_a_huge_tile_never_shows_more_than_the_user_asked_for() {
             var w = shape(696, 1637, "large", 3, 12)
             compare(w.rowsFit >= 12, true, "a 1x2 portrait box has room for far more")
@@ -616,7 +616,7 @@ Item {
             compare(w.shownEvents.length, 3)
         }
 
-        // 2. NEVER overflow the box — a small tile drops the tail instead.
+        // 2. NEVER overflow the box - a small tile drops the tail instead.
         function test_a_small_tile_drops_the_tail_rather_than_overflowing() {
             var w = shape(846, 306, "wide", 12, 12)
             verify(w.shownCount < 12,
@@ -650,7 +650,7 @@ Item {
             compare(wide.eventCols, 2, "so it earns a second column")
             compare(wide.shownCount, 12, "and all twelve fit after all")
         }
-        // `large` is the SAME class for both 1x2 projections — the count has to
+        // `large` is the SAME class for both 1x2 projections - the count has to
         // come from the box, not the class.
         function test_large_resolves_by_shape_not_by_class_alone() {
             var largePt = shape(696, 1637, "large", 12, 12)
@@ -686,7 +686,7 @@ Item {
             compare(w.shownCount, 12, "1x2 portrait holds the entire maxEvents cap")
         }
 
-        // The unconfigured state ships in the presets — it must stay legible.
+        // The unconfigured state ships in the presets - it must stay legible.
         function test_unconfigured_prompt_is_legible_at_every_declared_size() {
             var cases = [
                 [348, 819, "tall"],  [846, 306, "wide"],      // 0.5x1

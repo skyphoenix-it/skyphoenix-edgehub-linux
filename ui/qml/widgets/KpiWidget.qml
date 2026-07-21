@@ -1,35 +1,35 @@
 import QtQuick
 import QtQuick.Layouts
 
-// KPI — a single headline number, from an HTTP/JSON endpoint or a local file,
+// KPI - a single headline number, from an HTTP/JSON endpoint or a local file,
 // with a label, a unit, colour-coded thresholds and a tiny trend line. Built for
 // dashboards where one number matters: error budget, queue depth, revenue, uptime.
 //
 // Egress (HTTP source) goes through NetHub, exactly like HttpJsonWidget. A "file"
-// source reads a local path (JSON or a bare number) and works fully offline — a
+// source reads a local path (JSON or a bare number) and works fully offline - a
 // local file is not egress, so the gate lets it through even in offline mode.
 // Live results are shared + ephemeral (no config.toml churn on each poll).
 //
-// Sizing (W1 wave 2b): this is THE number-first widget — its whole point is one
-// figure read from across a room — so the number is sized off the BOX at every
+// Sizing (W1 wave 2b): this is THE number-first widget - its whole point is one
+// figure read from across a room - so the number is sized off the BOX at every
 // size, not off `expanded`. It used to be a flat 40px in every tile and 88px in
 // the overlay, which left a 40px digit floating in a 696x819 baseline tile and
 // made `1x3` (the whole 720x2560 panel) a scaled-up tile rather than a billboard.
-//   • 0.5x0.5 (micro) — the number alone. No label, no trend, no refresh button:
+//   • 0.5x0.5 (micro) - the number alone. No label, no trend, no refresh button:
 //                       a 1/12 tile is a READOUT, and a control that cannot hold
 //                       52px does not belong on it (it lives in the overlay).
-//   • 1x1 (baseline)  — number + unit + label + trend.
-//   • wide / tall     — the same content; a genuinely wide box (0.5x1 landscape,
+//   • 1x1 (baseline)  - number + unit + label + trend.
+//   • wide / tall     - the same content; a genuinely wide box (0.5x1 landscape,
 //                       1x0.5 portrait, 1x1.5 landscape) puts the trend BESIDE
 //                       the number instead of under it.
-//   • large (1x2/1x3) — the billboard: the number at its width cap, the trend
-//                       absorbing the slack height, plus a min/avg/max strip —
+//   • large (1x2/1x3) - the billboard: the number at its width cap, the trend
+//                       absorbing the slack height, plus a min/avg/max strip -
 //                       real extra information, not a stretched card.
-//   • full (overlay)  — the billboard plus the stats strip.
+//   • full (overlay)  - the billboard plus the stats strip.
 //
 // A NOTE ON THE PORTRAIT CAP. The number is WIDTH-limited: the panel's short axis
 // is 720px, so `1x1` and `1x3` are the same width and the digits genuinely cannot
-// grow much between them. What `1x3` earns is vertical — a far taller trend, a
+// grow much between them. What `1x3` earns is vertical - a far taller trend, a
 // bigger label and the stats strip. In LANDSCAPE the same size is 2540x612, and
 // there the split billboard lets the number run to the height cap. That asymmetry
 // is the honest consequence of a rotating panel, not a layout bug.
@@ -47,7 +47,7 @@ WidgetChrome {
 
     title: "KPI"; iconName: "sensors"; accentColor: theme.catInfo
     // Micro drops the header: 36px of chrome out of a 409px-tall tile buys a title
-    // the number does not need (it has no label at that size either — see below).
+    // the number does not need (it has no label at that size either - see below).
     showHeader: !micro
 
     readonly property var cfg: {
@@ -123,7 +123,7 @@ WidgetChrome {
         w._xhr = w._hub().request({
             url: w.endpoint,
             // Stored value (may be a ${env:}/file: ref); NetHub resolves it. Only
-            // the http source authenticates — the local-file source reads a path
+            // the http source authenticates - the local-file source reads a path
             // and must never send a credential anywhere.
             authToken: w.source === "http" ? w.authToken : "",
             timeout: 8000,
@@ -192,18 +192,18 @@ WidgetChrome {
 
     // ── Per-size layout (sizeClass injected by Dashboard) ────────────────────
     // `large` (1x2 / 1x3) is large in BOTH orientations, and `wide` projects to
-    // two very different boxes, so the SHAPE has to be read off the geometry —
+    // two very different boxes, so the SHAPE has to be read off the geometry -
     // the class alone cannot tell 696x2459 from 2540x612. (`micro` is chrome's.)
     readonly property bool roomy: sizeClass === "large"
     readonly property bool split: (roomy || sizeClass === "wide") && width > height * 1.4
     // How many characters the number is. A KPI's legibility is digit-count
-    // dependent — "7" and "1284.5" cannot take the same pixelSize in the same box.
+    // dependent - "7" and "1284.5" cannot take the same pixelSize in the same box.
     readonly property int _valChars: Math.max(1, w.errText.length ? 1 : (w.valText.length || 1))
     // Estimated advance width of the display font's digits, as a fraction of
     // pixelSize, plus the unit's share (it is a sibling Text, ~30% of the value's
     // size and 1-2 glyphs). Sizing the number TO FIT beats leaning on
     // fontSizeMode: HorizontalFit shrinks the glyphs but NOT the Text's line box,
-    // so the unit — which aligns to that box — floats away from the baseline, and
+    // so the unit - which aligns to that box - floats away from the baseline, and
     // the oversized implicit width collapsed the trend column to a sliver in every
     // split layout. HorizontalFit stays below purely as a backstop.
     readonly property real _digitRatio: 0.62
@@ -222,7 +222,7 @@ WidgetChrome {
     // Micro is a readout: the number is the whole tile.
     readonly property bool showLabel: !w.micro
     readonly property bool showSpark: !w.micro && w.histNorm.length > 1 && !w.errText.length
-    // min / avg / max over the trend window — genuinely MORE information, so it
+    // min / avg / max over the trend window - genuinely MORE information, so it
     // is earned by the sizes with room instead of being overlay-only.
     readonly property bool showStats: (w.expanded || w.roomy) && w.hist.length > 1
     readonly property var stats: {
@@ -255,7 +255,7 @@ WidgetChrome {
     }
 
     // The number, the trend, and (where earned) the stats. `columns` flips for a
-    // genuinely wide box, which only RESHAPES — the same items, never rebuilt.
+    // genuinely wide box, which only RESHAPES - the same items, never rebuilt.
     GridLayout {
         id: lay
         anchors.fill: parent
@@ -311,7 +311,7 @@ WidgetChrome {
                 }
             }
 
-            // Label / error line — dropped on micro, where the number IS the tile.
+            // Label / error line - dropped on micro, where the number IS the tile.
             Text {
                 visible: w.showLabel
                 Layout.alignment: Qt.AlignHCenter; Layout.fillWidth: true
@@ -330,7 +330,7 @@ WidgetChrome {
             Layout.fillWidth: true
             // Only a SPLIT box hands its slack to the trend column (there the two
             // columns are side by side and the trend has the full height to use).
-            // A stacked box gives the slack to the NUMBER — see the Sparkline.
+            // A stacked box gives the slack to the NUMBER - see the Sparkline.
             Layout.fillHeight: w.split
             spacing: theme.spacingXs
 
@@ -340,14 +340,14 @@ WidgetChrome {
                 Layout.fillHeight: w.split
                 // The trend SUPPORTS the number; it does not replace it. On
                 // fillHeight it took ~60% of a 1x3 panel and the widget stopped
-                // being a KPI — so it takes a FRACTION of the box (a bigger one
+                // being a KPI - so it takes a FRACTION of the box (a bigger one
                 // once there is room) and the value block absorbs the rest.
                 Layout.preferredHeight: w.expanded ? 70
                     : Math.max(20, Math.min(w.height * (w.roomy ? 0.26 : 0.16),
                                             w.roomy ? 640 : 120))
                 values: w.histNorm; color: w.valColor
             }
-            // min / avg / max over the window — the large sizes' extra content.
+            // min / avg / max over the window - the large sizes' extra content.
             RowLayout {
                 visible: w.showStats
                 Layout.fillWidth: true
@@ -380,9 +380,9 @@ WidgetChrome {
         }
     }
 
-    // Manual refresh. A real ≥52px target (it was 34px — under theme.touchTertiary),
+    // Manual refresh. A real ≥52px target (it was 34px - under theme.touchTertiary),
     // and it is NOT shown on micro: a 1/12 tile cannot host a control at that size,
-    // so it stays a readout and the button lives in the overlay instead — which is
+    // so it stays a readout and the button lives in the overlay instead - which is
     // also why the overlay now has one at all.
     Rectangle {
         id: refreshBtn

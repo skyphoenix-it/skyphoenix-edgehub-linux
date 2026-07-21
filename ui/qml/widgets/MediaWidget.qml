@@ -1,24 +1,24 @@
 import QtQuick
 import QtQuick.Layouts
 
-// Now Playing — real MPRIS control via the `media` bridge (Spotify, YouTube
+// Now Playing - real MPRIS control via the `media` bridge (Spotify, YouTube
 // Music in a browser, any MPRIS player). Shows a genuine "nothing playing"
 // state rather than fabricated data.
 //
 // Sizing (W1 wave 3): layout keys off the injected `sizeClass`. The old tile was
-// ONE 46px-thumbnail row for every size — a 696x819 box rendered a 46px cover
+// ONE 46px-thumbnail row for every size - a 696x819 box rendered a 46px cover
 // and 13px type. The content set now follows the room:
-//   • 0.5x0.5 (micro) — headerless: art, the title, and ONE play target. The
+//   • 0.5x0.5 (micro) - headerless: art, the title, and ONE play target. The
 //     half-cell (423x306 landscape) cannot hold prev/next + a progress bar and
 //     still leave a real hit area, so it carries the readout and hands the rest
 //     to the overlay rather than shrinking a button.
-//   • 1x1 (baseline)  — art + title/artist + progress + the full transport.
-//   • wide            — a genuinely HORIZONTAL variant: art BESIDE the
+//   • 1x1 (baseline)  - art + title/artist + progress + the full transport.
+//   • wide            - a genuinely HORIZONTAL variant: art BESIDE the
 //     metadata + transport. The vertical stack (art + title + bar + transport)
 //     is ~420px of content and the wide projections are 409px (1x0.5 portrait)
-//     and 306px (0.5x1 landscape) tall — it simply does not fit.
-//   • tall            — the vertical stack, with the art taking the height.
-//   • full (overlay)  — unchanged shape (album line, centred type, big
+//     and 306px (0.5x1 landscape) tall - it simply does not fit.
+//   • tall            - the vertical stack, with the art taking the height.
+//   • full (overlay)  - unchanged shape (album line, centred type, big
 //     transport); its art is size-derived now too.
 WidgetChrome {
     id: w
@@ -42,13 +42,13 @@ WidgetChrome {
     readonly property bool horiz: sizeClass === "wide"
     readonly property bool tallish: sizeClass === "tall" || sizeClass === "large"
     // Everything past "art + title + play" is gated on having more than a
-    // half-cell. `micro` is chrome's half-cell footprint — not re-derived here.
+    // half-cell. `micro` is chrome's half-cell footprint - not re-derived here.
     readonly property bool rich: !micro
 
     // The album art is a square DERIVED FROM THE BOX. It used to be
     // min(width*0.5, 260), a portrait-shaped assumption: in the 846x306
     // landscape projection of 0.5x1 that is a 260px square under a title under a
-    // 52px transport row — ~420px of content in a 306px box.
+    // 52px transport row - ~420px of content in a 306px box.
     readonly property real artSize: {
         if (w.horiz)
             // Side-by-side: bounded by the height, and capped at ~2/5 of the
@@ -59,7 +59,7 @@ WidgetChrome {
         return Math.max(40, Math.min(w.width * 0.72, w.height * 0.45,
                                      w.expanded ? 420 : 100000))
     }
-    // The width the metadata actually gets — what its type is sized against.
+    // The width the metadata actually gets - what its type is sized against.
     readonly property real infoW: w.horiz
         ? Math.max(80, w.width - w.artSize - theme.spacingMd)
         : Math.max(80, w.width)
@@ -113,7 +113,7 @@ WidgetChrome {
             Image { id: artC; anchors.fill: parent; source: w.avail && media.artUrl ? media.artUrl : ""
                 fillMode: Image.PreserveAspectCrop; asynchronous: true; cache: false
                 visible: status === Image.Ready }
-            // The fallback glyph is the art at this size — scale it with the box.
+            // The fallback glyph is the art at this size - scale it with the box.
             Text { anchors.centerIn: parent; text: "♪"; color: "#fff"
                 font.pixelSize: Math.max(14, w.artSize * 0.42)
                 visible: artC.status !== Image.Ready }
@@ -141,7 +141,7 @@ WidgetChrome {
                 horizontalAlignment: w.horiz ? Text.AlignLeft : Text.AlignHCenter
                 elide: Text.ElideRight; Layout.fillWidth: true }
 
-            // Progress — the half-cell has no room for it.
+            // Progress - the half-cell has no room for it.
             Rectangle {
                 visible: w.rich
                 Layout.fillWidth: true; Layout.topMargin: theme.spacingXs
@@ -151,7 +151,7 @@ WidgetChrome {
                     Behavior on width { NumberAnimation { duration: theme.motionValue; easing.type: Easing.OutCubic } } }
             }
 
-            // Transport. Micro keeps ONLY play — at a full-size hit area.
+            // Transport. Micro keeps ONLY play - at a full-size hit area.
             RowLayout {
                 Layout.alignment: w.horiz ? Qt.AlignLeft : Qt.AlignHCenter
                 Layout.topMargin: theme.spacingXs
@@ -235,7 +235,7 @@ WidgetChrome {
         }
         RowLayout {
             Layout.alignment: Qt.AlignHCenter; spacing: theme.spacingXl
-            // Prev — matching circular touch button (was a bare 36px glyph).
+            // Prev - matching circular touch button (was a bare 36px glyph).
             Rectangle {
                 Layout.preferredWidth: theme.touchSecondary; Layout.preferredHeight: theme.touchSecondary
                 radius: width / 2
@@ -253,7 +253,7 @@ WidgetChrome {
                     size: 30; color: "#0D1117" }
                 MouseArea { id: playMA; anchors.fill: parent; onClicked: if (w.avail) media.playPause() }
             }
-            // Next — matching circular touch button.
+            // Next - matching circular touch button.
             Rectangle {
                 Layout.preferredWidth: theme.touchSecondary; Layout.preferredHeight: theme.touchSecondary
                 radius: width / 2

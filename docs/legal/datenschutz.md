@@ -1,12 +1,12 @@
 # Datenschutzerklärung (Privacy Policy)
 
 > Template per GDPR/DSGVO Art. 13/14. Fill `[[...]]`; delete sections that don't apply.
-> Not legal advice — have it reviewed. Keep it truthful: only list what you actually
-> collect. **The EdgeHub app itself has no telemetry and no account** — that's a
+> Not legal advice - have it reviewed. Keep it truthful: only list what you actually
+> collect. **The EdgeHub app itself has no telemetry and no account** - that's a
 > selling point, so say it.
 
 ## 1. Verantwortlicher
-[[SKYPhoenix IT — name, address, email from the Impressum]]
+[[SKYPhoenix IT - name, address, email from the Impressum]]
 
 ## 2. Grundsatz
 Wir verarbeiten personenbezogene Daten nur, soweit dies zur Bereitstellung dieser
@@ -42,7 +42,7 @@ required, a consent banner per §25 TDDDG.)_
 
 ## 7. Empfänger / Drittländer
 [[List processors: hoster, payment provider, email provider. If a processor is outside
-the EU/EEA, name the transfer mechanism — e.g. EU Standard Contractual Clauses / EU-US
+the EU/EEA, name the transfer mechanism - e.g. EU Standard Contractual Clauses / EU-US
 Data Privacy Framework.]]
 
 ## 8. Ihre Rechte

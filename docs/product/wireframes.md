@@ -1,8 +1,8 @@
-# Wireframe Descriptions — Xeneon Edge Linux Hub
+# Wireframe Descriptions - Xeneon Edge Linux Hub
 
-**Version:** 0.1.0-draft  
-**Status:** Historical Phase-0 discovery draft — superseded
-**Last Updated:** 2026-07-11  
+**Version:** 0.1.0-draft
+**Status:** Historical Phase-0 discovery draft - superseded
+**Last Updated:** 2026-07-11
 
 > **Historical document.** These sketches preserve early interaction intent; they
 > do not describe the current UI pixel-for-pixel and are not a release checklist.
@@ -145,7 +145,7 @@
 
 ---
 
-## 2. Dashboard — View Mode (Landscape: 2560×720)
+## 2. Dashboard - View Mode (Landscape: 2560×720)
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -174,7 +174,7 @@
 
 ---
 
-## 3. Dashboard — View Mode (Portrait: 720×2560)
+## 3. Dashboard - View Mode (Portrait: 720×2560)
 
 ```
 ┌──────────────┐
@@ -223,7 +223,7 @@
 
 ---
 
-## 4. Dashboard — Edit Mode (Landscape: 2560×720)
+## 4. Dashboard - Edit Mode (Landscape: 2560×720)
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -320,7 +320,7 @@
 
 ---
 
-## 7. Settings — Main Screen
+## 7. Settings - Main Screen
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -395,13 +395,13 @@
 │    → Mapped to DP-2 ✓                                   │
 │                                                          │
 │  Widgets (7 active, 0 disabled):                         │
-│    clock-1 (Clock) v1.0 — OK, 2h uptime                 │
-│    cpu-1 (CPU Usage) v1.0 — OK, 2h uptime               │
-│    ram-1 (RAM Usage) v1.0 — OK, 2h uptime               │
-│    focus-1 (Focus Timer) v1.0 — OK, running 24m         │
-│    goal-1 (Current Goal) v1.0 — OK, 2h uptime           │
-│    priorities-1 (Priorities) v1.0 — OK, 2h uptime       │
-│    media-1 (Media Control) v1.0 — OK, playing           │
+│    clock-1 (Clock) v1.0 - OK, 2h uptime                 │
+│    cpu-1 (CPU Usage) v1.0 - OK, 2h uptime               │
+│    ram-1 (RAM Usage) v1.0 - OK, 2h uptime               │
+│    focus-1 (Focus Timer) v1.0 - OK, running 24m         │
+│    goal-1 (Current Goal) v1.0 - OK, 2h uptime           │
+│    priorities-1 (Priorities) v1.0 - OK, 2h uptime       │
+│    media-1 (Media Control) v1.0 - OK, playing           │
 │                                                          │
 │  Integrations:                                           │
 │    MPRIS: ✓ Connected (Spotify)                          │
@@ -509,12 +509,12 @@ The dashboard window is hidden. On the primary display, a notification appears:
 - Touch targets: minimum 48×48 logical px
 - Primary buttons: 48-64px height
 
-### Touch Targets — Priority Hierarchy
+### Touch Targets - Priority Hierarchy
 1. Primary action: 64×64px (e.g., Play, Pause, Add)
 2. Secondary action: 48×48px (e.g., Settings, Close)
 3. Tertiary action: 44×44px minimum (e.g., small toggles)
 
-### Colors (Dark Theme — Default)
+### Colors (Dark Theme - Default)
 - Background: #0D1117 (widget cards: #161B22)
 - Text primary: #E6EDF3
 - Text secondary: #8B949E

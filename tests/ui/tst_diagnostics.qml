@@ -2,13 +2,13 @@ import QtQuick
 import QtTest
 import "../../ui/qml" as App
 
-// Diagnostics (ui/qml/Diagnostics.qml) — the on-device diagnostics screen. It
+// Diagnostics (ui/qml/Diagnostics.qml) - the on-device diagnostics screen. It
 // resolves `theme`, `stackView`, `_configDir` (and optionally `_buildType`) by
 // name, so we provide them at the file root. Assert: metric rows render from the
 // injected metricsJson, empty/malformed frames degrade to N/A (no blank grid),
 // tab switching, screen rows, and the Back action firing through stackView.pop().
 // The Network tab (W5 finding 6) renders the injected NetHub gate: kill-switch
-// state, allowlist, sent/blocked totals and per-host counts — asserted against
+// state, allowlist, sent/blocked totals and per-host counts - asserted against
 // a mock hub carrying the same property surface, including live updates.
 Item {
     id: root

@@ -11,8 +11,8 @@ import "GuiUtil.js" as G
 // text, a store setting reflected in the visible output, or grabImage() pixels.
 //
 // Deterministic seams used (never wall-clock):
-//   • meds  — nowMinsOverride (minutes since midnight) pins due/later/open.
-//   • all   — schedule/steps/entries/taken/done seeded via storeCtl before assert.
+//   • meds  - nowMinsOverride (minutes since midnight) pins due/later/open.
+//   • all   - schedule/steps/entries/taken/done seeded via storeCtl before assert.
 //   • sizeClass is PINNED per case (the Dashboard injects it from the tile span).
 //
 // Case count: 32 meds + 26 routine + 27 braindump = 85.

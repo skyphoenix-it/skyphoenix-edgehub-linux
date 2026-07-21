@@ -1,7 +1,7 @@
 import QtQuick
 import QtTest
 
-// FocusWidget — verifies the timer logic and the audited fixes:
+// FocusWidget - verifies the timer logic and the audited fixes:
 //  * reset()/applyPreset() clear the REAL persisted key (doneToday), not the
 //    derived read-only completedWork.
 //  * "+5" never drives the ring fill negative.
@@ -16,7 +16,7 @@ Item {
 
         function init() {
             tryVerify(function () { return h.ready }, 3000)
-            // Clean slate per test — settings would otherwise leak between tests
+            // Clean slate per test - settings would otherwise leak between tests
             // (they run in alphabetical order and share one instance).
             var s = h.storeCtl.settingsFor("test-instance")
             for (var k in s) delete s[k]
@@ -73,7 +73,7 @@ Item {
             var w = h.item
             w.reset()  // phase = work, doneToday = 0
             w.skip()
-            // A MANUAL skip advances the phase but must not count/reward — you
+            // A MANUAL skip advances the phase but must not count/reward - you
             // didn't actually finish the focus session.
             compare(cfg().doneToday || 0, 0, "a manual skip does NOT count as a completed session")
             verify(w.phase === "short" || w.phase === "long", "skip still advances to a break phase")

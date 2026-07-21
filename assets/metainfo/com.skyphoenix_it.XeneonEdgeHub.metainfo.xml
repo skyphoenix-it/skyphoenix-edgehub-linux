@@ -13,8 +13,8 @@
 
   <description>
     <p>
-      Xeneon Edge Linux Hub turns a secondary touchscreen — such as the Corsair
-      Xeneon Edge — into a persistent, touch-editable dashboard of live widgets.
+      Xeneon Edge Linux Hub turns a secondary touchscreen - such as the Corsair
+      Xeneon Edge - into a persistent, touch-editable dashboard of live widgets.
       It runs natively on Linux (Qt 6 + a Rust core), with no browser and no server.
     </p>
     <p>Features:</p>
@@ -50,8 +50,8 @@
     <keyword>touchscreen</keyword>
   </keywords>
 
-  <url type="homepage">https://github.com/skyphoenix-it/XeneonEdge_Linux</url>
-  <url type="bugtracker">https://github.com/skyphoenix-it/XeneonEdge_Linux/issues</url>
+  <url type="homepage">https://github.com/skyphoenix-it/skyphoenix-edgehub-linux</url>
+  <url type="bugtracker">https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/issues</url>
 
   <content_rating type="oars-1.1"/>
 

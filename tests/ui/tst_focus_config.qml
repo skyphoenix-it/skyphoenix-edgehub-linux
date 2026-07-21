@@ -4,7 +4,7 @@ import QtTest
 import "../../ui/qml" as App
 import "../../ui/qml/widgets" as Widgets
 
-// Focus config panel — REAL GUI interaction on the shared WidgetConfigPanel (the
+// Focus config panel - REAL GUI interaction on the shared WidgetConfigPanel (the
 // same component the Manager dialog and the on-device config view use). Proves
 // every control is clickable + wired, and that mouse-wheel scrolling moves a
 // sensible amount. These are exactly what "Manager buttons don't click / scroll

@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 
-// HTTP / JSON — the generic data-connected primitive. Polls a URL, pulls a value
+// HTTP / JSON - the generic data-connected primitive. Polls a URL, pulls a value
 // out of the JSON response by a dot/bracket path, and shows it as a number, a
 // gauge, or a short list. All egress goes through NetHub (never a raw XHR), so
 // "no telemetry / local-only" stays provable and a global offline switch / host
@@ -14,12 +14,12 @@ import QtQuick.Layouts
 //
 // Sizing (W1 wave 3): 3 modes x 6 declared sizes, so layout keys off `sizeClass`
 // per MODE rather than once for the widget:
-//   • value — micro is the number alone (no trend, no path); the baseline adds
+//   • value - micro is the number alone (no trend, no path); the baseline adds
 //     the trend; wide puts the trend BESIDE the number; tall/large hand it the
 //     height. The number scales with the box (it was a flat 32px everywhere).
-//   • gauge — delegates to the shared MetricGauge and drives its wave-2a knobs
+//   • gauge - delegates to the shared MetricGauge and drives its wave-2a knobs
 //     (showSpark / horizontal / sparkFills / bigMax), exactly as CpuWidget does.
-//   • list  — rows scale with the box, and the row count follows the same rule
+//   • list  - rows scale with the box, and the row count follows the same rule
 //     calendar applies to maxEvents (see `listShown`).
 //
 // The UNCONFIGURED state ("Add a URL in settings") is what ships in the presets,
@@ -125,7 +125,7 @@ WidgetChrome {
         }
         return w.effAccent
     }
-    // The reading's colour — surfaced in the header and the value.
+    // The reading's colour - surfaced in the header and the value.
     status: w.errText.length ? "!" : ""
     statusColor: theme.warning
     readonly property color valColor: w.errText.length ? theme.warning
@@ -148,7 +148,7 @@ WidgetChrome {
         w._xhr = w._hub().request({
             url: w.url,
             // The STORED value (may be a ${env:}/file: ref). NetHub resolves it
-            // and builds the header — the widget must never hold the plaintext
+            // and builds the header - the widget must never hold the plaintext
             // secret, or it would ride cfgKey/settings into config.toml.
             authToken: w.authToken,
             timeout: 8000,
@@ -186,7 +186,7 @@ WidgetChrome {
             patch.httpVal = v
             patch.httpText = "" + (Math.abs(v) >= 100 || Number.isInteger(v) ? Math.round(v) : v.toFixed(1))
             patch.httpList = []
-            // Sparkline history (normalised against the gauge max) — shared + ephemeral.
+            // Sparkline history (normalised against the gauge max) - shared + ephemeral.
             var h = w.hist.slice()
             var norm = w.gaugeMax > 0 ? Math.max(0, Math.min(1, v / w.gaugeMax)) : 0
             h.push(norm); if (h.length > 48) h.shift()
@@ -236,7 +236,7 @@ WidgetChrome {
             color: theme.textTertiary; font.pixelSize: w.hintPx
         }
 
-        // VALUE / GAUGE — a single reading.
+        // VALUE / GAUGE - a single reading.
         Loader {
             visible: w.url.length > 0 && w.mode !== "list"
             active: visible
@@ -244,7 +244,7 @@ WidgetChrome {
             sourceComponent: w.mode === "gauge" ? gaugeView : valueView
         }
 
-        // LIST — array of items.
+        // LIST - array of items.
         ColumnLayout {
             visible: w.url.length > 0 && w.mode === "list"
             Layout.fillWidth: true; Layout.fillHeight: true
@@ -253,7 +253,7 @@ WidgetChrome {
             Repeater {
                 // The model is the COUNT: a poll every N seconds moves the bound
                 // text of long-lived delegates instead of rebuilding the list
-                // (which is what a `listItems.slice(...)` model did — a fresh JS
+                // (which is what a `listItems.slice(...)` model did - a fresh JS
                 // array every tick, destroying and recreating every row).
                 model: w.listShown
                 delegate: Text {
@@ -278,7 +278,7 @@ WidgetChrome {
             }
         }
 
-        // Manual refresh — a real touch target in its own cell. It used to be a
+        // Manual refresh - a real touch target in its own cell. It used to be a
         // 34px circle (under the token) anchored over the bottom-right, which sat
         // on top of the last list row. The half-cell has no room for it, so it
         // shows the readout and leaves refreshing to the poll and the overlay.
@@ -300,7 +300,7 @@ WidgetChrome {
         }
     }
 
-    // VALUE — the number is the tile. Per size: micro shows it alone; wide puts
+    // VALUE - the number is the tile. Per size: micro shows it alone; wide puts
     // the trend beside it; tall/large hand the trend real height.
     Component {
         id: valueView
@@ -314,7 +314,7 @@ WidgetChrome {
                 Layout.fillWidth: true
                 // Exactly ONE of these two may absorb the height when they are
                 // stacked in one column, or they compete and the nested Layout
-                // wins — which left the trend 6px tall (a flat line) in every
+                // wins - which left the trend 6px tall (a flat line) in every
                 // tall tile. When the box is WIDE they sit in different columns,
                 // so there is nothing to compete over. Mirrors MetricGauge, where
                 // the ring cell stops filling exactly when sparkFills is on.
@@ -324,7 +324,7 @@ WidgetChrome {
                 Item { Layout.fillHeight: true }
                 // The reading + its unit. NOT a RowLayout: the number needs a
                 // width cap so HorizontalFit can shrink a long value, but a Text
-                // GIVEN that cap centres its glyphs inside it — which parked the
+                // GIVEN that cap centres its glyphs inside it - which parked the
                 // unit against the far edge of the tile, half a screen from the
                 // number it belongs to (and squeezed "ms" down to "m").
                 // So the number is capped and centred, and the unit is pinned to
@@ -384,7 +384,7 @@ WidgetChrome {
         }
     }
 
-    // GAUGE — the shared MetricGauge carries the ring; wave 2a gave it the
+    // GAUGE - the shared MetricGauge carries the ring; wave 2a gave it the
     // per-size knobs and this drives them exactly as CpuWidget does.
     Component {
         id: gaugeView

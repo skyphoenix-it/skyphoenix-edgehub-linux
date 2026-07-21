@@ -1,21 +1,21 @@
 import QtQuick
 import QtQuick.Layouts
 
-// Quick note / scratchpad — persisted. Uses a plain TextEdit (not Controls
+// Quick note / scratchpad - persisted. Uses a plain TextEdit (not Controls
 // TextArea) for consistent theming and to avoid style-specific issues. The
 // editor initialises from stored text and saves on edit; the compact tile
 // shows a live preview via the reactive `cfg`.
 //
-// Sizing (W1 wave 2b): this is ONE body of text, so — exactly like a list earning
-// more rows — a bigger box earns more LINES, not bigger type. The preview was a
+// Sizing (W1 wave 2b): this is ONE body of text, so - exactly like a list earning
+// more rows - a bigger box earns more LINES, not bigger type. The preview was a
 // flat 13px at every size, which is both too small to read on a 696x819 tile and
 // the same on a 348x409 one.
-//   • 0.5x0.5 (micro) — headerless: at 1/12 the note itself is the tile, and 36px
+//   • 0.5x0.5 (micro) - headerless: at 1/12 the note itself is the tile, and 36px
 //                       of chrome is a line of text you cannot spare.
-//   • every other size — the preview scales gently with the box (13px in a narrow
-//                       column, up to 20px in a wide one — longer lines carry
+//   • every other size - the preview scales gently with the box (13px in a narrow
+//                       column, up to 20px in a wide one - longer lines carry
 //                       bigger type) and the taller box simply shows more of them.
-//   • full (overlay)  — the editor. Editing is genuinely modal, so THAT stays
+//   • full (overlay)  - the editor. Editing is genuinely modal, so THAT stays
 //                       keyed off `expanded` rather than off size.
 // This widget has the least to gain from a big box of the nine: there is no extra
 // content to earn, only more of the same note.
@@ -33,7 +33,7 @@ WidgetChrome {
     // ── Per-size layout (sizeClass injected by Dashboard) ────────────────────
     // The preview scales with the COLUMN (a wider column means longer lines, which
     // carry bigger type) and is capped so a big box earns more LINES, not a
-    // billboard. Height only floors it — a tall narrow sliver must not inflate.
+    // billboard. Height only floors it - a tall narrow sliver must not inflate.
     readonly property real previewPx: w.expanded ? 18
         : Math.max(13, Math.min(width * 0.024, height * 0.045, 20))
 
@@ -52,15 +52,15 @@ WidgetChrome {
     Timer { id: saveDebounce; interval: 400; onTriggered: { w.save(w._pending); w._dirty = false } }
     function flush() { if (w._dirty) { saveDebounce.stop(); w.save(w._pending); w._dirty = false } }
     // The expanded overlay creates a SEPARATE instance that is destroyed on close
-    // — before onExpandedChanged/the debounce can fire — so flush here too, or the
+    // - before onExpandedChanged/the debounce can fire - so flush here too, or the
     // last edit is silently lost.
     Component.onDestruction: flush()
 
-    // Tile preview — as many lines as the box holds, at a size the box earns.
+    // Tile preview - as many lines as the box holds, at a size the box earns.
     Text {
         anchors.fill: parent; anchors.margins: w.micro ? theme.spacingXs : theme.spacingSm
         visible: !w.expanded
-        // A whitespace-only note is effectively empty — show the placeholder.
+        // A whitespace-only note is effectively empty - show the placeholder.
         text: w.current.trim().length ? w.current
                                       : (w.micro ? "Jot a note…" : "Tap to jot a note…")
         color: w.current.trim().length ? theme.textPrimary : theme.textTertiary
@@ -83,7 +83,7 @@ WidgetChrome {
             wrapMode: TextEdit.Wrap; selectByMouse: true
             persistentSelection: true
             onTextChanged: { w._pending = text; w._dirty = true; saveDebounce.restart() }
-            // Keep the caret in view as the note grows past the viewport —
+            // Keep the caret in view as the note grows past the viewport -
             // otherwise long notes scroll off the bottom while typing.
             onCursorRectangleChanged: {
                 var top = cursorRectangle.y

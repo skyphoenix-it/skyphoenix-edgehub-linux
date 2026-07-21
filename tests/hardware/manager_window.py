@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""manager_window.py — proof that the Manager is the window we are clicking.
+"""manager_window.py - proof that the Manager is the window we are clicking.
 
 WHY THIS EXISTS (2026-07-20)
 ────────────────────────────────────────────────────────────────────────────
 Every Manager test clamps its synthetic events to the Manager's window RECT.
-That confines the cursor, and it is necessary — but it does NOT establish that
+That confines the cursor, and it is necessary - but it does NOT establish that
 the Manager is the window RECEIVING events in that rect. Nothing did.
 
 The first ever run of manager_gui_test.py proved the gap the expensive way: the
@@ -14,7 +14,7 @@ clicks went into a documentation page. The run reported four Manager defects
 and six real clicks landed in an unrelated application.
 
 `assert_rect_on_a_desktop_screen()` cannot catch this. It only asserts the rect
-lies on a real non-Edge screen — a correct window, an occluded one and a stale
+lies on a real non-Edge screen - a correct window, an occluded one and a stale
 rect all satisfy it identically.
 
 THE SIGNAL
@@ -26,7 +26,7 @@ The Manager always has exactly ONE sidebar row filled with the accent. So:
     no accent row at all    -> we are NOT looking at the Manager
 
 That distinction is the whole thing. It was already computable before this
-module existed, and was misread as "the wrong tab is selected" — which turned an
+module existed, and was misread as "the wrong tab is selected" - which turned an
 environment problem into four fabricated bug reports. Occlusion is not a product
 failure and must never be reported as one.
 
@@ -51,7 +51,7 @@ ROW_FX = 120 / 1440
 
 
 def active_row(path, win_w=None, win_h=None):
-    """Which sidebar row is selected, read from the accent fill — or None.
+    """Which sidebar row is selected, read from the accent fill - or None.
 
     None means NO row is accented, i.e. this is not the Manager. Callers must
     treat that as "lost the window", never as "wrong tab".

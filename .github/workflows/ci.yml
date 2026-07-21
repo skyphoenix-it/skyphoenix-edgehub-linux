@@ -5,8 +5,8 @@ name: CI
 # This previously triggered on master only, on the stated precondition that
 # v1.0-alpha was kept in ff-only lockstep with master (same SHA), making a second
 # run pure quota burn. That precondition is VOID: on 2026-07-20 v1.0-alpha was
-# measured 86 commits ahead of master, and 31 of the last 62 fixes — 28 of them
-# user-visible — had received zero CI runs. A real break hid there once before
+# measured 86 commits ahead of master, and 31 of the last 62 fixes - 28 of them
+# user-visible - had received zero CI runs. A real break hid there once before
 # for 8 commits; this time thirteen defects were fixed between two and five times
 # each, all inside the un-gated window.
 #
@@ -36,7 +36,7 @@ env:
 jobs:
   # --- Rust Core ---
   # One job, one toolchain setup: fmt + clippy(--all-targets) + test previously ran
-  # as THREE jobs — three checkouts and toolchain installs wrapping ~90s of real
+  # as THREE jobs - three checkouts and toolchain installs wrapping ~90s of real
   # work. Sequential; a failure still names its step. Security Audit moved to the
   # scheduled supply-chain workflow (an advisory feed does not change per push);
   # Docs & Links moved to docs.yml (runs only when docs change).
@@ -52,15 +52,15 @@ jobs:
       - name: Format check
         working-directory: core
         run: cargo fmt --check
-      - name: Clippy (--all-targets — --lib misses test-code lints)
+      - name: Clippy (--all-targets - --lib misses test-code lints)
         working-directory: core
         run: cargo clippy --all-targets -- -D warnings
       - name: Tests
         working-directory: core
         run: cargo test
       # The licence issuer tool (not shipped) mints the keys that unlock paid
-      # features, so its crypto correctness — a minted key verifies, a forged
-      # payload does not, a name can't inject a higher tier — is gated too. Folded
+      # features, so its crypto correctness - a minted key verifies, a forged
+      # payload does not, a name can't inject a higher tier - is gated too. Folded
       # into this existing job (no new job) to keep the Actions budget flat.
       - name: Licence tool (fmt + clippy + test)
         working-directory: tools/license-tool
@@ -138,7 +138,7 @@ jobs:
       - name: Enforce complete QML behavior-matrix coverage (100%)
         run: python3 scripts/qml_coverage.py | tee coverage-qml.txt
       # The two structural lints. They lived only in run_all_tests.sh, i.e. they
-      # gated nothing anyone was forced to run — and the egress lint is the whole
+      # gated nothing anyone was forced to run - and the egress lint is the whole
       # basis of the "no telemetry" claim, so it has to hold on every push, not
       # just when a dev remembers. Both are plain bash with no deps.
       - name: Egress lint (no raw XHR outside the NetHub gate)
@@ -157,7 +157,7 @@ jobs:
         run: bash scripts/check_no_manager_compositor_tests.sh
       # Guards the scene-graph walk bug that OOMed the developer's machine
       # (18.8 GB / 20 GB RSS, three independent copies). It lived only in
-      # run_all_tests.sh — i.e. it gated nothing anyone was forced to run.
+      # run_all_tests.sh - i.e. it gated nothing anyone was forced to run.
       - name: Tree-walk memory guard (the 18.8 GB OOM class)
         run: python3 scripts/check_tree_walks.py
       # Cross-file zsync delta-update invariants. Every one of the four files it
@@ -316,7 +316,7 @@ jobs:
           name: coverage
           path: coverage/
 
-  # --- QML compositor suite (tests/gui) — REQUIRED ---
+  # --- QML compositor suite (tests/gui) - REQUIRED ---
   # 16 files and 1,300+ checks under a real kwin_wayland at 2560x720 with real
   # input and rendered-pixel assertions. It holds the repository's only
   # compositor-backed aspect-ratio, rotation, navigation and wallpaper checks.

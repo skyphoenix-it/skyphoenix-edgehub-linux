@@ -4,7 +4,7 @@ import "../../ui/qml" as App
 
 // COVERS: schema:glassMl, schema:goal
 
-// Comprehensive coverage for area "widget:hydration" — HydrationWidget.qml.
+// Comprehensive coverage for area "widget:hydration" - HydrationWidget.qml.
 //
 // Exercises every config knob (goal, glassMl), the daily reset / midnight
 // projection, streak + goal-crossing maths, celebration replay, colour reward
@@ -51,7 +51,7 @@ Item {
             h.storeCtl.patchSettings("test-instance", patch)
         }
 
-        // — Defaults ————————————————————————————————————————————————————
+        // - Defaults ----------------------------------------------------
         function test_defaults() {
             var w = h.item
             compare(w.goal, 8, "default goal 8")
@@ -60,7 +60,7 @@ Item {
             compare(w.streakDisplay, 0, "no streak yet")
         }
 
-        // — Config option: goal honoured + reactive ————————————————————————
+        // - Config option: goal honoured + reactive ------------------------
         function test_goal_config_honored_and_reactive() {
             var w = h.item
             h.storeCtl.patchSettings("test-instance", { goal: 12 })
@@ -70,7 +70,7 @@ Item {
             compare(w.goal, 5, "goal re-applies live on revision bump")
         }
 
-        // — Config option: glassMl honoured in volumeText ————————————————————
+        // - Config option: glassMl honoured in volumeText --------------------
         function test_glassml_config_honored() {
             var w = h.item
             seed(6)
@@ -79,7 +79,7 @@ Item {
             compare(w.volumeText(), "1.8 L", "6 × 300 ml → 1.8 L")
         }
 
-        // — volumeText ml↔L boundary at 1000 ml ——————————————————————————
+        // - volumeText ml↔L boundary at 1000 ml --------------------------
         function test_volume_text_liter_boundary() {
             var w = h.item
             h.storeCtl.patchSettings("test-instance", { glassMl: 250 })
@@ -98,14 +98,14 @@ Item {
             compare(w.volumeText(), "2.0 L", "glassMl change re-applies live")
         }
 
-        // — status string —————————————————————————————————————————————————
+        // - status string -------------------------------------------------
         function test_status_string() {
             var w = h.item
             seed(3, 8)
             compare(w.status, "3/8", "status is count/goal")
         }
 
-        // — Clamping ————————————————————————————————————————————————————
+        // - Clamping ----------------------------------------------------
         function test_count_clamped_0_to_50() {
             var w = h.item
             w.set(100)
@@ -121,7 +121,7 @@ Item {
             compare(w.goal, 20, "goal max 20")
         }
 
-        // — Increment / decrement via set() ————————————————————————————————
+        // - Increment / decrement via set() --------------------------------
         function test_increment_decrement() {
             var w = h.item
             seed(0, 8)
@@ -131,7 +131,7 @@ Item {
             compare(w.count, 2)
         }
 
-        // — Daily reset: displayed count resets at midnight, stored stays ——————
+        // - Daily reset: displayed count resets at midnight, stored stays ------
         function test_midnight_display_reset_keeps_stored() {
             var w = h.item
             // Yesterday's document: 5 glasses on the previous day key.
@@ -142,7 +142,7 @@ Item {
             compare(cfg().day, daysAgoKey(1), "stored day still yesterday")
         }
 
-        // — First tap after midnight writes today/1, not stored+1 ————————————
+        // - First tap after midnight writes today/1, not stored+1 ------------
         function test_first_tap_after_midnight() {
             var w = h.item
             h.storeCtl.patchSettings("test-instance", { day: daysAgoKey(1), count: 5, goal: 8 })
@@ -153,7 +153,7 @@ Item {
             compare(w.count, 1)
         }
 
-        // — Streak: fresh goal hit bumps to 1 + sets lastGoalDay ————————————
+        // - Streak: fresh goal hit bumps to 1 + sets lastGoalDay ------------
         function test_fresh_goal_hit_bumps_streak() {
             var w = h.item
             seed(0, 8)
@@ -163,7 +163,7 @@ Item {
             compare(w.streakDisplay, 1, "streakDisplay reflects it")
         }
 
-        // — Streak: re-crossing same day does NOT double-increment ——————————
+        // - Streak: re-crossing same day does NOT double-increment ----------
         function test_recross_same_day_no_double_increment() {
             var w = h.item
             seed(0, 8)
@@ -174,7 +174,7 @@ Item {
             compare(cfg().streak, 1, "streak stays 1 on same-day re-cross")
         }
 
-        // — Streak: consecutive-day (lastGoalDay===yesterday) increments ——————
+        // - Streak: consecutive-day (lastGoalDay===yesterday) increments ------
         function test_consecutive_day_increments_streak() {
             var w = h.item
             h.storeCtl.patchSettings("test-instance",
@@ -184,7 +184,7 @@ Item {
             compare(cfg().lastGoalDay, w.todayKey)
         }
 
-        // — Streak: a one-day gap resets to 1 ————————————————————————————
+        // - Streak: a one-day gap resets to 1 ----------------------------
         function test_gap_resets_streak_to_1() {
             var w = h.item
             h.storeCtl.patchSettings("test-instance",
@@ -193,7 +193,7 @@ Item {
             compare(cfg().streak, 1, "gap (2 days ago) resets streak to 1")
         }
 
-        // — streakDisplay lapses to 0 when lastGoalDay is stale ————————————
+        // - streakDisplay lapses to 0 when lastGoalDay is stale ------------
         function test_streak_display_lapses() {
             var w = h.item
             h.storeCtl.patchSettings("test-instance", { streak: 9, lastGoalDay: daysAgoKey(3) })
@@ -207,7 +207,7 @@ Item {
             compare(w.streakDisplay, 4, "yesterday counts as still-alive streak")
         }
 
-        // — set(count) on the highest-filled glass is a no-op (dead tap) ————————
+        // - set(count) on the highest-filled glass is a no-op (dead tap) --------
         function test_tapping_highest_glass_is_noop() {
             var w = h.item
             seed(5, 8)
@@ -215,7 +215,7 @@ Item {
             compare(w.count, 5, "re-setting to the current count changes nothing")
         }
 
-        // — Expanded glass grid: set(i+1) sets count to i+1 ————————————————
+        // - Expanded glass grid: set(i+1) sets count to i+1 ----------------
         function test_glass_tap_sets_count() {
             var w = h.item
             seed(2, 8)
@@ -223,7 +223,7 @@ Item {
             compare(w.count, 4, "tapping glass index i sets count=i+1")
         }
 
-        // — Overfill allowed past goal ————————————————————————————————————
+        // - Overfill allowed past goal ------------------------------------
         function test_overfill_allowed() {
             var w = h.item
             seed(0, 8)
@@ -231,7 +231,7 @@ Item {
             compare(w.count, 12, "overfilling past goal is allowed (extra credit)")
         }
 
-        // — accentName override recolours effAccent ————————————————————————
+        // - accentName override recolours effAccent ------------------------
         function test_accent_name_override() {
             var w = h.item
             w.accentName = "purple"
@@ -241,7 +241,7 @@ Item {
             w.accentName = ""
         }
 
-        // — With an accent override, goal-reached colour is visibly different ——
+        // - With an accent override, goal-reached colour is visibly different --
         function test_goal_color_change_visible_with_override() {
             var w = h.item
             w.accentName = "red"
@@ -250,7 +250,7 @@ Item {
             w.accentName = ""
         }
 
-        // — BUG (audit #4): default accent makes the goal-reached colour invisible.
+        // - BUG (audit #4): default accent makes the goal-reached colour invisible.
         //   Correct behaviour is that effAccent and success differ so the reward
         //   colour change is perceptible. With the default accent they are the
         //   same byte value, so this fails.
@@ -260,14 +260,14 @@ Item {
                    "default accent must differ from success so hitting the goal recolours the count")
         }
 
-        // — BUG (audit line 49/58): lowering the goal below the current count
+        // - BUG (audit line 49/58): lowering the goal below the current count
         //   should credit the streak / mark the goal reached, but setGoal() only
         //   writes goal and never re-evaluates attainment.
         function test_lowering_goal_credits_streak() {
             var w = h.item
             seed(6, 8)          // 6 glasses, goal 8 (not yet reached, no streak)
             compare(w.streakDisplay, 0, "precondition: no streak yet")
-            w.setGoal(5)        // now 6 >= 5 — the goal is met by lowering it
+            w.setGoal(5)        // now 6 >= 5 - the goal is met by lowering it
             compare(w.count, 6, "count unchanged")
             compare(w.goal, 5, "goal lowered")
             compare(cfg().lastGoalDay, w.todayKey,
@@ -275,7 +275,7 @@ Item {
             compare(w.streakDisplay, 1, "and bump the streak")
         }
 
-        // — BUG (audit line 54): re-crossing the goal the same day replays the
+        // - BUG (audit line 54): re-crossing the goal the same day replays the
         //   celebration. Correct behaviour: the celebration should not re-fire
         //   (the streak is correctly guarded, but the flash/label are not).
         function test_recross_does_not_replay_celebration() {
@@ -288,7 +288,7 @@ Item {
             compare(w.celebrateMsg, "", "re-crossing the goal should not replay the celebration")
         }
 
-        // — reduceMotion path does not break goal crossing (smoke) ————————————
+        // - reduceMotion path does not break goal crossing (smoke) ------------
         function test_reduce_motion_smoke() {
             var w = h.item
             h.theme.reduceMotion = true
@@ -298,7 +298,7 @@ Item {
             h.theme.reduceMotion = false
         }
 
-        // — _yesterdayKey is exactly one calendar day before today —————————————
+        // - _yesterdayKey is exactly one calendar day before today -------------
         function test_yesterday_key() {
             var w = h.item
             compare(w._yesterdayKey(), daysAgoKey(1), "yesterday key = today − 1 day")
@@ -307,7 +307,7 @@ Item {
             verify(/^\d{4}-\d{2}-\d{2}$/.test(w._yesterdayKey()), "yesterday key is yyyy-MM-dd")
         }
 
-        // — resetSettings restores catalog defaults + clears streak/glassMl ————
+        // - resetSettings restores catalog defaults + clears streak/glassMl ----
         function test_reset_settings_restores_defaults() {
             var w = h.item
             // Dirty everything.
@@ -365,7 +365,7 @@ Item {
         WidgetHarness { id: yWide; anchors.fill: parent; widgetFile: "HydrationWidget.qml"; expanded: false } }
 
     // The OVERLAY, at the two boxes Dashboard actually gives it. `expanded: true`
-    // AND sizeClass "full" — the real pairing — because a mode-keyed literal can
+    // AND sizeClass "full" - the real pairing - because a mode-keyed literal can
     // only be caught with the mode switched ON. These are the live-preview pane
     // beside the config form (Dashboard: 38% of the width in landscape, a <=46%-
     // tall band stacked in portrait), NOT a 2560x720 screen.
@@ -379,7 +379,7 @@ Item {
         WidgetHarness { id: yProbe; anchors.fill: parent; widgetFile: "HydrationWidget.qml"; expanded: false } }
 
     // ── Overlay-fit hosts ───────────────────────────────────────────────────
-    // The overlay column must FIT the pane it is given — count clipping off the
+    // The overlay column must FIT the pane it is given - count clipping off the
     // top and the goal controls off the bottom (unreachable) was the bug. These
     // are the real boxes Dashboard hosts the overlay in: the 456-tall landscape
     // preview pane, the 2560x720 real device, and the 656x980 portrait pane. Each
@@ -414,7 +414,7 @@ Item {
             }, [])
         }
 
-        // 0.5x0.5 — the count, and the one tap that matters. Nothing else.
+        // 0.5x0.5 - the count, and the one tap that matters. Nothing else.
         function test_micro_is_count_plus_one_tap() {
             tryVerify(function () { return yMicro.ready }, 3000)
             var y = yMicro.item
@@ -422,7 +422,7 @@ Item {
             seed(yMicro)
             compare(y.micro, true, "a 348x409 compact box is the micro tile")
             compare(y.showHeader, false, "micro drops the chrome header")
-            compare(y.showGrid, false, "micro drops the glass grid — 8 droplets there are mush")
+            compare(y.showGrid, false, "micro drops the glass grid - 8 droplets there are mush")
             compare(y.showStreak, false, "…and the streak line")
             verify(y.countPx >= 20, "the count is a readout, not a caption ("
                    + y.countPx.toFixed(0) + "px)")
@@ -432,10 +432,10 @@ Item {
             compare(p[0].label, "+1", "…and it is the +1")
             verify(p[0].height >= yMicro.theme.touchTertiary,
                    "the +1 is >= touchTertiary (" + p[0].height + " >= "
-                   + yMicro.theme.touchTertiary + ") — never shrunk to fit")
+                   + yMicro.theme.touchTertiary + ") - never shrunk to fit")
         }
 
-        // 1x1 — the grid comes back and scales to the box.
+        // 1x1 - the grid comes back and scales to the box.
         function test_baseline_earns_the_grid() {
             tryVerify(function () { return yBase.ready }, 3000)
             tryVerify(function () { return yMicro.ready }, 3000)
@@ -455,7 +455,7 @@ Item {
                        p[i].label + " is >= touchTertiary (" + p[i].height + ")")
         }
 
-        // wide — the grid moves BESIDE the count/controls; same delegates.
+        // wide - the grid moves BESIDE the count/controls; same delegates.
         function test_wide_puts_the_grid_beside_the_controls() {
             tryVerify(function () { return yWide.ready }, 3000)
             var y = yWide.item
@@ -485,7 +485,7 @@ Item {
         // The overlay is a size class like any other, sized by the pane it is
         // actually given. Both hosts are expanded AND "full"; only the BOX
         // differs, so a literal returning one number for both is caught. This is
-        // the ONLY shape that catches a mode-keyed literal — a test that holds the
+        // the ONLY shape that catches a mode-keyed literal - a test that holds the
         // mode at false never fires the literal branch at all.
         function test_overlay_banner_is_sized_by_its_pane_not_by_a_mode_literal() {
             tryVerify(function () { return yOvlL.ready && yOvlP.ready }, 3000)
@@ -495,7 +495,7 @@ Item {
             // A real event-loop turn, not wait(0): these hosts default to
             // sizeClass "tall" and only become "full" on the lines above, so
             // wait(0) reads PRE-change geometry. waitForRendering is wrong
-            // offscreen — no frame is ever swapped, so it just burns its timeout.
+            // offscreen - no frame is ever swapped, so it just burns its timeout.
             wait(16)
             compare(land.expanded, true, "precondition: this IS the overlay")
             compare(port.expanded, true, "…and so is this one")
@@ -537,7 +537,7 @@ Item {
             compare(mb.font.pixelSize, Math.round(micro.celebratePx),
                     "…and on a micro tile")
             verify(bb.font.pixelSize > mb.font.pixelSize,
-                   "a 696x819 tile pops bigger than a 348x409 one — the banner reads "
+                   "a 696x819 tile pops bigger than a 348x409 one - the banner reads "
                    + "the card, not the mode (" + bb.font.pixelSize + " vs "
                    + mb.font.pixelSize + ")")
         }
@@ -545,7 +545,7 @@ Item {
         // The banner had NO width, no wrapMode and no elide, so a message longer
         // than the card had nowhere to go and spilled out of both edges.
         // Structural: bounded by the card, wrapped to at most 2 lines. Never glyph
-        // ink — paintedWidth is meaningless headless.
+        // ink - paintedWidth is meaningless headless.
         function test_a_long_celebration_stays_inside_the_card() {
             tryVerify(function () { return yBase.ready }, 3000)
             var y = yBase.item; y.sizeClass = "compact"
@@ -556,9 +556,9 @@ Item {
             // Deliberately FAR longer than could conceivably fit: ~330 characters
             // into two ~660px lines is ~4px per glyph at a ~40px font. No font
             // makes that fit, so `lineCount`/`truncated` below are structural here
-            // rather than a claim about DejaVu's metrics — the margin, not the
+            // rather than a claim about DejaVu's metrics - the margin, not the
             // measurement, is what keeps them font-independent.
-            y.celebrateMsg = "🎉 Das tägliche Trinkziel ist erreicht — hervorragend "
+            y.celebrateMsg = "🎉 Das tägliche Trinkziel ist erreicht - hervorragend "
                            + "gemacht, und das schon den dritten Tag in Folge, was "
                            + "wirklich bemerkenswert ist, wenn man bedenkt wie oft "
                            + "das Glas Wasser sonst einfach vergessen wird, und "
@@ -567,7 +567,7 @@ Item {
             wait(16)
             verify(b.width <= y.width + 0.51,
                    "the banner stays inside the card (" + b.width.toFixed(1)
-                   + " in " + y.width + ") — it had no width at all and simply spilled")
+                   + " in " + y.width + ") - it had no width at all and simply spilled")
             compare(b.lineCount, 2,
                     "…it WRAPS (so wrapMode is live) and stops at 2 lines")
             verify(b.truncated,
@@ -577,8 +577,8 @@ Item {
 
         // `glassPx` opened with `w.expanded ? 42`, which never rendered: glassPx
         // feeds only the tile Grid (and its cell/column arithmetic), and that
-        // layout is `visible: !w.expanded`. Two halves — the deadness, then the
-        // removal — because either alone proves little.
+        // layout is `visible: !w.expanded`. Two halves - the deadness, then the
+        // removal - because either alone proves little.
         //
         // NOTE: unlike every other guard here this one asserts the PROPERTY, and
         // it has to: the branch's whole defect is that it has no rendered value in
@@ -593,7 +593,7 @@ Item {
             var tileGrid = gridOf(yOvlP)
             verify(tileGrid !== null, "the tile layout resolves in the overlay")
             compare(tileGrid.visible, false,
-                    "the tile layout — glassPx's ONLY consumer — is not drawn in the "
+                    "the tile layout - glassPx's ONLY consumer - is not drawn in the "
                     + "overlay, so `expanded ? 42` was dead, not merely mode-keyed")
 
             // Half two, and the half that bites: same box, opposite modes. A
@@ -609,7 +609,7 @@ Item {
             compare(probe.width, base.width, "precondition: the two boxes match")
             compare(probe.height, base.height, "…on both axes")
             compare(probe.glassPx, base.glassPx,
-                    "the droplet size is decided by the box alone — flipping the mode "
+                    "the droplet size is decided by the box alone - flipping the mode "
                     + "on an identical box moves nothing (" + probe.glassPx.toFixed(1)
                     + " vs " + base.glassPx.toFixed(1) + ")")
         }
@@ -624,7 +624,7 @@ Item {
     }
 
     // ── The overlay's hero actions ──────────────────────────────────────────
-    // Remove / Add a glass are deliberately far wider than their text — this is
+    // Remove / Add a glass are deliberately far wider than their text - this is
     // the full-screen view of a one-tap widget. That was written as
     // `implicitWidth: 170` / `240`, i.e. as the BOX rather than as a MINIMUM, so
     // the pill could never grow past it and a longer label would elide inside a
@@ -652,7 +652,7 @@ Item {
         }
         // A real event-loop turn: a textScale change re-polishes the layout, and
         // wait(0) returns before the new geometry lands. waitForRendering is the
-        // wrong tool offscreen — no frame is ever swapped, so it just burns its
+        // wrong tool offscreen - no frame is ever swapped, so it just burns its
         // timeout.
         function settle() { wait(16) }
 
@@ -663,7 +663,7 @@ Item {
             for (var i = 0; kids && i < kids.length; i++) findAll(kids[i], pred, acc)
             return acc
         }
-        // The VISIBLE pill carrying a given label — the tile layout's own pills
+        // The VISIBLE pill carrying a given label - the tile layout's own pills
         // exist alongside these but are hidden while expanded.
         function pillNamed(label) {
             return findAll(h.item, function (n) {
@@ -678,7 +678,7 @@ Item {
             }, [])[0] || null
         }
 
-        // Half one: the generosity is intact — the pills are still much larger
+        // Half one: the generosity is intact - the pills are still much larger
         // than their text at every reachable text size.
         function test_hero_actions_keep_their_generous_floor() {
             var cases = [ { l: "Remove", w: 170 }, { l: "Add a glass", w: 240 } ]
@@ -701,7 +701,7 @@ Item {
 
         // Half two, and the half that actually distinguishes the fix: a floor
         // YIELDS to bigger content; `implicitWidth: 170` cannot. The reachable
-        // textScale range can never show this — at 1.6 "Remove" wants ~141px and
+        // textScale range can never show this - at 1.6 "Remove" wants ~141px and
         // "Add a glass" ~193px, both still under their floors, which is exactly
         // why the literal survived this long. Give the pill a genuinely longer
         // label (what a translation or a relabel does) and the difference is the
@@ -711,7 +711,7 @@ Item {
             settle()
             var p = pillNamed("Remove")
             verify(p !== null, "precondition: the Remove pill")
-            // Deliberately NOT "p.width <= minWidth" — that would assert that
+            // Deliberately NOT "p.width <= minWidth" - that would assert that
             // "Remove" measures under 170px, which is a claim about the font. It
             // holds locally (~141px at textScale 1.6) and almost certainly on CI's
             // DejaVu, but it is exactly the kind of assertion that means two
@@ -729,7 +729,7 @@ Item {
                    "precondition: the longer label genuinely outgrows the floor ("
                    + (row.implicitWidth + 2 * p._padH).toFixed(1) + " > " + p.minWidth + ")")
             verify(p.width >= row.implicitWidth + 2 * p._padH - 0.51,
-                   "the pill GROWS past its floor to hold the label — the floor is a "
+                   "the pill GROWS past its floor to hold the label - the floor is a "
                    + "minimum, not the box (w=" + p.width.toFixed(1) + " content+pad="
                    + (row.implicitWidth + 2 * p._padH).toFixed(1) + ")")
             var lr = labelRun(p)
@@ -747,10 +747,10 @@ Item {
     // 88px glass cells, spacingXl between ~6 rows) sized for a tall screen that
     // does not exist. At goal 8 it summed to ~612px and at goal 20 to ~812px, so
     // inside the 456-tall landscape preview pane the count clipped off the TOP
-    // and the "Daily goal −N+" controls — the overlay's whole point — clipped off
+    // and the "Daily goal −N+" controls - the overlay's whole point - clipped off
     // the BOTTOM, unreachable, at any goal past ~12. This guard maps the overlay
     // column's top and bottom into the host box and asserts the STRUCTURAL fit
-    // (top >= 0, bottom <= boxH, small tolerance) — never glyph ink, which is
+    // (top >= 0, bottom <= boxH, small tolerance) - never glyph ink, which is
     // meaningless headless. It is proved to go RED when the old literals are
     // restored (the column then spills the 456 and 720 landscape boxes).
     TestCase {
@@ -764,7 +764,7 @@ Item {
             for (var i = 0; kids && i < kids.length; i++) findAll(kids[i], pred, acc)
             return acc
         }
-        // The overlay column is the PARENT of the big "N / N" count Text — the one
+        // The overlay column is the PARENT of the big "N / N" count Text - the one
         // Text in the tree whose content carries a slash at a hero size. (The tile
         // has a "N of N glasses" line with no slash; micro's "N/N" lives in the
         // hidden, non-micro tile here.) Anchoring on the count and taking .parent

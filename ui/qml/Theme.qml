@@ -1,6 +1,6 @@
 import QtQuick
 
-// Theme — THE single source of design-system tokens (colors, category tones,
+// Theme - THE single source of design-system tokens (colors, category tones,
 // spacing, radii, touch targets, icon sizes, typography, motion) + the
 // theme/accent appliers. Consumed by BOTH the Edge hub (main.qml) and the
 // companion Manager (clone preview) and the QML test harness, so the two apps
@@ -23,18 +23,18 @@ QtObject {
     // `reduceMotion` above is the PERSISTED config flag. Two more inputs decide
     // what actually renders; `effectiveReduceMotion` is what the motion tokens
     // consume. Kept separate (rather than folded into `reduceMotion`) because
-    // main.qml aliases `reduceMotion` onto the persisted value — collapsing them
+    // main.qml aliases `reduceMotion` onto the persisted value - collapsing them
     // would let an OS signal write itself back into the user's config.
     //
     // Qt cannot report the OS setting: there is NO reduce-motion style hint in
-    // Qt 6 — verified on 6.11 (`Qt.styleHints.useReducedMotion === undefined`;
+    // Qt 6 - verified on 6.11 (`Qt.styleHints.useReducedMotion === undefined`;
     // the only a11y hint is `accessibility.contrastPreference`, itself 6.10+),
     // and 6.7 (CI) exposes strictly fewer hints. So the platform read (GNOME
     // `enable-animations`, XDG desktop-portal) must be injected here by the host
     // app. Default false = "no OS signal", which is also the safe CI value.
     property bool systemReduceMotion: false
 
-    // "auto" (default) | "on" | "off" — an EXPLICIT choice, and it beats the OS.
+    // "auto" (default) | "on" | "off" - an EXPLICIT choice, and it beats the OS.
     // Precedence: explicit > OS > legacy flag.
     //   "auto" → no explicit choice yet, so the OS signal (or the persisted
     //            `reduceMotion` flag) may turn motion off.
@@ -84,11 +84,11 @@ QtObject {
 
         // Okabe–Ito: the published Color Universal Design palette, chosen to stay
         // mutually distinguishable under protanopia/deuteranopia/tritanopia.
-        // Okabe & Ito (2008), "Color Universal Design (CUD)" — https://jfly.uni-koeln.de/color/
+        // Okabe & Ito (2008), "Color Universal Design (CUD)" - https://jfly.uni-koeln.de/color/
         // The `a` tones are the canonical hexes and must NOT be hand-tuned: the
         // set's guarantee is a property of the 8 colours *together*. `b` is a 35%
         // tint toward white, matching the lighter-second-tone rule above.
-        // Namespaced `oi_*` so they ADD to the table — the 14 names above are
+        // Namespaced `oi_*` so they ADD to the table - the 14 names above are
         // referenced by name in saved configs and must keep resolving unchanged.
         "oi_black":          { a: "#000000", b: "#595959" },
         "oi_orange":         { a: "#E69F00", b: "#EFC159" },
@@ -101,7 +101,7 @@ QtObject {
 
         // Accents that complete the distro-evoking theme modes (see applyTheme).
         // Colour is not protectable subject matter, so a palette may evoke a
-        // familiar look — a logo never may, and none is shipped. The last two are
+        // familiar look - a logo never may, and none is shipped. The last two are
         // named for their colours ONLY; see the note in applyTheme before renaming
         // them. Separate from the theme modes on purpose: applyTheme re-applies the
         // user's accent rather than forcing one, so pairing these is the user's
@@ -143,7 +143,7 @@ QtObject {
     // call sites keep reading `theme.fontLabel` and scale for free.
     // Clamped, not free-form: under 0.8 the captions stop being legible at the
     // Edge's viewing distance, and over 1.6 the 40–48px data readouts overflow
-    // the narrow panel's tiles. An out-of-range value is a bug, not a taste —
+    // the narrow panel's tiles. An out-of-range value is a bug, not a taste -
     // clamp rather than let it break the layout.
     property real textScale: 1.0
     readonly property real textScaleEff: Math.max(0.8, Math.min(1.6, textScale))
@@ -160,7 +160,7 @@ QtObject {
     // token source. URL resolution: Theme.qml is loaded from qrc:/qml/ (hub),
     // qrc:/manager/ (Manager) and the plain filesystem (qmltestrunner), so the
     // qrc case uses the absolute resource path assets/fonts.qrc puts the files
-    // at, and the filesystem case walks to <repo>/assets/fonts/ — same bytes.
+    // at, and the filesystem case walks to <repo>/assets/fonts/ - same bytes.
     readonly property string _fontsDir:
         Qt.resolvedUrl(".").toString().indexOf("qrc:") === 0
             ? "qrc:/assets/fonts/"
@@ -173,7 +173,7 @@ QtObject {
         FontLoader { source: t._fontsDir + "Lexend-Regular.ttf" }
     readonly property FontLoader lexendBoldLoader:
         FontLoader { source: t._fontsDir + "Lexend-Bold.ttf" }
-    // Brand wordmark face (Chakra Petch, OFL) — close free stand-in for the
+    // Brand wordmark face (Chakra Petch, OFL) - close free stand-in for the
     // SKYPhoenix IT logo lettering. Used only for the "EdgeHub" lockup.
     readonly property FontLoader brandLoader:
         FontLoader { source: t._fontsDir + "ChakraPetch-SemiBold.ttf" }
@@ -195,7 +195,7 @@ QtObject {
         brandLoader.status === FontLoader.Ready
             ? brandLoader.name : "Chakra Petch, Rajdhani, Saira, sans-serif"
 
-    // User-facing font preference: "system" (default — the product's look) |
+    // User-facing font preference: "system" (default - the product's look) |
     // "hyperlegible" | "lexend". Wires the UI family token (fontDisplay) so
     // every widget follows for free; fontMono stays mono on purpose (tabular
     // data readouts need fixed-pitch digits). Unknown values fall through to
@@ -212,7 +212,7 @@ QtObject {
     // Widget-card FILL, as a NOTIFIABLE property so every card repaints the instant
     // glassOpacity changes. (The old cardFill() was a plain function; a
     // function-call binding is the one appearance token whose re-evaluation on
-    // change isn't guaranteed — this removes that doubt.) Higher glassOpacity →
+    // change isn't guaranteed - this removes that doubt.) Higher glassOpacity →
     // more translucent so a wallpaper / animated backdrop reads THROUGH the cards
     // (frosted-glass look). Range ~0.22 (max glass) .. 0.84 (opaque). The RGB is
     // deliberately left at cardBackground: lightening the fill to make glass
@@ -228,7 +228,7 @@ QtObject {
     // Back-compat shim: existing call sites use cardFill(); both resolve here.
     function cardFill() { return cardFillColor }
 
-    // Card BORDER, pushed toward the text colour with glassOpacity — this is what
+    // Card BORDER, pushed toward the text colour with glassOpacity - this is what
     // makes the slider visibly DO something on the common flat-dark case, where the
     // fill alone couldn't change perceptibly without breaking accent contrast. More
     // glass → a stronger "rim light" edge (up to ~40% toward textPrimary), the
@@ -244,7 +244,7 @@ QtObject {
                       cardBorder.g + (textPrimary.g - cardBorder.g) * glassOpacity * 0.62,
                       cardBorder.b + (textPrimary.b - cardBorder.b) * glassOpacity * 0.62, 1)
     // Strength of the card's top-edge frosted highlight, also scaling with glass
-    // (~0.03 → ~0.26 white). A second visible cue that reads as "more glass" — with
+    // (~0.03 → ~0.26 white). A second visible cue that reads as "more glass" - with
     // a wider range for more pezazz between low and high glass.
     readonly property real cardSheen: decorative ? (0.03 + glassOpacity * 0.23) : 0.0
 
@@ -261,7 +261,7 @@ QtObject {
     // so reduce-motion collapses them all to an instant jump in one place.
     property int motionValue: effectiveReduceMotion ? 0 : 400
 
-    // ── Theme catalogue — the ONE source of the selectable theme list ─────────
+    // ── Theme catalogue - the ONE source of the selectable theme list ─────────
     // key, display name, two preview-gradient colours, whether it needs Pro, and a
     // group for the pickers to section by. Both the hub's SettingsPanel and the
     // Manager's theme dropdown read THIS, so the list, the Pro flags and the preview
@@ -301,7 +301,7 @@ QtObject {
     ]
     // Group order for the pickers (only groups that exist are shown).
     // The shipped default theme key. MUST track default_theme_mode() in
-    // core/src/config.rs — the Rust side is authoritative for a fresh config;
+    // core/src/config.rs - the Rust side is authoritative for a fresh config;
     // this is the fallback for an appearance blob that predates the key or has
     // it missing. Two hardcoded "dark" fallbacks in Manager.qml used to drift
     // from it, which showed the Manager a different theme than the Hub.
@@ -434,12 +434,12 @@ QtObject {
 
         // ── Palettes evoking familiar Linux distributions ────────────────────
         // COLOUR ONLY. This product is sold, and distro logos/wordmarks are
-        // trademarks that our own MIT/Apache licensing does nothing about — but a
+        // trademarks that our own MIT/Apache licensing does nothing about - but a
         // colour palette is not protectable subject matter. So these cases ship a
         // *palette inspired by* a look and nothing else: no logo, no glyph, no
         // traced or approximated mark, anywhere in the theme or its assets.
         //
-        // NAMING POLICY (owner decision, 2026-07-19) — no project name is used as
+        // NAMING POLICY (owner decision, 2026-07-19) - no project name is used as
         // a user-visible label, for ANY of these, regardless of how permissive
         // that project's guidelines are. Nominative use is probably defensible;
         // it is not worth defending. Instead each display name LEANS ON THE
@@ -459,12 +459,12 @@ QtObject {
         // the whole point; the name would be the whole liability.
         //
         // The `k:` KEYS deliberately keep their original spelling. They are
-        // internal identifiers only — persisted in config.toml and switched on
-        // below — never rendered. Renaming them would break every existing user's
+        // internal identifiers only - persisted in config.toml and switched on
+        // below - never rendered. Renaming them would break every existing user's
         // saved theme for zero legal benefit.
         //
         // Each carries its hue in the SURFACES (backgrounds, card fills, borders)
-        // rather than in `accent` — applyTheme deliberately ends by re-applying
+        // rather than in `accent` - applyTheme deliberately ends by re-applying
         // the user's own accent, so a theme must never clobber it. The matching
         // accents live in `accentPresets` for users who want the full look.
 

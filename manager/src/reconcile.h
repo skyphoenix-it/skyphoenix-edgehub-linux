@@ -3,7 +3,7 @@
 #include <QString>
 
 // Decision for what to do with a UI-state document pulled from the hub over IPC,
-// given the reconnect/suppression context. Pure — no I/O, no clock — so the
+// given the reconnect/suppression context. Pure - no I/O, no clock - so the
 // reconnect state machine is testable with a decision table.
 enum class ReconcileAction {
     AdoptHub,          // adopt the hub's pulled state (subject to the suppress check)
@@ -13,12 +13,12 @@ enum class ReconcileAction {
 };
 
 // Decide the fate of a pulled state.
-//   awaitingHub      — a buffered offline edit is waiting to be reconciled on the
+//   awaitingHub      - a buffered offline edit is waiting to be reconciled on the
 //                      first pull after reconnecting.
-//   havePendingPush  — a buffered offline edit actually exists.
-//   pulled           — the UI-state the hub just sent us.
-//   lastHub          — the last UI-state we knew the hub held.
-//   suppressed       — nowMs < suppressAdoptUntilMs (a recent push we shouldn't clobber).
+//   havePendingPush  - a buffered offline edit actually exists.
+//   pulled           - the UI-state the hub just sent us.
+//   lastHub          - the last UI-state we knew the hub held.
+//   suppressed       - nowMs < suppressAdoptUntilMs (a recent push we shouldn't clobber).
 //
 // When awaitingHub: if the hub's state changed while we were offline the buffered
 // edit is stale (DropEdit). With NO prior baseline (lastHub empty) but a non-empty

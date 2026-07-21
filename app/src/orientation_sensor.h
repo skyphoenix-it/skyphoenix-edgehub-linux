@@ -6,7 +6,7 @@
 
 class QSocketNotifier;
 
-// OrientationSensor — reads the Corsair Xeneon Edge's orientation from its vendor
+// OrientationSensor - reads the Corsair Xeneon Edge's orientation from its vendor
 // HID pipe (/dev/hidrawN, vendor 1b1c product 1d0d). The Edge pushes an unsolicited
 // 64-byte report whenever the panel is rotated; byte 7 carries the orientation:
 //   0x03 = portrait (upright)   0x00 = +90° CW    0x01 = 180°   0x02 = -90° CW
@@ -65,7 +65,7 @@ private:
     // pushes reports on *change*, so without this the UI can start mis-rotated).
     void queryInitialOrientation();
     // Adopt a rotation: update m_rotation, emit, and persist it (single path so
-    // every source — GET_REPORT, a pushed report, or the restored state — is saved).
+    // every source - GET_REPORT, a pushed report, or the restored state - is saved).
     void applyRotation(int rot);
     // Persist / restore the last orientation to m_statePath (a plain integer file).
     void persistRotation() const;

@@ -22,7 +22,7 @@ Item {
     // these two booleans never severs the binding.
     property bool motionOn: true
 
-    // 7 styles, each in its own sized host (overlapping is fine — offscreen).
+    // 7 styles, each in its own sized host (overlapping is fine - offscreen).
     Wg.AnimatedBackground   { id: orbs;   anchors.fill: parent; active: root.motionOn && !_theme.reduceMotion }
     Wg.AuroraBackground     { id: aurora; anchors.fill: parent; active: root.motionOn && !_theme.reduceMotion }
     Wg.BokehBackground      { id: bokeh;  anchors.fill: parent; active: root.motionOn && !_theme.reduceMotion }

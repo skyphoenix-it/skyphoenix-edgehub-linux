@@ -85,7 +85,7 @@ Item {
 
         // resetSettings replaces settings with a DEEP COPY of the defaults: two
         // instances reset from the same defaults must NOT share the array instance
-        // (mutating one must not leak into the other) — the B9 aliasing hazard.
+        // (mutating one must not leak into the other) - the B9 aliasing hazard.
         function test_reset_settings_deep_clones_defaults() {
             var defaults = { tasks: [], count: 0 }
             store.resetSettings("a", defaults)

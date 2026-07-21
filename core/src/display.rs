@@ -70,7 +70,7 @@ pub fn is_xeneon_edge(edid: &[u8]) -> bool {
     //   horizontal addressable = low byte 56 | (high nibble of byte 58) << 8
     //   vertical addressable   = low byte 59 | (high nibble of byte 61) << 8
     // (The previous implementation read bytes 17-20, which are the manufacture
-    // year / EDID version / basic-params — never the resolution.)
+    // year / EDID version / basic-params - never the resolution.)
     let h_active = ((edid[58] as u16 & 0xF0) << 4) | edid[56] as u16;
     let v_active = ((edid[61] as u16 & 0xF0) << 4) | edid[59] as u16;
 
@@ -300,7 +300,7 @@ mod tests {
         // whose decoded groups include a 0 group and assert no control/symbol
         // characters leak out.
         let mut edid = vec![0u8; 128];
-        // group1 = 1 ('A'), group2 = 0 ('@' — invalid), group3 = 1 ('A').
+        // group1 = 1 ('A'), group2 = 0 ('@' - invalid), group3 = 1 ('A').
         // Explicit bit layout kept for documentation despite the zero group.
         #[allow(clippy::identity_op)]
         let mfg_bits: u16 = (1u16 << 10) | (0u16 << 5) | 1u16;
@@ -342,7 +342,7 @@ mod proptests {
             let model = parse_model_name(&bytes);
             prop_assert_eq!(&model, &parse_model_name(&bytes));
 
-            // is_xeneon_edge is a pure predicate — deterministic, never panics.
+            // is_xeneon_edge is a pure predicate - deterministic, never panics.
             let edge = is_xeneon_edge(&bytes);
             prop_assert_eq!(edge, is_xeneon_edge(&bytes));
         }

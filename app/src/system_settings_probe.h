@@ -13,10 +13,10 @@
 #include <optional>
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SystemSettingsProbe — the OS "reduce motion" signal for QML.
+// SystemSettingsProbe - the OS "reduce motion" signal for QML.
 //
 // QML cannot read this on its own: there is NO reduce-motion style hint in any
-// Qt 6 (verified on 6.11 — `Qt.styleHints.useReducedMotion === undefined`; the
+// Qt 6 (verified on 6.11 - `Qt.styleHints.useReducedMotion === undefined`; the
 // only a11y hint is `accessibility.contrastPreference`, itself 6.10+). So the
 // platform read happens here, over the XDG desktop portal's Settings interface
 // (org.freedesktop.portal.Desktop, org.freedesktop.portal.Settings), and QML
@@ -24,19 +24,19 @@
 //
 // Two keys are read, and BOTH are real (verified against a live portal on KDE
 // Plasma, Settings version 2):
-//   • "org.freedesktop.appearance" / "reduced-motion"  (u: 1 = reduce) — the
+//   • "org.freedesktop.appearance" / "reduced-motion"  (u: 1 = reduce) - the
 //     standardized cross-desktop key (newer xdg-desktop-portal releases).
 //   • "org.gnome.desktop.interface" / "enable-animations"  (b: false = reduce)
-//     — GNOME's key, which compat backends (including KDE's) also answer.
+//     - GNOME's key, which compat backends (including KDE's) also answer.
 // KDE's own kdeglobals AnimationDurationFactor is deliberately NOT probed:
 // on a real Plasma box ReadOne("org.kde.kdeglobals.KDE",
 // "AnimationDurationFactor") fails with "Requested setting not found" (the key
 // only appears via ReadAll, typed as a string), and the two keys above already
-// cover Plasma — its portal backend flips them when animations are disabled.
+// cover Plasma - its portal backend flips them when animations are disabled.
 //
 // The two sources are OR-ed: any OS-level "reduce" wins. That is the a11y-safe
 // combination, and the user can still force motion back on per-device via
-// theme.reduceMotionPreference === "off" (explicit beats OS — see Theme.qml).
+// theme.reduceMotionPreference === "off" (explicit beats OS - see Theme.qml).
 //
 // Failure policy (a hard requirement): no session bus, no portal, no key →
 // `reduceMotion` simply stays false and NOTHING is logged. A dashboard
@@ -47,7 +47,7 @@
 // lost; a settings change propagates without a restart.
 //
 // Testing: applySetting()/interpretSetting()/unwrapDBusVariant() are the pure
-// parsing seam — tests drive them directly with crafted variants instead of
+// parsing seam - tests drive them directly with crafted variants instead of
 // depending on the host's real desktop settings (see
 // tests/cpp/tst_system_settings_probe.cpp).
 // ─────────────────────────────────────────────────────────────────────────────
@@ -152,7 +152,7 @@ private:
             QDBusPendingReply<QDBusVariant> reply = *w;
             if (reply.isError()) {
                 // ReadOne is Settings v2 (2023). An older portal only has the
-                // deprecated Read (returns v(v(x)) — unwrap handles the extra
+                // deprecated Read (returns v(v(x)) - unwrap handles the extra
                 // layer). Any other error ("setting not found", no portal at
                 // all) means "no signal": stay false, log nothing.
                 if (!legacyRead &&

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Scenario 01 — w/h → named-size migration on a real persisted config.
+# Scenario 01 - w/h → named-size migration on a real persisted config.
 #
 # Seeds a config whose ui_state still speaks the OLD `{w,h}` span vocabulary
 # (per the migration rules documented in ui/qml/DashboardStore.qml), launches
 # the REAL hub, and asserts the doc it persists back:
-#   * every tile now carries a LEGAL named `size` — with the exact expected
+#   * every tile now carries a LEGAL named `size` - with the exact expected
 #     values from the migration table (w/cols → short-axis fraction, h → thirds,
 #     unsupported sizes coerced DOWN to the largest declared shape);
 #   * the dead vocabulary is gone (no tile `w`/`h`, no page `cols`,
@@ -15,7 +15,7 @@
 #
 # The hub only persists when something schedules a save, so each launch seeds
 # the Focus widget one step from a natural completion (running with an expired
-# timer) — the same proven save trigger as run_focus_goal_bonus.sh.
+# timer) - the same proven save trigger as run_focus_goal_bonus.sh.
 set -uo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -27,7 +27,7 @@ trap 'rm -rf "$RT_WORK"' EXIT
 fail=0
 
 TODAY="$(date +%F)"
-focus_settings() { # $1=doneToday — running with an expired timer = save trigger
+focus_settings() { # $1=doneToday - running with an expired timer = save trigger
     printf '{"preset":"classic","phase":"work","running":true,"endEpoch":1600000000000,"pausedRemaining":1500,"doneToday":%s,"day":"%s","points":0,"dailyGoal":9,"rewardPoints":false,"celebrate":false,"autoStartBreak":false}' "$1" "$TODAY"
 }
 
@@ -46,7 +46,7 @@ python3 "$HERE/seed_config.py" "$RT_CFG" >/dev/null <<EOF
     {"id":"focus-1","type":"focus","w":2,"h":2}]}]}
 EOF
 
-echo "Launch 1 — migrate the old vocabulary and persist"
+echo "Launch 1 - migrate the old vocabulary and persist"
 rt_run_hub "$RT_ROOT" 8
 rt_assert_live "launch1" "$RT_ROOT" || fail=1
 
@@ -82,13 +82,13 @@ check_doc() { # $1=label  → prints tile map, asserts the migrated shape
     fi
 }
 if ! grep -aq "Configuration saved" "$RT_ROOT/hub.log"; then
-    echo "  [launch1] FAIL: no save happened — migration assertion would be vacuous"
+    echo "  [launch1] FAIL: no save happened - migration assertion would be vacuous"
     fail=1
 else
     check_doc "launch1"
 fi
 
-echo "Launch 2 — idempotence: the migrated doc round-trips unchanged"
+echo "Launch 2 - idempotence: the migrated doc round-trips unchanged"
 # Re-arm ONLY the focus save trigger; the tiles stay exactly as launch 1 left them.
 python3 - "$RT_CFG" "$TODAY" <<'EOF'
 import json, sys, tomllib
@@ -108,7 +108,7 @@ tiles_before="$(rt_json "$(rt_read_config "$RT_CFG")" 'str([(t["id"], t["size"])
 rt_run_hub "$RT_ROOT" 8
 rt_assert_live "launch2" "$RT_ROOT" || fail=1
 if ! grep -aq "Configuration saved" "$RT_ROOT/hub.log"; then
-    echo "  [launch2] FAIL: no save happened — idempotence assertion would be vacuous"
+    echo "  [launch2] FAIL: no save happened - idempotence assertion would be vacuous"
     fail=1
 else
     tiles_after="$(rt_json "$(rt_read_config "$RT_CFG")" 'str([(t["id"], t["size"]) for p in d["ui_state"]["pages"] for t in p["tiles"]])')"
@@ -123,4 +123,4 @@ fi
 
 echo
 if [ "$fail" -ne 0 ]; then echo "RESULT: FAILURE"; exit 1; fi
-echo "RESULT: SUCCESS — w/h documents migrate to named sizes, losslessly and idempotently"
+echo "RESULT: SUCCESS - w/h documents migrate to named sizes, losslessly and idempotently"

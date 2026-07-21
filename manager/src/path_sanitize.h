@@ -11,7 +11,7 @@
 //
 // A crafted name (e.g. "../../.config/foo", an absolute path, or "a/b") is first
 // collapsed to its bare filename, then the resolved path is verified to still lie
-// within the images directory before it is returned — so callers can delete/open
+// within the images directory before it is returned - so callers can delete/open
 // it without traversing outside.
 inline std::optional<QString> sanitizeImageName(const QString& name,
                                                 const QString& imagesDir) {
@@ -23,7 +23,7 @@ inline std::optional<QString> sanitizeImageName(const QString& name,
     // Defense in depth. `base` is already a bare leaf (fileName() above strips
     // every directory component and we reject ""/"."/".."), so `target` ALWAYS
     // lies inside `dirPath` and this branch cannot be reached through the public
-    // function — tst_path_sanitize.cpp throws ../, absolute paths and deep
+    // function - tst_path_sanitize.cpp throws ../, absolute paths and deep
     // traversals at it and every one is contained, never rejected here. It is
     // kept, and GCOVR-excluded rather than faked with an unreachable test,
     // BECAUSE it must survive `fileName()` normalization ever being weakened: if

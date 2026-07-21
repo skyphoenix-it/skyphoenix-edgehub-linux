@@ -1,12 +1,13 @@
-# Release announcement template
+# EdgeHub v1.0.0-beta.1 release announcement
 
-> **EMBARGOED DRAFT — DO NOT PUBLISH.** Replace every placeholder and complete
-> [`launch-checklist.md`](launch-checklist.md) first.
+> **Prepared copy.** Publish only after the signed artifacts and checksums are
+> live at the release URL.
 
-## EdgeHub [VERSION]: a native Linux dashboard for the Xeneon Edge
+## EdgeHub v1.0.0-beta.1: a native Linux dashboard for the Xeneon Edge
 
-EdgeHub [VERSION] is now available for the Corsair Xeneon Edge on
-`[VERIFIED_PLATFORM_SUMMARY]`.
+EdgeHub v1.0.0-beta.1 is now available for the Corsair Xeneon Edge on
+**CachyOS/Arch Linux with KDE Plasma on Wayland**. Portable x86-64 builds
+require Qt 6.5 or newer.
 
 This release turns the 2560×720 touch panel into swipeable dashboard pages with
 live system, time, focus, media, data, and information widgets. You can arrange
@@ -36,7 +37,7 @@ all layouts, backgrounds, wallpapers, accents, accessibility features, and the
 full Manager.
 
 Pro adds nine optional colour themes. It does not unlock widgets, data sources,
-layout tools, or update access. `[PRO_AVAILABILITY_SENTENCE]`
+layout tools, or update access. Pro keys are not offered for sale in beta.1.
 
 ### Built around real panel workflows
 
@@ -45,20 +46,22 @@ Hub, and the Manager: display targeting and reconnect behavior, orientation,
 screen selection, live reflection, capacity-aware resizing, drag reorder,
 touch navigation, and recovery across restarts.
 
-The exact release evidence—including `[VERIFIED_TEST_SUMMARY]`, package
-lifecycle results, performance protocol, hardware soak, checksums, and
-signatures—is available at [RELEASE_EVIDENCE_URL].
+The release evidence includes 269 physical-Edge checks, 53 Manager/Hub
+scenarios, 18 display-lifecycle scenarios, and 1,311 local compositor checks.
+The release owner waived the planned 48-hour soak, and this beta makes no formal
+performance or long-duration stability claim. Evidence is available at
+https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/blob/v1.0.0-beta.1/docs/testing/hardware-validation-2026-07-21.md.
 
 ### Download and documentation
 
-- Download: [DOWNLOAD_URL]
-- Release notes: [RELEASE_URL]
-- Installation: [INSTALL_URL]
-- Evidence and checksums: [RELEASE_EVIDENCE_URL]
-- Source and issues: https://github.com/skyphoenix-it/XeneonEdge_Linux
-- Support: [SUPPORT_URL]
+- Download: https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/releases/tag/v1.0.0-beta.1
+- Release notes: https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/releases/tag/v1.0.0-beta.1
+- Installation: https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/blob/v1.0.0-beta.1/README.md#install
+- Evidence and checksums: https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/blob/v1.0.0-beta.1/docs/testing/hardware-validation-2026-07-21.md
+- Source and issues: https://github.com/skyphoenix-it/skyphoenix-edgehub-linux
+- Support: https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/issues
 
-Supported release artifacts: [SUPPORTED_PACKAGES].
+Supported release artifacts: signed source tarball and portable x86-64 tarball, with checksums and signatures.
 
 ### Independent project notice
 
@@ -68,4 +71,4 @@ to describe hardware compatibility.
 
 ---
 
-Released on [RELEASE_DATE]. Media/contact: [CONTACT].
+Released on 2026-07-21. Media/contact: simon.kreitmayer@skyphoenix-it.com.

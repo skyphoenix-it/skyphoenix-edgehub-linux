@@ -7,9 +7,9 @@ dashboard designed for the Corsair Xeneon Edge and selected secondary/portrait
 touchscreens. No browser, Electron, web server, account or telemetry implementation
 is required. Broad display and desktop support remains evidence-gated.
 
-[![CI](https://github.com/skyphoenix-it/XeneonEdge_Linux/actions/workflows/ci.yml/badge.svg)](https://github.com/skyphoenix-it/XeneonEdge_Linux/actions/workflows/ci.yml)
+[![CI](https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/actions/workflows/ci.yml/badge.svg)](https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/actions/workflows/ci.yml)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
-[![Release: v1.0.0-alpha.2](https://img.shields.io/badge/release-v1.0.0--alpha.2-orange.svg)](https://github.com/skyphoenix-it/XeneonEdge_Linux/releases/tag/v1.0.0-alpha.2)
+[![Release: v1.0.0-alpha.2](https://img.shields.io/badge/release-v1.0.0--alpha.2-orange.svg)](https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/releases/tag/v1.0.0-alpha.2)
 
 ![EdgeHub running on the Corsair Xeneon Edge with the animated orbs background](docs/marketing-site/assets/edge-dashboard-orbs.png)
 
@@ -22,7 +22,7 @@ is required. Broad display and desktop support remains evidence-gated.
 
 ## What it is
 
-The Corsair Xeneon Edge is a 2560×720 secondary touchscreen that works in either orientation. EdgeHub gives it — and other secondary or portrait displays — a purpose-built home screen: swipeable pages of live widgets you arrange by touch, right on the device.
+The Corsair Xeneon Edge is a 2560×720 secondary touchscreen that works in either orientation. EdgeHub gives it - and other secondary or portrait displays - a purpose-built home screen: swipeable pages of live widgets you arrange by touch, right on the device.
 
 **Who it's for:** anyone with a second screen they don't want to waste. Developers watching a build. Homelab owners watching a rack. People who want a calm timer and the weather instead of another browser window.
 
@@ -31,13 +31,13 @@ The Corsair Xeneon Edge is a 2560×720 secondary touchscreen that works in eithe
   development build does not yet meet its RSS gates.
 - **Designed for touch.** Large targets, swipe between pages, in-widget controls, on-device settings. You never need a keyboard to use it.
 - **It finds the right screen.** Display detection puts EdgeHub on your Edge (or a display you choose), and a real HID orientation sensor follows the panel when you flip it.
-- **Design it from your desk.** The companion **EdgeHub Manager** is a live clone of your Edge — drag, reorder, resize, and restyle from your main monitor.
+- **Design it from your desk.** The companion **EdgeHub Manager** is a live clone of your Edge - drag, reorder, resize, and restyle from your main monitor.
 
 ---
 
 ## 19 ready-made screens
 
-You don't start from a blank grid. Each preset is a designed layout — a small, purposeful set of widgets, with a fitting background and motion character.
+You don't start from a blank grid. Each preset is a designed layout - a small, purposeful set of widgets, with a fitting background and motion character.
 
 | Screen | For |
 |---|---|
@@ -46,11 +46,11 @@ You don't start from a blank grid. Each preset is a designed layout — a small,
 | **Home** | Time, weather and media in one everyday screen. |
 | **Ambient** | A quiet clock, weather and moon view. |
 | **Remote Work** | The time, your calendar, today's tasks, and how much workday is left. |
-| **Developer** | Your build and your box, side by side — CI status, a number you watch, machine health. |
+| **Developer** | Your build and your box, side by side - CI status, a number you watch, machine health. |
 | **Homelab Ops** | Service uptime and container health beside CPU, memory, network and disk. |
-| **Gaming Cockpit** | Rig telemetry beside your game — GPU/CPU temps, memory, network. |
+| **Gaming Cockpit** | Rig telemetry beside your game - GPU/CPU temps, memory, network. |
 | **Trading Desk** | Your time and the market's, two numbers that matter, and what's next. |
-| **Health & Routine** | Gentle nudges toward a good day — water, breaks, and a daily streak. |
+| **Health & Routine** | Gentle nudges toward a good day - water, breaks, and a daily streak. |
 | **Creator / Media** | Now-playing front and centre, a focus timer, and a spark of inspiration. |
 | **System Core** | CPU, GPU and memory at a glance. |
 | **System I/O** | Network, disk and sensor detail. |
@@ -59,11 +59,11 @@ You don't start from a blank grid. Each preset is a designed layout — a small,
 | **Analyst / Data** | Two headline numbers, a monitoring feed, the time and your tasks. |
 | **Student / Study** | A focus timer, your tasks, a countdown to the exam, and a streak. |
 | **Productivity** | Focus, tasks, a habit streak and your day's progress, with system stats a swipe away. |
-| **Enterprise / Locked** | A clean, managed baseline — time, agenda, workday, and one approved team number. |
+| **Enterprise / Locked** | A clean, managed baseline - time, agenda, workday, and one approved team number. |
 
-Applying a preset keeps *your* theme and accent — it changes the screen, not your taste.
+Applying a preset keeps *your* theme and accent - it changes the screen, not your taste.
 
-The data-connected presets (Developer, Homelab Ops, Trading Desk, Analyst, Enterprise) ship their data tiles **labelled but deliberately unconnected** — "CI status → Add a URL in settings". A preset never guesses an endpoint, so a fresh install never polls a stranger's host.
+The data-connected presets (Developer, Homelab Ops, Trading Desk, Analyst, Enterprise) ship their data tiles **labelled but deliberately unconnected** - "CI status → Add a URL in settings". A preset never guesses an endpoint, so a fresh install never polls a stranger's host.
 
 *Defined in [`ui/qml/PresetCatalog.qml`](ui/qml/PresetCatalog.qml).*
 
@@ -74,15 +74,15 @@ The data-connected presets (Developer, Homelab Ops, Trading Desk, Analyst, Enter
 | Category | Widgets |
 |----------|---------|
 | **System** (8) | CPU load & temp, GPU (AMD Radeon utilization & temp), Memory, Network throughput, Disk usage, combined Sensors, installed Packages, System Age |
-| **Data** (2) | **HTTP / JSON** — poll any endpoint, pull a value out by path, show it as a number, gauge or list · **KPI** — one number that matters, from a URL *or a local file*, with colour-coded thresholds |
-| **Time** (3) | Clock (**real IANA time zones — daylight saving included**), Analog Clock, Moon Phase |
+| **Data** (2) | **HTTP / JSON** - poll any endpoint, pull a value out by path, show it as a number, gauge or list · **KPI** - one number that matters, from a URL *or a local file*, with colour-coded thresholds |
+| **Time** (3) | Clock (**real IANA time zones - daylight saving included**), Analog Clock, Moon Phase |
 | **Focus** (10) | Focus Timer (Pomodoro), Tasks, Right Now, Quick Note, Habit Streak, Hydration, Break Reminder, Meds, Braindump, Routine |
-| **Media** (1) | Now Playing (MPRIS — Spotify, browsers, any player on the machine) |
+| **Media** (1) | Now Playing (MPRIS - Spotify, browsers, any player on the machine) |
 | **Info** (6) | Calendar (subscribe via ICS URL), Now / Next, Weather (Open-Meteo), Countdown, End of Day, Daily Quote |
 
 System metrics come from the Rust core and the kernel. Focus, task, note, habit and hydration widgets persist your data locally.
 
-**Real time zones, properly.** The clock is backed by a `QTimeZone` bridge, so it follows actual IANA rules — every zone your OS `tzdata` knows (~600), daylight saving included, and correct through a `tzdata` update with no code change. QML has no `Intl`, and `Date.toLocaleString(…, { timeZone })` silently returns host-local time — which is exactly the kind of quiet wrongness a clock cannot afford.
+**Real time zones, properly.** The clock is backed by a `QTimeZone` bridge, so it follows actual IANA rules - every zone your OS `tzdata` knows (~600), daylight saving included, and correct through a `tzdata` update with no code change. QML has no `Intl`, and `Date.toLocaleString(…, { timeZone })` silently returns host-local time - which is exactly the kind of quiet wrongness a clock cannot afford.
 
 *Defined in [`ui/qml/WidgetCatalog.qml`](ui/qml/WidgetCatalog.qml).*
 
@@ -92,13 +92,13 @@ System metrics come from the Rust core and the kernel. Focus, task, note, habit 
 
 The **HTTP/JSON** and **KPI** widgets point at *your* endpoint: a CI status, a queue depth, a P&L number, a Prometheus query, a file on disk. No integration, no account, no vendor. KPI's local-file source works with no network at all.
 
-**Credentials are references, not secrets.** Write `${env:MY_TOKEN}` or `file:/run/secrets/token`, and the value is read at request time and **never written to your config**. A token typed in directly still works — the app tells you it's in plain text so you can migrate.
+**Credentials are references, not secrets.** Write `${env:MY_TOKEN}` or `file:/run/secrets/token`, and the value is read at request time and **never written to your config**. A token typed in directly still works - the app tells you it's in plain text so you can migrate.
 
 | Form | Meaning |
 |---|---|
 | `${env:VAR}` | Read environment variable `VAR` at request time |
 | `file:/path/to/token` | Read the file's contents at request time |
-| anything else | A plaintext literal — still honoured, and flagged in the UI |
+| anything else | A plaintext literal - still honoured, and flagged in the UI |
 
 *Implemented in [`core/src/secrets.rs`](core/src/secrets.rs).*
 
@@ -108,12 +108,12 @@ The **HTTP/JSON** and **KPI** widgets point at *your* endpoint: a CI status, a q
 
 Most apps promise they don't phone home. EdgeHub's design makes the promise checkable.
 
-- **One audited egress gate.** Every outbound request goes through [`NetHub.request()`](ui/qml/widgets/NetHub.qml) — the only place in the QML tree that may construct a network call. It owns a **global offline kill switch**, a **per-host allowlist**, and **per-host counters** for what was actually sent.
-- **A lint enforces it.** [`scripts/check_no_raw_xhr.sh`](scripts/check_no_raw_xhr.sh) fails if any file outside the gate constructs its own request, and also fails if the gate stops being the one construction site. It runs as a suite in [`scripts/run_all_tests.sh`](scripts/run_all_tests.sh). There is no exemption list — an exception there would be a hole in the claim, not a lint detail.
-- **Unknown schemes are refused, not guessed.** The gate recognises a fixed set of local forms (`file:`, `qrc:`, bare paths). Anything else is egress. An earlier shape treated every unknown scheme as local, so a `webcal://` calendar URL skipped both the kill switch and the allowlist — that class of bug is now structurally impossible.
+- **One audited egress gate.** Every outbound request goes through [`NetHub.request()`](ui/qml/widgets/NetHub.qml) - the only place in the QML tree that may construct a network call. It owns a **global offline kill switch**, a **per-host allowlist**, and **per-host counters** for what was actually sent.
+- **A lint enforces it.** [`scripts/check_no_raw_xhr.sh`](scripts/check_no_raw_xhr.sh) fails if any file outside the gate constructs its own request, and also fails if the gate stops being the one construction site. It runs as a suite in [`scripts/run_all_tests.sh`](scripts/run_all_tests.sh). There is no exemption list - an exception there would be a hole in the claim, not a lint detail.
+- **Unknown schemes are refused, not guessed.** The gate recognises a fixed set of local forms (`file:`, `qrc:`, bare paths). Anything else is egress. An earlier shape treated every unknown scheme as local, so a `webcal://` calendar URL skipped both the kill switch and the allowlist - that class of bug is now structurally impossible.
 - **The Rust core has no network stack at all.** "No outbound" is true there by construction, not by policy.
-- **Your config stays yours.** Plain TOML at `~/.config/xeneon-edge-hub/config.toml`, written atomically and **owner-only (`0600`) at creation** — not chmod'd afterwards, so a credential is never briefly world-readable.
-- **No telemetry, no account, no cloud.** EdgeHub touches the network only for widgets you explicitly configure — Weather, a Calendar feed, or a data widget you pointed somewhere. All of it through the same gate.
+- **Your config stays yours.** Plain TOML at `~/.config/xeneon-edge-hub/config.toml`, written atomically and **owner-only (`0600`) at creation** - not chmod'd afterwards, so a credential is never briefly world-readable.
+- **No telemetry, no account, no cloud.** EdgeHub touches the network only for widgets you explicitly configure - Weather, a Calendar feed, or a data widget you pointed somewhere. All of it through the same gate.
 
 ### Performance
 
@@ -128,12 +128,12 @@ result is **FAIL**, and the required 24/48-hour evidence is still incomplete.
 
 ## Make it yours
 
-- **29 themes** — 20 free themes and 9 optional Pro themes, including dark,
+- **29 themes** - 20 free themes and 9 optional Pro themes, including dark,
   light, OLED, high-contrast, Nord, Dracula, Gruvbox, Catppuccin, Synthwave and more.
-- **29 accent colors** — 14 standard tones, the 8 published **Okabe–Ito**
+- **29 accent colors** - 14 standard tones, the 8 published **Okabe–Ito**
   colors, and 7 theme-completing accents.
-- **10 animated backgrounds plus Gradient** — orbs, waves, starfield, mesh,
-  aurora, bokeh, grid, Arch Peaks, Fedora Loops and Aubergine Ribbons — plus
+- **10 animated backgrounds plus Gradient** - orbs, waves, starfield, mesh,
+  aurora, bokeh, grid, Arch Peaks, Fedora Loops and Aubergine Ribbons - plus
   static wallpapers, settable globally or per page.
 - **Glass, glow, and a reduced-motion mode.** One shared design system keeps every widget consistent.
 - **Edit mode** to add, remove, move and resize tiles across multiple pages, with schema-driven per-widget configuration.
@@ -141,7 +141,7 @@ result is **FAIL**, and the required 24/48-hour evidence is still incomplete.
 
 ![EdgeHub with the aurora background](docs/marketing-site/assets/edge-dashboard-aurora.png)
 
-*These screenshots predate the preset library and the data widgets — they show the dashboard and theming, not the presets.*
+*These screenshots predate the preset library and the data widgets - they show the dashboard and theming, not the presets.*
 
 ### EdgeHub Manager
 
@@ -159,11 +159,11 @@ A companion desktop app (`xeneon-edge-manager`) that mirrors your Edge in real t
 
 ## Install
 
-The current release is **[v1.0.0-alpha.2](https://github.com/skyphoenix-it/XeneonEdge_Linux/releases/tag/v1.0.0-alpha.2)** — the first **signed** release.
+The current release is **[v1.0.0-alpha.2](https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/releases/tag/v1.0.0-alpha.2)** - the first **signed** release.
 
 ### Portable tarball (compatible x86-64 distributions)
 
-Download `xeneon-edge-hub_1.0.0-alpha.2_x86_64.tar.gz`, `SHA256SUMS` and `SHA256SUMS.asc` from the [release page](https://github.com/skyphoenix-it/XeneonEdge_Linux/releases/tag/v1.0.0-alpha.2), then:
+Download `xeneon-edge-hub_1.0.0-alpha.2_x86_64.tar.gz`, `SHA256SUMS` and `SHA256SUMS.asc` from the [release page](https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/releases/tag/v1.0.0-alpha.2), then:
 
 ```sh
 gpg --verify SHA256SUMS.asc SHA256SUMS   # key import: see "Verifying your download"
@@ -188,7 +188,7 @@ remains unsigned because it predates the release key.)
 
 The `v1.0.0-alpha.2` release provides `SHA256SUMS` alongside a detached
 `SHA256SUMS.asc`, made with the EdgeHub release key. (`v1.0.0-alpha.1` predates
-the key and is checksum-only — it has no `.asc`.)
+the key and is checksum-only - it has no `.asc`.)
 
 **1. Import the key.** It is not on a keyserver yet, so `gpg --recv-keys` will not find it. Use either route:
 
@@ -211,7 +211,7 @@ SKYPhoenix IT <simon.kreitmayer@skyphoenix-it.com>
 2F0C AD36 DC1D 46F3 347B  7EF2 93CD C77E ACF9 8990
 ```
 
-**Check the fingerprint, not just the words "Good signature."** Any key can produce a good signature over anything — including one an attacker made and shipped next to a tampered download. The signature is only worth what the fingerprint is, so compare it against the line above (published here, in [`packaging/edgehub-signing.pub`](packaging/edgehub-signing.pub), and on [GitHub](https://github.com/SimonKreitmayer.gpg)).
+**Check the fingerprint, not just the words "Good signature."** Any key can produce a good signature over anything - including one an attacker made and shipped next to a tampered download. The signature is only worth what the fingerprint is, so compare it against the line above (published here, in [`packaging/edgehub-signing.pub`](packaging/edgehub-signing.pub), and on [GitHub](https://github.com/SimonKreitmayer.gpg)).
 
 gpg will also warn `This key is not certified with a trusted signature`. That is expected and not a failure: it means you haven't personally certified the key. Trust here rests on the fingerprint matching, not on the web of trust.
 
@@ -219,7 +219,7 @@ Policy, scope and key rotation: [`docs/DISTRIBUTION.md`](docs/DISTRIBUTION.md#re
 
 ### Everything else
 
-Build from source (below). AppImage, Flatpak, `.deb` and `.rpm` recipes are authored in this repo but are not yet published, verified artifacts — see [`packaging/README.md`](packaging/README.md) for the honest status of each format. Fedora and Ubuntu packages are planned for v1.1.
+Build from source (below). AppImage, Flatpak, `.deb` and `.rpm` recipes are authored in this repo but are not yet published, verified artifacts - see [`packaging/README.md`](packaging/README.md) for the honest status of each format. Fedora and Ubuntu packages are planned for v1.1.
 
 ---
 
@@ -238,7 +238,7 @@ Build from source (below). AppImage, Flatpak, `.deb` and `.rpm` recipes are auth
 sudo pacman -S rust cmake gcc qt6-base qt6-declarative qt6-wayland qt6-tools
 ```
 
-**Ubuntu 24.04 LTS** — note that Ubuntu's apt Qt is 6.4.2; the project needs Qt ≥ 6.5, so install a newer Qt if apt's is too old.
+**Ubuntu 24.04 LTS** - note that Ubuntu's apt Qt is 6.4.2; the project needs Qt ≥ 6.5, so install a newer Qt if apt's is too old.
 
 ```sh
 sudo apt install cargo cmake g++ qt6-base-dev qt6-declarative-dev \
@@ -248,8 +248,8 @@ sudo apt install cargo cmake g++ qt6-base-dev qt6-declarative-dev \
 ### Build & run
 
 ```sh
-git clone https://github.com/skyphoenix-it/XeneonEdge_Linux.git
-cd XeneonEdge_Linux
+git clone https://github.com/skyphoenix-it/skyphoenix-edgehub-linux.git
+cd skyphoenix-edgehub-linux
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 
@@ -281,7 +281,7 @@ Rust core (config · EDID · metrics · FFI)  ──C ABI──▶  Qt 6 / QML (
 - **Qt 6/QML** renders both the hub and the Manager on top of that core. Widgets are declared once in a registry and reused by the grid, the expanded overlay, and the add-widget picker.
 - The hub and Manager talk over a **control socket** (`QLocalServer`), which is how the Manager pushes a live layout to a running hub. The app is **single-instance**.
 
-Further reading: [architecture overview](docs/architecture/overview.md) · [ADR 0001 — application stack](docs/adr/0001-application-stack.md) · [ADR 0002 — widget runtime](docs/adr/0002-widget-runtime.md).
+Further reading: [architecture overview](docs/architecture/overview.md) · [ADR 0001 - application stack](docs/adr/0001-application-stack.md) · [ADR 0002 - widget runtime](docs/adr/0002-widget-runtime.md).
 
 ---
 
@@ -299,13 +299,13 @@ The repository includes all of these verification layers:
 | **Runtime E2E** | Drives the real hub binary headless and asserts what it persists to `config.toml` |
 
 The intended CI gate runs Rust format, Clippy, tests and dependency checks; the
-build; docs/link checks; QML and C++ suites; and coverage at ≥95% — see
+build; docs/link checks; QML and C++ suites; and coverage at ≥95% - see
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml). The hardware suite needs a
 physical Edge and therefore runs locally. A working-tree run is development
 evidence, not a release certificate: the final release gate must run again from
 the immutable, signed candidate. Full plan: [`docs/DEV_AND_TEST_PLAN.md`](docs/DEV_AND_TEST_PLAN.md).
 
-The hardware suite asserts its widget list against `WidgetCatalog.qml`, so a new widget cannot go silently unexercised — a drift check added after the list had quietly omitted two widgets while still reporting green.
+The hardware suite asserts its widget list against `WidgetCatalog.qml`, so a new widget cannot go silently unexercised - a drift check added after the list had quietly omitted two widgets while still reporting green.
 
 ---
 
@@ -326,11 +326,11 @@ What is not yet established for the next release:
   animated background and widget glow off, with normal transitions on and a
   separate reduce-motion preference. Legal review of the Inspired themes and any
   payment/store delivery route remain open before a public beta or paid offering.
-- **Weather and Calendar reach the network** for the feeds you configure — as designed, through the same audited gate as everything else.
+- **Weather and Calendar reach the network** for the feeds you configure - as designed, through the same audited gate as everything else.
 - **The Manager follows a single-writer rule.** While the Hub is connected,
   display/autostart changes go over the control socket and the Hub persists them;
   the Manager writes directly only while it is the offline owner.
-- **Physical rotation** is wired and debounced from the HID sensor, but only a person can turn a panel — so it's verified by hand, not by the suite.
+- **Physical rotation** is wired and debounced from the HID sensor, but only a person can turn a panel - so it's verified by hand, not by the suite.
 - **GPU metrics are AMD Radeon only.**
 
 ---
@@ -352,7 +352,7 @@ Full plan: **[ROADMAP.md](ROADMAP.md)** · changes: **[CHANGELOG.md](CHANGELOG.m
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md). Bug reports from the alpha are especially welcome — please say what broke and on what hardware.
+See [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md). Bug reports from the alpha are especially welcome - please say what broke and on what hardware.
 
 ## Security
 

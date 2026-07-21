@@ -1,6 +1,6 @@
 import QtQuick
 
-// Sparkline — a lightweight area+line history chart (values normalized 0..1).
+// Sparkline - a lightweight area+line history chart (values normalized 0..1).
 // Reused by the metric tiles so a tall tile shows live history instead of empty
 // space. Cheap Canvas draw; no per-frame blur.
 Item {
@@ -10,7 +10,7 @@ Item {
     property bool fill: true
 
     // Cheap signature of the current samples so a producer that mutates the
-    // bound array IN PLACE (history.push(...) — no NOTIFY fires) still repaints.
+    // bound array IN PLACE (history.push(...) - no NOTIFY fires) still repaints.
     property string _sig: ""
     function _signature() {
         var v = s.values
@@ -78,7 +78,7 @@ Item {
     // Poll for in-place mutation of the bound array (no reassignment ⇒ no
     // onValuesChanged). Repaint only when the sample signature actually changes,
     // so an idle sparkline stays quiet on the fanless panel.
-    // running: s.visible — a sparkline that isn't on screen must not poll. The
+    // running: s.visible - a sparkline that isn't on screen must not poll. The
     // Manager keeps preview widgets INSTANTIATED across tab switches (Loaders don't
     // unload when a tab hides), so an ungated 100ms timer here kept firing on EVERY
     // Manager section, burning frames and making all scrolling stutter. Gating on

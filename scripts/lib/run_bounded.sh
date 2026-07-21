@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# run_bounded — run a child process under a hard wall-clock AND memory ceiling.
+# run_bounded - run a child process under a hard wall-clock AND memory ceiling.
 #
 # WHY THIS EXISTS
 # ---------------
@@ -43,7 +43,7 @@ RUN_MEM_MAX_MB=${RUN_MEM_MAX_MB:-2048}
 RUN_AS_MAX_MB=${RUN_AS_MAX_MB:-12288}
 RUN_POLL=${RUN_POLL:-0.5}
 
-# _rb_tree_rss_mb <root-pid> — total RSS (MiB) of the pid and every descendant.
+# _rb_tree_rss_mb <root-pid> - total RSS (MiB) of the pid and every descendant.
 _rb_tree_rss_mb() {
   ps -eo pid=,ppid=,rss= 2>/dev/null | awk -v root="$1" '
     { p[NR]=$1; pp[NR]=$2; r[NR]=$3; n=NR }
@@ -60,7 +60,7 @@ _rb_tree_rss_mb() {
     }'
 }
 
-# _rb_kill_tree <root-pid> — SIGKILL the pid and all descendants, deepest first.
+# _rb_kill_tree <root-pid> - SIGKILL the pid and all descendants, deepest first.
 _rb_kill_tree() {
   local root="$1" all
   all=$(ps -eo pid=,ppid= 2>/dev/null | awk -v root="$root" '
@@ -79,7 +79,7 @@ _rb_kill_tree() {
 }
 
 run_bounded() {
-  # RLIMIT_AS is inherited by every descendant — the hard guarantee.
+  # RLIMIT_AS is inherited by every descendant - the hard guarantee.
   ( ulimit -v $((RUN_AS_MAX_MB * 1024)) 2>/dev/null; exec env "$@" ) &
   local pid=$! rss=0 started=$SECONDS
 

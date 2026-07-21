@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// WidgetConfigDialog — a professional, schema-driven per-widget config editor
+// WidgetConfigDialog - a professional, schema-driven per-widget config editor
 // with a LIVE preview of the real widget that updates as you edit. Resolves
 // store/catalog/theme/media/backend/m from the Manager scope (instantiated
 // inline there). Open with open(id, type).
@@ -109,7 +109,7 @@ Dialog {
     // (re-entrancy guard) and closing the dialog cancels a pending request.
     // Bumping the sequence is what actually cancels: abort() still delivers one
     // late callback, and the gate answers a refused request synchronously (no XHR
-    // to compare against), so the token — not the object — decides who is current.
+    // to compare against), so the token - not the object - decides who is current.
     property var _geoXhr: null
     property int _geoSeq: 0
     function _cancelGeo() {
@@ -196,7 +196,7 @@ Dialog {
                 Text { text: catalog.desc(dlg.wType); color: m.textSecondary; font.pixelSize: 12
                     elide: Text.ElideRight; Layout.fillWidth: true }
             }
-            // Scope pill: these settings touch ONE tile, not the widget type —
+            // Scope pill: these settings touch ONE tile, not the widget type -
             // the owner's "which setting changes which behavior" complaint. Label +
             // hover detail come from the Manager's ONE scope vocabulary (win.scopeLabels
             // / win.scopeDetail), so this dialog can't drift from the tabs' wording.
@@ -234,7 +234,7 @@ Dialog {
                         GradientStop { position: 1.0; color: theme.backgroundColor3 }
                     }
                     // WYSIWYG preview. The widget is rendered at the Edge content width
-                    // (`logicalW`, ~688px) — the width it was DESIGNED for — inside a
+                    // (`logicalW`, ~688px) - the width it was DESIGNED for - inside a
                     // fixed-logical-size scaler, then scaled down to fit this ~300px pane
                     // (the same trick EdgeClone uses on the whole device). Without this the
                     // expanded layout (Focus's 4-button row, Media transport, Countdown's
@@ -261,7 +261,7 @@ Dialog {
                                 anchors.fill: parent
                                 // Recreate the tile body on every open so reopening for a DIFFERENT
                                 // instance of the same type reloads and re-seeds against the new
-                                // instanceId — otherwise the source is unchanged, the Loader never
+                                // instanceId - otherwise the source is unchanged, the Loader never
                                 // reloads, onLoaded never fires, and the previous instance's body
                                 // (with its stale instanceId) lingers (split-brain preview).
                                 active: dlg.visible
@@ -302,7 +302,7 @@ Dialog {
 
         Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: m.border }
 
-        // ── Form (shared panel — identical rendering to the on-device config) ──
+        // ── Form (shared panel - identical rendering to the on-device config) ──
         WidgetConfigPanel {
             Layout.fillWidth: true; Layout.fillHeight: true; Layout.minimumWidth: 320
             schema: dlg.schema

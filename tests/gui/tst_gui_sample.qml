@@ -80,7 +80,7 @@ Item {
             verify(after !== before, "a real click changed the hydration count (" + before + "->" + after + ")")
         }
 
-        // (3): the REAL Hub shell — add a page and LAND + STAY (the snap-back bug).
+        // (3): the REAL Hub shell - add a page and LAND + STAY (the snap-back bug).
         property var win: null
         function test_shell_add_page_lands_and_stays() {
             var c = Qt.createComponent("../../ui/qml/main.qml")
@@ -110,7 +110,7 @@ Item {
                 store.addPage("")
                 swipe.goToPage(target)
                 tryVerify(function () { return swipe.currentIndex === target }, 4000, "reached new page " + target)
-                wait(900)   // outlast a deferred relayout — the snap-back window
+                wait(900)   // outlast a deferred relayout - the snap-back window
                 compare(swipe.currentIndex, target, "STAYED on new page " + target)
                 snap(win.contentItem, "shell_page" + target)
             }

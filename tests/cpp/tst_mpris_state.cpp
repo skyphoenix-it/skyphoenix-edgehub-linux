@@ -5,7 +5,7 @@
 // NO SESSION BUS IS USED, OR WANTED. The player-choice policy and the
 // metadata/availability rules are decisions about data, not conversations with
 // a bus, so they are driven here as plain function calls: fast, deterministic,
-// and — unlike a bus-backed test — they run identically on a CI runner with no
+// and - unlike a bus-backed test - they run identically on a CI runner with no
 // D-Bus at all. The property maps below are the shapes a real GetAll reply
 // delivers, reproduced as literals.
 //
@@ -25,7 +25,7 @@
 #include "mpris_bridge.h"
 #include "mpris_state.h"
 
-// Refuse to run outside a sandbox — see hermetic.h (a raw run once destroyed a
+// Refuse to run outside a sandbox - see hermetic.h (a raw run once destroyed a
 // developer's real config).
 #include "hermetic.h"
 XENEON_REQUIRE_HERMETIC_ENV();
@@ -128,7 +128,7 @@ private slots:
         QCOMPARE(mpris::choosePlayer({}, {}, "was-playing"), QString());
     }
 
-    // Status matching is exact — MPRIS spells it "Playing".
+    // Status matching is exact - MPRIS spells it "Playing".
     void chooseStatusMatchIsExact() {
         const QStringList order{"a", "b"};
         QMap<QString, QString> st{{"a", "playing"}, {"b", "PLAYING"}};
@@ -150,7 +150,7 @@ private slots:
     // the artist rather than becoming empty.
     //
     // HONESTY NOTE: this passes via qdbus_cast's own QString->QStringList
-    // conversion, NOT via the `if (artists.isEmpty())` fallback below it —
+    // conversion, NOT via the `if (artists.isEmpty())` fallback below it -
     // deleting that fallback leaves this test green (verified by sabotage,
     // 2026-07-17). The fallback is vestigial; see the comment in
     // mpris_state.cpp. This test pins the mechanism that actually works, and
@@ -163,7 +163,7 @@ private slots:
     }
 
     // Nonsense-typed artist (a player sending the wrong signature) degrades to
-    // no artist rather than to garbage — and does not take the track down with
+    // no artist rather than to garbage - and does not take the track down with
     // it, since the title still makes it available.
     void artistWrongTypeDegradesToEmpty() {
         QVariantMap meta{{"xesam:title", "Song"}, {"xesam:artist", 42}};
@@ -248,7 +248,7 @@ private slots:
 
     // ── resolveTrack: the availability rule ─────────────────────────────────
     // A service can sit on the bus with nothing loaded. `available` needs a real
-    // title OR an active status, else every field is blanked — this is what stops
+    // title OR an active status, else every field is blanked - this is what stops
     // a blank now-playing card being shown.
 
     void availableWithTitleAndStatus() {
@@ -292,7 +292,7 @@ private slots:
     }
 
     // THE case this rule exists for: a browser tab registered on the bus, Stopped,
-    // nothing loaded. Not available, and every field blanked — including the art
+    // nothing loaded. Not available, and every field blanked - including the art
     // and length the player still advertises.
     void unavailableStoppedWithNoTrackBlanksEverything() {
         QVariantMap meta{{"xesam:artist", QStringList{"Ghost"}},
@@ -307,7 +307,7 @@ private slots:
         QCOMPARE(s.album, QString());
         QCOMPARE(s.artUrl, QString());
         QCOMPARE(s.lengthUs, qlonglong(0));
-        // status and playerName are NOT blanked — they describe the player, and
+        // status and playerName are NOT blanked - they describe the player, and
         // the card uses them to stay attached to it.
         QCOMPARE(s.status, QString("Stopped"));
         QCOMPARE(s.playerName, QString("chromium"));
@@ -369,7 +369,7 @@ private slots:
 
     // Guard the guard: this test is only safe, and only meaningful, if the
     // bridge really is offline here. If DBUS_SESSION_BUS_ADDRESS ever pointed at
-    // a live bus, MprisBridge's ctor would start scanning it — so assert the
+    // a live bus, MprisBridge's ctor would start scanning it - so assert the
     // no-bus contract instead of assuming it. Fails loudly; never skips.
     void mprisBridgeIsOfflineInThisTest() {
         QVERIFY2(!QDBusConnection::sessionBus().isConnected(),
@@ -413,7 +413,7 @@ private slots:
         QCOMPARE(spy.count(), 1);
     }
 
-    // A length-only move is invisible — and must stay silent — but the new value
+    // A length-only move is invisible - and must stay silent - but the new value
     // must still be stored (position() is computed from it).
     void applyPropsStoresLengthWithoutNotifying() {
         MprisBridge bridge;
@@ -429,7 +429,7 @@ private slots:
         QCOMPARE(bridge.currentTrack().lengthUs, qlonglong(200));  // but stored
     }
 
-    // Every property QML binds to must reflect the applied reply — this is the
+    // Every property QML binds to must reflect the applied reply - this is the
     // whole point of the bridge, and each getter below is a Q_PROPERTY READ.
     void bridgeExposesResolvedStateToQml() {
         MprisBridge bridge;
@@ -448,13 +448,13 @@ private slots:
                  "remote artwork is suppressed before QML sees it");
         QCOMPARE(bridge.status(), QString("Paused"));
         QVERIFY(!bridge.playing());        // Paused is not Playing
-        // playerName is derived from the service, which is empty with no bus —
+        // playerName is derived from the service, which is empty with no bus -
         // resolveTrack's prefix-strip is pinned by playerNameStripsPrefix above.
         QCOMPARE(bridge.playerName(), QString());
     }
 
     // position() is a fraction of the track length. Nothing here can move
-    // m_positionUs (that needs a bus — see the report), so what IS pinned is the
+    // m_positionUs (that needs a bus - see the report), so what IS pinned is the
     // divide-by-zero guard: a zero/absent length must yield 0.0, not NaN or inf.
     void positionIsZeroWithoutLength() {
         MprisBridge bridge;

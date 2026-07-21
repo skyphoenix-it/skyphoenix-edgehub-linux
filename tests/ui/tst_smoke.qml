@@ -3,7 +3,7 @@ import QtTest
 
 // Smoke + boundary coverage for every widget: each must load, produce a
 // non-zero-sized item (guards the nested-Loader "invisible widget" pitfall),
-// and survive extreme/missing metrics without throwing — in BOTH compact and
+// and survive extreme/missing metrics without throwing - in BOTH compact and
 // expanded modes.
 Item {
     id: container

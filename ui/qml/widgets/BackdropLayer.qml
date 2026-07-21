@@ -1,6 +1,6 @@
 import QtQuick
 
-// BackdropLayer — picks the active animated background style. `running` toggles
+// BackdropLayer - picks the active animated background style. `running` toggles
 // motion (off for reduce-motion → the style renders static). "none"/"gradient"
 // load nothing (the theme gradient shows through). Styles are declared in
 // ui/qml/BackgroundCatalog.qml (keep this map in sync with it).
@@ -9,11 +9,11 @@ import QtQuick
 // files. The three character styles below (peaks/loops/ribbons) are INLINE
 // components instead: a separate file is only reachable at runtime once it is
 // aliased in BOTH ui/qml.qrc and manager/manager.qrc, and this file is already in
-// both — so inlining is what makes them ship to the hub and the Manager together,
+// both - so inlining is what makes them ship to the hub and the Manager together,
 // with no chance of a file/resource drift.
 //
 // Every style is tinted from `accent` (+ other theme tokens), never from a fixed
-// palette, so each one works under ANY theme. The motifs are original geometry —
+// palette, so each one works under ANY theme. The motifs are original geometry -
 // they gesture at a distribution's shape language, they do not reproduce anyone's
 // mark.
 //
@@ -36,7 +36,7 @@ Loader {
         "arch": peaksC, "fedora": loopsC, "aubergine": ribbonsC
     })
     // Gate on `visible` too: when a wallpaper is set (or High-Contrast hides the
-    // backdrop) the host sets visible:false — without this the chosen backdrop
+    // backdrop) the host sets visible:false - without this the chosen backdrop
     // would stay LOADED and keep animating invisibly, burning GPU for nothing.
     active: visible && style !== "none" && style !== "gradient" && _map[style] !== undefined
     sourceComponent: _map[style] || null
@@ -73,7 +73,7 @@ Loader {
         property real seed: 0
         anchors.fill: parent
         // The silhouette + its tint are baked into the Canvas texture, so a
-        // theme/accent change needs an explicit repaint — a colour binding would
+        // theme/accent change needs an explicit repaint - a colour binding would
         // never reach the cached pixels.
         onTintChanged: rc.requestPaint()
         onOpChanged: rc.requestPaint()
@@ -107,7 +107,7 @@ Loader {
                 g.addColorStop(1, Qt.rgba(rg.tint.r, rg.tint.g, rg.tint.b, rg.op * 0.15))
                 ctx.fillStyle = g
                 ctx.fill()
-                // A brighter crest line — without it the layers read as flat blobs
+                // A brighter crest line - without it the layers read as flat blobs
                 // rather than peaks once they overlap.
                 ctx.beginPath()
                 for (x = 0; x <= width; x += 4) {
@@ -165,7 +165,7 @@ Loader {
                 ctx.lineJoin = 'round'
                 // Canvas cannot gradient-fill along a stroke, so softness comes
                 // from over-stroking the same path with widening, fading passes.
-                // It is a one-off cost, paid once per resize — hence enough passes
+                // It is a one-off cost, paid once per resize - hence enough passes
                 // to read as a smooth falloff; at 5 the steps were visible as
                 // contour lines inside each ribbon.
                 var passes = 16
@@ -202,7 +202,7 @@ Loader {
         property color accent: theme.accent
         clip: true
 
-        // Far ridges are paler and slower — depth comes from parallax, not blur.
+        // Far ridges are paler and slower - depth comes from parallax, not blur.
         PeakRidge { running: pk.active; tint: pk.accent;         baseY: 0.56; amp: 130; period: 620; speed: 96000; op: 0.15; seed: 0.0 }
         PeakRidge { running: pk.active; tint: theme.accent2;     baseY: 0.69; amp: 100; period: 480; speed: 64000; op: 0.21; seed: 0.35 }
         PeakRidge { running: pk.active; tint: pk.accent;         baseY: 0.81; amp: 78;  period: 380; speed: 44000; op: 0.29; seed: 0.7 }
@@ -212,7 +212,7 @@ Loader {
     // ── Loops ────────────────────────────────────────────────────────────────
     // Concentric rings swelling out of the centre and burning off at the rim.
     // Cost: no Canvas at all; 9 rounded Rectangles whose geometry updates each
-    // frame. That is a QSGNode geometry rebuild rather than a pure transform —
+    // frame. That is a QSGNode geometry rebuild rather than a pure transform -
     // chosen deliberately: driving `scale` instead would shrink border.width with
     // it and make the inner rings sub-pixel and shimmery. Nine nodes per frame is
     // far below any repaint-based approach.
@@ -231,7 +231,7 @@ Loader {
                 required property int index
                 // Phase, not a from/to animation: when `active` goes false the
                 // phase simply holds and the rings stay standing at their distinct
-                // radii — i.e. the static frame still reads as concentric loops.
+                // radii - i.e. the static frame still reads as concentric loops.
                 property real phase: 0.0
                 readonly property real f: ((index / lp.count) + phase) % 1.0
 

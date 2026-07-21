@@ -2,7 +2,7 @@ import QtQuick
 import QtTest
 import "../../ui/qml" as App
 
-// Theme (ui/qml/Theme.qml) — the design-token source + accent/theme appliers.
+// Theme (ui/qml/Theme.qml) - the design-token source + accent/theme appliers.
 // Pure logic (a QtObject), so we assert the derived values directly.
 Item {
     id: root
@@ -38,10 +38,10 @@ Item {
 
         // ── BACKWARD COMPATIBILITY ───────────────────────────────────────────
         // Accents are referenced BY NAME in saved configs (Dashboard.applyAppearance
-        // → applyAccent(a.accent)), so adding names cannot shift an index — but it
+        // → applyAccent(a.accent)), so adding names cannot shift an index - but it
         // could still silently retune a tone. These are the literal hexes shipped
         // before the Okabe–Ito set landed: an existing user's stored accent must
-        // resolve to the SAME colour. Pinned as literals on purpose — comparing
+        // resolve to the SAME colour. Pinned as literals on purpose - comparing
         // against theme.accentPresets would just compare the table to itself.
         function test_existing_accents_resolve_unchanged() {
             var legacy = { "blue": "#58A6FF", "purple": "#A371F7", "green": "#3FB950",
@@ -86,7 +86,7 @@ Item {
         }
 
         // ── Okabe–Ito colour-blind-safe accents ──────────────────────────────
-        // Canonical CUD hexes — the palette's guarantee holds for the 8 together,
+        // Canonical CUD hexes - the palette's guarantee holds for the 8 together,
         // so a "close enough" tone silently breaks it. Pinned exactly.
         function test_okabe_ito_canonical_hexes() {
             var oi = { "oi_black": "#000000", "oi_orange": "#E69F00",
@@ -246,7 +246,7 @@ Item {
             verify(Qt.colorEqual(f, theme.cardBackground), "non-decorative themes use fully-opaque cards")
         }
 
-        // The Glassiness slider must VISIBLY do something even with no wallpaper —
+        // The Glassiness slider must VISIBLY do something even with no wallpaper -
         // the long-standing "slider does nothing" report. The fill can't carry it
         // (lightening a dark card breaks accent contrast; see the WCAG gates), so
         // the visible cue is the border rim-light + top sheen, which more glass
@@ -345,7 +345,7 @@ Item {
             compare(theme.motionFast, d.expect ? 0 : 150, d.tag + " → motionFast")
         }
 
-        // The OS signal must never leak back into the persisted config flag —
+        // The OS signal must never leak back into the persisted config flag -
         // main.qml aliases `reduceMotion` onto the saved value, so a write here
         // would rewrite the user's config from an unrelated desktop setting.
         function test_os_signal_does_not_mutate_config_flag() {
@@ -415,7 +415,7 @@ Item {
             return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)
         }
 
-        // Flatten a translucent fill onto an opaque backdrop — cardFill() is
+        // Flatten a translucent fill onto an opaque backdrop - cardFill() is
         // alpha-blended over the page background, so the surface actually under
         // the text is the composite, not cardBackground itself.
         function _over(fg, bg) {
@@ -425,7 +425,7 @@ Item {
         }
 
         // A hex string is only coerced to a `color` on assignment to a colour
-        // property, not when passed to a JS function — the maths helpers above
+        // property, not when passed to a JS function - the maths helpers above
         // would see a bare string with no .r/.g/.b. Parse it instead of bouncing
         // it through a scratch colour property: a `color` read out of a property
         // is a live handle onto that property, so a scratch one would make every
@@ -436,7 +436,7 @@ Item {
                            parseInt(h.substr(4, 2), 16) / 255, 1)
         }
 
-        // Detach a colour from the property it was read from — see above. Storing
+        // Detach a colour from the property it was read from - see above. Storing
         // `theme.backgroundColor` in an array keeps a handle onto the property, so
         // the next applyTheme() would silently rewrite everything already stored.
         function _snap(c) { return Qt.rgba(c.r, c.g, c.b, c.a) }
@@ -456,7 +456,7 @@ Item {
                          "…and the composite is opaque")
         }
 
-        // Each mode must paint its OWN background — the dark default (#0D1117) is
+        // Each mode must paint its OWN background - the dark default (#0D1117) is
         // what a missing `case` produces, so this is the fall-through guard.
         function test_distro_modes_resolve_data() {
             return [
@@ -478,7 +478,7 @@ Item {
         }
 
         // Every colour token must be fully opaque: these tokens are painted as
-        // solid surfaces, and cardFill() derives its alpha from glassOpacity — a
+        // solid surfaces, and cardFill() derives its alpha from glassOpacity - a
         // token that arrived translucent would double-dip and wash the card out.
         function test_distro_tokens_are_opaque() {
             for (var i = 0; i < distroModes.length; i++) {
@@ -626,7 +626,7 @@ Item {
         }
 
         // ── Bundled a11y fonts (E4) ──────────────────────────────────────────
-        // Proof the bundled TTFs ACTUALLY load — status must reach Ready and the
+        // Proof the bundled TTFs ACTUALLY load - status must reach Ready and the
         // family must resolve to the real name, not silently fall back to a
         // system font. If the resource path or the qrc wiring breaks, the
         // status assertion fails first; if the wrong file loads, the name does.
@@ -648,7 +648,7 @@ Item {
             compare(theme.fontFamilyLexend, "Lexend")
         }
 
-        // Changing the default look is a product decision — the default MUST
+        // Changing the default look is a product decision - the default MUST
         // stay the system font stack.
         function test_font_choice_defaults_to_hyperlegible() {
             // The shipped default is Atkinson Hyperlegible (accessibility-forward,
@@ -666,7 +666,7 @@ Item {
         function test_a_fresh_install_is_calm_and_quiet() {
             // The beta ships "Calm by default": a fresh Theme has widget glow OFF.
             // (The animated background lives on main.qml, not Theme, so it is
-            // guarded where the harness can see it — this pins the half Theme owns.)
+            // guarded where the harness can see it - this pins the half Theme owns.)
             // Quiet-by-default means the distracting ambient effects are off out of
             // the box; the user opts INTO them via Appearance.
             var fresh = freshTheme.createObject(root)

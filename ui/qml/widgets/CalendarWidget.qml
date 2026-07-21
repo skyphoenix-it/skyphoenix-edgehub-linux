@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// Calendar — real agenda from an ICS subscription URL (Google/Outlook/Nextcloud
+// Calendar - real agenda from an ICS subscription URL (Google/Outlook/Nextcloud
 // all provide one). Fetched + parsed in QML (no extra deps). Handles VEVENT +
 // simple DAILY/WEEKLY recurrence; MONTHLY/YEARLY fall back to a single instance.
 // Genuine empty state prompts for a URL rather than showing fake events.
@@ -12,7 +12,7 @@ import QtQuick.Layouts
 // widget properties: they are never written to the store, so a poll cannot churn
 // config.toml.
 //
-// NOTE: `url` is a SECRET — an ICS subscription URL is a bearer capability (anyone
+// NOTE: `url` is a SECRET - an ICS subscription URL is a bearer capability (anyone
 // holding it can read the private calendar), yet it is stored as a plain setting
 // and shown in the expanded field. Migrating it to a credential ref is E7's
 // surface, not this widget's; until then treat it as sensitive when logging.
@@ -60,7 +60,7 @@ WidgetChrome {
     // An agenda reads top-to-bottom, so ONE column is the right answer whenever
     // one column can carry what the user asked for. Extra columns are earned only
     // when a single column would drop events AND the width can seat a readable
-    // one (~340px — the width of the narrowest tile that already reads fine, the
+    // one (~340px - the width of the narrowest tile that already reads fine, the
     // 0.5x1 portrait half-cell).
     //
     // This has to be geometric rather than keyed off sizeClass alone: `large` is
@@ -84,7 +84,7 @@ WidgetChrome {
     // A size-derived row cap and a user setting could fight; they don't, because
     // they answer different questions:
     //
-    //   `maxEvents` is a MAXIMUM — "never show me more than this many".
+    //   `maxEvents` is a MAXIMUM - "never show me more than this many".
     //   The SIZE decides how many of those actually fit.
     //
     // So the count is the min of three things: what the user asked for, what we
@@ -214,7 +214,7 @@ WidgetChrome {
                 var occEnd = occStart.getTime() + (dur > 0 ? dur : 86400000)
                 finished = occEnd <= todayStart.getTime()
             } else {
-                // Timed: past only once it has actually ended — compare against
+                // Timed: past only once it has actually ended - compare against
                 // now, not start-of-day (else events done earlier today linger).
                 finished = occStart.getTime() + dur < now.getTime()
             }
@@ -325,7 +325,7 @@ WidgetChrome {
         return all.slice(0, 60)
     }
 
-    // The sequence token — not the XHR object — is the supersede guard: the gate
+    // The sequence token - not the XHR object - is the supersede guard: the gate
     // refuses offline/blocked requests synchronously and returns null, so there is
     // no XHR to compare a callback against in exactly the cases that must still report.
     property var _xhr: null
@@ -336,7 +336,7 @@ WidgetChrome {
         loading = true
         if (_xhr) _xhr.abort()
         w._xhr = null
-        // webcal:// (iCloud/Apple) is just ICS over HTTP(S) — rewrite the scheme
+        // webcal:// (iCloud/Apple) is just ICS over HTTP(S) - rewrite the scheme
         // rather than handing the gate a scheme it would read as a local path
         // (and which XMLHttpRequest rejects as invalid anyway).
         var reqUrl = /^webcal:/i.test(url) ? url.replace(/^webcal:/i, "https:") : url
@@ -389,7 +389,7 @@ WidgetChrome {
         anchors.fill: parent; anchors.margins: theme.spacingSm
         visible: !w.expanded; spacing: theme.spacingXs
 
-        // The UNCONFIGURED state — this is what ships in the presets, so it has
+        // The UNCONFIGURED state - this is what ships in the presets, so it has
         // to stay legible at every declared size, not just at 1x1.
         Text {
             visible: !w.url.length
@@ -470,7 +470,7 @@ WidgetChrome {
                     border.color: urlField.activeFocus ? w.effAccent : theme.cardBorder; border.width: 1 }
                 onEditingFinished: if (w.store) w.store.setSetting(w.instanceId, "url", text)
                 // Re-assert the store value after an external/store push (typing
-                // severs the `text:` binding permanently — S2). Skip while editing.
+                // severs the `text:` binding permanently - S2). Skip while editing.
                 Connections {
                     target: w
                     function onUrlChanged() { if (!urlField.activeFocus) urlField.text = w.url }

@@ -1,6 +1,6 @@
 import QtQuick
 
-// MockMedia — stands in for the hub's MprisBridge inside the Manager clone, so
+// MockMedia - stands in for the hub's MprisBridge inside the Manager clone, so
 // MediaWidget renders. The Manager isn't a media controller; this just shows a
 // representative "nothing playing" state.
 QtObject {

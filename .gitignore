@@ -92,7 +92,7 @@ repo/
 
 # AppImage build tree (packaging/appimage/build-appimage.sh). The *.AppImage
 # output above was already ignored, but the ~1GB AppDir + downloaded linuxdeploy
-# tools it builds in were not — running the documented build script dirtied the
+# tools it builds in were not - running the documented build script dirtied the
 # tree with untracked build output.
 build-appimage/
 
@@ -103,6 +103,6 @@ build-qa/
 build-cov-agent/
 
 # Claude Code local state: settings.local.json is personal, and worktrees/ holds
-# agent git worktrees — 37 of them once reached 26GB here. Neither is shared.
+# agent git worktrees - 37 of them once reached 26GB here. Neither is shared.
 .claude/
 captures/

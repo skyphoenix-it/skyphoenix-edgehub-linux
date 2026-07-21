@@ -3,7 +3,7 @@ import QtTest
 import "../../ui/qml" as App
 import "../../ui/qml/widgets" as Wg
 
-// RingProgress (ui/qml/widgets/RingProgress.qml) — a Canvas progress ring. Canvas
+// RingProgress (ui/qml/widgets/RingProgress.qml) - a Canvas progress ring. Canvas
 // does not paint offscreen, so we assert the DRIVING PROPERTIES (value / thickness
 // / colours) and the guards that keep the paint path from throwing, never pixels.
 Item {

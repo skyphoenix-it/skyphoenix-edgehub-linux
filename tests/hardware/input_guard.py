@@ -10,7 +10,7 @@ Why N = 3 s: human interaction bursts (typing, mouse repositioning) have
 intra-burst gaps well under 2 s, so 3 s of silence reliably separates "the
 owner is using the machine" from "the owner paused"; anything much longer
 only stalls the suite on a busy desktop without adding safety (the kill
-switch — not the idle gate — is what protects against the owner *resuming*).
+switch - not the idle gate - is what protects against the owner *resuming*).
 
 ## How activity is detected on this box
 
@@ -20,7 +20,7 @@ we speak the Wayland `ext-idle-notify-v1` protocol directly to the
 compositor (pure python, no libraries): an idle notification with a short
 timeout flips between `idled` (quiet for >= timeout) and `resumed` (first
 input after an idle period). Every `resumed` is an input event observed by
-the COMPOSITOR — the same pipeline real devices feed.
+the COMPOSITOR - the same pipeline real devices feed.
 
 Our own synthetic events also produce `resumed`, so events are attributed:
 a `resumed` arriving within ATTRIB_WINDOW of our last synthetic write is
@@ -273,7 +273,7 @@ class WaylandIdleMonitor:
             try:
                 self._pump()
             except GuardUnavailable:
-                # Connection died mid-run: fail SAFE — report as user activity
+                # Connection died mid-run: fail SAFE - report as user activity
                 # so any in-flight injection aborts rather than flying blind.
                 self.ledger.on_resumed(time.monotonic() + 10 * ATTRIB_WINDOW)
                 return
@@ -340,7 +340,7 @@ class ActivityGuard:
                 return
             if time.monotonic() > deadline:
                 raise UserActivityAbort(
-                    "owner never idle for %.1fs within %.0fs — refusing to inject"
+                    "owner never idle for %.1fs within %.0fs - refusing to inject"
                     % (seconds, timeout))
             time.sleep(0.1)
 

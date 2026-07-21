@@ -1,7 +1,7 @@
 # The mint-on-purchase webhook. NOT shipped in the app; deployed by the owner as
 # a tiny service that turns a Lemon Squeezy `order_created` event into a signed
 # Pro key and e-mails it. It holds the signing seed (from env) and the webhook
-# secret — deploy it somewhere private.
+# secret - deploy it somewhere private.
 [package]
 name = "xeneon-license-webhook"
 version = "0.1.0"
@@ -20,7 +20,7 @@ serde_json = "1"
 hmac = "0.12"
 sha2 = "0.10"
 hex = "0.4"
-# Blocking SMTP with rustls — no OpenSSL, no async runtime to wire up.
+# Blocking SMTP with rustls - no OpenSSL, no async runtime to wire up.
 lettre = { version = "0.11", default-features = false, features = [
     "smtp-transport",
     "builder",

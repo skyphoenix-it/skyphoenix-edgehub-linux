@@ -4,7 +4,7 @@ import "../../ui/qml" as App
 
 // COVERS: schema:showDistro
 
-// PackagesWidget — the installed-package count.
+// PackagesWidget - the installed-package count.
 //
 // The widget reads a C++ bridge (`distro`) that does not exist in this harness,
 // which is the point of two of these cases: with no bridge it must render a
@@ -67,7 +67,7 @@ Item {
         }
 
         // Zero is a REAL answer (a scratch chroot) and must not be confused with
-        // "unknown" — this is the whole reason the core sends null, not 0.
+        // "unknown" - this is the whole reason the core sends null, not 0.
         function test_zero_packages_is_a_real_count_not_unknown() {
             var w = h.item
             w.distroOverride = fakeDistro(archInfo(0))
@@ -91,7 +91,7 @@ Item {
             compare(w.distroName, "Fedora Linux 40")
         }
 
-        // Grouped with a THIN SPACE (U+2009) — a comma or a point means different
+        // Grouped with a THIN SPACE (U+2009) - a comma or a point means different
         // things either side of the Atlantic. Written as an escape, not a literal:
         // the separator is invisible in source, and asserting it with a plain
         // ASCII space would "fail" against correct output for reasons no one could
@@ -109,7 +109,7 @@ Item {
             verify(w.groupDigits(1461).indexOf(" ") < 0, "must not use an ASCII space")
         }
 
-        // The option must actually change what's rendered — no decorative toggles.
+        // The option must actually change what's rendered - no decorative toggles.
         function test_showDistro_controls_the_header_status() {
             var w = h.item
             w.distroOverride = fakeDistro(archInfo(1461))

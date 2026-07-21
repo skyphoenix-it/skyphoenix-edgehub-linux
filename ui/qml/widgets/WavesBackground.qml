@@ -1,6 +1,6 @@
 import QtQuick
 
-// WavesBackground — layered, slowly-scrolling sine waves along the bottom.
+// WavesBackground - layered, slowly-scrolling sine waves along the bottom.
 // Each wave is drawn ONCE onto a Canvas (a GPU texture) and animated by simply
 // translating the item horizontally, so there is no per-frame repaint cost.
 Item {
@@ -24,7 +24,7 @@ Item {
         anchors.fill: parent
         // The wave shape is drawn once into the Canvas; the tint is baked into
         // that texture, so a theme (or accent-override) change needs an explicit
-        // repaint — a plain colour binding would never reach the cached pixels.
+        // repaint - a plain colour binding would never reach the cached pixels.
         onTintChanged: cv.requestPaint()
         onOpChanged: cv.requestPaint()
         Canvas {

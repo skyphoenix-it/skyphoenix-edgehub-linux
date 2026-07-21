@@ -10,7 +10,7 @@ import "../../ui/qml/widgets" as Widgets
 // product call sites (WidgetConfigDialog.qml, Dashboard.qml) pass the Manager/hub
 // store which is an `id: store`. If the panel property were named `store`, the
 // binding `store: store` would resolve the RHS to the panel's OWN null property
-// (QML self-binding trap) — severing the ENTIRE config form from the store: every
+// (QML self-binding trap) - severing the ENTIRE config form from the store: every
 // field showed its default, the date showed an empty mask, and edits were silently
 // dropped. This test uses `st: store` where `store` is an id, so it reproduces the
 // exact call-site shape and FAILS if the property is ever renamed back to `store`.
@@ -34,7 +34,7 @@ Item {
 
     Loader {
         id: ld; active: root.ready; anchors.fill: parent
-        // NB: `st: store` — the call-site shape that would self-bind if the panel
+        // NB: `st: store` - the call-site shape that would self-bind if the panel
         // property were `store`.
         sourceComponent: Widgets.WidgetConfigPanel {
             schema: sc.schemaFor("countdown")
@@ -101,7 +101,7 @@ Item {
             verify(wrap, "cardBackdrop field rendered")
             var selected = findAll(wrap, function(n){ return n.hasOwnProperty("sel") && n.sel === true })
             compare(selected.length, 1, "exactly one backdrop option is selected")
-            // and it must be the stored one — find the label text under the selected chip
+            // and it must be the stored one - find the label text under the selected chip
             var lbls = findAll(selected[0], function(n){ return n.hasOwnProperty("text") && ("" + n.text).toLowerCase() === "mesh" })
             verify(lbls.length >= 1, "the SELECTED backdrop is 'mesh' (the stored value), not the default")
         }

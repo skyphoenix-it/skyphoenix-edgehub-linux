@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# run_all_tests.sh — run every developer test suite and aggregate the result.
+# run_all_tests.sh - run every developer test suite and aggregate the result.
 #
 # Set XENEON_RELEASE_GATE=1 for strict release semantics: C++ is configured and
 # executed rather than conditionally reused, and PASS is the only acceptable
@@ -14,7 +14,7 @@
 #   4. C++ (ctest)          : existing build in developer mode; clean dedicated
 #                             build in strict release mode
 #   5. QML behavior matrix  : python3 scripts/qml_coverage.py
-#   6. Runtime E2E battery  : tests/runtime/run_*.sh — nine scenarios driving the
+#   6. Runtime E2E battery  : tests/runtime/run_*.sh - nine scenarios driving the
 #                            REAL hub binary (focus goal bonus, w/h→size
 #                            migration, org policy, update-check-off, secret
 #                            refs, corrupt salvage, reset flags, live-push
@@ -189,7 +189,7 @@ elif [ -d "$test_build_dir" ] && [ -f "$test_build_dir/CTestTestfile.cmake" ]; t
     if ! grep -q '^XENEON_QA_HOOKS:BOOL=ON' "$test_build_dir/CMakeCache.txt" 2>/dev/null; then
         echo ""
         echo "!! WARNING: $test_build_dir configured WITHOUT -DXENEON_QA_HOOKS=ON."
-        echo "!! tst_smoke_hub and tst_smoke_manager will QSKIP — ctest will report"
+        echo "!! tst_smoke_hub and tst_smoke_manager will QSKIP - ctest will report"
         echo "!! green having never launched the real hub or manager binary."
         echo "!! Reconfigure: cmake -B '$test_build_dir' -DXENEON_BUILD_TESTS=ON -DXENEON_QA_HOOKS=ON"
         echo ""
@@ -215,24 +215,24 @@ fi
 run_suite "QML behavior matrix (qml_coverage.py)" python3 "$PROJECT_DIR/scripts/qml_coverage.py"
 
 # Static guard against the scene-graph walk bug that caused a system-wide OOM on
-# 2026-07-19 (three independent copies; 18.8 GB and 20 GB RSS). Cheap and fast —
+# 2026-07-19 (three independent copies; 18.8 GB and 20 GB RSS). Cheap and fast -
 # keep it ahead of the heavy suites so a reintroduction fails in seconds.
 run_suite "Tree-walk memory guard (check_tree_walks.py)" python3 "$PROJECT_DIR/scripts/check_tree_walks.py"
 
-# 5b. Egress lint — raw XMLHttpRequest may only live in the NetHub gate.
+# 5b. Egress lint - raw XMLHttpRequest may only live in the NetHub gate.
 run_suite "Egress lint (no raw XHR)" bash "$PROJECT_DIR/scripts/check_no_raw_xhr.sh"
 run_suite "Live-test lint (no inert test_*_data)" bash "$PROJECT_DIR/scripts/check_live_tests.sh"
-# The Manager is never tested inside a nested compositor — it is tested against
+# The Manager is never tested inside a nested compositor - it is tested against
 # a REAL hub in tests/hardware/. See the script header for why this is absolute.
 run_suite "No Manager tests under a compositor" bash "$PROJECT_DIR/scripts/check_no_manager_compositor_tests.sh"
 run_suite "Doc links (files + anchors)" bash "$PROJECT_DIR/scripts/check_doc_links.sh"
 run_suite "UI links (no dead openUrlExternally)" bash "$PROJECT_DIR/scripts/check_ui_links.sh"
 
-# 5c. Icon lint — every widget type needs a bundled, registered picker icon (the
+# 5c. Icon lint - every widget type needs a bundled, registered picker icon (the
 #     QML suite can't see missing assets: it runs source-tree, with no qrc).
 run_suite "Icon lint (widget types)" bash "$PROJECT_DIR/scripts/check_widget_icons.sh"
 
-# 5d. AppImage update contract — the cross-file invariants of the zsync delta-update
+# 5d. AppImage update contract - the cross-file invariants of the zsync delta-update
 #     path (artifact name ↔ binary appVersion ↔ zsync -u URL ↔ UpdateChecker's repo).
 #     No single suite spans those four files, and every one of them was independently
 #     broken while the rest of the tests stayed green.
@@ -240,7 +240,7 @@ run_suite "AppImage update contract" bash "$PROJECT_DIR/scripts/check_appimage_u
 run_suite "CPack release identity + tooling contract" \
     bash "$PROJECT_DIR/scripts/check_cpack_contract.sh"
 
-# 6. Runtime E2E battery — drives the real hub binary through one scenario
+# 6. Runtime E2E battery - drives the real hub binary through one scenario
 #    script per guarantee (see tests/runtime/README.md). Exit 77 = SKIP (no
 #    binary built or installed); anything else is PASS/FAIL as usual.
 runtime_scenarios=(
@@ -285,7 +285,7 @@ for entry in "${runtime_scenarios[@]}"; do
     fi
 done
 
-# 6b. Manager suites — the REAL Manager binary driven with REAL input against
+# 6b. Manager suites - the REAL Manager binary driven with REAL input against
 #     the REAL hub over the control socket. These replaced the deleted
 #     tests/gui Manager tests, which ran against a stubbed backend inside a
 #     nested compositor and whose pixel assertions were provably false.
@@ -311,7 +311,7 @@ else
     fi
 fi
 
-# 7. QML compositor suite (tests/gui) — real KWin, real input, real pixels, and
+# 7. QML compositor suite (tests/gui) - real KWin, real input, real pixels, and
 #    the ONLY aspect-ratio assertions in the repo. It was orphaned for months
 #    AND could not fail (it exited 0 unconditionally; fixed 2026-07-20).
 #

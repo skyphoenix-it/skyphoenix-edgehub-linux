@@ -1,5 +1,5 @@
 // Unit tests for the shared display-matching helpers (screenIdentityHash,
-// orientationName). Pure logic — no live QScreen — so QTEST_GUILESS_MAIN.
+// orientationName). Pure logic - no live QScreen - so QTEST_GUILESS_MAIN.
 #include <QtTest>
 #include <cstdint>
 

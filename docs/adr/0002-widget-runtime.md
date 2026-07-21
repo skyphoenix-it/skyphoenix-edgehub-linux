@@ -1,9 +1,9 @@
 # ADR-0002: Widget Runtime Architecture
 
-**Status:** Proposed  
-**Date:** 2026-07-11  
-**Decision Maker:** Software Architect  
-**Consulted:** Security Engineer, Plugin/SDK Developer, Senior Rust/C++ Developer  
+**Status:** Proposed
+**Date:** 2026-07-11
+**Decision Maker:** Software Architect
+**Consulted:** Security Engineer, Plugin/SDK Developer, Senior Rust/C++ Developer
 
 ---
 
@@ -53,7 +53,7 @@ All widgets run as QML components in the main rendering thread. A watchdog timer
 
 | Pros | Cons |
 |------|------|
-| Simplest implementation | No real isolation — a crashing widget crashes everything |
+| Simplest implementation | No real isolation - a crashing widget crashes everything |
 | Best rendering performance (no IPC) | Blocking widget freezes entire UI until watchdog fires |
 | No serialization overhead | Watchdog can only kill the whole process, not individual widgets |
 | Excellent for MVP speed | Community widget support (Level 3) requires complete redesign |
@@ -68,7 +68,7 @@ Each widget gets its own `QQmlEngine` instance in the same process. QML engines 
 
 | Pros | Cons |
 |------|------|
-| Better isolation than shared engine | Still same process — QML engine crash can still take down app |
+| Better isolation than shared engine | Still same process - QML engine crash can still take down app |
 | Lower overhead than separate processes | Multiple QML engines increase memory (each ~10-30MB) |
 | Widgets can be loaded/unloaded independently | Resource overhead of 25+ widgets may exceed 150MB target |
 | Natural QML component model | Complex to manage many engines efficiently |
@@ -83,7 +83,7 @@ Each widget or group of widgets runs in a separate Qt process. Communication via
 
 | Pros | Cons |
 |------|------|
-| True process isolation — widget crash isolated | High memory overhead per widget process (each ~50-80MB for Qt) |
+| True process isolation - widget crash isolated | High memory overhead per widget process (each ~50-80MB for Qt) |
 | Can enforce seccomp, cgroups, namespaces per widget | IPC latency for every widget update |
 | Perfect for community widgets (Level 3) | Complex lifecycle management |
 | Can restart individual widgets | 25+ widgets = 25+ processes = unacceptable resource use |
@@ -92,7 +92,7 @@ Each widget or group of widgets runs in a separate Qt process. Communication via
 
 ---
 
-### Option D: Hybrid — Trusted QML In-Process + WASM Sandbox for Community
+### Option D: Hybrid - Trusted QML In-Process + WASM Sandbox for Community
 
 **Architecture:**
 
@@ -121,7 +121,7 @@ Embed a sandboxed Lua (e.g., Luau) or JavaScript (e.g., QuickJS, Deno) runtime f
 | Pros | Cons |
 |------|------|
 | Familiar scripting languages | Scripting runtimes need C API bridges to UI |
-| Lightweight (Lua <1MB) | No built-in UI toolkit — rendering must be done via bridge to QML |
+| Lightweight (Lua <1MB) | No built-in UI toolkit - rendering must be done via bridge to QML |
 | Fast startup | Memory safety in C bridging code is error-prone |
 | Well-understood sandboxing (Luau) | Two widget models (QML + script) creates fragmentation |
 | | Scripts can still block the thread they run on |
@@ -132,7 +132,7 @@ Embed a sandboxed Lua (e.g., Luau) or JavaScript (e.g., QuickJS, Deno) runtime f
 
 ## Decision
 
-**Selected: Option D — Hybrid Architecture with Trusted QML In-Process + WASM Sandbox for Community Widgets**
+**Selected: Option D - Hybrid Architecture with Trusted QML In-Process + WASM Sandbox for Community Widgets**
 
 ### MVP Implementation (Phases 1-6)
 
@@ -282,7 +282,7 @@ Cross-widget communication requires declared permissions.
 
 ### Positive
 - MVP implementation is simple: all widgets are QML, no sandbox overhead.
-- Architecture is designed for community widgets from day one — no rewrite needed.
+- Architecture is designed for community widgets from day one - no rewrite needed.
 - WASM sandbox is a proven, secure isolation mechanism.
 - Clear trust-level model guides implementation and security review.
 - Widget lifecycle is well-defined and consistent across all trust levels.
@@ -300,9 +300,9 @@ Cross-widget communication requires declared permissions.
 
 ## References
 
-- [wasmtime](https://wasmtime.dev/) — Standalone WASM runtime
-- [WASI](https://wasi.dev/) — WebAssembly System Interface
-- [wasm-bindgen](https://github.com/rustwasm/wasm-bindgen) — Rust-to-WASM bindings
-- [Qt QML Loader](https://doc.qt.io/qt-6/qml-qtquick-loader.html) — Dynamic QML component loading
-- [Qt Quick Canvas](https://doc.qt.io/qt-6/qml-qtquick-canvas.html) — 2D canvas for QML
+- [wasmtime](https://wasmtime.dev/) - Standalone WASM runtime
+- [WASI](https://wasi.dev/) - WebAssembly System Interface
+- [wasm-bindgen](https://github.com/rustwasm/wasm-bindgen) - Rust-to-WASM bindings
+- [Qt QML Loader](https://doc.qt.io/qt-6/qml-qtquick-loader.html) - Dynamic QML component loading
+- [Qt Quick Canvas](https://doc.qt.io/qt-6/qml-qtquick-canvas.html) - 2D canvas for QML
 

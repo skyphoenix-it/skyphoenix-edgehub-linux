@@ -1,7 +1,6 @@
 # Press kit
 
-> **Internal draft.** Fill the release fact sheet from the signed artifacts and
-> evidence page, not from plans or CI workflow names.
+> **Prepared beta.1 press material.** Publish after the signed artifacts are live.
 
 ## Short description
 
@@ -25,16 +24,16 @@ under MIT OR Apache-2.0.
 |---|---|
 | Product | EdgeHub |
 | Publisher | SKYPhoenix IT |
-| Version | [VERSION] |
-| Release date | [RELEASE_DATE] |
-| Verified platforms | [VERIFIED_PLATFORM_SUMMARY] |
-| Published artifacts | [SUPPORTED_PACKAGES] |
+| Version | v1.0.0-beta.1 |
+| Release date | 2026-07-21 |
+| Verified platforms | CachyOS/Arch Linux with KDE Plasma on Wayland; portable x86-64 builds require Qt 6.5 or newer |
+| Published artifacts | signed source tarball and portable x86-64 tarball, with checksums and signatures |
 | Source licence | MIT OR Apache-2.0 |
-| Price/store | [VERIFIED_COMMERCIAL_TERMS_OR_NOT_AVAILABLE] |
-| Download | [DOWNLOAD_URL] |
-| Release evidence | [RELEASE_EVIDENCE_URL] |
-| Support | [SUPPORT_URL] |
-| Contact | [CONTACT] |
+| Price/store | Not offered for sale in beta.1 |
+| Download | https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/releases/tag/v1.0.0-beta.1 |
+| Release evidence | https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/blob/v1.0.0-beta.1/docs/testing/hardware-validation-2026-07-21.md |
+| Support | https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/issues |
+| Contact | simon.kreitmayer@skyphoenix-it.com |
 
 ## Product facts
 
@@ -88,15 +87,17 @@ delta-update flow until a real release-to-release round trip is verified.
 
 ### Which Linux distributions and desktops are supported?
 
-Use only `[VERIFIED_PLATFORM_SUMMARY]`. Do not substitute the intended test
-matrix or package recipes for completed release evidence.
+The primary verified environment is CachyOS/Arch Linux with KDE Plasma on
+Wayland. Portable x86-64 builds require Qt 6.5 or newer. Do not describe package
+recipes as published repositories.
 
 ## Credits
 
 - Product and publisher: SKYPhoenix IT.
 - Technology: Rust, C++17, Qt 6, QML, CMake.
-- Third-party licences and bundled asset notices: link `[THIRD_PARTY_NOTICES_URL]`.
-- Contributors: [CONTRIBUTOR_CREDITS].
+- Third-party licences and bundled font notices:
+  <https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/tree/v1.0.0-beta.1/assets/fonts>.
+- Contributors: Simon Kreitmayer and the EdgeHub hardware testers.
 
 ## Media asset rule
 

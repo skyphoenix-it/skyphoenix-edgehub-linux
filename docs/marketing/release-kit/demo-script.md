@@ -26,7 +26,7 @@
 | 36–44s | Switch portrait/landscape or show matched captures | “Layouts are designed for both orientations.” |
 | 44–51s | Appearance panel and two free themes/backgrounds | “Choose from themes, accents, backgrounds, and wallpapers.” |
 | 51–56s | Fast montage: focus, media, system, weather/data widgets | “Thirty first-party widgets. Nineteen ready-made screens.” |
-| 56–60s | End card | “EdgeHub [VERSION] — [DOWNLOAD_URL_SHORT]” |
+| 56–60s | End card | “EdgeHub v1.0.0-beta.1 - github.com/skyphoenix-it/skyphoenix-edgehub-linux/releases” |
 
 ## End-card legal line
 
@@ -44,4 +44,4 @@
 
 Store the untouched master recording, candidate commit/tag, binary SHA-256,
 temporary config, display layout, and a capture log. Publish edited media only
-after verifying that the shown build identifies itself as `[VERSION]`.
+after verifying that the shown build identifies itself as `v1.0.0-beta.1`.

@@ -1,27 +1,27 @@
 import QtQuick
 import QtQuick.Layouts
 
-// End of Day — progress through the workday + time remaining. Real (system
+// End of Day - progress through the workday + time remaining. Real (system
 // clock). Start/end hours are configurable and persisted.
 //
 // Sizing (W1 wave 2a): layout keys off the injected `sizeClass`.
-//   • 0.5x0.5 (micro) — headerless: the remaining time + a slim bar.
-//   • 1x1 (baseline)  — remaining + bar + "% of window" caption (the classic).
-//   • wide            — remaining/caption beside the progress (bar or ring —
+//   • 0.5x0.5 (micro) - headerless: the remaining time + a slim bar.
+//   • 1x1 (baseline)  - remaining + bar + "% of window" caption (the classic).
+//   • wide            - remaining/caption beside the progress (bar or ring -
 //                       progressStyle is finally honoured outside the overlay).
-//   • tall            — progress hero (ring or bar) + a Started/Ends/Elapsed
+//   • tall            - progress hero (ring or bar) + a Started/Ends/Elapsed
 //                       detail column: the workday spelled out.
-//   • full (overlay)  — optional ring + the Start/End pills, sized by the pane it
+//   • full (overlay)  - optional ring + the Start/End pills, sized by the pane it
 //                       is actually given (see ringPx / remainingPx). It is NOT a
 //                       full screen: Dashboard hosts it in a live-preview pane
-//                       beside the config form — ~941x456 landscape, ~656x980
-//                       portrait — so "full" is a class like any other and reads
+//                       beside the config form - ~941x456 landscape, ~656x980
+//                       portrait - so "full" is a class like any other and reads
 //                       its own box rather than a set of literals.
 //
 // The Start/End pill row is the one thing here still keyed off the MODE, and that
 // is correct: it is the config EDITOR, and the overlay is where this widget is
 // edited (Dashboard puts the config form right beside it). It is an affordance
-// question, not a dimension — a tall tile has the room for the pills and still
+// question, not a dimension - a tall tile has the room for the pills and still
 // should not become an editor.
 WidgetChrome {
     id: w
@@ -66,8 +66,8 @@ WidgetChrome {
     //   • Same-day windows (start < end) anchor both ends on ref's date.
     //   • Overnight windows (end ≤ start, within maxOvernightSpan) span midnight,
     //     so a single date-anchoring is wrong after midnight. We consider TWO
-    //     candidate anchorings — one that started YESTERDAY and ends today, and
-    //     one that starts today and ends tomorrow — and return whichever
+    //     candidate anchorings - one that started YESTERDAY and ends today, and
+    //     one that starts today and ends tomorrow - and return whichever
     //     currently CONTAINS ref. So at 03:00 a 22→06 shift resolves to
     //     [yesterday 22:00, today 06:00] (in-window, ~62%, 3h left), while at
     //     23:00 it resolves to [today 22:00, tomorrow 06:00] (7h left).
@@ -123,12 +123,12 @@ WidgetChrome {
     readonly property bool horiz: sizeClass === "wide"
     readonly property bool tallish: sizeClass === "tall" || sizeClass === "large"
     // Has this instance got room to spare? The overlay is a size CLASS ("full",
-    // injected by Dashboard alongside expanded), not a mode — so it belongs here
+    // injected by Dashboard alongside expanded), not a mode - so it belongs here
     // rather than in a `w.expanded ?` branch repeated down the file. `large` is
     // unreachable for this type's declared sizes (1x2/1x3 are not offered); kept
     // so a forced class degrades sanely.
     readonly property bool roomy: tallish || sizeClass === "full"
-    // The ring style is honoured wherever a ring has room — the overlay (as
+    // The ring style is honoured wherever a ring has room - the overlay (as
     // before) and tall/wide tiles. micro/baseline keep the quiet bar.
     // (`expanded ||` dropped: `roomy` covers sizeClass "full", so it was a
     // synonym for the class, not an extra condition.)
@@ -149,7 +149,7 @@ WidgetChrome {
     // The ring diameter. The `w.expanded ?` branch this used to lead with picked
     // a whole different FORMULA for the overlay (w*0.7, h*0.55, cap 320); the
     // overlay is just the roomiest class, so it now shares the general non-wide
-    // TILE term unchanged — every already-shipped tile keeps its exact ring, and
+    // TILE term unchanged - every already-shipped tile keeps its exact ring, and
     // the overlay is sized by the pane it is actually given instead of by a
     // formula that assumed a 2560x720 screen:
     //   overlay 941x456 -> 191.5   ·  overlay 656x980 -> 300 (the two 38%-preview
@@ -175,7 +175,7 @@ WidgetChrome {
         columnSpacing: theme.spacingLg
         rowSpacing: w.roomy ? 14 : 6     // air is room, not mode
 
-        // Circular progress — the overlay's ring, now also earned by tall/wide
+        // Circular progress - the overlay's ring, now also earned by tall/wide
         // ring-style tiles.
         Item {
             id: ringBox
@@ -208,7 +208,7 @@ WidgetChrome {
         ColumnLayout {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignVCenter
-            spacing: w.roomy ? 14 : 6        // room, not mode — see rowSpacing above
+            spacing: w.roomy ? 14 : 6        // room, not mode - see rowSpacing above
 
             Text {
                 visible: !w.timeInRing
@@ -235,7 +235,7 @@ WidgetChrome {
             // overlay is injected as "full", so `w.tallish` is already false
             // whenever `w.expanded` is true. It only ever did anything in a test
             // host that set expanded:true without the "full" that Dashboard always
-            // pairs with it — i.e. it encoded the harness, not the product.
+            // pairs with it - i.e. it encoded the harness, not the product.
             Text {
                 visible: w.showPercent && !w.timeInRing && !w.micro
                          && !(w.tallish && w.validHours)
@@ -251,7 +251,7 @@ WidgetChrome {
                 font.pixelSize: Math.round(Math.max(12, Math.min(w.remainingPx * 0.20, 15)))
                 color: theme.textSecondary
             }
-            // Tall tiles spell the workday out — genuinely more information.
+            // Tall tiles spell the workday out - genuinely more information.
             ColumnLayout {
                 visible: w.tallish && w.validHours
                 Layout.fillWidth: true
@@ -267,7 +267,7 @@ WidgetChrome {
                     delegate: RowLayout {
                         Layout.fillWidth: true
                         spacing: theme.spacingMd
-                        // The Done row duplicates the caption's percent — it
+                        // The Done row duplicates the caption's percent - it
                         // honours the same showPercent switch.
                         visible: modelData.k !== "Done" || w.showPercent
                         Text { text: modelData.k

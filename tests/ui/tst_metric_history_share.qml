@@ -4,8 +4,8 @@ import "../../ui/qml" as App
 
 // Gate for S5: the RAM and GPU widgets must mirror their sparkline history into
 // the shared DashboardStore (keyed by instanceId), the way CpuWidget/NetWidget
-// already do, so the expanded overlay — a SEPARATE widget instance bound to the
-// same instanceId — opens with the same graph instead of an empty one.
+// already do, so the expanded overlay - a SEPARATE widget instance bound to the
+// same instanceId - opens with the same graph instead of an empty one.
 //
 // Each case drives samples into a "primary" widget, then loads a "overlay" widget
 // with the SAME store + instanceId and asserts it reads the same non-empty

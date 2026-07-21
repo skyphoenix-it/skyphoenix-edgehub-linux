@@ -3,7 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 // ─────────────────────────────────────────────────────────────────────────
-// SettingsPanel — in-app customization overlay.
+// SettingsPanel - in-app customization overlay.
 // Lets the user pick theme mode, accent color, glass/transparency level,
 // widget glow, and reduced motion. Changes apply live to `theme` / root.
 // ─────────────────────────────────────────────────────────────────────────
@@ -15,16 +15,16 @@ Rectangle {
     property bool shown: false
     signal closeRequested()
     // W5 finding 3: the "Screens" entry reopens the preset library post-setup.
-    // The panel only emits — the Dashboard owns the picker and the apply.
+    // The panel only emits - the Dashboard owns the picker and the apply.
     signal presetsRequested()
     // True when an org policy forces a preset (E9 lockToPreset): the Screens
-    // entry is then ABSENT, not greyed — a managed device must not advertise
+    // entry is then ABSENT, not greyed - a managed device must not advertise
     // a choice its user cannot make. Injected by the Dashboard.
     property bool presetsLocked: false
 
     // E10: the app-global UpdateChecker service (injected by Dashboard; null in
     // a standalone harness). The panel only renders its result line and writes
-    // the persisted opt-in flag — the checker itself decides when to talk.
+    // the persisted opt-in flag - the checker itself decides when to talk.
     property var updateChecker: null
 
     visible: shown || opacity > 0.01
@@ -51,7 +51,7 @@ Rectangle {
             property bool active: root.accentName === modelData
             color: theme.accentPresets[modelData].a
             // Okabe–Ito includes pure black, which would otherwise disappear
-            // against the dark sheet — every swatch keeps a hairline so the
+            // against the dark sheet - every swatch keeps a hairline so the
             // unselected ones stay findable whatever their tone.
             border.width: active ? 3 : 1
             border.color: active ? theme.textPrimary : theme.cardBorder
@@ -115,7 +115,7 @@ Rectangle {
                     width: parent.width
                     spacing: theme.spacingXl
 
-                    // --- Screens (reopen the preset library — W5 finding 3) ---
+                    // --- Screens (reopen the preset library - W5 finding 3) ---
                     // The 15-screen library used to be wizard-only; this is the
                     // one post-setup way back in. Hidden entirely under an
                     // org-forced preset.
@@ -162,7 +162,7 @@ Rectangle {
                     // `license` bridge is a context property on the device; it is absent
                     // in the offscreen test harness, so read it defensively (→ treated as
                     // free). Tapping a locked theme explains where to unlock it instead
-                    // of silently applying — the leak this fixes.
+                    // of silently applying - the leak this fixes.
                     ColumnLayout {
                         id: themeSection
                         Layout.fillWidth: true; spacing: theme.spacingSm
@@ -170,8 +170,8 @@ Rectangle {
                         property string lockHint: ""
                         function groupLabel(g) {
                             // "Inspired", never "Distro-inspired": see the naming
-                            // policy in ui/qml/Theme.qml. No project name — and no
-                            // phrase that re-asserts the association — appears in a
+                            // policy in ui/qml/Theme.qml. No project name - and no
+                            // phrase that re-asserts the association - appears in a
                             // user-visible string.
                             return g === "Premium" ? "Premium (Pro)"
                                  : g === "Inspired" ? "Inspired (Pro)"
@@ -291,7 +291,7 @@ Rectangle {
                         }
                         BackgroundPicker {
                             Layout.fillWidth: true
-                            // Backgrounds have no effect in High Contrast — disable the
+                            // Backgrounds have no effect in High Contrast - disable the
                             // picker there instead of letting taps silently no-op.
                             enabled: theme.decorative
                             opacity: theme.decorative ? 1.0 : 0.4
@@ -302,7 +302,7 @@ Rectangle {
 
                     // A "Layout Columns" picker stood here. The grid is now fixed at
                     // WidgetSizes.shortHalves across the short axis, because a size is
-                    // a fraction of the SCREEN — a user-chosen column count would make
+                    // a fraction of the SCREEN - a user-chosen column count would make
                     // `1x1` mean something different per page, which is the exact
                     // property the size model exists to remove. A tile's share of the
                     // screen is now chosen per TILE (its size), not per page.
@@ -412,7 +412,7 @@ Rectangle {
                     }
 
                     // --- Software updates (E10, opt-in) ---
-                    // OFF by default — the product's zero-egress default is CI-attested,
+                    // OFF by default - the product's zero-egress default is CI-attested,
                     // so this toggle is the ONLY thing that ever lets the hub ask GitHub
                     // for the latest release tag (one GET, through the NetHub gate).
                     ColumnLayout {
@@ -424,7 +424,7 @@ Rectangle {
                             Switch {
                                 // Bound to the persisted appearance flag (default off).
                                 // Toggling writes `checked` internally, severing the
-                                // binding — push to the store, then re-bind. (S2)
+                                // binding - push to the store, then re-bind. (S2)
                                 checked: { var _ = store.revision; return store.appearance().updateCheck === true }
                                 onToggled: {
                                     store.setAppearance("updateCheck", checked)

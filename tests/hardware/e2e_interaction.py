@@ -2,11 +2,11 @@
 """Real synthetic-touch interaction tests: compact widget controls + page swipe.
 
 Coordinates are for the fixed layout seeded in `run()` (Focus top, Hydration
-second, Tasks third) at the Edge's native 720x2560 — grab-measured 2026-07-20
+second, Tasks third) at the Edge's native 720x2560 - grab-measured 2026-07-20
 against the current build (the harness's IPC landing probe re-verifies two of
 them before any injection, so silent drift can no longer spray blind taps).
 
-SAFETY: this suite emits real input into the live session, so it is OPT-IN —
+SAFETY: this suite emits real input into the live session, so it is OPT-IN -
 without XENEON_HW_INPUT=1 it SKIPS loudly and completely. Even when opted in,
 the harness refuses to inject until the kill switch is connected, the owner is
 idle, the hub window is render-verified at the Edge rect, and an IPC landing
@@ -123,7 +123,7 @@ def _run_gestures(h):
         return Image.open(path).convert("RGB").resize((1, 1)).getpixel((0, 0))
 
     def _dist(a, b):
-        # Euclidean distance between the two grabs' AVERAGE colours — the distinct
+        # Euclidean distance between the two grabs' AVERAGE colours - the distinct
         # per-page wallpaper dominates, so this cleanly separates "different page"
         # (large) from "same page" (~0), robust to hue and to grab timing.
         try:

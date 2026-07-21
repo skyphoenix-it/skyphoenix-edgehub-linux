@@ -1,35 +1,35 @@
 import QtQuick
 import QtQuick.Layouts
 
-// Habit streak — daily check-ins with a real streak count + heatmap.
+// Habit streak - daily check-ins with a real streak count + heatmap.
 // Persisted; streak is computed from consecutive days ending today/yesterday.
 //
 // Sizing (W1 wave 2b): the heatmap used to be expanded-only, on the reasoning
 // (still in WidgetCatalog) that "a tile shows a streak number + one button,
 // whatever room it is given". That outlived its truth: the 28-day grid is 7x4
-// cells, which fits a 696x819 baseline tile with room to spare — so a tile with
+// cells, which fits a 696x819 baseline tile with room to spare - so a tile with
 // the space now earns the history rather than showing a lone number in a big box.
-//   • 0.5x0.5 (micro) — headerless: the streak number + Check in. The heatmap is
+//   • 0.5x0.5 (micro) - headerless: the streak number + Check in. The heatmap is
 //                       genuinely too small to read at 348x409, so it stays off.
-//   • 1x1 (baseline)  — streak + the 28-day heatmap + Check in.
-//   • wide            — the streak/button column BESIDE the heatmap.
-//   • tall            — streak, heatmap, button stacked; the map transposes to
+//   • 1x1 (baseline)  - streak + the 28-day heatmap + Check in.
+//   • wide            - the streak/button column BESIDE the heatmap.
+//   • tall            - streak, heatmap, button stacked; the map transposes to
 //                       4x7 so it fits the box instead of sitting as a squat
 //                       block in a column of air (see heatCols).
-//   • full (overlay)  — streak + best + heatmap + button, sized by the pane it is
+//   • full (overlay)  - streak + best + heatmap + button, sized by the pane it is
 //                       actually given (see streakPx). It is NOT a full screen:
 //                       Dashboard hosts it in a live-preview pane beside the
-//                       config form — ~941x456 in landscape, ~656x980 stacked in
-//                       portrait — so "full" is a class like any other and reads
+//                       config form - ~941x456 in landscape, ~656x980 stacked in
+//                       portrait - so "full" is a class like any other and reads
 //                       its own box rather than a set of literals.
-// The check-in button is a PillButton (theme.touchSecondary) at every size — it is
+// The check-in button is a PillButton (theme.touchSecondary) at every size - it is
 // the whole interaction, so it is never shrunk to make a layout fit.
 //
-// Sizing (W1 wave 2c): 1x1.5 — a half screen, and NOT the baseline stretched. It
+// Sizing (W1 wave 2c): 1x1.5 - a half screen, and NOT the baseline stretched. It
 // projects to two genuinely different boxes, and gets a different card in each:
-//   • portrait 696x1229 (tall) — the 4x7 map above the streak, the record and the
+//   • portrait 696x1229 (tall) - the 4x7 map above the streak, the record and the
 //                                button. Cells reach ~86px vs the baseline's 34.
-//   • landscape 1269x612 (wide) — the 7x4 map BESIDE the streak/record/button
+//   • landscape 1269x612 (wide) - the 7x4 map BESIDE the streak/record/button
 //                                 column.
 // What it earns over 1x1 is CONTENT, not scale: the best-ever record line, which
 // was `visible: w.expanded` and so appeared in the overlay while a half-screen
@@ -61,14 +61,14 @@ WidgetChrome {
     // spring-forward / fall-back boundary near midnight.
     function prevDay(d) { var n = new Date(d); n.setHours(12, 0, 0, 0); n.setDate(n.getDate() - 1); return n }
     // Parse a "yyyy-MM-dd" key into a local-noon Date (mirrors CountdownWidget's
-    // component-wise construction — never `new Date(str)`, which is UTC).
+    // component-wise construction - never `new Date(str)`, which is UTC).
     function parseKey(k) { var p = String(k).split("-"); return new Date(+p[0], (+p[1]) - 1, +p[2], 12, 0, 0, 0) }
     // Calendar day immediately before a key, DST-safe.
     function prevDayKey(k) { return key(prevDay(parseKey(k))) }
     property string todayKey: (w.tick, key(new Date()))
     property bool doneToday: checkins.indexOf(todayKey) >= 0
 
-    // Streak from an arbitrary check-in list — used ONLY to (a) derive an initial
+    // Streak from an arbitrary check-in list - used ONLY to (a) derive an initial
     // streak from a legacy config that predates the stored number, and (b)
     // recompute after un-checking today. The live streak itself is a persisted
     // NUMBER (see `streak` / `streakState`), so it is NOT capped by the pruned
@@ -107,7 +107,7 @@ WidgetChrome {
         }
         return streakOf(checkins)                                  // legacy derive
     }
-    // Best streak ever — persisted, but never less than the current run.
+    // Best streak ever - persisted, but never less than the current run.
     readonly property int bestStreak: Math.max(cfg.bestStreak || 0, streak)
     // The one thing here that IS legitimately keyed off the mode rather than the
     // room: `status` is chrome-header content, and the overlay hosts this widget
@@ -134,8 +134,8 @@ WidgetChrome {
             && Math.min(width, height) >= 480)
 
     // The heatmap's GRID FOLLOWS THE BOX. 28 days is either 7x4 or 4x7, and both
-    // keep the structure that makes the map readable — cells 7 apart share a
-    // weekday — they just swap which axis carries the week:
+    // keep the structure that makes the map readable - cells 7 apart share a
+    // weekday - they just swap which axis carries the week:
     //   7 cols -> a ROW is a week, a COLUMN is a weekday   (square / wide boxes)
     //   4 cols -> a COLUMN is a week, a ROW is a weekday   (tall boxes)
     // Handing a tall box the 7x4 map is precisely the "one layout stretched"
@@ -148,8 +148,8 @@ WidgetChrome {
     readonly property int heatRows: w.tallBox ? 7 : 4
 
     // The heatmap is 28 cells; a micro tile cannot show them legibly. Room, not
-    // mode: the `|| w.expanded` this used to lead with was already dead — micro
-    // requires sizeClass "compact" and the overlay is injected as "full" — but it
+    // mode: the `|| w.expanded` this used to lead with was already dead - micro
+    // requires sizeClass "compact" and the overlay is injected as "full" - but it
     // said the decision was partly the overlay's, which is the habit being removed.
     readonly property bool showHeatmap: !w.micro
 
@@ -164,7 +164,7 @@ WidgetChrome {
     // The streak number is sized by its BOX at every class, the overlay included.
     // It used to open with `w.expanded ? 40`, and that literal was frozen twice
     // over: it ignored the box it was actually in, and it never noticed when W5
-    // shrank the overlay's live-preview pane to 38% of the screen in landscape —
+    // shrank the overlay's live-preview pane to 38% of the screen in landscape -
     // the pane is ~941x456 there and ~656x980 stacked in portrait, not a full
     // 2560x720. Fed through the general term those boxes ask for 46px and 66px
     // respectively; 40 was neither. Every already-shipped tile class is untouched
@@ -183,8 +183,8 @@ WidgetChrome {
     //          Tuned against renders, not arithmetic: at 0.085 the cells came out
     //          bigger than the streak number itself and inverted the hierarchy.
     //   else : unchanged, so every already-shipped size keeps its exact cell size.
-    // The cap is a guard rail rather than the active term at 1x1.5 — the axis
-    // terms bind first there (86 vs 120 tall, 70.5 vs 120 wide) — and it is what
+    // The cap is a guard rail rather than the active term at 1x1.5 - the axis
+    // terms bind first there (86 vs 120 tall, 70.5 vs 120 wide) - and it is what
     // holds the baseline tile at its current 34.
     readonly property real heatCellCap: w.roomy ? 120 : 34
     // Same story as streakPx: the leading `w.expanded ? 24` is gone, so the map
@@ -198,7 +198,7 @@ WidgetChrome {
 
     // Days-ago for a row-major cell index under the CURRENT grid shape; index 27
     // is always today. With 7 columns the natural row-major order already runs a
-    // week per row. With 4 columns the week has to run DOWN each column instead —
+    // week per row. With 4 columns the week has to run DOWN each column instead -
     // left as row-major, every row would be 4 consecutive days and the weekday
     // alignment (the entire point of a habit heatmap) would be lost.
     function daysAgoFor(index) {
@@ -217,7 +217,7 @@ WidgetChrome {
     // Only the most recent HEATMAP_DAYS check-ins are ever shown, so the stored
     // `checkins` array is pruned to that window (prevents unbounded growth of the
     // config over years of use). The STREAK is stored independently as a number,
-    // so it is not capped by this pruning — a 40-day run reports 40, not 28.
+    // so it is not capped by this pruning - a 40-day run reports 40, not 28.
     readonly property int heatmapDays: 28
     function toggleToday() {
         if (!store) return
@@ -258,7 +258,7 @@ WidgetChrome {
         }
     }
 
-    // Celebration pop (mirrors FocusWidget) — the check-in dopamine hit.
+    // Celebration pop (mirrors FocusWidget) - the check-in dopamine hit.
     //
     // The banner spans the whole CARD, so the card is what sizes it. `expanded ?
     // 34 : 17` asked the wrong question and got both answers wrong: a 696x819
@@ -298,7 +298,7 @@ WidgetChrome {
         }
     }
 
-    // `columns` flips for a wide box; that only RESHAPES — no delegate is rebuilt
+    // `columns` flips for a wide box; that only RESHAPES - no delegate is rebuilt
     // (the heatmap's model is the literal 28, so its cells live for the widget's
     // whole life and a check-in only moves their bound values).
     GridLayout {
@@ -308,7 +308,7 @@ WidgetChrome {
         // Air is room, not mode. 14 was "the overlay" and 6 "not the overlay";
         // what actually earns the wider gap is having the space for it, which is
         // the same `roomy` predicate the cell cap and the record line already use
-        // — so a 1x1.5 tile, with cells up to 86px and a ~70px streak number, now
+        // - so a 1x1.5 tile, with cells up to 86px and a ~70px streak number, now
         // gets the breathing room its own contents ask for instead of the
         // baseline third's tighter 6. Compact/micro tiles are unchanged.
         rowSpacing: w.roomy ? 14 : 6
@@ -316,7 +316,7 @@ WidgetChrome {
 
         // 28-day heatmap. Was expanded-only "because the grid can't fit"; at
         // 7x4 cells it fits every size but the 1/12 tile, so it is now earned by
-        // room rather than by mode — and its grid transposes to 4x7 for a tall
+        // room rather than by mode - and its grid transposes to 4x7 for a tall
         // box rather than sitting as a squat block in a column of air.
         GridLayout {
             Layout.alignment: Qt.AlignCenter
@@ -354,7 +354,7 @@ WidgetChrome {
         ColumnLayout {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignCenter
-            spacing: w.roomy ? 14 : 4          // room, not mode — see rowSpacing above
+            spacing: w.roomy ? 14 : 4          // room, not mode - see rowSpacing above
 
             Text {
                 Layout.alignment: Qt.AlignHCenter; Layout.fillWidth: true
@@ -362,7 +362,7 @@ WidgetChrome {
                 font.pixelSize: Math.round(w.streakPx); font.bold: true; color: w.effAccent
                 horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight
             }
-            // Best streak — a record to beat. Shown wherever the ROOM earns it
+            // Best streak - a record to beat. Shown wherever the ROOM earns it
             // (see showBest), which is what lets 1x1.5 carry something the
             // baseline third does not, rather than the same tile stretched.
             Text {
@@ -380,12 +380,12 @@ WidgetChrome {
                 color: theme.textSecondary
                 horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight
             }
-            // Check in from every size — a PillButton is theme.touchSecondary (60),
+            // Check in from every size - a PillButton is theme.touchSecondary (60),
             // above the 52 minimum, and this is the widget's whole interaction.
             PillButton {
                 Layout.alignment: Qt.AlignHCenter
                 // The long form is spelled out wherever there is room for it, not
-                // only in the overlay — the pill is content-sized (see PillButton),
+                // only in the overlay - the pill is content-sized (see PillButton),
                 // so this is a legibility choice the box makes, not the mode.
                 label: w.doneToday ? (w.roomy ? "Done today ✓" : "✓ today") : "Check in"
                 glyph: w.doneToday ? "" : "🔥"

@@ -1,6 +1,6 @@
 import QtQuick
 
-// WallpaperCatalog — the set of bundled "standard" page backgrounds that ship
+// WallpaperCatalog - the set of bundled "standard" page backgrounds that ship
 // with the app (720×2560, tuned to the built-in themes). Shared by the hub's
 // SettingsPanel and the Manager so both offer the same list. User-uploaded
 // images (via the Manager) are listed separately by the Manager itself.

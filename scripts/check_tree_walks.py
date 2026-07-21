@@ -15,7 +15,7 @@ THE BUG
 -------
 A QML node is reachable through more than one "child axis":
 `children`, `data`, `contentItem`, `contentData`, `visibleChildren`, `resources`.
-These OVERLAP — `data` is a superset of `children`, and a Control's
+These OVERLAP - `data` is a superset of `children`, and a Control's
 `contentItem` is itself one of its `children`. A recursive walk that descends
 two or more of these axes without remembering what it has already visited
 re-walks each node's subtree once per distinct path. That is exponential in
@@ -107,7 +107,7 @@ def extract_function_bodies(text: str):
 def axes_used(body: str) -> set[str]:
     used = set()
     for axis in AXES:
-        # `node.children`, `n.data`, `x.contentItem` — a property access.
+        # `node.children`, `n.data`, `x.contentItem` - a property access.
         if re.search(r"\.\s*" + axis + r"\b", body):
             used.add(axis)
     return used
@@ -162,7 +162,7 @@ def main() -> int:
 
     print()
     print("FAIL: unmemoised multi-axis scene-graph walker(s) found.")
-    print("These re-walk each subtree once per path — exponential in depth.")
+    print("These re-walk each subtree once per path - exponential in depth.")
     print("Add a visited-set (see scripts/lib/run_bounded.sh header and")
     print("tests/gui/GuiUtil.js:_walk for the canonical fix).")
     print()

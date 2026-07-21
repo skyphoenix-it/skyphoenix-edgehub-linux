@@ -4,17 +4,17 @@ import "fixtures.js" as Fx
 import "../../ui/qml/widgets" as W
 
 // ─────────────────────────────────────────────────────────────────────────
-// tst_weather_net — network path of ui/qml/widgets/WeatherWidget.qml, driven
+// tst_weather_net - network path of ui/qml/widgets/WeatherWidget.qml, driven
 // entirely offline through the `xhrFactory` seam (handed to NetHub, which the
 // widget routes both of its requests through). A FakeXHR (fixtures.js) captures
 // the request URL and resolves ONLY on an explicit test call (resolveWith /
-// fireTimeout) — no wall-clock waits, no real sockets.
+// fireTimeout) - no wall-clock waits, no real sockets.
 //
 // Covers: forecast URL construction (lat/lon/units/forecast_days), geocode URL
 // (encodeURIComponent of the city), every fixture → widget state mapping (valid
 // forecast → loaded/rendered, non-200 → Offline, missing daily → No data,
 // malformed → Parse error, timeout → Timed out; geocode valid → settings
-// patched, empty → City not found), and — since E8 — that the egress gate's
+// patched, empty → City not found), and - since E8 - that the egress gate's
 // kill switch and host allowlist actually govern both requests.
 // ─────────────────────────────────────────────────────────────────────────
 Item {
@@ -201,7 +201,7 @@ Item {
     // ── egress gate (E8) ─────────────────────────────────────────────────
     // Weather used to build its own XHR, which put it outside the offline switch
     // and the allowlist entirely. Now that it routes through NetHub, both of its
-    // requests must be refusable centrally — that is the whole point of the
+    // requests must be refusable centrally - that is the whole point of the
     // migration, so assert it rather than trusting the call site.
     TestCase {
         name: "WeatherNetGate"
@@ -230,7 +230,7 @@ Item {
             compare(w.errorText, "Offline", "the tile says why it has no data")
         }
 
-        // The city lookup is egress too — it was the second raw XHR in this file.
+        // The city lookup is egress too - it was the second raw XHR in this file.
         function test_offline_refuses_the_geocode() {
             var w = h.item
             gate.offline = true

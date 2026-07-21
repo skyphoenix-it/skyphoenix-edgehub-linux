@@ -34,7 +34,7 @@ export LC_ALL="${LC_ALL:-C.UTF-8}"
 echo "=== AppImage: $APPIMAGE"
 echo "=== extracted to: $WORK/squashfs-root"
 echo "=== bundled Qt libs: $(find "$WORK/squashfs-root" -name 'libQt6*.so*' | wc -l)"
-echo "=== system Qt present: $(ls /usr/lib/*/libQt6Core.so* 2>/dev/null | wc -l) (expect 0 — this must be a bare host)"
+echo "=== system Qt present: $(ls /usr/lib/*/libQt6Core.so* 2>/dev/null | wc -l) (expect 0 - this must be a bare host)"
 echo
 
 exec bash "$SRC/packaging/ci/smoke.sh"

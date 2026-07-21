@@ -1,4 +1,4 @@
-// Xeneon Edge Manager — a standalone companion desktop app to manage the Edge
+// Xeneon Edge Manager - a standalone companion desktop app to manage the Edge
 // hub: build/reorder the widget layout, tune appearance, upload images, and set
 // display/startup options. It edits the SAME config the hub reads (via the Rust
 // core) and, when the hub is running, stays in live sync over the hub's local
@@ -104,11 +104,11 @@ static void placeManagerOffEdge(QQuickWindow* win) {
     // ONLY machine-readable source for where the Manager window actually landed:
     // it has no control socket, and KWin exposes no window geometry over DBus
     // without loading a script. tests/hardware/desktop_target.py parses this to
-    // clamp synthetic input to the WINDOW rect rather than the whole monitor —
+    // clamp synthetic input to the WINDOW rect rather than the whole monitor -
     // i.e. it is what keeps real-input tests from clicking outside the app.
     // fprintf, NOT qInfo: Qt's default handler routes to journald when stderr is
     // not a TTY (see the single-instance message below), so a redirected log file
-    // would silently miss this line — and a test that cannot read the rect must
+    // would silently miss this line - and a test that cannot read the rect must
     // refuse to inject, which would make the whole suite unrunnable.
     std::fprintf(stderr, "Placing Manager on \"%s\" at %d , %d %d x %d\n",
                  target->name().toUtf8().constData(), px, py,
@@ -118,7 +118,7 @@ static void placeManagerOffEdge(QQuickWindow* win) {
 
 int main(int argc, char* argv[]) {
     // KPI "local file" source reads a file:// path via QML XMLHttpRequest; Qt
-    // gates that behind this flag. Local read only — no network path is opened.
+    // gates that behind this flag. Local read only - no network path is opened.
     qputenv("QML_XHR_ALLOW_FILE_READ", "1");
 
     // --version BEFORE QGuiApplication: the Manager used to ignore the flag and
@@ -143,7 +143,7 @@ int main(int argc, char* argv[]) {
     // XENEON_VERSION, not a literal: CMakeLists passes the git-describe string
     // (or the packaged pkgver via XENEON_VERSION_OVERRIDE). This used to be a
     // hardcoded "0.1.0", so `--version` reported 0.1.0 for EVERY build ever
-    // made — dev, packaged, and release alike — which made it impossible to
+    // made - dev, packaged, and release alike - which made it impossible to
     // tell which build you were actually running or testing.
 #ifdef XENEON_VERSION
     app.setApplicationVersion(QStringLiteral(XENEON_VERSION));
@@ -167,7 +167,7 @@ int main(int argc, char* argv[]) {
     const QString qaGrabPath;
 #endif
 
-    // Single-instance guard — multiple managers writing config.toml race the hub
+    // Single-instance guard - multiple managers writing config.toml race the hub
     // and each other. Skipped in grab mode for headless QA captures.
     auto instanceLock = xeneon::acquireSingleInstance(
         QStringLiteral("manager"), qaGrabMode);
@@ -189,7 +189,7 @@ int main(int argc, char* argv[]) {
     engine.rootContext()->setContextProperty("backend", &backend);
 
     // The Manager renders live widget PREVIEWS of the same QML, so it needs the
-    // same time-zone bridge the hub has — without it a world clock in the preview
+    // same time-zone bridge the hub has - without it a world clock in the preview
     // would silently fall back to a fixed offset and disagree with the Edge.
     TimeZoneBridge timeZoneBridge;
     engine.rootContext()->setContextProperty("timeZones", &timeZoneBridge);
@@ -217,7 +217,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Doc/review capture: XENEON_GRAB=<path> renders the window to a PNG and quits.
-    // Optional XENEON_GRAB_W / XENEON_GRAB_H resize the window first — without them an
+    // Optional XENEON_GRAB_W / XENEON_GRAB_H resize the window first - without them an
     // offscreen grab is clamped to the offscreen platform's tiny virtual screen, so a
     // UX audit of the panes could never see them at the size a user sees (mirrors the
     // hub's branch in app/src/main.cpp; W5 finding 19).
@@ -245,7 +245,7 @@ int main(int argc, char* argv[]) {
         });
     } else {
         // Normal launch: keep the Manager OFF the Edge. It configures the Edge, so
-        // it must never open ON it — which is exactly what happened after the hub
+        // it must never open ON it - which is exactly what happened after the hub
         // grabbed the Edge fullscreen and a launcher (e.g. update-local.sh) started
         // the Manager onto the now-active output. The QML window starts HIDDEN; we
         // pick a non-Edge screen (prefer the primary) and only THEN show it, because

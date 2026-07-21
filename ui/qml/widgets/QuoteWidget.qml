@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 
-// Daily quote — rotates once per day from a chosen category (or your own custom
+// Daily quote - rotates once per day from a chosen category (or your own custom
 // list); no network. A "Shuffle" picks a fresh one on demand.
 WidgetChrome {
     id: w
@@ -63,7 +63,7 @@ WidgetChrome {
         for (var i = 0; i < lines.length; i++) {
             var ln = lines[i].trim()
             if (!ln.length) continue
-            var sep = ln.indexOf(" — ")            // em-dash (pasted/typographic quotes)
+            var sep = ln.indexOf(" - ")            // em-dash (pasted/typographic quotes)
             if (sep < 0) sep = ln.indexOf(" -- ")
             if (sep < 0) sep = ln.indexOf(" | ")
             if (sep < 0) sep = ln.indexOf(" - ")   // plain ASCII hyphen (on-device keyboards)
@@ -197,7 +197,7 @@ WidgetChrome {
         }
     }
 
-    // Tile shuffle — the one useful basic action on the tile (every size that can
+    // Tile shuffle - the one useful basic action on the tile (every size that can
     // host a touch-token target without crowding the text, i.e. all but micro).
     // The top-right is reserved for config, so it sits bottom-right, clear of the
     // centred quote text. Reuses the same shuffle() the expanded pill calls.

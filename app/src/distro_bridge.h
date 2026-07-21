@@ -12,7 +12,7 @@
 #include "xeneon_core.h"
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DistroBridge — the distro's identity, installed-package count and install date
+// DistroBridge - the distro's identity, installed-package count and install date
 // for QML, resolved by the Rust core (core/src/distro.rs).
 //
 // QML cannot do any of this: it has no filesystem read, no directory listing and
@@ -20,19 +20,19 @@
 // as one JSON blob.
 //
 // THREADING. The probe is filesystem work, and on a dpkg system it parses
-// /var/lib/dpkg/status — ~10 MB of text on a full desktop, tens of milliseconds.
+// /var/lib/dpkg/status - ~10 MB of text on a full desktop, tens of milliseconds.
 // That is several dropped frames if it lands on the GUI thread, so the probe runs
 // on a worker thread (the same shape as MetricsWorker) and the result is pushed
 // back as a queued signal. Nothing here ever touches the filesystem on the GUI
 // thread.
 //
-// CACHING. Unlike metrics, this answer is nearly static — a package count changes
+// CACHING. Unlike metrics, this answer is nearly static - a package count changes
 // when the user installs something, and an install date never changes at all.
 // So: probe ONCE at construction, then refresh on a long timer (kRefreshMs) and
 // on an explicit refresh(). Polling this every 2s like metrics would be pure
 // waste (a 10 MB re-parse for a number that changes weekly).
 //
-// Until the first probe lands, `ready` is false and `info` is empty — widgets
+// Until the first probe lands, `ready` is false and `info` is empty - widgets
 // must render a placeholder rather than a zero. See PackagesWidget.qml.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -44,7 +44,7 @@ class DistroProbeWorker : public QObject {
     //
     // app/src/xeneon_string.h looks like the right include, but this header is
     // pulled into BOTH apps and manager_backend.h defines its own `XeneonString`
-    // — including the shared one here is a hard redefinition error in the
+    // - including the shared one here is a hard redefinition error in the
     // Manager's TU. Keeping the helper class-scoped adds no global name to
     // either app, so neither can collide with it.
     struct FreeCString {
@@ -54,7 +54,7 @@ class DistroProbeWorker : public QObject {
 
 public slots:
     // `root` is "" for the real system, or a fixture tree in tests. It is echoed
-    // back with the result so the bridge can drop a stale answer — see _onProbed.
+    // back with the result so the bridge can drop a stale answer - see _onProbed.
     void probe(const QString& root) {
         const QByteArray r = root.toUtf8();
         OwnedString s(xeneon_distro_probe_json(root.isEmpty() ? nullptr : r.constData()));
@@ -69,7 +69,7 @@ class DistroBridge : public QObject {
     // One map, not a property per field: the fields are meaningless apart (a
     // count without its family is unreadable) and they always change together.
     Q_PROPERTY(QVariantMap info READ info NOTIFY infoChanged)
-    // False until the first probe returns. QML keys its placeholder off this —
+    // False until the first probe returns. QML keys its placeholder off this -
     // an empty map and "0 packages" must never be confusable.
     Q_PROPERTY(bool ready READ ready NOTIFY infoChanged)
 
@@ -83,7 +83,7 @@ public:
         m_worker = new DistroProbeWorker;
         m_worker->moveToThread(&m_thread);
         // The worker is parentless and lives on m_thread, so it must be destroyed
-        // BY that thread — deleteLater on finished() is the only safe point.
+        // BY that thread - deleteLater on finished() is the only safe point.
         connect(&m_thread, &QThread::finished, m_worker, &QObject::deleteLater);
         connect(this, &DistroBridge::_requestProbe, m_worker, &DistroProbeWorker::probe);
         connect(m_worker, &DistroProbeWorker::done, this, &DistroBridge::_onProbed);
@@ -114,7 +114,7 @@ public:
     // Re-probe. Safe to call at any time: the result simply replaces the cache.
     Q_INVOKABLE void refresh() { emit _requestProbe(m_root); }
 
-    // Root the probe at a fixture tree instead of "/". FOR TESTS — it lets the
+    // Root the probe at a fixture tree instead of "/". FOR TESTS - it lets the
     // C++ suite assert real behaviour against crafted /etc + /var trees without
     // depending on (or touching) the host's. Triggers a re-probe.
     void setRoot(const QString& root) {
@@ -138,7 +138,7 @@ private slots:
 
         const QJsonDocument doc = QJsonDocument::fromJson(json.toUtf8());
         // A malformed/absent blob must leave the widget in its "unknown" state
-        // rather than half-populated — so only a real object is published.
+        // rather than half-populated - so only a real object is published.
         if (doc.isObject()) {
             m_info = doc.object().toVariantMap();
             m_probedRoot = root;
@@ -152,7 +152,7 @@ private:
     DistroProbeWorker* m_worker = nullptr;
     QTimer m_timer;
     QVariantMap m_info;
-    QString m_root;         // "" = the real system — the root we are ASKING about
+    QString m_root;         // "" = the real system - the root we are ASKING about
     QString m_probedRoot;   // the root that produced m_info
     bool m_ready = false;
 };

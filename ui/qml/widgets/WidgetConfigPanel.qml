@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// WidgetConfigPanel — renders a widget's config schema into a professional,
+// WidgetConfigPanel - renders a widget's config schema into a professional,
 // sectioned, scrollable form. Shared by the on-device (hub) config view and the
 // desktop Manager so both stay identical. Each field reads/writes live through
 // the store, so edits apply immediately.
@@ -24,7 +24,7 @@ Item {
     signal actionRequested(string action)
 
     // A plain Flickable (not ScrollView) so the mouse-wheel step is fully under
-    // our control — the default was tiny ("~10px per scroll"). A WheelHandler as a
+    // our control - the default was tiny ("~10px per scroll"). A WheelHandler as a
     // direct child intercepts the wheel and moves a sensible amount per notch,
     // handling both mice (angleDelta) and trackpads (pixelDelta). pressDelay 0 +
     // StopAtBounds keeps controls feeling instantly clickable, never draggy.

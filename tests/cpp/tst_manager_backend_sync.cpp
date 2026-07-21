@@ -26,7 +26,7 @@ XENEON_REQUIRE_HERMETIC_ENV();
 
 // Bind exactly where production resolves it (manager_backend.h pulls in the
 // same header), so the fake hub and the ManagerBackend under test cannot
-// drift apart — and so this never binds the shared /tmp node a live hub used
+// drift apart - and so this never binds the shared /tmp node a live hub used
 // to own. See app/src/control_socket_path.h.
 static QString kSock() { return xeneon::controlSocketPath(); }
 
@@ -34,7 +34,7 @@ static QString kSock() { return xeneon::controlSocketPath(); }
 // wired to a REAL ConfigHandle exactly as app/src/main.cpp wires it (minus the
 // window migration, which needs a live QScreen the offscreen platform can't give).
 // This is what lets a test reproduce "the hub's next save reverts the Manager's
-// change" — a hand-rolled fake that never held a config could not.
+// change" - a hand-rolled fake that never held a config could not.
 class HubEmu : public QObject {
     Q_OBJECT
 public:
@@ -348,7 +348,7 @@ private slots:
     void autostartSurface() {
         ManagerBackend b;
         // ConfigLocation, matching applyAutostart(): homePath() was the sandbox-escape
-        // bug — see tst_autostart::entryFollowsXdgNotHome.
+        // bug - see tst_autostart::entryFollowsXdgNotHome.
         const QString entry = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)
                               + "/autostart/xeneon-edge-hub.desktop";
         QFile::remove(entry);
@@ -433,7 +433,7 @@ private slots:
     // ── #7 regression: a live edit on a CONNECTED socket must SUPERSEDE an older edit
     //    buffered while offline. Reproduce the stale-repush edit-loss window: buffer
     //    edit A offline; on reconnect the getUiState reply is HELD; slip a live edit B
-    //    in; then release the reply — the reconcile must NOT re-push the stale A over
+    //    in; then release the reply - the reconcile must NOT re-push the stale A over
     //    the newer B. Without the fix, B is lost (final hub state reverts to A). ──
     void connectedEditSupersedesBufferedOfflineEdit() {
         ManagerBackend b;
@@ -442,7 +442,7 @@ private slots:
         b.saveUiState(QStringLiteral("{\"A\":1}"));   // offline → buffered pending edit
 
         // Bring the hub up but HOLD its getUiState reply, so we sit inside the reconnect
-        // window (pull sent, not yet answered) — exactly where the heisenbug lives.
+        // window (pull sent, not yet answered) - exactly where the heisenbug lives.
         FakeHub hub; hub.holdGet = true; hub.getReply = QString();
         QVERIFY(hub.start());
         QVERIFY(b.startHub());
@@ -481,7 +481,7 @@ private slots:
             QVERIFY(b.startHub());
             QTRY_VERIFY_WITH_TIMEOUT(b.hubConnected(), 8000);
             QTRY_VERIFY_WITH_TIMEOUT(b.uiState() == QStringLiteral("{\"S0\":1}"), 8000);
-            // Connected edit A — the fix records that the hub will now hold A.
+            // Connected edit A - the fix records that the hub will now hold A.
             b.saveUiState(QStringLiteral("{\"A\":1}"));
             QTRY_VERIFY_WITH_TIMEOUT(hub1.setStates.contains(QStringLiteral("{\"A\":1}")), 8000);
         }  // hub1 destroyed → the socket drops → b disconnects
@@ -491,7 +491,7 @@ private slots:
         b.saveUiState(QStringLiteral("{\"B\":2}"));
 
         // Hub restarts persisting A (the last thing it applied). b auto-reconnects,
-        // pulls A, and must KEEP + push the newer offline edit B — not drop it.
+        // pulls A, and must KEEP + push the newer offline edit B - not drop it.
         FakeHub hub2; hub2.getReply = QStringLiteral("{\"A\":1}");
         QVERIFY(hub2.start());
         QTRY_VERIFY_WITH_TIMEOUT(b.hubConnected(), 12000);
@@ -501,7 +501,7 @@ private slots:
 
     // ── #7 companion: DropEdit integration. After a real disconnect the hub's state
     //    CHANGED (differs from the tracked lastHubState); on reconnect the buffered
-    //    offline edit is stale and must be DROPPED — no setUiState is sent. ──
+    //    offline edit is stale and must be DROPPED - no setUiState is sent. ──
     void reconnectDropsStaleEditWhenHubChanged() {
         FakeHub hub; hub.getReply = QStringLiteral("{\"OLD\":1}"); QVERIFY(hub.start());
         ManagerBackend b;
@@ -533,7 +533,7 @@ private slots:
 
     // ── PULL-before-PUSH: an edit made while OFFLINE is buffered, and on reconnect
     //    the hub is pulled FIRST; since the hub didn't change, our edit is (re)pushed
-    //    rather than lost — and getUiState is seen before setUiState. ──
+    //    rather than lost - and getUiState is seen before setUiState. ──
     void reconnectKeepsOfflineEdit() {
         // No server yet → the save buffers as a pending offline edit.
         ManagerBackend b;
@@ -580,7 +580,7 @@ private slots:
     //    Pre-fix the Manager wrote config.toml itself while the hub's in-memory config
     //    still held the old target, so the hub's next save (clean exit / SIGTERM)
     //    silently REVERTED the user's choice. The fix routes the change through the
-    //    hub, which adopts it into its LIVE config — so its own save re-writes the NEW
+    //    hub, which adopts it into its LIVE config - so its own save re-writes the NEW
     //    value. ──
     void targetDisplaySurvivesHubSave() {
         XeneonString cd(xeneon_config_dir());
@@ -613,7 +613,7 @@ private slots:
         QCOMPARE(dm.qstring(), QStringLiteral("XENEON EDGE 45"));
     }
 
-    // ── B5 REGRESSION: the same for autostart — the flag survives the hub's next
+    // ── B5 REGRESSION: the same for autostart - the flag survives the hub's next
     //    save, the HUB (not the Manager) writes the XDG entry, and the Manager's
     //    immediate isAutostart() readback (which the QML Switch does on the very next
     //    line) already sees it because the setter waits for the hub's ack. ──
@@ -621,7 +621,7 @@ private slots:
         XeneonString cd(xeneon_config_dir());
         const QString cfgPath = cd.qstring() + "/config.toml";
         // ConfigLocation, matching applyAutostart(): homePath() was the sandbox-escape
-        // bug — see tst_autostart::entryFollowsXdgNotHome.
+        // bug - see tst_autostart::entryFollowsXdgNotHome.
         const QString entry = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)
                               + "/autostart/xeneon-edge-hub.desktop";
         QFile::remove(cfgPath);

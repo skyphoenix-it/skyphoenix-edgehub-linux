@@ -78,7 +78,7 @@ Item {
         }
 
         function test_file_status_zero_is_success() {
-            // A local file read reports status 0 (no HTTP layer) — must still succeed.
+            // A local file read reports status 0 (no HTTP layer) - must still succeed.
             h.storeCtl.patchSettings(iid(), { source: "file", filePath: "/x", jsonPath: "" })
             h.item.refresh()
             lastFake.resolveWith(0, "7")
@@ -122,7 +122,7 @@ Item {
         }
     }
 
-    // Schema ↔ widget key sync — the KPI-specific keys (the shared jsonPath/warnAt/
+    // Schema ↔ widget key sync - the KPI-specific keys (the shared jsonPath/warnAt/
     // etc. are credited by tst_httpjson_net).
     TestCase {
         name: "KpiSchema"
@@ -152,7 +152,7 @@ Item {
         WidgetHarness { id: kBase; anchors.fill: parent; widgetFile: "KpiWidget.qml"; expanded: false } }
     Item { id: kWideWrap; width: 1269; height: 612
         WidgetHarness { id: kWide; anchors.fill: parent; widgetFile: "KpiWidget.qml"; expanded: false } }
-    // 1x3 portrait — the whole panel.
+    // 1x3 portrait - the whole panel.
     Item { width: 696; height: 2459
         WidgetHarness { id: kBoard; anchors.fill: parent; widgetFile: "KpiWidget.qml"; expanded: false } }
 
@@ -173,7 +173,7 @@ Item {
             for (var i = 0; i < vals.length; i++) host.item._apply(vals[i])
         }
 
-        // 0.5x0.5 — a READOUT: the number, and nothing that needs a finger.
+        // 0.5x0.5 - a READOUT: the number, and nothing that needs a finger.
         function test_micro_is_the_number_alone() {
             tryVerify(function () { return kMicro.ready }, 3000)
             var k = kMicro.item
@@ -181,13 +181,13 @@ Item {
             feed(kMicro)
             compare(k.micro, true, "a 348x409 compact box is the micro tile")
             compare(k.showHeader, false, "micro drops the chrome header")
-            compare(k.showLabel, false, "micro drops the label — the number IS the tile")
+            compare(k.showLabel, false, "micro drops the label - the number IS the tile")
             compare(k.showSpark, false, "…and the trend")
             compare(k.showStats, false, "…and the stats strip")
             verify(k.valuePx >= 100, "the number still fills the box (" + k.valuePx.toFixed(0) + "px)")
         }
 
-        // The number is sized off the BOX, not off `expanded` — the wave-2b bug.
+        // The number is sized off the BOX, not off `expanded` - the wave-2b bug.
         function test_number_scales_with_the_tile() {
             tryVerify(function () { return kBase.ready }, 3000)
             tryVerify(function () { return kMicro.ready }, 3000)
@@ -212,7 +212,7 @@ Item {
             feed(kWide)
             compare(k.split, true, "1269x612 (1x1.5 landscape) splits into two columns")
             compare(lay_of(kWide).columns, 2, "…which is the GridLayout flipping columns")
-            // Portrait 1x1.5 is 696x1229 — the same size, the other shape.
+            // Portrait 1x1.5 is 696x1229 - the same size, the other shape.
             kWideWrap.width = 696; kWideWrap.height = 1229
             k.sizeClass = "tall"
             compare(k.split, false, "the portrait projection of the same size stacks")
@@ -220,7 +220,7 @@ Item {
             kWideWrap.width = 1269; kWideWrap.height = 612
         }
 
-        // 1x3 — the whole panel. A billboard: the stats strip is real extra
+        // 1x3 - the whole panel. A billboard: the stats strip is real extra
         // content, and the trend takes the slack instead of leaving air.
         function test_fullscreen_is_a_billboard() {
             tryVerify(function () { return kBoard.ready }, 3000)
@@ -262,7 +262,7 @@ Item {
         // reading already fits under a MONOSPACE font no matter what the Layout
         // does; the pairing only matters when `theme.fontMono` falls back to a
         // proportional face (missing/wider mono). The headless suite ships
-        // DejaVu Sans Mono, so a guard here passes with OR without the fix — it
+        // DejaVu Sans Mono, so a guard here passes with OR without the fix - it
         // would be inert. Writing an inert guard is the exact anti-pattern this
         // codebase has been purging; the fix is verified manually under a
         // no-mono fontconfig and the blind spot is recorded in BACKLOG.md.

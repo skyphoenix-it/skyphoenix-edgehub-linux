@@ -1,4 +1,4 @@
-# Xeneon Edge — Development & Test Plan (Hub + Manager)
+# Xeneon Edge - Development & Test Plan (Hub + Manager)
 
 **Status:** Historical execution plan · **Created:** 2026-07-13 · **Owner:** engineering
 **Goal at creation:** finish debugging the hub and manager, then bring the project
@@ -13,7 +13,7 @@ to a verifiable **≥95% aggregate coverage gate**.
 
 ---
 
-## Historical context — why this plan existed
+## Historical context - why this plan existed
 
 At the 2026-07-13 baseline, the hub (`xeneon-edge-hub`) and companion
 (`xeneon-edge-manager`) had received a large bug-fix sweep, but four gaps remained.
@@ -21,14 +21,14 @@ The present-tense statements below describe that old baseline and were later
 resolved; the historical fix plan is preserved in `docs/BUG_FIX_PLAN.md`.
 
 1. **The C++ layer has zero automated tests.** `control_server`, `orientation_sensor`,
-   `ManagerBackend`, `ConfigBridge`, `mpris_bridge` — including the IPC protocol, the
-   reconnect/reconcile state machine, path-sanitization, and orientation mapping — are
+   `ManagerBackend`, `ConfigBridge`, `mpris_bridge` - including the IPC protocol, the
+   reconnect/reconcile state machine, path-sanitization, and orientation mapping - are
    only exercised indirectly by the on-device Python E2E script.
 2. **Coverage is not measured anywhere.** `.gitignore` has `lcov.info`/`*.profdata`
    placeholders but nothing generates them. There is no numeric gate.
 3. **CI never runs.** `.github/workflows/ci.yml` triggers on `main`; the repo lives on
    `master`. It also has no QML-test job, no C++ job, and no coverage step.
-4. **`BUG_FIX_PLAN.md` has no authoritative done-list** — several systemic (S1–S12) and
+4. **`BUG_FIX_PLAN.md` has no authoritative done-list** - several systemic (S1–S12) and
    HIGH findings need re-verification against current code.
 
 Baseline (verified 2026-07-13):
@@ -43,10 +43,10 @@ Baseline (verified 2026-07-13):
 
 - **QML coverage = behavior/function traceability matrix** (there is no trustworthy QML
   line-coverage tool). True line coverage is gated only on Rust + C++.
-- **C++ becomes testable via header extraction** — pull the logic classes out of the
+- **C++ becomes testable via header extraction** - pull the logic classes out of the
   `main.cpp` TUs into headers/free functions.
 - **Deps approved:** QtTest (bundled), `cargo-llvm-cov`, `proptest` (Rust dev-dep).
-  A fake `libxeneon_core` was **not** chosen — C++ tests link the **real**
+  A fake `libxeneon_core` was **not** chosen - C++ tests link the **real**
   `libxeneon_core.a` against a temp `XDG_CONFIG_HOME` (the Rust config honors it).
 - **Debug scope = full re-verification** of S1–S12 + all HIGH findings, each fix gated by
   a regression test.
@@ -60,7 +60,7 @@ Baseline (verified 2026-07-13):
   headers/free functions + `control_server.cpp`), gated ≥95%. Un-unit-testable glue
   (`main()`, live-`QScreen` matching, hardware ioctl loops, D-Bus fan-out) is **excluded
   from the denominator** and covered instead by offscreen smoke + the hardware E2E.
-- **QML:** **behavior-matrix** coverage — enumerated behaviors covered ÷ total 100%,
+- **QML:** **behavior-matrix** coverage - enumerated behaviors covered ÷ total 100%,
   enforced by `scripts/qml_coverage.py`. Not presented as line coverage.
 - **Genuinely unmeasurable (assert driving props, never output):** Canvas pixels
   (Sparkline/RingProgress/AnalogClock/Net/backgrounds), `MultiEffect` (AppIcon), real
@@ -69,28 +69,28 @@ Baseline (verified 2026-07-13):
 
 ---
 
-## Part 1 — Finish the debugging sweep (full S1–S12 + HIGH re-verification)
+## Part 1 - Finish the debugging sweep (full S1–S12 + HIGH re-verification)
 
 Each item is **verified against current code**; if still open, fixed and gated by a
 regression test (Rust `#[test]`, C++ QtTest, or QML `tst_`).
 
 ### C++ bugs to fix + pin (from the C++ audit)
-- **Hub `XENEON_GRAB` UAF** — `app/src/main.cpp:714` lambda captures `&grabPath` by
+- **Hub `XENEON_GRAB` UAF** - `app/src/main.cpp:714` lambda captures `&grabPath` by
   reference into a 2200 ms deferred `singleShot` (manager captures by value at `:497`).
   → capture by value. Regression = `smoke_hub` (ASan).
-- **`metricsToJson` data race** — `main.cpp:77` `static bool warned` read/written from
+- **`metricsToJson` data race** - `main.cpp:77` `static bool warned` read/written from
   GUI thread (`:514`) and worker thread (`:104`). → `std::atomic<bool>`.
-- **Hub `applyAutostart` optimistic return** — `main.cpp:271-273` disable path returns
+- **Hub `applyAutostart` optimistic return** - `main.cpp:271-273` disable path returns
   `true` even if `QFile::remove` fails (manager is honest at `:441-445`). → return real
   result. Regression in `tst_autostart`.
-- **control_server honest-ack** (`control_server.cpp:120-129`) — verify the ack reflects
+- **control_server honest-ack** (`control_server.cpp:120-129`) - verify the ack reflects
   `uiStateReceived`'s out-param; pin with `tst_control_server`.
-- **Manager reconnect PULL-before-PUSH** ordering — pin via `tst_reconcile` +
+- **Manager reconnect PULL-before-PUSH** ordering - pin via `tst_reconcile` +
   `tst_manager_backend_sync`.
-- **EDID identity-hash duplication** — `main.cpp:158-166` vs `:206-214`; extract
+- **EDID identity-hash duplication** - `main.cpp:158-166` vs `:206-214`; extract
   `screenIdentityHash(...)` and pin.
 
-### Rust bugs (from `BUG_FIX_PLAN.md` §Rust core — verify each still open)
+### Rust bugs (from `BUG_FIX_PLAN.md` §Rust core - verify each still open)
 - `metrics.rs:44` `OnceLock` sensor/GPU path cache → permanent "unavailable" after a
   transient boot-time miss. Fix: bounded re-discovery when `None`.
 - `metrics.rs:38` shared CPU/net delta baseline across GUI + worker → spurious spikes.
@@ -98,16 +98,16 @@ regression test (Rust `#[test]`, C++ QtTest, or QML `tst_`).
   timestamped backups, preserve `first_run_complete`/`ui_state` where possible.
 - `ffi.rs:538` `-1.0` temp sentinel collides with real sub-zero readings.
 - `display.rs:19` `parse_manufacturer` emits non-alpha garbage on zero group.
-  (These already have `bug_*` encoding tests — flip them to passing.)
+  (These already have `bug_*` encoding tests - flip them to passing.)
 
 ### Remaining items from `SESSION_HANDOFF.md`
-- **S10** write-only FFI keys (`reconnect`, `notify_disconnect`, `fallback_behavior`) —
+- **S10** write-only FFI keys (`reconnect`, `notify_disconnect`, `fallback_behavior`) -
   wire the existing getters into hub behavior (disconnect handling).
-- **Two-writer save race** — move to single-writer (hub owns file; Manager mutates via
+- **Two-writer save race** - move to single-writer (hub owns file; Manager mutates via
   IPC only) or document as accepted.
-- **Duplicate "Page 5" pages** — one-time prune in live config.
+- **Duplicate "Page 5" pages** - one-time prune in live config.
 
-### QML systemic (S1–S12) — confirm each resolved with a `tst_` gate
+### QML systemic (S1–S12) - confirm each resolved with a `tst_` gate
 Walk S1 (effAccent loop), S2 (control-binding self-destruct), S3 (`active`), S4 (metric
 availability), S5 (shared history/peaks), S6 (DST day math), S7 (effAccent content),
 S8 (settingsFor mutation), S9 (hotplug), S10, S11 (structureRevision), S12 (text overflow)
@@ -115,21 +115,21 @@ against current source; each must have at least one asserting test.
 
 ---
 
-## Part 2 — C++ test harness (enabling refactor + QtTest)
+## Part 2 - C++ test harness (enabling refactor + QtTest)
 
 ### 2a. Enabling refactor (straight cut-paste into headers; AUTOMOC-safe)
 New headers/free functions (production + tests compile identical code):
-- `app/src/config_bridge.h` — `ConfigBridge`, `WizardBridge`.
-- `app/src/autostart.{h,cpp}` — `applyAutostart` (temp-HOME testable; honest return).
-- `app/src/display_match.{h,cpp}` — `screenIdentityHash(...)`, `orientationName(...)`,
+- `app/src/config_bridge.h` - `ConfigBridge`, `WizardBridge`.
+- `app/src/autostart.{h,cpp}` - `applyAutostart` (temp-HOME testable; honest return).
+- `app/src/display_match.{h,cpp}` - `screenIdentityHash(...)`, `orientationName(...)`,
   `metricsToJson()` (atomic warn). `findTargetScreen`/`screenToJson` stay in `main.cpp`
   (live `QScreen`) but delegate to `screenIdentityHash`.
-- `app/src/metrics_worker.h` — `MetricsWorker`.
-- `manager/src/manager_backend.h` — `ManagerBackend` (+ injectable clock, see below).
-- `manager/src/reconcile.{h,cpp}` — pure `reconcileOnPull(pendingPush, nowMs,
+- `app/src/metrics_worker.h` - `MetricsWorker`.
+- `manager/src/manager_backend.h` - `ManagerBackend` (+ injectable clock, see below).
+- `manager/src/reconcile.{h,cpp}` - pure `reconcileOnPull(pendingPush, nowMs,
   suppressUntilMs, pulled, lastHub, pendingPush) -> ReconcileAction`.
-- `manager/src/path_sanitize.h` — `sanitizeImageName(name, imagesDir) -> optional<QString>`.
-- `app/src/orientation_sensor.h` — make `byteToRotation` **public static**.
+- `manager/src/path_sanitize.h` - `sanitizeImageName(name, imagesDir) -> optional<QString>`.
+- `app/src/orientation_sensor.h` - make `byteToRotation` **public static**.
 - **Injectable clock:** `ManagerBackend` gets `std::function<qint64()> m_nowMs` (default
   `QDateTime::currentMSecsSinceEpoch`) + `setClockForTest(...)`, replacing the 5 direct
   clock calls (`manager/src/main.cpp:112,121,381,411,422`) so the 1500 ms/900 ms
@@ -166,14 +166,14 @@ New headers/free functions (production + tests compile identical code):
 
 ---
 
-## Part 3 — Rust tests to ≥95%
+## Part 3 - Rust tests to ≥95%
 
 - **Tool:** `cargo-llvm-cov` (LLVM source-based; accurate across `extern "C"`/`unsafe`).
   `cargo llvm-cov --lib --lcov --output-path coverage/rust-lcov.info` +
   `--json --summary-only` for the gate (`totals.lines.percent >= 95`).
 - **`logging.rs`:** extract `fn level_filter(&str) -> LevelFilter`, unit-test the mapping;
   drive `init_logging` for each level + idempotency.
-- **`ffi.rs`:** for all 54 `extern "C"` fns — null-pointer sentinel branch each;
+- **`ffi.rs`:** for all 54 `extern "C"` fns - null-pointer sentinel branch each;
   setter↔getter round-trips through `CString` (+ `xeneon_string_free`); handle lifecycle;
   invalid-UTF-8 input must not panic across the ABI; `xeneon_string_free(null)` no-op.
 - **`proptest`** (`[dev-dependencies] proptest = "1"`): `compute_edid_hash`/`parse_*` on
@@ -182,7 +182,7 @@ New headers/free functions (production + tests compile identical code):
 
 ---
 
-## Part 4 — QML tests to 100% behavior matrix
+## Part 4 - QML tests to 100% behavior matrix
 
 New `tst_*.qml` (pattern: `import QtTest` + `WidgetHarness`, `findPred` tree helpers,
 `tick`/store-epoch for time, props-not-pixels for Canvas):
@@ -191,7 +191,7 @@ New `tst_*.qml` (pattern: `import QtTest` + `WidgetHarness`, `findPred` tree hel
   _tileExists/applyAppearance/injectWidget + 7 appearance→store Connections),
   `tst_main.qml` (bindStackItem + content rotation 0/90/180/270).
 - Manager: `tst_manager.qml` (4 tabs, pageTiles/refreshImages/confirmDeleteImage/
-  syncTheme, MButton/MSwitch — stubbed `backend`), `tst_edgeclone.qml`
+  syncTheme, MButton/MSwitch - stubbed `backend`), `tst_edgeclone.qml`
   (wsrc/spanH/injectInto/targetAt + resize-drag).
 - Primitives: `tst_sparkline`, `tst_ringprogress`, `tst_widgetchrome`,
   `tst_settings_panel`, `tst_widget_config_panel`, `tst_controls`
@@ -217,11 +217,11 @@ files (each declares a `// COVERS:` header cross-checked against real assertions
 
 ---
 
-## Part 5 — Coverage tooling & CI
+## Part 5 - Coverage tooling & CI
 
-- **`scripts/run_all_tests.sh`** — cargo test → run_ui_tests.sh → ctest → qml_coverage.py,
+- **`scripts/run_all_tests.sh`** - cargo test → run_ui_tests.sh → ctest → qml_coverage.py,
   aggregate pass/fail.
-- **`scripts/coverage.sh`** — Rust llvm-cov + C++ lcov, merge → `coverage/merged-lcov.info`
+- **`scripts/coverage.sh`** - Rust llvm-cov + C++ lcov, merge → `coverage/merged-lcov.info`
   + genhtml, gate Rust+C++ merged ≥95, report QML behavior % separately.
 - **CI overhaul (`.github/workflows/ci.yml`):**
   - **Fix trigger:** `branches: [master]` (or `[main, master]`).
@@ -234,31 +234,31 @@ files (each declares a `// COVERS:` header cross-checked against real assertions
 
 ---
 
-## Part 6 — Multi-agent execution model
+## Part 6 - Multi-agent execution model
 
 Concurrent writers use **git worktrees** (or strict file ownership) and integrate
 frequently; shared files (`CMakeLists.txt`, `ci.yml`, `main.cpp`) are single-owner.
 
-**Wave 0 — Foundation (single-owner, sequential on shared files):**
-- `A0-refactor` — C++ header extraction + baked-in bug fixes (Part 1 C++ + 2a).
-- `A0-cmake` — `tests/cpp/` scaffolding, `XENEON_BUILD_TESTS`/`XENEON_COVERAGE`.
-- `A0-ci` — CI branch fix + new jobs + coverage scripts.
+**Wave 0 - Foundation (single-owner, sequential on shared files):**
+- `A0-refactor` - C++ header extraction + baked-in bug fixes (Part 1 C++ + 2a).
+- `A0-cmake` - `tests/cpp/` scaffolding, `XENEON_BUILD_TESTS`/`XENEON_COVERAGE`.
+- `A0-ci` - CI branch fix + new jobs + coverage scripts.
 
-**Wave 1 — Builders (parallel, isolated ownership):**
-- `A1-rust` — owns `core/` (logging refactor+tests, ffi boundary, proptest).
-- `A2-cpp-tests` — owns `tests/cpp/*.cpp` (after A0-refactor lands).
-- `A3-qml-orch` — owns `tst_dashboard/main/manager/edgeclone`.
-- `A4-qml-prim` — owns primitives/backgrounds/catalogs/theme/store_io/diagnostics/wizard.
-- `A5-qml-net` — owns XHR factory seam (3 source files) + `tst_weather_net/calendar_net`.
-- `A6-bug-verify` — full S1–S12 + HIGH re-verification; hands fixes to layer owners.
+**Wave 1 - Builders (parallel, isolated ownership):**
+- `A1-rust` - owns `core/` (logging refactor+tests, ffi boundary, proptest).
+- `A2-cpp-tests` - owns `tests/cpp/*.cpp` (after A0-refactor lands).
+- `A3-qml-orch` - owns `tst_dashboard/main/manager/edgeclone`.
+- `A4-qml-prim` - owns primitives/backgrounds/catalogs/theme/store_io/diagnostics/wizard.
+- `A5-qml-net` - owns XHR factory seam (3 source files) + `tst_weather_net/calendar_net`.
+- `A6-bug-verify` - full S1–S12 + HIGH re-verification; hands fixes to layer owners.
 
-**Wave 2 — Assurance (the "outstanders" and "rubber duckies"):**
-- `V1-outstander-cpp`, `V2-outstander-qml`, `V3-outstander-rust` — adversarial review of
+**Wave 2 - Assurance (the "outstanders" and "rubber duckies"):**
+- `V1-outstander-cpp`, `V2-outstander-qml`, `V3-outstander-rust` - adversarial review of
   each layer's tests: do they *assert*, or just execute? Any test that can't fail is rejected.
-- `D1-rubber-duck` — explain-back each nontrivial fix/test to catch flawed reasoning.
-- `C1-coverage-auditor` — runs `coverage.sh` + `qml_coverage.py`, reports the true numbers,
+- `D1-rubber-duck` - explain-back each nontrivial fix/test to catch flawed reasoning.
+- `C1-coverage-auditor` - runs `coverage.sh` + `qml_coverage.py`, reports the true numbers,
   lists remaining uncovered behaviors, loops work back until ≥95% on every layer.
-- `I1-integrator` — merges worktrees, resolves shared-file conflicts, runs
+- `I1-integrator` - merges worktrees, resolves shared-file conflicts, runs
   `run_all_tests.sh` green, commits per Conventional Commits.
 
 ---
@@ -297,7 +297,7 @@ coverage-wiring), each wave adversarially reviewed by "outstander" + rubber-duck
 
 - **Enabling refactor** landed: `ConfigBridge`/`WizardBridge`/`MetricsWorker`/`ManagerBackend`
   + pure logic (`byteToRotation`, `reconcileOnPull`, `screenIdentityHash`, `sanitizeImageName`,
-  `millideg_to_celsius`, `parse_cpu_line`) extracted to headers/free functions — all directly
+  `millideg_to_celsius`, `parse_cpu_line`) extracted to headers/free functions - all directly
   unit-tested; product Release build unchanged.
 - **Debug sweep (full S1–S12 + HIGH re-verification):** S1–S9/S11/S12 + all discrete HIGH
   confirmed fixed with test gates. **Newly fixed this session:** S10 (added FFI getters +
@@ -307,28 +307,28 @@ coverage-wiring), each wave adversarially reviewed by "outstander" + rubber-duck
   data race → atomic; hub `applyAutostart` optimistic return; EDID identity-hash duplication;
   a cross-module Rust test env-lock race; a non-monotonic-counter CPU overflow panic; the
   `-1.0`/NaN temp-sentinel semantic (real −1 °C no longer read as "unavailable"); **and the
-  #7 single-writer edit-loss heisenbug** (live edit now supersedes a buffered offline edit) —
+  #7 single-writer edit-loss heisenbug** (live edit now supersedes a buffered offline edit) -
   its regression test was verified to fail without the fix.
 - **Infra:** CI trigger fixed (`main`→`[main, master]`) + new `qml-test`/`cpp-test`/`coverage`
   jobs with ≥95 gates; `scripts/{run_all_tests,coverage,qml_coverage,run_cpp_tests}` added;
   coverage tooling (`cargo-llvm-cov`, `llvm-tools`, `gcovr`) installed without sudo.
 - **Honest residuals:** `config.rs` 93% (below the per-file 95 but the total gate passes;
   a config corrupt-path IO test would close it); `fn:main.onContentRotationChanged` (input-method
-  hide + fade restart — unobservable offscreen); `mpris_bridge.cpp`'s async D-Bus plumbing
+  hide + fade restart - unobservable offscreen); `mpris_bridge.cpp`'s async D-Bus plumbing
   (genuinely needs a bus; its logic was extracted to `mpris_state.*` and is now 100% covered
-  — see below) — all documented, none blocking.
+  - see below) - all documented, none blocking.
 
 ## Historical residual notes
 
 - The XHR factory seam and `level_filter`/`screenIdentityHash` extractions are small
-  **production** changes made solely for testability — behavior-neutral, verified by the
+  **production** changes made solely for testability - behavior-neutral, verified by the
   existing build + smoke.
 - C++ coverage denominator excludes hardware/`main()`/live-`QScreen` paths by design; those
   are covered by smoke + the on-device Python E2E, which are not in the CI line-% math.
 - `mpris_bridge.cpp`: the *decisions* (which player wins, what a reply means, whether QML is
-  notified) were extracted to `app/src/mpris_state.{h,cpp}` and are unit-tested with no bus —
+  notified) were extracted to `app/src/mpris_state.{h,cpp}` and are unit-tested with no bus -
   `tests/cpp/tst_mpris_state.cpp`, 100% line coverage on `mpris_state.cpp`, `mpris_bridge.h`
   and the non-excluded part of `mpris_bridge.cpp`. Only the async D-Bus *plumbing* stays out
   of the denominator (`GCOVR_EXCL`, reason in-source): it needs a live bus and a live player,
   and is exercised by the on-device E2E. Note the marker is on the conversation, not the
-  logic — a new decision belongs in `mpris_state.*`, not inside the excluded region.
+  logic - a new decision belongs in `mpris_state.*`, not inside the excluded region.

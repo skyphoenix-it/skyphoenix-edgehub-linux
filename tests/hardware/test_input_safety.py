@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Unit tests for the synthetic-input safety layer — NO injection, no
+"""Unit tests for the synthetic-input safety layer - NO injection, no
 /dev/uinput, no compositor traffic. Run:
 
     python3 -m unittest tests.hardware.test_input_safety -v      # from repo root
@@ -208,7 +208,7 @@ class TestKillSwitch(unittest.TestCase):
 
     def test_sink_write_path_aborts_mid_gesture(self):
         """A real-sink-shaped write path must stop the INSTANT the guard
-        aborts — modelled with a stub sink calling the same guard hooks."""
+        aborts - modelled with a stub sink calling the same guard hooks."""
         led = input_guard.IdleLedger()
         led.arm()
         g = input_guard.ActivityGuard(ledger=led)

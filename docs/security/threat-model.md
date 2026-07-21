@@ -1,8 +1,8 @@
 # Threat Model
 
-**Version:** 0.1.0-draft  
-**Status:** Phase 0 — Discovery  
-**Last Updated:** 2026-07-11  
+**Version:** 0.1.0-draft
+**Status:** Phase 0 - Discovery
+**Last Updated:** 2026-07-11
 
 ---
 
@@ -75,8 +75,8 @@ This threat model covers the Xeneon Edge Linux Hub application, including:
 
 ### T-001: Malicious Community Widget Escapes Sandbox
 
-**Severity:** Critical  
-**Likelihood:** Medium (once community widgets are supported)  
+**Severity:** Critical
+**Likelihood:** Medium (once community widgets are supported)
 **Attack Vector:** A community widget (.wasm) exploits a vulnerability in the WASM runtime or host API to escape the sandbox and execute arbitrary code.
 
 **Mitigations:**
@@ -94,8 +94,8 @@ This threat model covers the Xeneon Edge Linux Hub application, including:
 
 ### T-002: Malicious External Web Content Accesses Local APIs
 
-**Severity:** High  
-**Likelihood:** Medium (when web content widget is implemented)  
+**Severity:** High
+**Likelihood:** Medium (when web content widget is implemented)
 **Attack Vector:** A web content widget loads a malicious webpage that exploits browser engine vulnerabilities or attempts to access local resources.
 
 **Mitigations:**
@@ -112,14 +112,14 @@ This threat model covers the Xeneon Edge Linux Hub application, including:
 
 ### T-003: Command Injection via Application Launcher Widget
 
-**Severity:** High  
-**Likelihood:** Medium  
+**Severity:** High
+**Likelihood:** Medium
 **Attack Vector:** User (or imported configuration) specifies a malicious command in the application launcher widget. Command is executed with user's privileges.
 
 **Mitigations:**
 - Custom commands require explicit user approval with a clear warning dialog
 - Commands are displayed in full before execution
-- No shell interpretation — commands use direct `exec()` with argument list (no `/bin/sh -c`)
+- No shell interpretation - commands use direct `exec()` with argument list (no `/bin/sh -c`)
 - Dangerous patterns are detected and warned about (`rm -rf`, `sudo`, `curl | sh`, etc.)
 - Whitelist of approved .desktop entries is the primary launch mechanism
 - Custom commands are clearly marked as "Custom (Unverified)" in UI
@@ -132,13 +132,13 @@ This threat model covers the Xeneon Edge Linux Hub application, including:
 
 ### T-004: Configuration File Tampering
 
-**Severity:** Medium  
-**Likelihood:** Low  
+**Severity:** Medium
+**Likelihood:** Low
 **Attack Vector:** A local attacker (or malware running as the same user) modifies configuration files to change application behavior, redirect widget data, or inject malicious settings.
 
 **Mitigations:**
 - Configuration is in user-owned XDG directories (standard file permissions)
-- Configuration schema is validated on load — invalid values are rejected
+- Configuration schema is validated on load - invalid values are rejected
 - Versioned schema with migration prevents legacy attack surfaces
 - Human-readable format (TOML) makes tampering detectable
 - Sensitive values (API keys) stored in system secret service, not config files
@@ -149,13 +149,13 @@ This threat model covers the Xeneon Edge Linux Hub application, including:
 
 ### T-005: D-Bus Service Impersonation
 
-**Severity:** Medium  
-**Likelihood:** Low  
+**Severity:** Medium
+**Likelihood:** Low
 **Attack Vector:** A malicious D-Bus service impersonates an MPRIS player or other expected service, sending crafted data to trigger bugs or information leaks.
 
 **Mitigations:**
 - D-Bus messages are validated before use (type checking, bounds checking)
-- MPRIS metadata is treated as untrusted — sanitized before display
+- MPRIS metadata is treated as untrusted - sanitized before display
 - D-Bus method call timeouts prevent hanging
 - Service name validation (well-known bus names)
 - Errors from D-Bus are handled gracefully (no crash, no data corruption)
@@ -166,8 +166,8 @@ This threat model covers the Xeneon Edge Linux Hub application, including:
 
 ### T-006: Supply Chain Attack via Dependencies
 
-**Severity:** Critical  
-**Likelihood:** Low  
+**Severity:** Critical
+**Likelihood:** Low
 **Attack Vector:** A compromised dependency (crate, npm package, system library) introduces malicious code into the application binary.
 
 **Mitigations:**
@@ -186,14 +186,14 @@ This threat model covers the Xeneon Edge Linux Hub application, including:
 
 ### T-007: Unauthorized System Access via Sensors
 
-**Severity:** Low  
-**Likelihood:** Low  
+**Severity:** Low
+**Likelihood:** Low
 **Attack Vector:** A widget reads system sensor data (/proc, /sys) and exfiltrates it. This is low-sensitivity data but could reveal usage patterns.
 
 **Mitigations:**
 - System metrics are read by trusted core adapters, not directly by widgets
 - Metrics data is in-memory only and discarded on application exit
-- Community widgets (Level 3) cannot read /proc or /sys directly — they go through the capability API
+- Community widgets (Level 3) cannot read /proc or /sys directly - they go through the capability API
 - Permission `system.metrics.read` required for community widgets
 - Network access is not permitted for community widgets by default
 - Exfiltration would require a separate vulnerability (e.g., network access granted)
@@ -204,8 +204,8 @@ This threat model covers the Xeneon Edge Linux Hub application, including:
 
 ### T-008: Crash Report Contains Sensitive Data
 
-**Severity:** Medium  
-**Likelihood:** Medium  
+**Severity:** Medium
+**Likelihood:** Medium
 **Attack Vector:** A crash report or diagnostics export contains sensitive information (API keys, file paths, personal data) that is exposed to developers or in logs.
 
 **Mitigations:**
@@ -228,8 +228,8 @@ pattern-redacted, so novel opaque UI fields are omitted by default.
 
 ### T-009: Autostart Hijacking
 
-**Severity:** Low  
-**Likelihood:** Low  
+**Severity:** Low
+**Likelihood:** Low
 **Attack Vector:** A malicious actor modifies the autostart .desktop file to add malicious arguments or redirect the application.
 
 **Mitigations:**
@@ -244,8 +244,8 @@ pattern-redacted, so novel opaque UI fields are omitted by default.
 
 ### T-010: Resource Exhaustion (Denial of Service by Widget)
 
-**Severity:** Medium  
-**Likelihood:** Medium (post-MVP)  
+**Severity:** Medium
+**Likelihood:** Medium (post-MVP)
 **Attack Vector:** A community widget consumes excessive CPU, memory, or file descriptors, degrading the dashboard or the entire system.
 
 **Mitigations:**

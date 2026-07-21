@@ -3,7 +3,7 @@ import QtTest
 import "../../ui/qml" as App
 import "../../ui/qml/widgets" as Wg
 
-// Sparkline (ui/qml/widgets/Sparkline.qml) — a Canvas history chart. Canvas does
+// Sparkline (ui/qml/widgets/Sparkline.qml) - a Canvas history chart. Canvas does
 // not paint offscreen, so we assert the DRIVING PROPERTIES and the in-place
 // mutation signature (the mechanism that decides when to repaint), never pixels.
 Item {
@@ -114,7 +114,7 @@ Item {
             compare(sl.values.length, 3, "values still stored")
         }
 
-        // The 100ms poll timer MUST stop when the sparkline is off-screen — an
+        // The 100ms poll timer MUST stop when the sparkline is off-screen - an
         // ungated one kept firing on every persisted preview widget and made the
         // whole Manager scroll stutter. Guards that regression.
         function _pollTimer() {

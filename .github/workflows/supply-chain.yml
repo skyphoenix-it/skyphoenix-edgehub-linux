@@ -64,7 +64,7 @@ jobs:
           # An SBOM with no components would upload and publish perfectly while
           # attesting nothing at all.
           n=$(python3 -c 'import json;print(len(json.load(open("dist/xeneon-core-sbom.cdx.json")).get("components",[])))')
-          [ "$n" -gt 10 ] || { echo "FAIL: SBOM has only $n components — generation is broken"; exit 1; }
+          [ "$n" -gt 10 ] || { echo "FAIL: SBOM has only $n components - generation is broken"; exit 1; }
 
       - uses: actions/upload-artifact@v7
         with:
@@ -86,7 +86,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Install cargo-deny
         run: cargo install cargo-deny --locked
-      # NOTE: there is no longer a separate `cargo audit` job — it was removed when
+      # NOTE: there is no longer a separate `cargo audit` job - it was removed when
       # CI cost was cut, because deny already covers advisories. Do not re-add one
       # without a reason deny cannot serve.
       # They overlap only on advisories; deny adds licenses, duplicate/wildcard
@@ -127,8 +127,8 @@ jobs:
       # (kernel.apparmor_restrict_unprivileged_userns=1), so `unshare --net`
       # fails as a normal user on this runner even though it works on a typical
       # dev machine. -E keeps XENEON_HUB/STRACE. The script itself needs no real
-      # privilege — see its header.
-      - name: ZERO egress with the default config (pristine — first-run wizard)
+      # privilege - see its header.
+      - name: ZERO egress with the default config (pristine - first-run wizard)
         run: sudo -E bash packaging/ci/no-egress.sh default
 
       - name: ZERO egress with the default STARTER LAYOUT (post-wizard)
@@ -143,8 +143,8 @@ jobs:
       # Without these the three assertions above are decoration: a harness that
       # cannot fail would print the same PASS for a hub that phones home on
       # every tick. Each control breaks ONE guarantee and requires the specific
-      # failure — "exit 1" alone is not enough, since a typo also exits 1.
-      - name: 'Negative control 1/3 — a widget that phones home must FAIL the zero assertion'
+      # failure - "exit 1" alone is not enough, since a typo also exits 1.
+      - name: 'Negative control 1/3 - a widget that phones home must FAIL the zero assertion'
         run: |
           if sudo -E bash packaging/ci/no-egress.sh url:http://telemetry.evil.example.com/collect > /tmp/neg1.log 2>&1; then
             echo "FAIL: attestation PASSED while the hub was calling telemetry.evil.example.com"
@@ -156,7 +156,7 @@ jobs:
             echo "FAIL: did not name the host it reached"; cat /tmp/neg1.log; exit 1; }
           echo "negative control OK: the phone-home was caught and named"
 
-      - name: 'Negative control 2/3 — a hard-coded IP (no DNS) must still be caught'
+      - name: 'Negative control 2/3 - a hard-coded IP (no DNS) must still be caught'
         # This is the control for the strace channel specifically. The DNS/TCP
         # sink is blind here by construction: no lookup happens, so only
         # connect(2) tracing sees it. If this ever regresses, the attestation
@@ -172,9 +172,9 @@ jobs:
             echo "FAIL: did not name the address"; cat /tmp/neg2.log; exit 1; }
           echo "negative control OK: raw-IP egress caught by connect(2) tracing"
 
-      - name: 'Negative control 3/3 — a hub that never starts must NOT pass as zero egress'
+      - name: 'Negative control 3/3 - a hub that never starts must NOT pass as zero egress'
         # The vacuity control. A dead hub sends nothing, which is indistinguishable
-        # from a clean hub unless liveness is asserted — this is how a broken build
+        # from a clean hub unless liveness is asserted - this is how a broken build
         # would otherwise ship a green "zero egress" badge.
         run: |
           if sudo -E XENEON_HUB=/bin/true bash packaging/ci/no-egress.sh default > /tmp/neg3.log 2>&1; then

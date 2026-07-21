@@ -1,4 +1,4 @@
-# The ISSUER's tool — NOT shipped. It generates the licence keypair and mints Pro
+# The ISSUER's tool - NOT shipped. It generates the licence keypair and mints Pro
 # keys. The private seed it prints stays secret (in the owner's password manager),
 # exactly like the GPG signing key; only the PUBLIC key is compiled into the app
 # (core/src/license.rs ISSUER_PUBLIC_KEY). Kept out of the app build entirely: it
@@ -15,7 +15,7 @@ path = "src/main.rs"
 
 [dependencies]
 # Reuse the app's EXACT base64url so a minted key encodes identically to what the
-# verifier decodes — no risk of a subtly different encoding rejecting real keys.
+# verifier decodes - no risk of a subtly different encoding rejecting real keys.
 xeneon-core = { path = "../../core" }
 ed25519-dalek = { version = "2", default-features = false, features = ["std"] }
 getrandom = "0.2"

@@ -1,11 +1,11 @@
 # makepkg's build output. `packaging/local/` has had this file since it was
 # created; `packaging/aur/` never did, so a `makepkg` run here left `src/` (the
-# extracted release tarball — a whole second copy of the repo) and `pkg/` (the
+# extracted release tarball - a whole second copy of the repo) and `pkg/` (the
 # staged install tree, including two ~4MB compiled binaries) lying around, and
 # a `git add`-everything commit swept all 505 files in.
 #
-# The root .gitignore does NOT cover this: its rules name `packages/**` — a
-# different, real directory — not `packaging/**`.
+# The root .gitignore does NOT cover this: its rules name `packages/**` - a
+# different, real directory - not `packaging/**`.
 #
 # The release tarball + its signature are DOWNLOADS too: the PKGBUILD's
 # `source=` fetches them from the GitHub release, so a copy here is makepkg's

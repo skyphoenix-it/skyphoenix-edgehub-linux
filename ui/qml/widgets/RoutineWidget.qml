@@ -2,11 +2,11 @@ import QtQuick
 import QtQuick.Layouts
 
 // ─────────────────────────────────────────────────────────────────────────
-// Routine — a daily checklist that resets each day, with nothing to lose.
+// Routine - a daily checklist that resets each day, with nothing to lose.
 //
 // THE NO-SHAMING RULE IS STRUCTURAL, NOT COSMETIC. It is not "we chose calm
 // colours"; it is that the widget stores NO CROSS-DAY STATE AT ALL. There is no
-// streak, no completion history, no "you did 3/5 yesterday" — so there is
+// streak, no completion history, no "you did 3/5 yesterday" - so there is
 // literally nothing for a bad day to break, and no number a missed day can make
 // go down. That is why this is a separate widget from `habit` (which is a streak,
 // on purpose, for people who want one) rather than a flag on it: you cannot bolt
@@ -14,26 +14,26 @@ import QtQuick.Layouts
 //
 // Consequently: an unchecked step is `textPrimary` (a normal thing you might do),
 // never red, never a warning. A new day silently unchecks everything. Nothing
-// blinks or animates on a timer — the only clinically-grounded number in the
+// blinks or animates on a timer - the only clinically-grounded number in the
 // whole a11y literature here is the Epilepsy Foundation's <2 Hz flash advice, and
 // the cheapest way to honour it is to have no timed animation whatsoever.
 //
 // Persistence: `day` + `done` (step keys). Reading ignores a `day` that isn't
-// today, so the reset is a read-time decision — no timer, no write at midnight,
+// today, so the reset is a read-time decision - no timer, no write at midnight,
 // and it cannot half-apply if the device was asleep.
 //
 // Sizing (W1 wave 2b): this is a LIST, so a bigger box earns MORE ROWS, not
-// bigger ones. Every row is a full touch target at every size — the tile rows
+// bigger ones. Every row is a full touch target at every size - the tile rows
 // used to be 22px tall WITH a MouseArea on them, which is a 22px hit area for a
 // tick, less than half theme.touchTertiary (52). A row is now touchTertiary
 // everywhere and the box simply shows as many as it fits; the footer count says
 // where you are, and tapping the tile opens the rest. Shrinking the target to fit
 // more rows would trade the one interaction this widget has for density.
-//   • 0.5x1 / 1x0.5 / 1x1 / 1x1.5 / 1x2 — the same list, more rows per size.
-//   • wide  — the list BESIDE its summary (progress + count) rather than under
+//   • 0.5x1 / 1x0.5 / 1x1 / 1x1.5 / 1x2 - the same list, more rows per size.
+//   • wide  - the list BESIDE its summary (progress + count) rather than under
 //             it; a 696x409 box stacked into three bands is all chrome.
-//   • tall / large — the summary bar is earned above the list.
-// (No 0.5x0.5 is declared, so `micro` is never true here — see WidgetCatalog.)
+//   • tall / large - the summary bar is earned above the list.
+// (No 0.5x0.5 is declared, so `micro` is never true here - see WidgetCatalog.)
 // ─────────────────────────────────────────────────────────────────────────
 WidgetChrome {
     id: w
@@ -56,13 +56,13 @@ WidgetChrome {
 
     function todayKey() { return Qt.formatDate(new Date(), "yyyy-MM-dd") }
     property string dayKey: (w.tick, todayKey())
-    // Today's ticks only. A stored day that is not today reads as empty — that IS
+    // Today's ticks only. A stored day that is not today reads as empty - that IS
     // the daily reset.
     readonly property var doneToday: (cfg.day === dayKey && cfg.done) ? cfg.done : []
 
     // A step's identity is its own text, not its index: inserting a line above
     // must not silently re-point the ticks below it onto different steps.
-    // Duplicate lines therefore share one tick — acceptable, and better than
+    // Duplicate lines therefore share one tick - acceptable, and better than
     // index drift, which corrupts state invisibly.
     readonly property var stepList: {
         var out = []
@@ -87,7 +87,7 @@ WidgetChrome {
     readonly property bool horiz: sizeClass === "wide"
     // The summary (a neutral fill bar + the count) is real content, so every size
     // with room shows it rather than keeping it behind the overlay. Only a micro
-    // tile falls back to the bare footer count — and routine declares no 0.5x0.5,
+    // tile falls back to the bare footer count - and routine declares no 0.5x0.5,
     // so that path exists for a standalone host (tests, the Manager preview).
     readonly property bool showSummary: !w.micro
     // Every row is a real touch target. This is NOT scaled down for small tiles:
@@ -118,7 +118,7 @@ WidgetChrome {
     }
 
     // `columns` flips for a wide box: the summary sits BESIDE the list instead of
-    // stacked above it. Only a reshape — the ListView is not rebuilt.
+    // stacked above it. Only a reshape - the ListView is not rebuilt.
     GridLayout {
         anchors.fill: parent
         visible: w.stepList.length > 0
@@ -155,7 +155,7 @@ WidgetChrome {
                     color: w.allDone ? theme.success : w.effAccent
                     // A width tween on an explicit tap is the one motion here: it is
                     // interaction-triggered (WCAG 2.3.3 territory, AAA) and single-shot,
-                    // so it is nowhere near a flash — and it still respects reduceMotion.
+                    // so it is nowhere near a flash - and it still respects reduceMotion.
                     Behavior on width { NumberAnimation { duration: theme.motionValue; easing.type: Easing.OutCubic } }
                 }
             }
@@ -182,7 +182,7 @@ WidgetChrome {
                 readonly property bool done: w.isDone(stepRow.modelData)
                 width: ListView.view ? ListView.view.width : 0
                 // A full touch target at EVERY size. This row used to be 22px on
-                // a tile — a 22px hit area for the only action the widget has.
+                // a tile - a 22px hit area for the only action the widget has.
                 // More room buys more rows, never a thinner target.
                 height: w.rowH
 

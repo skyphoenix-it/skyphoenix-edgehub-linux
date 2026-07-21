@@ -12,12 +12,12 @@ import "../../ui/qml" as App
 //
 // This is that proof. For each (type, size) the catalog declares, it drives a
 // real resize through the store's public setTileSize() and asserts the stored
-// size equals the requested one — a genuine round-trip that CAN fail:
+// size equals the requested one - a genuine round-trip that CAN fail:
 //   • setTileSize returns false  → the store REFUSED a size the catalog swears
 //     the widget can render (a catalog/store disagreement, a real bug);
 //   • the stored size differs     → the store SILENTLY COERCED a legal declared
 //     size to something else (the coercion rule at DashboardStore.qml ~144 must
-//     leave legal, type-supported sizes untouched — if it doesn't, that is a
+//     leave legal, type-supported sizes untouched - if it doesn't, that is a
 //     real bug, surfaced here rather than papered over by a looser assertion).
 //
 // Every size fed here is pulled straight from the catalog, so it is legal AND
@@ -62,7 +62,7 @@ Item {
 
         // A fresh blank "Home" page before EACH data row (QtTest calls init/cleanup
         // around every row), so the resize under test is always the only tile on the
-        // page — no sibling can steal the one-screen budget and mask a real refusal.
+        // page - no sibling can steal the one-screen budget and mask a real refusal.
         function init() { store.load("blank") }
 
         // One named row per (type, size) the catalog declares.
@@ -81,7 +81,7 @@ Item {
         function test_resize(row) {
             // Preconditions: the matrix only ever feeds legal, type-supported sizes,
             // so an exact round-trip is the only honest outcome. If either fails the
-            // catalog itself is inconsistent — assert them so a bad row is diagnosed
+            // catalog itself is inconsistent - assert them so a bad row is diagnosed
             // as a catalog fault, not misread as a store fault below.
             verify(sizes.isLegal(row.size),
                    "precondition: " + row.size + " is a legal WidgetSizes name")
@@ -97,7 +97,7 @@ Item {
 
             // The load-bearing, failable assertion: the store reports back EXACTLY
             // the size requested. A different value means a legal declared size was
-            // silently coerced — a real bug, not something to loosen away.
+            // silently coerced - a real bug, not something to loosen away.
             compare(store.pages()[0].tiles[0].size, row.size,
                     "the store must report the requested size verbatim (round-trip)")
         }

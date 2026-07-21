@@ -328,7 +328,7 @@ Item {
         WidgetHarness { id: hBase; anchors.fill: parent; widgetFile: "MoonWidget.qml"; expanded: false } }
     // The OVERLAY, at the two boxes Dashboard actually gives it: the live-preview
     // pane beside the config form, ~941x456 landscape and ~656x980 portrait.
-    // `expanded: true` AND sizeClass "full" — the real pairing — because a
+    // `expanded: true` AND sizeClass "full" - the real pairing - because a
     // mode-keyed literal can only be caught with the mode switched ON.
     Item { width: 941; height: 456
         WidgetHarness { id: hOvlL; anchors.fill: parent; widgetFile: "MoonWidget.qml"; expanded: true } }
@@ -339,7 +339,7 @@ Item {
         name: "MoonSizes"
         when: windowShown
 
-        // 0.5x0.5 — the glyph alone, scaled to the box.
+        // 0.5x0.5 - the glyph alone, scaled to the box.
         function test_micro_is_glyph_only() {
             tryVerify(function () { return hMicro.ready }, 3000)
             var w = hMicro.item
@@ -347,13 +347,13 @@ Item {
             compare(w.micro, true, "a 344x416 compact box is the micro tile")
             compare(w.showHeader, false, "micro stays headerless")
             var name = findByText(w, w.names[w.idx])
-            verify(name === null || !name.visible, "micro drops the phase name — the glyph IS the tile")
+            verify(name === null || !name.visible, "micro drops the phase name - the glyph IS the tile")
             var glyph = findByText(w, w.phases[w.idx])
             verify(glyph !== null && glyph.visible, "the glyph is there")
             verify(w.glyphPx > 58, "and it scales past the old 58px cap")
         }
 
-        // 1x1 — glyph + name + illumination, still headerless.
+        // 1x1 - glyph + name + illumination, still headerless.
         function test_baseline_earns_name_and_illumination() {
             tryVerify(function () { return hBase.ready }, 3000)
             var w = hBase.item
@@ -367,7 +367,7 @@ Item {
             verify(next === null || !next.visible, "next new/full stays behind tall/overlay")
         }
 
-        // wide — glyph beside the name/illumination/age column (both projections).
+        // wide - glyph beside the name/illumination/age column (both projections).
         function test_wide_is_side_by_side_with_age() {
             tryVerify(function () { return hWide.ready }, 3000)
             var w = hWide.item
@@ -379,7 +379,7 @@ Item {
             wideWrap.width = 696; wideWrap.height = 416
         }
 
-        // tall — the next new/full dates come out from behind the overlay.
+        // tall - the next new/full dates come out from behind the overlay.
         function test_tall_earns_next_dates() {
             tryVerify(function () { return hTall.ready }, 3000)
             var w = hTall.item
@@ -429,7 +429,7 @@ Item {
         // false, where a surviving `w.expanded ? 150 : <derived>` never fires its
         // literal at all and the derived branch keeps the assertion green.
         //
-        // Both hosts are expanded AND "full"; only the BOX differs — the real
+        // Both hosts are expanded AND "full"; only the BOX differs - the real
         // live-preview panes beside the config form, NOT a 2560x720 screen. A
         // literal returns one number for both, so asserting the two differ is
         // exactly the mode/size conflation, caught.
@@ -440,7 +440,7 @@ Item {
             // A real event-loop turn, not wait(0): these hosts default to "tall"
             // (height > 240) and only become "full" on the lines above; wait(0)
             // returns BEFORE the layout re-polishes and a rendered read then
-            // reports pre-change geometry. waitForRendering is not the tool —
+            // reports pre-change geometry. waitForRendering is not the tool -
             // offscreen never swaps a frame.
             wait(16)
             compare(land.expanded, true, "precondition: this IS the overlay")
@@ -471,7 +471,7 @@ Item {
             compare(nm.font.pixelSize, Math.round(port.namePx),
                     "…and so is the phase name")
 
-            // It still FITS the pane it was sized for — the structural guarantee,
+            // It still FITS the pane it was sized for - the structural guarantee,
             // not glyph ink (headless font metrics are meaningless).
             verify(g.width <= port.width + 0.51,
                    "the glyph stays inside the portrait pane (" + g.width.toFixed(0)

@@ -4,7 +4,7 @@ import "../../ui/qml" as App
 
 // COVERS: fn:Dashboard.policyAllowsWidget, fn:Dashboard.policyFilteredWidgets, fn:DashboardStore.lockToPreset
 //
-// E9 managed/org policy — what the Dashboard ENFORCES, driven through a fake
+// E9 managed/org policy - what the Dashboard ENFORCES, driven through a fake
 // configBridge whose policy() answer we control per test:
 //   • no policy       → behaviour is byte-for-byte the unmanaged default
 //                       (user's own netOffline flag still governs the hub)
@@ -59,7 +59,7 @@ Item {
     Loader { id: ld; anchors.fill: parent }
 
     // A stand-in widget exposing the injection contract, so injectWidget hands
-    // us the app-global NetHub (a QtObject — not reachable via children).
+    // us the app-global NetHub (a QtObject - not reachable via children).
     Component {
         id: probeWidget
         QtObject {
@@ -130,7 +130,7 @@ Item {
         name: "PolicyQml"
         when: windowShown
 
-        // Tear down + relaunch the REAL Dashboard under a given policy — the
+        // Tear down + relaunch the REAL Dashboard under a given policy - the
         // policy is read once at creation, exactly as in the app.
         function reload(policy) {
             ld.source = ""
@@ -155,7 +155,7 @@ Item {
             compare(hub.offline, false, "no policy: hub starts online")
             compare(hub.allowHosts.length, 0, "no policy: no allowlist pin")
 
-            // The USER's own kill switch still works — policy absent must not
+            // The USER's own kill switch still works - policy absent must not
             // change the pre-E9 contract in either direction.
             root.store().setAppearance("netOffline", true)
             tryCompare(hub, "offline", true)
@@ -178,7 +178,7 @@ Item {
             var hub = root.netHub()
             compare(hub.offline, true, "policy pins the kill switch on")
 
-            // The user flag CANNOT lift the pin — that is what "enforceable"
+            // The user flag CANNOT lift the pin - that is what "enforceable"
             // means, and what the attestation now rests on.
             root.store().setAppearance("netOffline", false)
             compare(hub.offline, true, "user config cannot lift a policy pin")
@@ -226,15 +226,15 @@ Item {
                      "netOffline": false, "allowedHosts": [],
                      "disableUserWidgets": true, "disabledWidgetTypes": [] })
             var d = ld.item
-            // The user says YES on the LIVE store — the strongest form of the
-            // preference — and the org still wins.
+            // The user says YES on the LIVE store - the strongest form of the
+            // preference - and the org still wins.
             root.store().setAppearance("enableUserWidgets", true)
             verify(d.managed, "the session reads as managed")
             compare(d._userWidgetsFlag(), false,
                     "org veto beats the user's enabled flag")
         }
 
-        // ...and without the veto the same user flag reads true — proving the
+        // ...and without the veto the same user flag reads true - proving the
         // case above fails for the RIGHT reason, not because the flag never
         // reads true in this harness.
         function test_user_widget_flag_honoured_when_policy_allows() {

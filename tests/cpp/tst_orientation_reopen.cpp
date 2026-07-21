@@ -37,7 +37,7 @@ private slots:
         QCOMPARE(::mkfifo(fifo.toUtf8().constData(), 0600), 0);
 
         // Open a keep-alive writer end FIRST (O_RDWR avoids ENXIO with no reader and
-        // keeps a writer present, so the sensor's initial drain sees EAGAIN — not the
+        // keeps a writer present, so the sensor's initial drain sees EAGAIN - not the
         // immediate EOF a writer-less FIFO read returns).
         int wfd = ::open(fifo.toUtf8().constData(), O_RDWR | O_NONBLOCK);
         QVERIFY(wfd >= 0);
@@ -111,7 +111,7 @@ private slots:
 
     // Persistence: a live rotation is written to the state file, and a fresh sensor
     // that gets NO startup report restores it (the fix for panels that answer no
-    // GET_REPORT and only push on physical change — a restart would otherwise start
+    // GET_REPORT and only push on physical change - a restart would otherwise start
     // mis-rotated).
     void persistsAndRestoresOrientation() {
         QTemporaryDir dir;

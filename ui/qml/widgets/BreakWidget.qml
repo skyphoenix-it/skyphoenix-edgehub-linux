@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 
-// Break reminder — a repeating interval timer that nudges you to take a break
+// Break reminder - a repeating interval timer that nudges you to take a break
 // (ADHD time-blindness aid). Interval is persisted; the countdown runs while
 // the tile is active (single-driver via `active`).
 WidgetChrome {
@@ -16,7 +16,7 @@ WidgetChrome {
     property int tick: 0
 
     title: "Break Reminder"; iconName: "break"; accentColor: theme.success
-    // The micro tile is a bare ring — a header would compete for a twelfth of
+    // The micro tile is a bare ring - a header would compete for a twelfth of
     // the screen (see the sizing flags below WidgetChrome's contract props).
     showHeader: !micro
 
@@ -72,7 +72,7 @@ WidgetChrome {
     }
     function toggleRun() {
         if (running) {
-            // While due, `remaining` is forced to 0 — snapshotting it would
+            // While due, `remaining` is forced to 0 - snapshotting it would
             // persist pausedRemaining:0 and corrupt the timer. Fall back to the
             // last stored remaining (or a full interval) instead.
             var snap = w.due ? (cfg.pausedRemaining !== undefined ? cfg.pausedRemaining : intervalMin * 60)
@@ -98,7 +98,7 @@ WidgetChrome {
     // original seed here was a no-op and the timer stayed frozen. Instead, run the
     // seed reactively once the store is wired up (and again if the endEpoch key is
     // cleared). Only the active instance seeds, to avoid a double write, and only
-    // when endEpoch is genuinely absent (undefined) — an explicit endEpoch:0 means
+    // when endEpoch is genuinely absent (undefined) - an explicit endEpoch:0 means
     // "no live end time, use the fallback" and must be left alone.
     function _seedIfNeeded() {
         if (!w.active || !store || !instanceId) return
@@ -135,7 +135,7 @@ WidgetChrome {
     readonly property bool micro: sizeClass === "compact" && Math.min(width, height) < 480
     readonly property bool horiz: sizeClass === "wide"
     // What each size earns: micro is a bare progress ring (headerless, timer +
-    // a tiny caption inside; when due, the message + a Done pill — a due break
+    // a tiny caption inside; when due, the message + a Done pill - a due break
     // must always be acknowledgeable). Every larger tile adds the caption, the
     // pause/reset controls at touch-token size, and today's momentum. ±5m and
     // the full control set stay in the overlay (a mode, not a size).
@@ -159,7 +159,7 @@ WidgetChrome {
         columnSpacing: theme.spacingLg
         rowSpacing: w.micro ? 0 : theme.spacingSm
 
-        // Interval progress ring with the countdown inside — the tile reads at a
+        // Interval progress ring with the countdown inside - the tile reads at a
         // glance how far into the interval you are, not just a floating number.
         Item {
             id: ringBox
@@ -189,7 +189,7 @@ WidgetChrome {
                     width: parent.width
                     horizontalAlignment: Text.AlignHCenter
                     // Identity for the headerless micro ring; larger tiles already
-                    // say "until next break" outside — only "paused" earns a
+                    // say "until next break" outside - only "paused" earns a
                     // duplicate mention there.
                     visible: w.micro || !w.running
                     text: w.running ? "break" : "paused"
@@ -237,7 +237,7 @@ WidgetChrome {
         Text {
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignHCenter
-            // Custom due-messages are user text and can be long — cap the width and
+            // Custom due-messages are user text and can be long - cap the width and
             // wrap/elide so they never overflow the tile (S12).
             wrapMode: Text.WordWrap; maximumLineCount: w.micro ? 2 : 3; elide: Text.ElideRight
             text: w.message.length ? w.message : "Take a break!"
@@ -255,7 +255,7 @@ WidgetChrome {
             font.italic: true; color: theme.textTertiary
             elide: Text.ElideRight; maximumLineCount: 1
         }
-        // Quick acknowledge — reachable at touch size in EVERY tile size.
+        // Quick acknowledge - reachable at touch size in EVERY tile size.
         PillButton { Layout.alignment: Qt.AlignHCenter
             label: "Done"; primary: true; tint: w.effAccent; onClicked: w.takeBreak() }
     }

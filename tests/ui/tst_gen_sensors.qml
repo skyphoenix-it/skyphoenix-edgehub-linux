@@ -280,7 +280,7 @@ Item {
         // "If the CPU temp rises 1 degree, only the bar length should increase/
         // decrease smoothly, not reload the entire bar." The Repeater's model was
         // a fresh JS array per metrics tick, so every delegate was destroyed and
-        // recreated ~2s — nothing survived long enough to animate. The model is
+        // recreated ~2s - nothing survived long enough to animate. The model is
         // now a static label list: these assertions prove the SAME delegate
         // objects live across ticks and only their bound values move.
         function test_delegates_survive_metric_ticks() {
@@ -339,7 +339,7 @@ Item {
             tryVerify(function () { return colEq(tempFill.color, h.theme.error) }, 2000,
                       "…and lands on the error colour")
 
-            // REDUCE-MOTION IS SACRED: the same updates become instant jumps —
+            // REDUCE-MOTION IS SACRED: the same updates become instant jumps -
             // asserted IMMEDIATELY after the tick, where the motion-on case above
             // was still provably mid-ease.
             h.theme.reduceMotion = true
@@ -369,7 +369,7 @@ Item {
 
         // ---- empty metrics still shows CPU/RAM as a solid 0% (documents bug #7) ----
         // Empty metrics no longer fabricate a confident 0% for CPU/RAM (S4). The
-        // rows are hidden until real data arrives — matching CpuWidget/RamWidget and
+        // rows are hidden until real data arrives - matching CpuWidget/RamWidget and
         // this widget's own GPU/disk/temp rows (was previously a documented bug).
         function test_empty_metrics_hides_cpu_ram() {
             var w = h.item
@@ -431,19 +431,19 @@ Item {
             return cpu ? cpu.parent.parent : null   // delegate RowLayout → the Grid/ColumnLayout
         }
 
-        // 0.5x0.5 — headerless; the six slim rows are the tile.
+        // 0.5x0.5 - headerless; the six slim rows are the tile.
         function test_micro_headerless_rows() {
             tryVerify(function () { return hMicro.ready }, 3000)
             var w = hMicro.item
             w.sizeClass = "compact"
             feedTo(hMicro)
             compare(w.micro, true, "a 344x416 compact box is the micro tile")
-            compare(w.showHeader, false, "micro hides the header — the rows are the tile")
+            compare(w.showHeader, false, "micro hides the header - the rows are the tile")
             compare(gridOf(hMicro).columns, 1, "micro keeps a single column")
             verify(w.rowFont >= 12, "row type stays legible")
         }
 
-        // wide — the SAME delegates reflow into two columns; identity survives
+        // wide - the SAME delegates reflow into two columns; identity survives
         // the class flip (the whole point of the static model).
         function test_wide_two_columns_same_delegates() {
             tryVerify(function () { return hWide.ready }, 3000)
@@ -465,7 +465,7 @@ Item {
             w.sizeClass = "compact"
         }
 
-        // tall — single column, thicker bars + larger type than micro.
+        // tall - single column, thicker bars + larger type than micro.
         function test_tall_scales_rows_up() {
             tryVerify(function () { return hTall.ready }, 3000)
             tryVerify(function () { return hMicro.ready }, 3000)

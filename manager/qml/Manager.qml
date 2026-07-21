@@ -4,7 +4,7 @@ import QtQuick.Layouts
 import QtQuick.Dialogs
 import QtCore
 
-// Xeneon Edge Manager — companion desktop UI. Reuses the hub's DashboardStore
+// Xeneon Edge Manager - companion desktop UI. Reuses the hub's DashboardStore
 // (persistence + mutations) and WidgetCatalog (available widgets). Every edit
 // flows through the store, which persists via `configBridge` (the C++
 // ManagerBackend) and pushes live to a running hub.
@@ -12,7 +12,7 @@ ApplicationWindow {
     id: win
     // Open large enough that the fit-to-fit Edge clone reads clearly (the whole
     // page visible without scrolling, ~half of the panel's 2560px tall), but
-    // never larger than the screen — clamp so it fits smaller laptop displays.
+    // never larger than the screen - clamp so it fits smaller laptop displays.
     width: Math.min(1440, Screen.desktopAvailableWidth - 80)
     height: Math.min(1300, Screen.desktopAvailableHeight - 80)
     minimumWidth: Math.min(1120, Screen.desktopAvailableWidth - 40)
@@ -21,7 +21,7 @@ ApplicationWindow {
     // and shows the window itself AFTER picking a non-Edge screen: on Wayland a
     // client can only influence its output before the surface is first mapped, so
     // the window must stay hidden until the screen is chosen (otherwise it opens on
-    // whatever output is active — the Edge, right after the hub grabbed it
+    // whatever output is active - the Edge, right after the hub grabbed it
     // fullscreen). qmltestrunner sets no such property, so the window shows normally
     // there (windowShown still fires). See placeManagerOffEdge().
     visible: (typeof _deferInitialShow !== "undefined" && _deferInitialShow) ? false : true
@@ -50,13 +50,13 @@ ApplicationWindow {
     palette.toolTipBase: m.panel
     palette.toolTipText: m.textPrimary
 
-    // Manager chrome theme — this app's OWN look, separate from the Edge dashboard
+    // Manager chrome theme - this app's OWN look, separate from the Edge dashboard
     // theme it edits. Persisted locally (QSettings). Dark / Light / Default, where
     // Default is the warm SKYPhoenix palette (corporate orange/red) that suits the
     // colour logo and ships as the out-of-box look. The preview keeps using `theme`.
     Settings { id: appSettings; category: "ManagerChrome"; property string chromeTheme: "default"
                // Remembers whether the Screens "how-to" card is collapsed (it is
-               // onboarding text living in a workspace — dismissable, and it stays so).
+               // onboarding text living in a workspace - dismissable, and it stays so).
                property bool howToCollapsed: false }
 
     // --- Local design tokens (the Manager's own chrome; three switchable themes) ---
@@ -162,7 +162,7 @@ ApplicationWindow {
         }
     }
 
-    // MScroll — a ScrollView with a usable mouse-wheel step. A plain QQC2 ScrollView
+    // MScroll - a ScrollView with a usable mouse-wheel step. A plain QQC2 ScrollView
     // under a Wayland/high-resolution wheel scrolls only a few pixels per notch (the
     // "20 notches to reach the bottom" bug). This WheelHandler moves ~130px per notch
     // (angleDelta 120 × 1.1), matching the hub's WidgetConfigPanel; it consumes the
@@ -182,7 +182,7 @@ ApplicationWindow {
         }
     }
 
-    // MSegment — a joined segmented selector for a small, mutually-exclusive choice
+    // MSegment - a joined segmented selector for a small, mutually-exclusive choice
     // (window style, columns, …). Replaces the loose, separate buttons those used to
     // be so a "pick one of a set" reads as one control, not several actions. Selected
     // = solid accent fill (the app's single rule for a text/segment selection);
@@ -226,7 +226,7 @@ ApplicationWindow {
         }
     }
 
-    // MDivider — a hairline section separator. The Look tab was one long flat scroll
+    // MDivider - a hairline section separator. The Look tab was one long flat scroll
     // of label+control blocks with no rhythm; a divider before each major section
     // gives the hierarchy the content already implies.
     component MDivider: Rectangle {
@@ -236,7 +236,7 @@ ApplicationWindow {
         color: m.border
     }
 
-    // PresetMini — a small LANDSCAPE thumbnail of a preset screen's layout, so the
+    // PresetMini - a small LANDSCAPE thumbnail of a preset screen's layout, so the
     // preset picker shows what you'd actually get before you add it. It packs the
     // screen's tiles with the real WidgetPacker (same arrangement the device uses)
     // and draws each as a mini accent cell with the widget's icon. Landscape because
@@ -249,8 +249,8 @@ ApplicationWindow {
         radius: m.radius; color: Qt.rgba(0, 0, 0, 0.28)
         border.width: 1; border.color: m.border; clip: true
         WidgetPacker { id: miniPacker }
-        // A widget's category colour, so the preview reads like the real screen —
-        // System tiles blue, Focus purple, Media pink, etc. — instead of every
+        // A widget's category colour, so the preview reads like the real screen -
+        // System tiles blue, Focus purple, Media pink, etc. - instead of every
         // tile being an identical accent block. Lets you tell "big focus timer +
         // small clock" from "three system gauges" at a glance, before adding it.
         function catColor(type) {
@@ -287,7 +287,7 @@ ApplicationWindow {
                         color: cc
                     }
                     // The widget's name, shown when the cell is big enough to read
-                    // it — so the preview names what you get, not just its shape.
+                    // it - so the preview names what you get, not just its shape.
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
                         visible: parent.parent.width > 42 && parent.parent.height > 34
@@ -307,7 +307,7 @@ ApplicationWindow {
     WidgetCatalog { id: catalog }
     WallpaperCatalog { id: bundledWallpapers }
     BackgroundCatalog { id: bgCatalog }
-    // The curated "screens" library — the same presets the hub's first-run wizard
+    // The curated "screens" library - the same presets the hub's first-run wizard
     // and preset picker use. The Manager is the full control surface, so it can add
     // a preset screen from the PC too (applied via store.appendPreset → persisted
     // + pushed live to a running hub).
@@ -338,7 +338,7 @@ ApplicationWindow {
     }
     MockMedia { id: media }
 
-    // One phrase for "does an edit reach the panel right now?" — reused by the
+    // One phrase for "does an edit reach the panel right now?" - reused by the
     // Layout hint card and the Appearance preview so they can never disagree
     // with the sidebar's connection dot again.
     readonly property string liveNote: backend.hubConnected
@@ -351,8 +351,8 @@ ApplicationWindow {
     //
     // The pills are a VOCABULARY, and a vocabulary needs definitions: the audit's
     // F3 was that "Whole Edge" and "All pages" both appeared, both meant global,
-    // and nothing said which was broader (the difference is real — a page can
-    // override the background but not the theme — it was just never stated). So a
+    // and nothing said which was broader (the difference is real - a page can
+    // override the background but not the theme - it was just never stated). So a
     // pill now carries `detail`, the precise rule, on hover. `scopeDetail()` is the
     // single source of that text: pass a label from `scopeLabels` and the wording
     // can never drift between two sections claiming the same scope.
@@ -417,13 +417,13 @@ ApplicationWindow {
         return p ? p.name : ""
     }
     // Commit whatever is typed in the rename field to the page the field belongs to
-    // (`pageName.forIndex`, NOT the current page — the two differ exactly when the
+    // (`pageName.forIndex`, NOT the current page - the two differ exactly when the
     // user switches page mid-edit, which is the case that used to lose the name).
     //
     // Audit F1: the field committed on `editingFinished` alone. Nothing else in the
     // pane takes keyboard focus (the chips and buttons are MouseAreas), so it never
     // blurred: typing "Yen" and clicking another page chip ran the index handler,
-    // which overwrote the field with the new page's name — the rename was gone,
+    // which overwrote the field with the new page's name - the rename was gone,
     // silently. Every neighbouring control applies instantly, so an Enter-only
     // contract is unguessable. Now every path out of the field commits it.
     function commitRename() {
@@ -472,7 +472,7 @@ ApplicationWindow {
     // ── Licence (Pro tier) state, kept fresh ──
     // Parsed from the backend's stored-key status. Re-read whenever the key
     // changes (activate/remove) so the About card and any gated affordance
-    // update without a manual refresh. Never trust a cached bool — the tier is
+    // update without a manual refresh. Never trust a cached bool - the tier is
     // always recomputed from the signed key by the Rust verifier.
     property var licStatus: ({ state: "unlicensed", tier: "free" })
     property bool isPro: licStatus.tier === "pro"
@@ -488,7 +488,7 @@ ApplicationWindow {
 
     // ── Hover previews (show, then commit) ──
     // Hovering a theme/accent swatch applies it to the Manager's theme instance
-    // ONLY — the live preview pane repaints, the store (and hence the Edge and
+    // ONLY - the live preview pane repaints, the store (and hence the Edge and
     // disk) is untouched until the user clicks. endThemePreview() restores the
     // stored appearance; it must void the signature guard first or syncTheme()
     // would skip the "unchanged" payload and strand the hover colours.
@@ -503,7 +503,7 @@ ApplicationWindow {
     // Hover-preview is DEBOUNCED. Wheel-scrolling the swatch grid drags many
     // swatches under a stationary cursor, firing onContainsMouseChanged for each
     // one; routed straight to previewTheme() that was a storm of ~20 theme
-    // property writes per swatch per frame — the other half of the scroll lag the
+    // property writes per swatch per frame - the other half of the scroll lag the
     // audit found. Coalescing to the LAST hover after a short idle collapses the
     // storm to a single applyTheme and is imperceptible for a genuine hover.
     property string _hoverKind: ""     // "theme" | "accent"
@@ -522,7 +522,7 @@ ApplicationWindow {
         hoverPreviewTimer.restart()
     }
 
-    // Add a curated "screen" as a NEW page (additive) — never replaces the user's
+    // Add a curated "screen" as a NEW page (additive) - never replaces the user's
     // other pages, and never touches the global theme/accent. store.appendPreset
     // persists + pushes live to a running hub, and returns the new page index so we
     // land the user on the screen they just added.
@@ -530,7 +530,7 @@ ApplicationWindow {
         if (!presetLib.has(presetId)) return
         var idx = store.appendPreset(presetId)
         if (idx < 0) return
-        // Sync the rename field to the new page BEFORE moving currentPageIndex —
+        // Sync the rename field to the new page BEFORE moving currentPageIndex -
         // onCurrentPageIndexChanged runs commitRename(), which would otherwise write
         // the STALE field text onto the freshly-added page (e.g. renaming its page
         // to a leftover name). Setting forIndex+text to the target makes that
@@ -556,7 +556,7 @@ ApplicationWindow {
         confirmDialog.open()
     }
 
-    // Removing a page discards its widgets and their settings — the only
+    // Removing a page discards its widgets and their settings - the only
     // destructive click in the Manager that skipped the confirm dialog.
     function confirmRemovePage() {
         var idx = currentPageIndex
@@ -616,7 +616,7 @@ ApplicationWindow {
 
                 // Brand lockup, top to bottom: the "EdgeHub" wordmark in the company
                 // brand face, a small "by SKYPhoenix IT" maker line, then the logo
-                // small beneath — the order Simon asked for. The logo variant follows
+                // small beneath - the order Simon asked for. The logo variant follows
                 // the surface it sits on so it stays legible: white on a dark
                 // background, black on a light one, the colour lockup on the neutral
                 // Default chrome. The version lives in the About view.
@@ -674,7 +674,7 @@ ApplicationWindow {
                 Item { Layout.fillHeight: true }
 
                 // The "Manager window style" control used to live HERE in the
-                // sidebar, far from Appearance → "Edge theme" — the audit's top
+                // sidebar, far from Appearance → "Edge theme" - the audit's top
                 // confusion (two unlabelled "theme" controls in two places). It now
                 // sits inside the Appearance tab beside the Edge theme, so both
                 // theme pickers are together with unmistakable scope pills.
@@ -722,7 +722,7 @@ ApplicationWindow {
             Layout.fillHeight: true
             currentIndex: backend.startTab()
             // Leaving the Layout tab is also a way out of the rename field that
-            // never blurs it — commit rather than strand the edit (audit F1).
+            // never blurs it - commit rather than strand the edit (audit F1).
             onCurrentIndexChanged: win.commitRename()
 
             // ═══ 1. LAYOUT ═══
@@ -740,7 +740,7 @@ ApplicationWindow {
                     Flow {
                         Layout.fillWidth: true; spacing: 8
                         Repeater {
-                            // Structural list — rebuild only when pages are added/
+                            // Structural list - rebuild only when pages are added/
                             // removed/renamed, not on every settings keystroke [S11].
                             model: (store.structureRevision, store.pages())
                             delegate: Rectangle {
@@ -800,9 +800,9 @@ ApplicationWindow {
 
                     // Tiles on the current page. Orientation-adaptive (O2): a
                     // PORTRAIT Edge preview is tall+narrow, so it sits BESIDE the
-                    // config helper (2 columns). A LANDSCAPE preview is wide+short —
+                    // config helper (2 columns). A LANDSCAPE preview is wide+short -
                     // beside the config it collapsed to a squeezed strip floating in
-                    // a tall empty pane — so it moves ABOVE the config, full width
+                    // a tall empty pane - so it moves ABOVE the config, full width
                     // (1 column), where it gets the whole content width and reads at
                     // a correct aspect. The column count flips on the preview's
                     // orientation, which the hub drives (backend.hubRotation).
@@ -811,7 +811,7 @@ ApplicationWindow {
                         columns: edgeClone.landscape ? 1 : 2
                         columnSpacing: 16; rowSpacing: 16
 
-                        // Live WYSIWYG clone of the Edge — drag tiles to reorder,
+                        // Live WYSIWYG clone of the Edge - drag tiles to reorder,
                         // drag the bottom handle to resize, ⚙ to configure, ✕ to remove.
                         EdgeClone {
                             id: edgeClone
@@ -872,7 +872,7 @@ ApplicationWindow {
                                 }
 
                                 // Collapsible how-to card. Onboarding lives here, but it
-                                // shouldn't permanently eat the workspace — it remembers
+                                // shouldn't permanently eat the workspace - it remembers
                                 // being collapsed. Each tip pairs the REAL SVG icon with
                                 // its action (no ⚙/⤡/✕ text glyphs that don't match the set).
                                 Rectangle {
@@ -947,7 +947,7 @@ ApplicationWindow {
             // ═══ 2. APPEARANCE ═══
             // Two panes: controls left, a live Edge preview right. The audit's
             // second-biggest finding: every control here changes the Edge, but the
-            // only rendering of the Edge lived on the Layout tab — so theme/accent/
+            // only rendering of the Edge lived on the Layout tab - so theme/accent/
             // glass picks gave zero visible feedback. Now they repaint the preview
             // as you hover, before anything is committed.
             Item {
@@ -955,7 +955,7 @@ ApplicationWindow {
               // GridLayout there). A PORTRAIT preview is tall+narrow and sits BESIDE
               // the controls (2 columns); a LANDSCAPE preview is wide+short, so
               // beside the controls it collapsed into a squeezed strip floating in a
-              // tall empty pane — it moves ABOVE them, full width (1 column), where
+              // tall empty pane - it moves ABOVE them, full width (1 column), where
               // it reads at a correct aspect.
               //
               // This tab used to be a plain RowLayout with the preview pinned beside
@@ -984,13 +984,13 @@ ApplicationWindow {
                     width: apScroll.availableWidth
                     spacing: 18
                     Text { text: "Look"; color: m.textPrimary; font.pixelSize: 24; font.bold: true }
-                    // Audit F2: this line used to promise "Hover a swatch to try it —
+                    // Audit F2: this line used to promise "Hover a swatch to try it -
                     // nothing is applied until you click" for the WHOLE tab, but the
                     // Background chips two sections down commit on click with no
                     // try-on. A user trusting the header would change their background
                     // while "trying" it. Say what is true, and name the sections it is
                     // true of. (Giving the background chips a real hover preview would
-                    // be the better fix — it needs BackgroundPicker, which this
+                    // be the better fix - it needs BackgroundPicker, which this
                     // workstream does not own. Recorded in the audit.)
                     Text { text: "Step 1 - the look for EVERY screen: theme, accent, background and effects. A single screen can override its background in Screens. Hover a theme or accent to try it in the preview (those apply on click); everything else applies as you change it."
                         color: m.textSecondary; font.pixelSize: 14; Layout.fillWidth: true; wrapMode: Text.WordWrap }
@@ -1030,7 +1030,7 @@ ApplicationWindow {
                                 color: m.textPrimary; font.pixelSize: 14
                             }
                             // A real icon instead of a text glyph, rotated to point
-                            // down (closed) / up (open) — consistent with the app's SVG set.
+                            // down (closed) / up (open) - consistent with the app's SVG set.
                             AppIcon {
                                 name: "ui-caret-right"; size: 16; color: m.textSecondary
                                 rotation: themePopup.visible ? -90 : 90
@@ -1114,7 +1114,7 @@ ApplicationWindow {
                     }
 
                     MDivider {}
-                    // Manager window style — moved here from the sidebar so it sits
+                    // Manager window style - moved here from the sidebar so it sits
                     // right beside the Edge theme. The scope pill makes the
                     // difference explicit: this restyles ONLY the Manager window on
                     // your PC; it never touches the Edge.
@@ -1144,7 +1144,7 @@ ApplicationWindow {
                     // One swatch shape for BOTH accent groups (house palette + the
                     // colour-blind-safe Okabe–Ito set), so the two rows are identical
                     // in every way but their colours. Selected = a contrasting ring +
-                    // check (a fill would hide the colour we're choosing) — the app's
+                    // check (a fill would hide the colour we're choosing) - the app's
                     // outline rule for colour/thumbnail selection.
                     Component {
                         id: mAccentSwatch
@@ -1152,7 +1152,7 @@ ApplicationWindow {
                             required property var modelData
                             // Mark the ACTIVE accent even when the config has no explicit
                             // accent key (fall back to the applied theme.accentName, i.e.
-                            // the effective default) — otherwise no swatch reads as selected.
+                            // the effective default) - otherwise no swatch reads as selected.
                             property bool sel: (store.revision, (store.appearance().accent || theme.accentName) === modelData.name)
                             width: 46; height: 46; radius: 23; color: modelData.c
                             // Always keep a subtle 1px edge so a dark swatch (e.g. the
@@ -1207,7 +1207,7 @@ ApplicationWindow {
                         bgCatalog: bgCatalog; wpCatalog: bundledWallpapers; uploadedImages: win.uploadedWallpapers
                         // Hover a style chip → preview it live in the clone without
                         // committing (finally makes the tab's "hover to try" true for
-                        // backgrounds too — audit F2).
+                        // backgrounds too - audit F2).
                         onPreviewStyle: (v) => theme.previewBgStyle = v
                         onPreviewEnded: theme.previewBgStyle = ""
                     }
@@ -1228,12 +1228,12 @@ ApplicationWindow {
                         Text { text: "Glassiness"; color: m.textSecondary; font.pixelSize: 14; Layout.preferredWidth: 120 }
                         Slider {
                             id: glassSlider; Layout.fillWidth: true; from: 0; to: 1
-                            // Bind to theme.glassOpacity — a STABLE Theme property kept in
-                            // step with the store by syncTheme() — NOT to store.revision.
+                            // Bind to theme.glassOpacity - a STABLE Theme property kept in
+                            // step with the store by syncTheme() - NOT to store.revision.
                             // The Appearance preview renders live cpu/gpu/ram widgets that
                             // write sparkline history every ~2s, bumping store.revision; a
                             // revision-bound value re-evaluated on every bump and snapped the
-                            // handle back to the (debounced, stale) stored value mid-drag —
+                            // handle back to the (debounced, stale) stored value mid-drag -
                             // the "can't move the slider" bug. theme.glassOpacity only moves
                             // when we move it, so the drag holds (this mirrors the working hub
                             // slider, SettingsPanel.qml).
@@ -1247,7 +1247,7 @@ ApplicationWindow {
                                 // size (and thus its hit area) from the background/handle. A
                                 // Rectangle's implicit size is 0, so without these the whole
                                 // Slider collapsed to ~0 height and could not be pressed or
-                                // dragged — the real "stuck at 55%" bug.
+                                // dragged - the real "stuck at 55%" bug.
                                 implicitWidth: 200; implicitHeight: 6
                                 width: glassSlider.availableWidth; height: 6; radius: 3
                                 color: m.panelAlt; border.width: 1; border.color: m.border
@@ -1361,11 +1361,11 @@ ApplicationWindow {
                     // POSITIVE_INFINITY, not -1: -1 is the documented reset for
                     // *preferred* sizes only. maximumWidth defaults to infinity and
                     // takes -1 literally, which would clamp this pane to nothing in
-                    // landscape — the preview would simply vanish.
+                    // landscape - the preview would simply vanish.
                     Layout.maximumWidth: lookClone.landscape ? Number.POSITIVE_INFINITY : 400
                     spacing: 8
                     Text { text: "Live preview"; color: m.textPrimary; font.pixelSize: 15; font.bold: true }
-                    // Page chips so "which page am I looking at?" has an answer —
+                    // Page chips so "which page am I looking at?" has an answer -
                     // and per-page overrides can be checked without leaving the tab.
                     Flow {
                         Layout.fillWidth: true; spacing: 6
@@ -1391,7 +1391,7 @@ ApplicationWindow {
                         id: lookClone
                         editable: false
                         Layout.fillWidth: true
-                        // Landscape: a bounded height, as on Screens — the pane is the
+                        // Landscape: a bounded height, as on Screens - the pane is the
                         // top row of a 1-column grid, so an unbounded fillHeight would
                         // let it eat the controls below it.
                         Layout.fillHeight: !lookClone.landscape
@@ -1421,7 +1421,7 @@ ApplicationWindow {
                         Item { Layout.fillWidth: true }
                     }
 
-                    // Bundled backgrounds — the sleek graphics that ship with EdgeHub,
+                    // Bundled backgrounds - the sleek graphics that ship with EdgeHub,
                     // browsable and pickable right here (the user asked for the images to
                     // live in this section). Clicking sets it as the Edge-wide wallpaper.
                     RowLayout {
@@ -1430,7 +1430,7 @@ ApplicationWindow {
                         ScopeTag { label: win.scopeLabels.pages }
                         Item { Layout.fillWidth: true }
                     }
-                    Text { text: "Graphics that ship with EdgeHub — click one to use it on every screen (a single screen can override it in Screens)."
+                    Text { text: "Graphics that ship with EdgeHub - click one to use it on every screen (a single screen can override it in Screens)."
                         color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
                     Flow {
                         Layout.fillWidth: true; spacing: 8
@@ -1459,7 +1459,7 @@ ApplicationWindow {
                         }
                     }
 
-                    // Audit F6: clicking a card writes appearance.wallpaper — the
+                    // Audit F6: clicking a card writes appearance.wallpaper - the
                     // biggest unlabelled scope jump in the app. The tab had no pill,
                     // no preview, and copy ("use it as the wallpaper") that never said
                     // every page changes. Say the scope, and say where to undo it.
@@ -1473,7 +1473,7 @@ ApplicationWindow {
                         color: m.textSecondary; font.pixelSize: 12; visible: imagesModel.count > 0
                         Layout.fillWidth: true; wrapMode: Text.WordWrap }
                     // Empty state. The trailing filler keeps the column top-packed while the
-                    // grid is hidden — without it the few remaining rows spread out
+                    // grid is hidden - without it the few remaining rows spread out
                     // over the full tab height (audit finding F8).
                     Text { visible: imagesModel.count === 0; Layout.fillWidth: true; Layout.topMargin: 24
                         horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
@@ -1486,7 +1486,7 @@ ApplicationWindow {
                         Layout.fillWidth: true; Layout.fillHeight: true; clip: true
                         cellWidth: 190; cellHeight: 190
                         model: imagesModel
-                        // Usable mouse-wheel step (see MScroll) — a GridView is a
+                        // Usable mouse-wheel step (see MScroll) - a GridView is a
                         // Flickable too and hits the same tiny-per-notch problem.
                         WheelHandler {
                             acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
@@ -1555,7 +1555,7 @@ ApplicationWindow {
                     x: 24; y: 24; spacing: 16
                     Text { text: "Device"; color: m.textPrimary; font.pixelSize: 24; font.bold: true }
                     // Audit F7: "Applies next time the hub starts" used to sit HERE,
-                    // as the tab subtitle — above Orientation (which pushes live) and
+                    // as the tab subtitle - above Orientation (which pushes live) and
                     // the autostart switch (immediate). Read as tab-level guidance it
                     // simply wasn't true, so it moved down onto the screen picker,
                     // which is the only thing it describes.
@@ -1571,7 +1571,7 @@ ApplicationWindow {
                         color: m.textSecondary; font.pixelSize: 12; Layout.fillWidth: true; wrapMode: Text.WordWrap }
 
                     // Audit F8 / W5 #13: with no screens the tab showed a sentence
-                    // about choosing a screen, then blank space, then Orientation —
+                    // about choosing a screen, then blank space, then Orientation -
                     // so Orientation read as the answer to "choose which screen".
                     Rectangle {
                         objectName: "screensEmpty"
@@ -1675,7 +1675,7 @@ ApplicationWindow {
                     // ── Software updates (opt-in) ──
                     // Mirrors the hub's own toggle so it is DISCOVERABLE here in the
                     // full-control Manager (the hub buries it in the on-panel
-                    // settings — "where is autoupdate?"). Off by default: EdgeHub
+                    // settings - "where is autoupdate?"). Off by default: EdgeHub
                     // never phones home on its own. The Manager only sets the flag;
                     // the actual check runs on the hub through its audited network
                     // gate, so the Manager adds no new egress surface.
@@ -1782,7 +1782,7 @@ ApplicationWindow {
 
                     // ── Licence card ──
                     // Free by default; Pro when a valid key is stored. Everything
-                    // functional is free — Pro unlocks the premium theme/preset
+                    // functional is free - Pro unlocks the premium theme/preset
                     // packs and custom user widgets. "expired" is worded as
                     // renew-not-broken (the signature was genuine).
                     Rectangle {
@@ -1818,7 +1818,7 @@ ApplicationWindow {
                                               ? "Renew to keep the premium extras. Your dashboards keep working."
                                             // ACCURATE, not aspirational: the ONLY thing the licence
                                             // gates is 9 themes (4 Premium + 5 Inspired). Preset screens
-                                            // and user widgets are NOT gated — UserWidgetCatalog does no
+                                            // and user widgets are NOT gated - UserWidgetCatalog does no
                                             // licence check and PresetCatalog has no pro flag. Promising
                                             // those here is exactly what makes a buyer feel misled once
                                             // they find they already had them.
@@ -1839,7 +1839,7 @@ ApplicationWindow {
                                     visible: !win.isPro
                                     text: "Get Pro"; iconName: "ui-display"
                                     onClicked: Qt.openUrlExternally(
-                                        "https://github.com/skyphoenix-it/XeneonEdge_Linux#pro")
+                                        "https://github.com/skyphoenix-it/skyphoenix-edgehub-linux#pro")
                                 }
                                 Item { Layout.fillWidth: true }
                             }
@@ -1856,12 +1856,12 @@ ApplicationWindow {
                         MButton {
                             text: "GitHub"; iconName: "ui-settings"
                             // The same URL the PKGBUILD, the metainfo and SECURITY.md
-                            // already ship. It was "#" — a button that silently did
+                            // already ship. It was "#" - a button that silently did
                             // nothing, which is worse than no button: the user clicks
                             // it, gets no browser and no error, and concludes the app
                             // is broken rather than the link.
                             onClicked: Qt.openUrlExternally(
-                                "https://github.com/skyphoenix-it/XeneonEdge_Linux")
+                                "https://github.com/skyphoenix-it/skyphoenix-edgehub-linux")
                         }
                         Item { Layout.fillWidth: true }
                     }
@@ -1943,7 +1943,7 @@ ApplicationWindow {
         height: Math.min(parent ? parent.height * 0.85 : 560, 620)
         standardButtons: Dialog.Close
         background: Rectangle { color: m.panel; radius: m.radius; border.width: 1; border.color: m.border }
-        // Audit F4: the picker never said WHICH page the widget lands on — with
+        // Audit F4: the picker never said WHICH page the widget lands on - with
         // three pages the only clue was remembering where you were. Name the page
         // and pill the scope, like every other control.
         header: Rectangle {
@@ -1970,7 +1970,7 @@ ApplicationWindow {
                 width: addPicker.availableWidth
                 spacing: 12
                 // One screen never scrolls: when the page is full, the next widget just
-                // starts a new screen. Say so up front — helpful, not a blocker.
+                // starts a new screen. Say so up front - helpful, not a blocker.
                 Rectangle {
                     Layout.fillWidth: true
                     visible: (store.structureRevision, store.pageIsFull(win.currentPageIndex))
@@ -2035,7 +2035,7 @@ ApplicationWindow {
     // ── Preset "screens" picker ──
     // The full curated library. ADDITIVE: choosing one appends it as a NEW screen
     // (applyPresetScreen → store.appendPreset) and jumps to it, leaving the other
-    // screens and the global look untouched — same meaning as the hub's preset
+    // screens and the global look untouched - same meaning as the hub's preset
     // picker. It applies immediately (no confirm; adding is harmless). "Reset to
     // default layout" on the Device/About side is the destructive path.
     Dialog {
@@ -2076,7 +2076,7 @@ ApplicationWindow {
                             anchors.left: parent.left; anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
                             anchors.leftMargin: 14; anchors.rightMargin: 14; spacing: 14
-                            // A live layout thumbnail of the screen — see what you get.
+                            // A live layout thumbnail of the screen - see what you get.
                             PresetMini {
                                 Layout.alignment: Qt.AlignVCenter
                                 Layout.preferredWidth: 224; Layout.preferredHeight: 64
@@ -2098,7 +2098,7 @@ ApplicationWindow {
                             MButton { text: "Add screen"; iconName: "ui-check"; primary: true
                                 Layout.alignment: Qt.AlignVCenter
                                 // Adding a preset screen is additive and harmless, so it
-                                // applies straight away — no "this won't affect your other
+                                // applies straight away - no "this won't affect your other
                                 // screens" confirm to click through.
                                 onClicked: { presetDialog.close(); win.applyPresetScreen(modelData.id) } }
                         }
@@ -2207,7 +2207,7 @@ ApplicationWindow {
                 }
                 MButton {
                     text: "Activate"; iconName: "ui-check"
-                    // Only enabled when the pasted key actually unlocks Pro — no
+                    // Only enabled when the pasted key actually unlocks Pro - no
                     // point storing a key the verifier rejects.
                     enabled: licenseDialog.preview.tier === "pro"
                     onClicked: {
@@ -2288,7 +2288,7 @@ ApplicationWindow {
     Connections {
         target: backend
         function onImagesChanged() { win.refreshImages() }
-        // The hub (or disk) changed the config externally — adopt it live.
+        // The hub (or disk) changed the config externally - adopt it live.
         function onConfigChanged() {
             store.load(backend.starterLayout())
             win.syncTheme()

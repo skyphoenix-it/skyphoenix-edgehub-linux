@@ -3,7 +3,7 @@ import QtTest
 import "../../ui/qml" as App
 import "../../ui/qml/widgets" as Wg
 
-// WidgetChrome (ui/qml/widgets/WidgetChrome.qml) — the shared card frame. We
+// WidgetChrome (ui/qml/widgets/WidgetChrome.qml) - the shared card frame. We
 // assert the DRIVING PROPS + visual-tree wiring: title override, status text,
 // chromeless surface, big layout, header-right (config-button) injection + its
 // clicked signal, and the effAccent resolution (preset / fallback / loop guard).
@@ -26,7 +26,7 @@ Item {
             iconName: "cpu"
             status: ""
             // A host-injected trailing "config" button (this is how widgets add a
-            // gear to the shared chrome — via the headerRightItem alias).
+            // gear to the shared chrome - via the headerRightItem alias).
             headerRightItem: [
                 Wg.PillButton { id: cfgBtn; glyph: "⚙"; onClicked: root.cfgClicks++ }
             ]
@@ -133,10 +133,10 @@ Item {
             compare(chrome.headerHeight, 36, "and gets the compact header")
 
             chrome.sizeClass = "wide"
-            compare(chrome.big, false, "2x1 is wide but SHORT — no vertical room, not big")
+            compare(chrome.big, false, "2x1 is wide but SHORT - no vertical room, not big")
 
             chrome.sizeClass = "tall"
-            compare(chrome.big, true, "a 1x2 tile HAS vertical room — this is the fix: " +
+            compare(chrome.big, true, "a 1x2 tile HAS vertical room - this is the fix: " +
                                       "it used to render the compact layout stretched")
             compare(chrome.headerHeight, 42, "and now earns the big header")
 
@@ -144,7 +144,7 @@ Item {
             compare(chrome.big, true, "2x2 is big")
 
             chrome.sizeClass = "full"
-            compare(chrome.big, true, "the overlay is still big — unchanged from before")
+            compare(chrome.big, true, "the overlay is still big - unchanged from before")
 
             chrome.sizeClass = "compact"   // restore for the other cases
         }
@@ -152,8 +152,8 @@ Item {
         // ── micro footprint ──────────────────────────────────────────────────
         // `0.5x0.5` and `1x1` are the same SHAPE (both sizeClass "compact"), so
         // wave-1 widgets each re-derived "am I the half-cell?" locally as
-        // min(width,height) < 480. That distinction now lives on the chrome —
-        // derived + readonly like `big` — so later waves key off `micro` instead
+        // min(width,height) < 480. That distinction now lives on the chrome -
+        // derived + readonly like `big` - so later waves key off `micro` instead
         // of copy-pasting the constant.
         function test_micro_derives_from_compact_footprint() {
             chrome.sizeClass = "compact"
@@ -163,22 +163,22 @@ Item {
             root.width = 696; root.height = 819
             compare(chrome.micro, false, "the baseline 1x1 is compact but not micro")
             root.width = 400; root.height = 400
-            // micro is strictly a refinement of compact — never any other class.
+            // micro is strictly a refinement of compact - never any other class.
             chrome.sizeClass = "tall"
             compare(chrome.micro, false, "a tall tile is never micro, whatever its pixels")
             chrome.sizeClass = "compact"
         }
 
-        // `big` must not be re-tiable to `expanded` — that override is exactly what
+        // `big` must not be re-tiable to `expanded` - that override is exactly what
         // this change removes, so the property is readonly by design.
         function test_big_cannot_be_overridden_by_a_widget() {
             chrome.sizeClass = "compact"
             compare(chrome.big, false)
-            // Readonly: the assignment is rejected (silently from JS — QML raises no
+            // Readonly: the assignment is rejected (silently from JS - QML raises no
             // warning here), so `big` must still track sizeClass afterwards. This is
             // the guard against `big: expanded` creeping back in.
             try { chrome.big = true } catch (e) { /* expected for a readonly prop */ }
-            compare(chrome.big, false, "big stayed derived — a widget cannot pin it")
+            compare(chrome.big, false, "big stayed derived - a widget cannot pin it")
             chrome.sizeClass = "tall"
             compare(chrome.big, true, "and it still follows sizeClass after the attempt")
         }

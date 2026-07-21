@@ -16,7 +16,7 @@ import "../../ui/qml/widgets" as Wg
 // config schema.
 //
 // Assertions that encode the *intended* behaviour but fail against the current
-// code are deliberate — they pin the real bugs called out in the audit:
+// code are deliberate - they pin the real bugs called out in the audit:
 //   • missing cpu_usage_percent renders a confident 0% ring (no ok:false /"N/A").
 //   • empty / malformed metrics frames still push a fake 0% history sample.
 //   • the header temp turns amber (warnTemp-17) before the ring does (warnTemp-12).
@@ -43,7 +43,7 @@ Item {
         expanded: true
     }
 
-    // Fixed-size hosts for the per-sizeClass structure tests (W1 wave 2a) —
+    // Fixed-size hosts for the per-sizeClass structure tests (W1 wave 2a) -
     // real projected cell footprints (half-cell ≈ 344x416, full cell ≈ 696x840).
     Item { id: microWrap; width: 344; height: 416
         WidgetHarness { id: hMicro; anchors.fill: parent; widgetFile: "CpuWidget.qml"; expanded: false } }
@@ -267,11 +267,11 @@ Item {
         }
 
         // BUG (audit): header text turns amber at warnTemp-17 but the ring only at
-        // warnTemp-12 — a 5°C band where the two temperature signals disagree.
+        // warnTemp-12 - a 5°C band where the two temperature signals disagree.
         function test_header_and_ring_agree_at_same_threshold() {
             var w = h.item
             // warnTemp 85. 70°C is below the ring's amber threshold (73) but above
-            // the header's (68) — the two should still agree.
+            // the header's (68) - the two should still agree.
             feed({ cpu_usage_percent: 10, cpu_temp_celsius: 70 })
             verify(Qt.colorEqual(w.statusColor, w.col(w.v)),
                    "header temperature colour and ring colour should switch to amber at the same threshold")
@@ -418,14 +418,14 @@ Item {
 
         function feedTo(host, obj) { host.metricsJson = JSON.stringify(obj) }
 
-        // 0.5x0.5 — headerless bare ring: the one number, nothing else.
+        // 0.5x0.5 - headerless bare ring: the one number, nothing else.
         function test_micro_is_bare_ring() {
             tryVerify(function () { return hMicro.ready }, 3000)
             var w = hMicro.item
             w.sizeClass = "compact"
             feedTo(hMicro, { cpu_usage_percent: 42, cpu_temp_celsius: 55 })
             compare(w.micro, true, "a 344x416 compact box is the micro tile")
-            compare(w.showHeader, false, "micro hides the header — nothing competes with the number")
+            compare(w.showHeader, false, "micro hides the header - nothing competes with the number")
             var g = findGauge(w)
             verify(g !== null, "the gauge is there")
             compare(g.showSpark, false, "micro reserves no sparkline slot")
@@ -434,7 +434,7 @@ Item {
             verify(g.bigMax > 60, "the headerless number is allowed to fill its box")
         }
 
-        // 1x1 baseline — header + ring + the classic sparkline strip.
+        // 1x1 baseline - header + ring + the classic sparkline strip.
         function test_baseline_keeps_header_and_spark_strip() {
             tryVerify(function () { return hBase.ready }, 3000)
             var w = hBase.item
@@ -451,7 +451,7 @@ Item {
             compare(g.sub, "", "no avg/peak line at the baseline (no room to earn it)")
         }
 
-        // wide — ring beside the sparkline in BOTH projections of the class
+        // wide - ring beside the sparkline in BOTH projections of the class
         // (1x0.5 portrait 696x416, 0.5x1 landscape 840x344).
         function test_wide_puts_spark_beside_ring_in_both_orientations() {
             tryVerify(function () { return hWide.ready }, 3000)
@@ -470,7 +470,7 @@ Item {
             wideWrap.width = 696; wideWrap.height = 416
         }
 
-        // tall — the sparkline earns real height and the ring captions itself
+        // tall - the sparkline earns real height and the ring captions itself
         // with avg/peak (genuinely more information).
         function test_tall_earns_spark_height_and_avg_peak() {
             tryVerify(function () { return hTall.ready }, 3000)
@@ -489,7 +489,7 @@ Item {
             compare(w.histStats, "", "a single sample earns no avg/peak line")
         }
 
-        // showHistory=false must also silence the tall tile's avg/peak line —
+        // showHistory=false must also silence the tall tile's avg/peak line -
         // the option means "no history anywhere", not "no graph".
         function test_tall_avg_peak_respects_showHistory() {
             tryVerify(function () { return hTall.ready }, 3000)
@@ -503,7 +503,7 @@ Item {
             hTall.storeCtl.setSetting("test-instance", "showHistory", true)
         }
 
-        // full (the overlay) — never micro; the expanded gauge keeps its
+        // full (the overlay) - never micro; the expanded gauge keeps its
         // core-count sub-line (asserted in the Cpu case above).
         function test_full_is_never_micro() {
             tryVerify(function () { return h.ready }, 3000)

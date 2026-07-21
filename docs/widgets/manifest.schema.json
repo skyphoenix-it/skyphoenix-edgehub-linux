@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/SkyPhoenixIT/XeneonEdge_Linux/docs/widgets/manifest.schema.json",
-  "title": "Xeneon Edge Hub — Tier-0 user-widget manifest (manifestVersion 1)",
+  "$id": "https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/docs/widgets/manifest.schema.json",
+  "title": "Xeneon Edge Hub - Tier-0 user-widget manifest (manifestVersion 1)",
   "description": "Schema for manifest.json in $XDG_DATA_HOME/xeneon-edge-hub/widgets/<dir>/. Normative prose: docs/widgets/manifest-spec.md. Unknown top-level keys are ignored by version-1 hubs (reserved for future versions).",
   "type": "object",
   "required": ["manifestVersion", "type", "title", "entry", "sizes"],
@@ -43,7 +43,7 @@
       "not": { "pattern": "\\.\\." }
     },
     "sizes": {
-      "description": "The sizes this widget can honestly render, from the 7-name vocabulary in ui/qml/WidgetSizes.qml. A size is (short x long) on a ROTATING screen — declaring one claims the widget works in both of its physical shapes. Declaring '1x1' (the baseline) is strongly recommended.",
+      "description": "The sizes this widget can honestly render, from the 7-name vocabulary in ui/qml/WidgetSizes.qml. A size is (short x long) on a ROTATING screen - declaring one claims the widget works in both of its physical shapes. Declaring '1x1' (the baseline) is strongly recommended.",
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,

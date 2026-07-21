@@ -1,8 +1,8 @@
 # Test Strategy
 
-**Version:** 0.1.0-draft  
-**Status:** Historical Phase-0 discovery draft — superseded
-**Last Updated:** 2026-07-11  
+**Version:** 0.1.0-draft
+**Status:** Historical Phase-0 discovery draft - superseded
+**Last Updated:** 2026-07-11
 
 > **Historical document.** The proposed locations, schedules, environment matrix
 > and test types below were never all implemented and must not be read as executed
@@ -38,9 +38,9 @@ The Xeneon Edge Linux Hub test strategy ensures stability, correctness, and perf
 
 ### L1: Unit Tests
 
-**Scope:** Individual functions, types, and modules in isolation.  
-**Framework:** Rust: `#[test]` + `proptest` for property-based testing. C++: Google Test or Qt Test. QML: `qmltestrunner`.  
-**Location:** `tests/unit/` (Rust), co-located `#[cfg(test)]` modules, C++ test files.  
+**Scope:** Individual functions, types, and modules in isolation.
+**Framework:** Rust: `#[test]` + `proptest` for property-based testing. C++: Google Test or Qt Test. QML: `qmltestrunner`.
+**Location:** `tests/unit/` (Rust), co-located `#[cfg(test)]` modules, C++ test files.
 **Runtime:** Milliseconds per test. Entire suite <30 seconds.
 
 #### Coverage Targets
@@ -68,9 +68,9 @@ fn test_orientation_transform_720x2560() { /* ... */ }
 
 ### L2: Integration Tests
 
-**Scope:** Interactions between components, adapters, and external systems.  
-**Framework:** Rust integration tests + test harness.  
-**Location:** `tests/integration/`.  
+**Scope:** Interactions between components, adapters, and external systems.
+**Framework:** Rust integration tests + test harness.
+**Location:** `tests/integration/`.
 **Runtime:** Seconds per test. Suite <5 minutes.
 
 #### Test Categories
@@ -107,10 +107,10 @@ fn test_mpris_play_pause_sends_correct_dbus_method() {
 
 ### L3: UI Tests
 
-**Scope:** Widget interaction, layout behavior, visual correctness.  
-**Framework:** Qt Test with QML `TestCase`, `QtQuickTest`.  
-**Location:** `tests/ui/`.  
-**Runtime:** Seconds per test. Suite <10 minutes.  
+**Scope:** Widget interaction, layout behavior, visual correctness.
+**Framework:** Qt Test with QML `TestCase`, `QtQuickTest`.
+**Location:** `tests/ui/`.
+**Runtime:** Seconds per test. Suite <10 minutes.
 **Note:** Some UI tests require a running display server (Xvfb or headless Wayland).
 
 #### Test Categories
@@ -139,10 +139,10 @@ fn test_mpris_play_pause_sends_correct_dbus_method() {
 
 ### L4: Visual Regression Tests
 
-**Scope:** Pixel-level comparison of dashboard layouts.  
-**Framework:** Custom screenshot tool + image diff (e.g., `image` crate, ImageMagick compare).  
-**Location:** `tests/performance/visual/`.  
-**Runtime:** Minutes. Run on-demand, not every commit.  
+**Scope:** Pixel-level comparison of dashboard layouts.
+**Framework:** Custom screenshot tool + image diff (e.g., `image` crate, ImageMagick compare).
+**Location:** `tests/performance/visual/`.
+**Runtime:** Minutes. Run on-demand, not every commit.
 **Tolerance:** Allow 1% pixel difference for antialiasing variations.
 
 #### Reference Layouts
@@ -159,9 +159,9 @@ fn test_mpris_play_pause_sends_correct_dbus_method() {
 
 ### L5: Performance Tests
 
-**Scope:** Resource consumption baselines and regression detection.  
-**Framework:** Custom benchmarks + `criterion` crate.  
-**Location:** `tests/performance/`.  
+**Scope:** Resource consumption baselines and regression detection.
+**Framework:** Custom benchmarks + `criterion` crate.
+**Location:** `tests/performance/`.
 **Runtime:** Minutes to hours. Run nightly or pre-release.
 
 #### Metrics Tracked
@@ -185,9 +185,9 @@ fn test_mpris_play_pause_sends_correct_dbus_method() {
 
 ### L6: Stability Tests
 
-**Scope:** Long-running stability and edge case recovery.  
-**Framework:** Custom scripts + monitoring.  
-**Location:** `tests/performance/stability/`.  
+**Scope:** Long-running stability and edge case recovery.
+**Framework:** Custom scripts + monitoring.
+**Location:** `tests/performance/stability/`.
 **Runtime:** Hours to days. Run pre-release.
 
 #### Test Scenarios
@@ -206,9 +206,9 @@ fn test_mpris_play_pause_sends_correct_dbus_method() {
 
 ### L7: End-to-End Tests
 
-**Scope:** Complete user workflows from installation to daily use.  
-**Framework:** Custom scripts + screenshot capture.  
-**Location:** `tests/uat/`.  
+**Scope:** Complete user workflows from installation to daily use.
+**Framework:** Custom scripts + screenshot capture.
+**Location:** `tests/uat/`.
 **Runtime:** Hours. Run pre-release.
 
 #### UAT Scenarios (from Section 17)

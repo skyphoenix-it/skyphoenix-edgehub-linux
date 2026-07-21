@@ -4,8 +4,8 @@ import QtTest
 import "../../ui/qml" as App
 import "../../ui/qml/widgets" as W
 
-// UpdateChecker (ui/qml/widgets/UpdateChecker.qml) — the opt-in E10 update
-// check — plus its SettingsPanel opt-in surface. Driven entirely offline via
+// UpdateChecker (ui/qml/widgets/UpdateChecker.qml) - the opt-in E10 update
+// check - plus its SettingsPanel opt-in surface. Driven entirely offline via
 // the xhrFactory seam through NetHub (no real sockets). Pins the privacy
 // contract and the version-ordering rules:
 //   • OFF by default: with defaults, NO request is ever constructed.
@@ -17,7 +17,7 @@ import "../../ui/qml/widgets" as W
 //     zsync wording; anything else → "update via your package manager".
 //
 // (UpdateChecker is intentionally NOT in qml_coverage.py's FUNCTION_SOURCES,
-// so no COVERS header — the behavior matrix enumerates the gate itself, and
+// so no COVERS header - the behavior matrix enumerates the gate itself, and
 // the gate-side behaviors are claimed by tst_nethub.qml.)
 Item {
     id: root
@@ -146,9 +146,9 @@ Item {
             compare(gate.requests, 1, "…and it went through the NetHub gate")
             compare(lastFake.method, "GET")
             compare(lastFake.url, checker.releasesUrl)
-            compare(lastFake.url, "https://api.github.com/repos/skyphoenix-it/XeneonEdge_Linux/releases?per_page=20")
+            compare(lastFake.url, "https://api.github.com/repos/skyphoenix-it/skyphoenix-edgehub-linux/releases?per_page=20")
             verify(lastFake.headers["Authorization"] === undefined, "no credential rides along")
-            verify(lastFake.body === undefined, "a GET with no body — nothing identifying sent")
+            verify(lastFake.body === undefined, "a GET with no body - nothing identifying sent")
             compare(checker.status, "checking")
             lastFake.resolveWith(200, '{"tag_name":"v1.0.0"}')
             compare(checker.status, "uptodate")
@@ -346,7 +346,7 @@ Item {
 
         function test_compare_versions_numeric_components() {
             compare(checker.compareVersions("1.9.0", "1.10.0"), -1,
-                    "minor 9 < 10 — component-wise, not string-wise")
+                    "minor 9 < 10 - component-wise, not string-wise")
             compare(checker.compareVersions("1.0.0", "1.0.1"), -1)
             compare(checker.compareVersions("2.0.0", "1.9.9"), 1)
             compare(checker.compareVersions("v1.0.0", "1.0.0"), 0, "leading v is cosmetic")

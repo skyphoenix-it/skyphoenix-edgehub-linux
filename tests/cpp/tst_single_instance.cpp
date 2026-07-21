@@ -11,7 +11,7 @@ XENEON_REQUIRE_HERMETIC_ENV();
 class TstSingleInstance : public QObject {
     Q_OBJECT
 private slots:
-    // Grab/QA mode must never block, even when a lock is already held — headless
+    // Grab/QA mode must never block, even when a lock is already held - headless
     // captures run alongside a real instance.
     void grabModeNeverBlocks() {
         auto held = xeneon::acquireSingleInstance(QStringLiteral("unittest-grab"), false);

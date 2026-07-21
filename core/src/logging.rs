@@ -20,7 +20,7 @@ pub fn level_filter(level: &str) -> LevelFilter {
 ///
 /// The maximum level is set from the explicit `level` argument (see
 /// [`level_filter`]); anything unrecognized falls back to INFO. Safe to call
-/// multiple times — later calls are no-ops.
+/// multiple times - later calls are no-ops.
 pub fn init_logging(level: &str) {
     let filter = level_filter(level);
 

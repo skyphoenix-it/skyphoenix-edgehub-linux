@@ -26,7 +26,7 @@ Item {
     // The app-global NetHub egress gate (W5 finding 6): injected by the
     // Dashboard's ⚙ push (or resolved off the stack by main.qml's
     // bindStackItem). Null when no dashboard is running in this session
-    // (--diagnostics start) — the Network tab then states that honestly
+    // (--diagnostics start) - the Network tab then states that honestly
     // instead of rendering zeros that look like an attestation.
     property var netHub: null
 
@@ -42,7 +42,7 @@ Item {
         return out
     }
 
-    // Human-readable rendering of the loader report — every skipped directory
+    // Human-readable rendering of the loader report - every skipped directory
     // shows its reason HERE, so a broken manifest is diagnosable on-device.
     readonly property string userWidgetsText: {
         var r = null
@@ -284,7 +284,7 @@ Item {
                 }
             }
 
-            // Page 4: Network — the NetHub attestation surface (W5 finding 6).
+            // Page 4: Network - the NetHub attestation surface (W5 finding 6).
             // NetHub.qml has counted "for Diagnostics" since it shipped and the
             // README promises per-host counters; this is the page that finally
             // reads them: kill-switch state, allowlist, sent/blocked totals,
@@ -301,7 +301,7 @@ Item {
                         }
 
                         // No gate in this session (--diagnostics starts without a
-                        // dashboard): say so — zeros here would read as an attestation.
+                        // dashboard): say so - zeros here would read as an attestation.
                         Text {
                             visible: !diag.netHub
                             text: "The network gate is not available in this session (no dashboard is running)."

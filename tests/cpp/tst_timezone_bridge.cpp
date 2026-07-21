@@ -1,7 +1,7 @@
-// TimeZoneBridge — real IANA zones for QML, backed by the OS tzdata.
+// TimeZoneBridge - real IANA zones for QML, backed by the OS tzdata.
 //
 // These assert the BINDING (that we hand QTimeZone the right instant and hand QML
-// back the right string), not tzdata itself — Qt's zone data is not ours to test.
+// back the right string), not tzdata itself - Qt's zone data is not ours to test.
 // But the DST transitions below are pinned to real UTC instants, so if the wiring
 // ever silently reverts to host-local time (the exact failure mode of the QML
 // approaches this replaced) they fail loudly.
@@ -47,7 +47,7 @@ private slots:
         QVERIFY(!tz.isValid("Not/AZone"));
         QVERIFY(!tz.isValid(""));
         // A zoneId from a newer build must be reported invalid, not silently
-        // resolved to something else — QML relies on this to fall back.
+        // resolved to something else - QML relies on this to fall back.
         QVERIFY(!tz.isValid("Mars/Olympus_Mons"));
     }
 
@@ -63,13 +63,13 @@ private slots:
         // Europe/Berlin: +1h standard, +2h daylight
         QTest::newRow("BER winter") << "Europe/Berlin"    << utcMs(2026, 1, 15, 12) << 1 * 3600;
         QTest::newRow("BER summer") << "Europe/Berlin"    << utcMs(2026, 7, 15, 12) << 2 * 3600;
-        // Asia/Tokyo observes no DST — same all year.
+        // Asia/Tokyo observes no DST - same all year.
         QTest::newRow("TYO winter") << "Asia/Tokyo"       << utcMs(2026, 1, 15, 12) << 9 * 3600;
         QTest::newRow("TYO summer") << "Asia/Tokyo"       << utcMs(2026, 7, 15, 12) << 9 * 3600;
         // Southern hemisphere: DST straddles New Year, so the seasons invert.
         QTest::newRow("SYD january") << "Australia/Sydney" << utcMs(2026, 1, 15, 12) << 11 * 3600;
         QTest::newRow("SYD july")    << "Australia/Sydney" << utcMs(2026, 7, 15, 12) << 10 * 3600;
-        // A half-hour zone — a whole-hours assumption would break here.
+        // A half-hour zone - a whole-hours assumption would break here.
         QTest::newRow("Kolkata")     << "Asia/Kolkata"     << utcMs(2026, 7, 15, 12)
                                      << 5 * 3600 + 1800;
     }

@@ -119,7 +119,7 @@ int xeneon_secret_is_plaintext(const char* raw);
 // `root`. Pass NULL (or "") for the real system; any other path roots the probe
 // at a fixture tree (how the C++ tests avoid touching the host's /etc + /var).
 //
-// Returns owned JSON — free with xeneon_string_free:
+// Returns owned JSON - free with xeneon_string_free:
 //   { "id": "cachyos", "name": "CachyOS", "family": "arch|debian|rpm|unknown",
 //     "packageCount": 1461, "unsupportedReason": null,
 //     "updates": null, "installEpoch": 1752191590 }
@@ -128,35 +128,35 @@ int xeneon_secret_is_plaintext(const char* raw);
 // no package manager answers "are there updates?" cheaply or without a sync.
 //
 // READ-ONLY: reads files and lists directories. Never mutates a package
-// database, never spawns a process. Can touch a ~10MB file (dpkg status) — call
+// database, never spawns a process. Can touch a ~10MB file (dpkg status) - call
 // it OFF the GUI thread.
 char* xeneon_distro_probe_json(const char* root);
 
 // === Licensing (E11) ===
 // Verify an offline licence key. OFFLINE: the public key is compiled in, so
-// this opens no socket, reads no file and uses no hardware fingerprint — the
+// this opens no socket, reads no file and uses no hardware fingerprint - the
 // answer is identical under `unshare -n`.
 //
-// Returns owned JSON — free with xeneon_string_free:
+// Returns owned JSON - free with xeneon_string_free:
 //   { "state": "licensed", "tier": "pro", "reason": null,
 //     "issuedTo": "Ada Lovelace", "id": "XE-0001", "expires": 1798761600 }
 //
 //   state    "licensed" | "expired" | "unlicensed".
 //            "expired" is NOT "unlicensed": the signature is genuine, so the
 //            user is asked to renew rather than told the key is bad.
-//   tier     "free" | "pro" — what to actually unlock. Always "free" unless
+//   tier     "free" | "pro" - what to actually unlock. Always "free" unless
 //            state is "licensed". GATE ON THIS; use `state` only for wording.
 //   reason   short failure description when unlicensed, else null. Names the
 //            failure mode; NEVER echoes the key.
-//   issuedTo holder name — for DISPLAY ONLY, never log it. null unless verified.
+//   issuedTo holder name - for DISPLAY ONLY, never log it. null unless verified.
 //   id       licence id (support/revocation). null unless verified.
 //   expires  Unix epoch seconds, or null for perpetual / not verified.
 //
 // Fails soft: a null, empty, truncated, garbage or forged key yields the free
 // tier. Never returns NULL for a bad key and never panics.
 //
-// NOTE: the issuer public key is currently an all-zero PLACEHOLDER — no licence
-// keypair has been issued — so this returns free for every input until the real
+// NOTE: the issuer public key is currently an all-zero PLACEHOLDER - no licence
+// keypair has been issued - so this returns free for every input until the real
 // key is embedded in core/src/license.rs.
 char* xeneon_license_verify_json(const char* key);
 
@@ -165,7 +165,7 @@ char* xeneon_license_verify_json(const char* key);
 char* xeneon_config_get_license_key(ConfigHandle* handle);
 
 // Store (or clear) the licence key so the tier survives a restart. NULL or an
-// empty/whitespace string clears it (reverts to free). Does NOT verify — pair
+// empty/whitespace string clears it (reverts to free). Does NOT verify - pair
 // with xeneon_license_verify_json. Returns 0 on success, -1 on a null handle.
 int xeneon_config_set_license_key(ConfigHandle* handle, const char* key);
 
@@ -177,10 +177,10 @@ char* xeneon_config_license_status_json(ConfigHandle* handle);
 
 // === Managed / org policy (E9) ===
 // Load the org policy (/etc/xeneon-edge-hub/policy.toml, or $XENEON_POLICY_PATH
-// — a TEST-ONLY seam; real deployments rely on /etc being root-owned) and
+// - a TEST-ONLY seam; real deployments rely on /etc being root-owned) and
 // describe the EFFECTIVE result.
 //
-// Returns owned JSON — free with xeneon_string_free:
+// Returns owned JSON - free with xeneon_string_free:
 //   { "active": true, "source": "policy",
 //     "reason": null, "forcePreset": null, "netOffline": false,
 //     "allowedHosts": ["api.internal.example"],
@@ -190,12 +190,12 @@ char* xeneon_config_license_status_json(ConfigHandle* handle);
 //            behaviour, byte-for-byte).
 //   source   "absent" | "policy" | "fail-closed".
 //   reason   non-null only for "fail-closed"; names the failure mode, never
-//            file contents (allowedHosts may name internal infrastructure —
+//            file contents (allowedHosts may name internal infrastructure -
 //            same discipline: never log this object wholesale).
 //
 // FAILS CLOSED: a policy file that exists but is unusable (unreadable,
 // unparseable, unknown key, unsupported policy_version) yields active=true
-// with netOffline=true and disableUserWidgets=true — an org that wrote a
+// with netOffline=true and disableUserWidgets=true - an org that wrote a
 // policy is never silently unmanaged. Never returns NULL, never panics.
 char* xeneon_policy_json(void);
 

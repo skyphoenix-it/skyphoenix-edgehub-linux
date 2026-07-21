@@ -1,20 +1,20 @@
 import QtQuick
 import QtQuick.Layouts
 
-// Digital clock — driven by the shared dashboard tick (no per-widget timer).
+// Digital clock - driven by the shared dashboard tick (no per-widget timer).
 //
 // Sizing (W1 wave 2a): layout keys off the injected `sizeClass`. The time is
 // itself a wide element, so every size keeps the centred time-led column and
 // earns content around it instead of splitting the box:
-//   • 0.5x0.5 (micro) — headerless; the time alone (seconds dropped even when
-//     configured — they crowd a twelfth of the screen). A custom zone KEEPS its
+//   • 0.5x0.5 (micro) - headerless; the time alone (seconds dropped even when
+//     configured - they crowd a twelfth of the screen). A custom zone KEEPS its
 //     chip: foreign time must never read as a wrong local clock.
-//   • 1x1 (baseline)  — header + zone chip + time + date, type scaled up.
-//   • wide            — the time grows into the width; date under it.
-//   • tall            — full weekday/month date + a week/day-of-year line
+//   • 1x1 (baseline)  - header + zone chip + time + date, type scaled up.
+//   • wide            - the time grows into the width; date under it.
+//   • tall            - full weekday/month date + a week/day-of-year line
 //     (plus the UTC-offset chip for world clocks): calendar context the
 //     smaller sizes have no room for.
-//   • full (overlay)  — unchanged.
+//   • full (overlay)  - unchanged.
 WidgetChrome {
     id: w
     property var metrics: ({})
@@ -35,7 +35,7 @@ WidgetChrome {
             : ""
 
     // Live per-instance config (see WidgetConfigSchema "clock"). Clone-on-read
-    // (JSON round-trip) so a new object is returned each revision — otherwise QML
+    // (JSON round-trip) so a new object is returned each revision - otherwise QML
     // sees the same object reference and cfg-derived properties never re-evaluate,
     // i.e. config edits wouldn't update the widget live.
     readonly property var cfg: {
@@ -48,7 +48,7 @@ WidgetChrome {
     readonly property string dateStyle: cfg.dateStyle !== undefined ? cfg.dateStyle : "full"
     // World-clock: show another zone instead of local time. `zoneId` is a real IANA
     // zone (DST-correct); `utcOffset` is the legacy fixed-offset model kept for
-    // configs saved before zoneId existed — zoneId: "" selects it, so an existing
+    // configs saved before zoneId existed - zoneId: "" selects it, so an existing
     // saved clock keeps its exact meaning instead of being silently re-pointed.
     readonly property bool customZone: cfg.customZone !== undefined ? cfg.customZone : false
     readonly property string zoneId: cfg.zoneId || ""
@@ -60,7 +60,7 @@ WidgetChrome {
     // `timeZones`. QML cannot do this itself and the near-misses are traps: Qt's V4
     // engine has NO `Intl` (probed on 6.11, which is ahead of CI's 6.7), and
     // Date.toLocaleString SILENTLY IGNORES a { timeZone } option, returning local
-    // time — a wrong clock with no error. The bridge is backed by the OS tzdata, so
+    // time - a wrong clock with no error. The bridge is backed by the OS tzdata, so
     // every IANA zone works and the rules stay correct through a tzdata update; a
     // hand-written rule table would cover only listed zones and go quietly wrong the
     // day a country changes its law.
@@ -82,7 +82,7 @@ WidgetChrome {
         return tz.offsetSecsAt(zoneId, at.getTime()) / 3600
     }
     // The offset actually used: the real zone when resolvable, else the legacy fixed
-    // offset (also the fallback for an unmappable zoneId — degrade to the user's
+    // offset (also the fallback for an unmappable zoneId - degrade to the user's
     // offset, never to UTC).
     function effectiveOffsetAt(at) {
         var o = w.zoneOffsetAt(w.zoneId, at)
@@ -103,7 +103,7 @@ WidgetChrome {
     // wall clock. Used when no real zone is resolvable (stored utcOffset, no bridge).
     // Resolved twice because the shift can cross the HOST's own DST switch, which
     // would otherwise leave the tile an hour out. Even so it cannot represent an
-    // instant whose target wall clock lands in the host's spring-forward gap — which
+    // instant whose target wall clock lands in the host's spring-forward gap - which
     // is precisely why the zone path formats in C++ instead and has no such gap.
     function zonedAt(at) {
         if (!w.customZone) return at
@@ -131,7 +131,7 @@ WidgetChrome {
     }
     // ── Per-size layout (sizeClass injected by Dashboard) ────────────────────
     readonly property bool tallish: sizeClass === "tall" || sizeClass === "large"
-    // What the tile RENDERS: micro drops the seconds even when configured —
+    // What the tile RENDERS: micro drops the seconds even when configured -
     // they crowd the half-cell (timeFmt itself stays as configured).
     readonly property string effTimeFmt: (w.micro && w.showSeconds)
         ? (w.format24 ? "HH:mm" : "h:mm AP") : w.timeFmt
@@ -171,7 +171,7 @@ WidgetChrome {
         // shrink-to-fit rather than overflow the tile (S12).
         width: parent.width
         spacing: w.expanded ? 8 : 2
-        // Zone name (world-clock mode). Any custom zone shows an indicator — even a
+        // Zone name (world-clock mode). Any custom zone shows an indicator - even a
         // non-expanded tile with no label falls back to the picked zone's city, or
         // to the UTC offset, so foreign time is never mistaken for a wrong local clock.
         Text {
@@ -214,7 +214,7 @@ WidgetChrome {
             fontSizeMode: Text.HorizontalFit; minimumPixelSize: 9
             elide: Text.ElideRight
         }
-        // Calendar context — earned by tall tiles only (week + day-of-year,
+        // Calendar context - earned by tall tiles only (week + day-of-year,
         // plus the precise UTC offset for world clocks).
         Text {
             Layout.fillWidth: true

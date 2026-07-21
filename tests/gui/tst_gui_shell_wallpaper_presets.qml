@@ -6,14 +6,14 @@ import "../../ui/qml/widgets" as W
 import "GuiUtil.js" as G
 
 // ─────────────────────────────────────────────────────────────────────────
-// VISIBLE GUI tests for the Hub SHELL — wallpaper/background, presets (append
+// VISIBLE GUI tests for the Hub SHELL - wallpaper/background, presets (append
 // screens), the first-run wizard, and empty/error/diagnostics states.
 //
 // Recipes (see scratchpad/specs/04_instantiation_cookbook.md):
 //   • The REAL Hub shell is main.qml → Dashboard.qml. Each TestCase replaces
 //     the resolved initial page immediately so it owns one deterministic tree.
 //   • Wallpaper selection is driven by a REAL BackgroundPicker hosted in THIS
-//     (the test) window, bound to the shell's OWN store — clicking a thumbnail
+//     (the test) window, bound to the shell's OWN store - clicking a thumbnail
 //     mutates the shell store, and the shell's page background re-renders. The
 //     picker and the shell are separate KWin surfaces, so grabbing the dashboard
 //     samples the live background without the picker bleeding into the frame.
@@ -100,7 +100,7 @@ Item {
     // (measured 2026-07-20: FocusWidget, TasksWidget, CpuWidget, GpuWidget,
     // RamWidget, ClockWidget, WeatherWidget). It returned whichever the tree walk
     // reached first, so which object the whole TestCase asserted on depended on
-    // walk order — i.e. on how many tiles the page happened to have.
+    // walk order - i.e. on how many tiles the page happened to have.
     //
     // The page backdrop is the one parented directly into the Dashboard rather
     // than inside a widget: the card backdrops sit under a Loader inside their
@@ -154,7 +154,7 @@ Item {
     }
 
     // =========================================================================
-    // AREA 5 — Wallpaper / background (real shell + real BackgroundPicker)
+    // AREA 5 - Wallpaper / background (real shell + real BackgroundPicker)
     // =========================================================================
     TestCase {
         id: tcWall
@@ -198,7 +198,7 @@ Item {
             // this file was missed.
             // The Edge is 2560x720. Without an explicit size the windowed shell
             // came up 500x500, so every tile, the BackdropLayer and the page
-            // gradient rendered at a shape the product never has — and the orb
+            // gradient rendered at a shape the product never has - and the orb
             // tint became subtle enough to fall under pxDiff's threshold, which
             // is why the wallpaper rows failed their pixel proof with diff=0.
             win.width = 2560; win.height = 720
@@ -213,7 +213,7 @@ Item {
             // main.qml's initialItem was "qrc:/qml/Dashboard.qml", which cannot resolve
             // under qmltestrunner, so the stack was empty and this push produced the only
             // instance. Now that initialItem resolves from the source tree, pushing
-            // without clearing leaves TWO stacked Dashboards — the test then drives the
+            // without clearing leaves TWO stacked Dashboards - the test then drives the
             // one underneath, so every "is it hidden?" assertion passes and every click
             // silently lands on the wrong instance.
             sv.clear(StackView.Immediate)
@@ -250,9 +250,9 @@ Item {
         // Reset the SHARED picker before every test. This TestCase had no init()
         // and paid for it: several tests set `bpick.pageIndex = 1` and restore it
         // to -1 on their LAST line, so a test that fails part-way never restores
-        // it. `BackgroundPicker.pickStyle()` branches on exactly that property —
+        // it. `BackgroundPicker.pickStyle()` branches on exactly that property -
         // pageIndex < 0 writes the GLOBAL appearance, >= 0 writes a per-page
-        // override — so one failure silently redirected every later write to
+        // override - so one failure silently redirected every later write to
         // page 1's background.
         //
         // Measured 2026-07-20: test_perpage_style_overrides_global fails and
@@ -263,13 +263,13 @@ Item {
         // not 24 defects. Per-test isolation is not tidiness here; without it the
         // failure count is meaningless.
         // A PER-PAGE background override also leaks, and it OUTRANKS the global
-        // style — EdgeClone/Dashboard read `page.bg` first and only fall back to
+        // style - EdgeClone/Dashboard read `page.bg` first and only fall back to
         // appearance.bgStyle. So after test_perpage_style_overrides_global left
         // page 0 pinned to "waves", every later test could set the global style
         // successfully and still render "waves": the store assertion passed and
         // the BackdropLayer assertion failed, which reads exactly like a product
         // bug in the style→backdrop binding. It is not; it is stale test state.
-        // THE THEME LEAK — this is what made Group B unsolvable for three rounds.
+        // THE THEME LEAK - this is what made Group B unsolvable for three rounds.
         //
         // `BackdropLayer.visible` (Dashboard.qml:165) requires theme.decorative,
         // and `high_contrast` is deliberately NOT decorative. test_highcontrast_*
@@ -307,7 +307,7 @@ Item {
             // Re-assert animatedBackground HERE, after the Dashboard has loaded.
             // initTestCase sets it before sv.push(), and applyAppearance()
             // (ui/qml/Dashboard.qml:530) then writes the persisted `animatedBg`
-            // straight back over it — the shipped default is false (calm by
+            // straight back over it - the shipped default is false (calm by
             // default), so the precondition was silently reverted on every load.
             //
             // It has to be the WINDOW property, not store.setAppearance(): the
@@ -499,7 +499,7 @@ Item {
     }
 
     // =========================================================================
-    // AREA 6 — Presets: append each screen as a NEW page
+    // AREA 6 - Presets: append each screen as a NEW page
     // =========================================================================
     TestCase {
         id: tcPre
@@ -532,7 +532,7 @@ Item {
             // this file was missed.
             // The Edge is 2560x720. Without an explicit size the windowed shell
             // came up 500x500, so every tile, the BackdropLayer and the page
-            // gradient rendered at a shape the product never has — and the orb
+            // gradient rendered at a shape the product never has - and the orb
             // tint became subtle enough to fall under pxDiff's threshold, which
             // is why the wallpaper rows failed their pixel proof with diff=0.
             win.width = 2560; win.height = 720
@@ -664,7 +664,7 @@ Item {
             win.orientationMode = "portrait"
         }
 
-        // ── 6d. PresetPicker surface — REAL clicks ────────────────────────────
+        // ── 6d. PresetPicker surface - REAL clicks ────────────────────────────
         // Cards live in a clipped Flickable; bring a target into view before clicking.
         function clickCard(pp, name) {
             var target = G.byObjName(pp, name)
@@ -742,7 +742,7 @@ Item {
     }
 
     // =========================================================================
-    // AREA 7 — FirstRunWizard (hosted directly, real clicks)
+    // AREA 7 - FirstRunWizard (hosted directly, real clicks)
     // =========================================================================
     TestCase {
         id: tcWiz
@@ -754,7 +754,7 @@ Item {
         property var flick: null
 
         // This TestCase hosts the wizard directly on `root`, not in its own
-        // Window — so `root` is the origin item the grab must be relative to.
+        // Window - so `root` is the origin item the grab must be relative to.
         function snap(item, n) { var i = G.grabItem(this, item, root); i.save("gui-evidence/shellwiz_" + n + ".png"); return i }
 
         function findButton(str) {
@@ -975,7 +975,7 @@ Item {
     }
 
     // =========================================================================
-    // AREA 8 — Empty / error / diagnostics states
+    // AREA 8 - Empty / error / diagnostics states
     // =========================================================================
     TestCase {
         id: tcEmpty
@@ -1000,7 +1000,7 @@ Item {
             // or the window is never exposed and everything inside is 0x0.
             // The Edge is 2560x720. Without an explicit size the windowed shell
             // came up 500x500, so every tile, the BackdropLayer and the page
-            // gradient rendered at a shape the product never has — and the orb
+            // gradient rendered at a shape the product never has - and the orb
             // tint became subtle enough to fall under pxDiff's threshold, which
             // is why the wallpaper rows failed their pixel proof with diff=0.
             win.width = 2560; win.height = 720

@@ -1,4 +1,4 @@
-# Post-merge validation — 2026-07-21
+# Post-merge validation - 2026-07-21
 
 ## Outcome
 
@@ -13,7 +13,7 @@ This report complements the [real-hardware validation report](hardware-validatio
 
 ## Findings and fixes
 
-### F-09 — A new release-kit link escaped the local documentation check
+### F-09 - A new release-kit link escaped the local documentation check
 
 - Status: fixed and verified locally.
 - Symptom: the remote Docs workflow rejected the release-kit index because its
@@ -27,7 +27,7 @@ This report complements the [real-hardware validation report](hardware-validatio
   the checker fail and identify that file. After removing the fixture, the real
   repository passes with 112 relative links across 97 Markdown files.
 
-### F-10 — GitHub CodeQL could not parse the QML JavaScript helpers
+### F-10 - GitHub CodeQL could not parse the QML JavaScript helpers
 
 - Status: fixed and verified locally.
 - Symptom: the default CodeQL workflow's JavaScript/TypeScript analyzer reported
@@ -42,7 +42,7 @@ This report complements the [real-hardware validation report](hardware-validatio
   suite passes; the 16-file nested-KWin GUI suite passes 1,311/1,311 checks with
   no failures or skips.
 
-### F-11 — GitHub Actions dependencies still targeted deprecated Node 20
+### F-11 - GitHub Actions dependencies still targeted deprecated Node 20
 
 - Status: fixed and verified remotely.
 - Symptom: GitHub-hosted jobs warned that `actions/checkout@v4` targets the
@@ -58,7 +58,7 @@ This report complements the [real-hardware validation report](hardware-validatio
   upload-artifact v7, and download-artifact v8 all completed on the final hosted
   workflows without the Node 20 warning.
 
-### F-12 — Runtime restart test killed the timeout wrapper, not the Hub
+### F-12 - Runtime restart test killed the timeout wrapper, not the Hub
 
 - Status: fixed and verified locally and remotely.
 - Symptom: the CI runtime battery's single-writer scenario persisted the pushed
@@ -74,7 +74,7 @@ This report complements the [real-hardware validation report](hardware-validatio
   local runs, including the immediate restart and durable pushed-layout
   readback. The complete hosted runtime battery also passes.
 
-### F-13 — C++ coverage fell below the release floor without actionable output
+### F-13 - C++ coverage fell below the release floor without actionable output
 
 - Status: fixed and verified locally and remotely.
 - Symptom: the main CI gate measured 94.00% C++ line coverage against its 95%
@@ -93,7 +93,7 @@ This report complements the [real-hardware validation report](hardware-validatio
   leaked activation process; all C++ tests pass 22/22; the release-gate contract
   passes. Hosted coverage is 96.60% C++, 96.62% Rust, and 97.06% merged.
 
-### F-14 — Qt Quick selected unusable Zink rendering on the hosted runner
+### F-14 - Qt Quick selected unusable Zink rendering on the hosted runner
 
 - Status: fixed and verified locally; final remote rerun pending.
 - Symptom: the required compositor job ran for 45 minutes, then reported 27

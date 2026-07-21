@@ -1,4 +1,4 @@
-// Shared helpers for the visible GUI test suite (tests/gui/). Pure JS — no
+// Shared helpers for the visible GUI test suite (tests/gui/). Pure JS - no
 // grabImage here (that is a TestCase method; call it in the test and pass the
 // result to snap()). These walk the live scene graph of a REAL rendered window.
 
@@ -9,7 +9,7 @@
 // node is reachable through BOTH `children` and `data` (and via sibling
 // subtrees that share a control's contentItem/background), so without memoing
 // we re-walk the same subtree once per distinct path. On the real Manager tree
-// that is 1,701 unique nodes but >2,000,000 visits — the blow-up that drove
+// that is 1,701 unique nodes but >2,000,000 visits - the blow-up that drove
 // qmltestrunner to 18.8 GB RSS and tripped the kernel OOM killer (2026-07-19).
 // Keep the seen-set. Do not "simplify" it away.
 function eachItem(node, fn) {
@@ -24,14 +24,14 @@ function _walk(node, fn, seen) {
     if (kids) for (var i = 0; i < kids.length; i++)
         if (_walk(kids[i], fn, seen)) return true
     // Also walk `data` to catch non-visual children (Dialogs, ListModels,
-    // Repeater-created popups) that aren't in `children` — the Manager keeps
+    // Repeater-created popups) that aren't in `children` - the Manager keeps
     // dialogs and its imagesModel there. `seen` handles the children/data
     // overlap, so no indexOf filtering is needed here.
     var d = node.data
     if (d && d !== kids) for (var j = 0; j < d.length; j++)
         if (_walk(d[j], fn, seen)) return true
     // QQC2 Control/Popup content axes. A Dialog's visible content is NOT in its
-    // `children` or `data` — it hangs off the `contentItem`/`header`/`footer`
+    // `children` or `data` - it hangs off the `contentItem`/`header`/`footer`
     // PROPERTIES, and for a Popup the item is reparented into the window
     // overlay. Without these, searching from a Dialog object finds the dialog
     // and nothing inside it, which is why 20 dialog assertions failed while
@@ -48,8 +48,8 @@ function _walk(node, fn, seen) {
 }
 
 // Visit accounting, so a regression test can prove the traversal stays linear.
-// `calls`  — how many times eachItem invoked the callback.
-// `unique` — how many distinct nodes are actually reachable.
+// `calls`  - how many times eachItem invoked the callback.
+// `unique` - how many distinct nodes are actually reachable.
 // The invariant that must hold is calls === unique. The pre-fix walk reported
 // calls >> unique (exponential in depth); that is the OOM regression.
 function walkStats(node) {
@@ -136,19 +136,19 @@ function looksRendered(img) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// grabItem — a POSITION-AWARE replacement for TestCase.grabImage(item).
+// grabItem - a POSITION-AWARE replacement for TestCase.grabImage(item).
 //
 // READ THIS BEFORE USING grabImage(item) ANYWHERE IN THIS SUITE.
 //
 // Qt's `TestCase.grabImage(item)` grabs the whole WINDOW and then crops to a
-// rect at (0,0) sized to the item — it never maps the item's POSITION. So for
+// rect at (0,0) sized to the item - it never maps the item's POSITION. So for
 // any item that is not at the window origin it returns the wrong pixels: the
 // top-left corner of the window, at that item's dimensions.
 //
 // Measured on the Manager (2026-07-20): the Look tab's preview clone sits at
 // x=264, so `grabImage(lookClone())` returned the nav sidebar. The sidebar does
 // not change when the Edge theme changes, so `maxChDist(before, after)` was
-// exactly 0 and all 20 rows of `test_D6_free_theme_applies` failed — reporting
+// exactly 0 and all 20 rows of `test_D6_free_theme_applies` failed - reporting
 // a product bug ("preview backdrop repainted") that did not exist. Sampling the
 // same clone through this helper gives a distance of 404.75. The preview had
 // been repainting correctly the whole time.
@@ -161,7 +161,7 @@ function looksRendered(img) {
 // The returned object mimics the QtTest image API used by this suite
 // (width/height/red/green/blue/pixel/save), so it is a drop-in swap.
 //
-// `save()` writes the FULL window frame, not the crop — QtTest image objects
+// `save()` writes the FULL window frame, not the crop - QtTest image objects
 // cannot be cropped. That is deliberate: the evidence PNG showing the whole
 // window with the item in context is more useful than a lie about the API.
 //

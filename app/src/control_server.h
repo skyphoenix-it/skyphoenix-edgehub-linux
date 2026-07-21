@@ -11,9 +11,9 @@
 class QLocalServer;
 class QLocalSocket;
 
-// ControlServer — a local IPC endpoint that lets the companion "Xeneon Edge
+// ControlServer - a local IPC endpoint that lets the companion "Xeneon Edge
 // Manager" app drive the running hub live. It listens on a QLocalServer (a Unix
-// domain socket whose path comes from app/src/control_socket_path.h — shared
+// domain socket whose path comes from app/src/control_socket_path.h - shared
 // with the Manager's client, since the two must agree) and speaks
 // newline-delimited JSON:
 //
@@ -33,7 +33,7 @@ class QLocalSocket;
 // While the hub runs it owns the file, so a client that wrote a field directly
 // would have it reverted by the hub's next save (whose in-memory config never saw
 // the change). Each setter is per-field rather than a blunt "reloadConfig" so the
-// hub adopts the value into its LIVE config and applies its side effect — a reload
+// hub adopts the value into its LIVE config and applies its side effect - a reload
 // of a file the hub itself is about to overwrite would just move the race.
 //
 // The acks for the per-field setters carry "for" (the request type) so a client can
@@ -56,7 +56,7 @@ public:
     // and the reply is unchanged (older/other clients ignore it).
     void setRotationProvider(const std::function<int()>& provider) { m_rotationProvider = provider; }
     // The page the hub is currently DISPLAYING (0-based, or -1 unknown). Carried
-    // in the getUiState reply so the Manager — and a test — can confirm the hub
+    // in the getUiState reply so the Manager - and a test - can confirm the hub
     // is showing the screen the Manager selected. Optional; field omitted if unset.
     void setPageProvider(const std::function<int()>& provider) { m_pageProvider = provider; }
     // Called when a client sends setActivePage: the Manager telling the hub which

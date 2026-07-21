@@ -1,15 +1,15 @@
 import QtQuick
 
-// Analog clock face on a Canvas — repainted each second by the shared tick.
+// Analog clock face on a Canvas - repainted each second by the shared tick.
 //
 // Sizing (W1): layout keys off `sizeClass` (injected by Dashboard), never off
 // `expanded`. What the leftover space earns:
-//   • 0.5x0.5 (micro) — the face IS the widget; nothing competes with it.
-//   • 1x1 (compact)   — face + today's date beneath it.
-//   • wide            — face on the left, digital time + date beside it.
-//   • tall / full     — face on top, digital time + date beneath it.
+//   • 0.5x0.5 (micro) - the face IS the widget; nothing competes with it.
+//   • 1x1 (compact)   - face + today's date beneath it.
+//   • wide            - face on the left, digital time + date beside it.
+//   • tall / full     - face on top, digital time + date beneath it.
 // The same class has a different aspect per orientation (0.5x1 is tall-narrow in
-// portrait, wide-short in landscape) — the face/info split derives from the box,
+// portrait, wide-short in landscape) - the face/info split derives from the box,
 // so both projections of a class lay out honestly.
 WidgetChrome {
     id: w
@@ -51,7 +51,7 @@ WidgetChrome {
         anchors.margins: theme.spacingSm
 
         // Space carved out for the info block: a side column in wide, a bottom
-        // band otherwise — all derived from the box, no one-class pixel values.
+        // band otherwise - all derived from the box, no one-class pixel values.
         readonly property real infoW: w.horiz ? Math.max(150, width * 0.40) : 0
         readonly property real infoH: !w.horiz && w.showDate
                                       ? Math.max(36, Math.min(height * 0.20, w.showDigital ? 120 : 56))
@@ -128,7 +128,7 @@ WidgetChrome {
             Component.onCompleted: requestPaint()
         }
 
-        // Digital time + date — beside the face in wide, beneath it otherwise.
+        // Digital time + date - beside the face in wide, beneath it otherwise.
         Column {
             id: info
             visible: w.showDate

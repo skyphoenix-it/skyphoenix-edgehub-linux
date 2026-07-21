@@ -4,7 +4,7 @@ pkgver=1.0.0alpha.2
 pkgrel=1
 pkgdesc="Native Linux widget dashboard for the Corsair Xeneon Edge and other secondary touchscreens (includes the companion Manager)"
 arch=('x86_64')
-url="https://github.com/skyphoenix-it/XeneonEdge_Linux"
+url="https://github.com/skyphoenix-it/skyphoenix-edgehub-linux"
 license=('MIT' 'Apache-2.0')
 depends=('qt6-base' 'qt6-declarative' 'qt6-svg' 'qt6-virtualkeyboard' 'qt6-wayland' 'hicolor-icon-theme')
 makedepends=('cmake' 'rust')
@@ -13,7 +13,7 @@ install="$pkgname.install"
 # Release tag. pacman's pkgver forbids '-', so a prerelease needs the two spelled
 # out separately (e.g. pkgver=1.0.0beta1 with _tag=v1.0.0-beta.1).
 # NOT "v$pkgver": pacman orders 1.0.0_alpha.2 ABOVE 1.0.0 (verified with
-# vercmp), which would block the GA upgrade forever — so pkgver drops the
+# vercmp), which would block the GA upgrade forever - so pkgver drops the
 # separator (1.0.0alpha.2 < 1.0.0) and the real tag is spelled out here.
 _tag="v1.0.0-alpha.2"
 _srcver="${_tag#v}"
@@ -29,7 +29,7 @@ _srcver="${_tag#v}"
 source=("$pkgname-$_srcver.tar.gz::$url/releases/download/$_tag/$pkgname-$_srcver.tar.gz"
         "$pkgname-$_srcver.tar.gz.sig::$url/releases/download/$_tag/$pkgname-$_srcver.tar.gz.sig")
 
-# EdgeHub release key — SKYPhoenix IT <simon.kreitmayer@skyphoenix-it.com>.
+# EdgeHub release key - SKYPhoenix IT <simon.kreitmayer@skyphoenix-it.com>.
 # Full fingerprint, never the short id: short key ids are trivially forgeable, so
 # anything that decides trust must pin all 40 hex digits. Public key is committed
 # at packaging/edgehub-signing.pub; expiry/rotation is in docs/DISTRIBUTION.md.
@@ -51,7 +51,7 @@ sha256sums=('77a4de6fa9833bc3527bf1757a92cd223b70f335392d35ad017fb9da08542777'
 # _tag and the source checksum together; never point this recipe at an unsigned
 # GitHub-generated source archive.
 
-_srcdir="XeneonEdge_Linux-$_srcver"
+_srcdir="skyphoenix-edgehub-linux-$_srcver"
 
 build() {
   cd "$_srcdir"

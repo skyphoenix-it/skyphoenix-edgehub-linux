@@ -1,7 +1,7 @@
 # Grant the local desktop user read access to the Corsair Xeneon Edge's vendor
 # HID node so the hub can read the built-in orientation sensor for auto-rotate.
 #
-# Without this the node is root-only (0600) and auto-rotate stays disabled — the
+# Without this the node is root-only (0600) and auto-rotate stays disabled - the
 # hub falls back to the manual orientation modes.
 #
 # Install:

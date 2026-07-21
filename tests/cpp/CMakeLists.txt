@@ -1,21 +1,21 @@
 # C++ (QtTest) test suite for the hub + manager.
 #
 # Each test is a standalone executable that links the REAL libxeneon_core.a (the
-# same static lib the products link — no fake) and the specific extracted logic
+# same static lib the products link - no fake) and the specific extracted logic
 # TUs it exercises. Tests run offscreen with a per-test temp XDG_CONFIG_HOME /
 # XDG_RUNTIME_DIR so the Rust config round-trips are hermetic, and tests/cpp/
 # hermetic.h makes every test REFUSE to start unless it is actually in one of
 # those sandboxes (a raw `./tests/cpp/<test>` run once ate a developer's real
-# config — see that header).
+# config - see that header).
 #
 # The IPC socket IS hermetic, and the per-test XDG_RUNTIME_DIR below is what makes
 # it so: both ends resolve the socket through app/src/control_socket_path.h, which
 # returns $XDG_RUNTIME_DIR/xeneon-edge-hub-ctl. Until that landed, the socket was a
-# bare QLocalServer name, which Qt resolves via QDir::tempPath() — so control_server,
+# bare QLocalServer name, which Qt resolves via QDir::tempPath() - so control_server,
 # manager_backend_sync and rx_cap bound, and removeServer()'d, the REAL shared
 # /tmp/xeneon-edge-hub-ctl, unlinking a live hub's socket (it keeps its listening fd
 # and logs nothing, so it looks healthy while no client can reach it again). If you
-# add a test that touches the socket, resolve the path through that header — never
+# add a test that touches the socket, resolve the path through that header - never
 # name it literally. tst_control_server.cpp's socketIsConfinedToRuntimeDir and
 # startDoesNotTouchSharedTmpSocket guard this.
 
@@ -25,12 +25,12 @@ set(MGR_SRC "${CMAKE_SOURCE_DIR}/manager/src")
 # Where each test's XDG_RUNTIME_DIR goes. NOT the build tree, unlike its HOME /
 # XDG_CONFIG_HOME: a Unix socket path must fit sockaddr_un::sun_path (108 bytes
 # incl. NUL), and "<build>/tests/cpp/tmp/<test>/run/xeneon-edge-hub-ctl" busts
-# that on any normally-nested checkout — listen() then fails with the famously
+# that on any normally-nested checkout - listen() then fails with the famously
 # unhelpful "QLocalServer::listen: Name error". So runtime dirs live in a short
 # temp path instead. This is NOT a return to the old shared /tmp socket: each
 # test gets its OWN directory, keyed by a hash of this build dir (so parallel
 # checkouts and other users never collide), and nothing binds the shared name.
-# hermetic.h accepts a temp-rooted sandbox — mirror its $TMPDIR-else-/tmp rule
+# hermetic.h accepts a temp-rooted sandbox - mirror its $TMPDIR-else-/tmp rule
 # here, or the gate would reject what we hand out.
 if(DEFINED ENV{TMPDIR})
     set(_tmp_root "$ENV{TMPDIR}")
@@ -69,7 +69,7 @@ function(add_qt_test name)
     endif()
 
     # Per-test hermetic dirs. Config round-trips stay in the build tree; the
-    # runtime dir (and so the IPC socket) goes in the short temp root — see the
+    # runtime dir (and so the IPC socket) goes in the short temp root - see the
     # sun_path note at the top of this file.
     set(_tmp "${CMAKE_CURRENT_BINARY_DIR}/tmp/${name}")
     set(_run "${SOCK_ROOT}/${name}")
@@ -142,7 +142,7 @@ add_qt_test(orientation_reopen SOURCES "${APP_SRC}/orientation_sensor.cpp")
 add_qt_test(timezone_bridge SOURCES "${APP_SRC}/timezone_bridge.h" LINK Qt6::Gui)
 
 # Distro identity / package count / system age, probed off-thread. Same rule as
-# above: the Q_OBJECT header must be a SOURCE (it declares TWO QObjects — the
+# above: the Q_OBJECT header must be a SOURCE (it declares TWO QObjects - the
 # bridge and its worker) or AUTOMOC never runs and both vtables go undefined.
 add_qt_test(distro_bridge SOURCES "${APP_SRC}/distro_bridge.h" LINK Qt6::Gui)
 
@@ -159,7 +159,7 @@ add_qt_test(system_settings_probe DBUS_SESSION
 #
 # NO BUS, BY CONSTRUCTION: DBUS_SESSION_BUS_ADDRESS is pointed at a socket that
 # cannot exist, so QDBusConnection::sessionBus() comes back disconnected and
-# MprisBridge's ctor takes its no-bus path — it never scans, and can never reach
+# MprisBridge's ctor takes its no-bus path - it never scans, and can never reach
 # the developer's real media players. This is NOT a "skip if no bus" test: the
 # suite ASSERTS the disconnection (mprisBridgeIsOfflineInThisTest) and FAILS if a
 # bus ever appears, so the guard cannot rot into a silent no-op. Verified by

@@ -1,7 +1,7 @@
 //! Distro identity, installed-package count, and system age.
 //!
 //! All of this is READ-ONLY and unprivileged. Nothing here mutates a package
-//! database, and nothing here spawns a process — see the `Rpm` arm of [`probe`]
+//! database, and nothing here spawns a process - see the `Rpm` arm of [`probe`]
 //! for the one place that costs us a feature, and why we pay it.
 //!
 //! Everything is rooted at an injectable `root` path rather than a hard-coded
@@ -24,7 +24,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// The packaging family a distro belongs to — what actually decides how we count
+/// The packaging family a distro belongs to - what actually decides how we count
 /// packages and find the install date. Derived from `ID`, then `ID_LIKE`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Family {
@@ -50,7 +50,7 @@ impl Family {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct OsRelease {
     pub id: String,
-    /// `ID_LIKE`, split on whitespace, in the order the distro listed them — the
+    /// `ID_LIKE`, split on whitespace, in the order the distro listed them - the
     /// order is the distro's own "closest ancestor first" claim.
     pub id_like: Vec<String>,
     pub name: String,
@@ -74,7 +74,7 @@ impl OsRelease {
 ///
 /// The format is a subset of shell: a value may be unquoted, single-quoted, or
 /// double-quoted, and a double-quoted value may carry backslash escapes. We
-/// unescape only inside double quotes, which is what a shell does — inside
+/// unescape only inside double quotes, which is what a shell does - inside
 /// single quotes a backslash is literal, so `NAME='A\B'` must stay `A\B`.
 fn unquote(raw: &str) -> String {
     let v = raw.trim();
@@ -155,7 +155,7 @@ fn family_of_id(id: &str) -> Family {
 
 /// Resolve the packaging family: `ID` first, then each `ID_LIKE` in order.
 ///
-/// `ID_LIKE` is what makes this survive distros we have never heard of — a new
+/// `ID_LIKE` is what makes this survive distros we have never heard of - a new
 /// Arch derivative ships `ID_LIKE=arch` and counts correctly on day one with no
 /// change here. Pop!_OS is the worked example: `ID=pop` is known directly, but
 /// even if it were not, its `ID_LIKE="ubuntu debian"` resolves through
@@ -179,7 +179,7 @@ pub fn family_for(os: &OsRelease) -> Family {
 /// Falls back to `<root>/usr/lib/os-release`: the spec makes that the canonical
 /// location (`/etc/os-release` is officially a symlink to it), and on a stateless
 /// or `/etc`-less image only the `/usr/lib` copy exists. A missing file yields a
-/// default `OsRelease`, i.e. "unknown" — never a panic.
+/// default `OsRelease`, i.e. "unknown" - never a panic.
 pub fn read_os_release(root: &Path) -> OsRelease {
     for rel in ["etc/os-release", "usr/lib/os-release"] {
         if let Ok(text) = fs::read_to_string(root.join(rel)) {
@@ -209,13 +209,13 @@ fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
 /// Parse a package-manager log timestamp to a Unix epoch (seconds).
 ///
 /// Handles the three shapes these logs actually carry:
-///   * `2026-07-11T01:53:10+0200` — pacman >= 5.2 (ISO-8601, explicit offset)
-///   * `2024-01-15 10:23`         — pacman < 5.2 (local time, no seconds, NO offset)
-///   * `2024-01-15 10:23:45`      — dpkg.log (local time, no offset)
+///   * `2026-07-11T01:53:10+0200` - pacman >= 5.2 (ISO-8601, explicit offset)
+///   * `2024-01-15 10:23`         - pacman < 5.2 (local time, no seconds, NO offset)
+///   * `2024-01-15 10:23:45`      - dpkg.log (local time, no offset)
 ///
 /// A timestamp with no offset is read as UTC. That is a deliberate, bounded
 /// inaccuracy: the caller turns this into a *system age in days*, so being up to
-/// 14h out on a value measured in months is invisible — whereas assuming the
+/// 14h out on a value measured in months is invisible - whereas assuming the
 /// host's CURRENT zone would be wrong in a more interesting way, since the
 /// machine may have moved zones since it was installed.
 pub fn parse_log_timestamp(s: &str) -> Option<i64> {
@@ -274,7 +274,7 @@ pub fn parse_log_timestamp(s: &str) -> Option<i64> {
 
 /// Count installed packages in a pacman local database.
 ///
-/// One directory per installed package — plus `ALPM_DB_VERSION`, a plain FILE,
+/// One directory per installed package - plus `ALPM_DB_VERSION`, a plain FILE,
 /// which is why this counts DIRECTORIES rather than entries. (Verified on the
 /// dev box: 1462 entries, 1461 directories, `pacman -Q` = 1461. Counting entries
 /// would be off by exactly one, forever, and look right.)
@@ -295,7 +295,7 @@ fn count_pacman(root: &Path) -> Option<u64> {
 /// `/var/lib/dpkg/status` lists every package dpkg KNOWS, and most are not
 /// installed: `deinstall ok config-files` (removed, config kept) and
 /// `unknown ok not-installed` both live there. Only `install ok installed` is
-/// installed — that is what `dpkg -l | grep '^ii'` counts, and it is why a naive
+/// installed - that is what `dpkg -l | grep '^ii'` counts, and it is why a naive
 /// `grep -c '^Package:'` over-counts.
 ///
 /// Streamed line-by-line: this file is ~10 MB of text on a full desktop and
@@ -307,7 +307,7 @@ fn count_dpkg(root: &Path) -> Option<u64> {
     for line in BufReader::new(f).lines().map_while(Result::ok) {
         // Fields are `Key: value` at column 0; a LEADING SPACE marks a
         // continuation of the previous field (e.g. a multi-line Description), so
-        // `strip_prefix` — not `contains` — keeps prose out of the count.
+        // `strip_prefix` - not `contains` - keeps prose out of the count.
         if let Some(v) = line.strip_prefix("Status:") {
             if v.trim() == "install ok installed" {
                 n += 1;
@@ -324,13 +324,13 @@ fn count_dpkg(root: &Path) -> Option<u64> {
 /// The log's first `installed` line is the first package the system ever laid
 /// down, i.e. the install. TWO tag formats exist and both are live in the wild:
 /// modern pacman writes `[ALPM] installed foo (1.0)`; pacman < 5 wrote
-/// `[PACMAN] installed foo (1.0)`. (The dev box — CachyOS, pacman 7 — writes
+/// `[PACMAN] installed foo (1.0)`. (The dev box - CachyOS, pacman 7 - writes
 /// ALPM; a reader that knew only the PACMAN form would find nothing on any
 /// current Arch system and silently report "unknown".)
 ///
 /// CAVEAT, deliberately not papered over: if the log has been rotated or
 /// truncated, this is the age of the LOG, not of the system. pacman stores no
-/// install epoch anywhere else, so there is no better source — the widget says
+/// install epoch anywhere else, so there is no better source - the widget says
 /// what it measured and does not pretend to more.
 fn pacman_install_epoch(root: &Path) -> Option<i64> {
     use std::io::{BufRead, BufReader};
@@ -343,7 +343,7 @@ fn pacman_install_epoch(root: &Path) -> Option<i64> {
             continue;
         };
         let tail = tail.trim_start();
-        // `upgraded`/`removed` are NOT installs — matching them would report the
+        // `upgraded`/`removed` are NOT installs - matching them would report the
         // date of the last -Syu, i.e. roughly today, which looks plausible.
         if tail.starts_with("[ALPM] installed ") || tail.starts_with("[PACMAN] installed ") {
             return parse_log_timestamp(ts);
@@ -355,7 +355,7 @@ fn pacman_install_epoch(root: &Path) -> Option<i64> {
 /// First install timestamp for a dpkg system.
 ///
 /// Two sources, best first:
-///   1. `/var/log/installer/` — written once by the distro installer and never
+///   1. `/var/log/installer/` - written once by the distro installer and never
 ///      touched again, so its mtime IS the install date, and unlike the logs it
 ///      is not rotated. Absent on debootstrap/container/cloud images.
 ///   2. The oldest un-rotated `dpkg.log*`'s first timestamp.
@@ -363,7 +363,7 @@ fn pacman_install_epoch(root: &Path) -> Option<i64> {
 /// Rotated `.gz` logs are skipped: reading them needs a decompressor, and adding
 /// a gzip dependency to a shipped product for a fallback-of-a-fallback is not a
 /// trade worth making. The consequence is an honest "unknown" on a system whose
-/// plain logs have all rotated away — not a wrong date.
+/// plain logs have all rotated away - not a wrong date.
 fn dpkg_install_epoch(root: &Path) -> Option<i64> {
     use std::io::{BufRead, BufReader};
 
@@ -384,7 +384,7 @@ fn dpkg_install_epoch(root: &Path) -> Option<i64> {
         }
     }
 
-    // The OLDEST first-entry across the rotations — not the alphabetically first
+    // The OLDEST first-entry across the rotations - not the alphabetically first
     // (dpkg.log sorts before dpkg.log.1 but is newer) and not the newest.
     let mut oldest: Option<i64> = None;
     for p in logs {
@@ -416,7 +416,7 @@ pub struct DistroInfo {
     /// Why the count is absent, when it is absent BY DESIGN rather than by
     /// accident (see the Rpm arm of [`probe`]). Shown to the user verbatim.
     pub unsupported_reason: Option<String>,
-    /// Always `None` today — see the module docs.
+    /// Always `None` today - see the module docs.
     pub updates: Option<u64>,
     pub install_epoch: Option<i64>,
 }
@@ -436,7 +436,7 @@ pub fn probe(root: &Path) -> DistroInfo {
         // business; there is no text file to count. The only cheap answer is
         // shelling out to `rpm -qa`, and a subprocess in a shipped, always-on
         // desktop app is a permanent attack surface plus a hang risk (a wedged
-        // rpm lock blocks until timeout) — in exchange for a NUMBER ON A TOY
+        // rpm lock blocks until timeout) - in exchange for a NUMBER ON A TOY
         // WIDGET. That trade is not worth it, so RPM systems get an honest
         // "unsupported" instead of a silent zero.
         Family::Rpm => (
@@ -742,7 +742,7 @@ PRETTY_NAME="Red Hat Enterprise Linux 9.4 (Plow)"
             parse_log_timestamp("2024-01-15T12:00:00-0500").unwrap(),
             base + 18000
         );
-        // A half-hour zone — an whole-hours assumption would break here.
+        // A half-hour zone - an whole-hours assumption would break here.
         assert_eq!(
             parse_log_timestamp("2024-01-15T12:00:00+0530").unwrap(),
             base - 19800
@@ -752,7 +752,7 @@ PRETTY_NAME="Red Hat Enterprise Linux 9.4 (Plow)"
     #[test]
     fn rejects_garbage_timestamps_rather_than_returning_epoch_zero() {
         // Every one must be None. Returning 0 would render as "installed 1 Jan
-        // 1970" — an absurd answer that still looks like an answer.
+        // 1970" - an absurd answer that still looks like an answer.
         for bad in [
             "",
             "not a timestamp",
@@ -883,7 +883,7 @@ Description: a shell
     }
 
     // The brief specified `[PACMAN] installed`; real pacman >= 5 writes `[ALPM]`.
-    // Both must work — a reader that knew only one form would silently report
+    // Both must work - a reader that knew only one form would silently report
     // "unknown" on a whole generation of Arch systems.
     #[test]
     fn pacman_install_epoch_reads_the_legacy_pacman_tag_too() {
@@ -905,8 +905,8 @@ Description: a shell
     fn pacman_install_epoch_ignores_upgraded_and_removed_lines() {
         let d = fake_arch_root(1);
         fs::create_dir_all(d.path().join("var/log")).unwrap();
-        // If the reader matched `upgraded`, the date would be the last -Syu —
-        // i.e. ~today — which looks entirely plausible and is entirely wrong.
+        // If the reader matched `upgraded`, the date would be the last -Syu -
+        // i.e. ~today - which looks entirely plausible and is entirely wrong.
         let log = "\
 [2024-01-01T00:00:00+0000] [ALPM] upgraded vim (9.0-1 -> 9.1-1)
 [2024-02-01T00:00:00+0000] [ALPM] removed nano (7.2-1)
@@ -947,7 +947,7 @@ Description: a shell
     fn dpkg_install_epoch_falls_back_to_the_oldest_log() {
         let d = TempDir::new().unwrap();
         fs::create_dir_all(d.path().join("var/log")).unwrap();
-        // No installer dir. dpkg.log.1 is OLDER than dpkg.log — the oldest must
+        // No installer dir. dpkg.log.1 is OLDER than dpkg.log - the oldest must
         // win, not the alphabetically-first and not the newest.
         fs::write(
             d.path().join("var/log/dpkg.log"),
@@ -1113,7 +1113,7 @@ Description: a shell
         match info.family {
             Family::Arch | Family::Debian => {
                 // If a supported family found its db, the count must be
-                // plausible — a real system has more than a handful of packages.
+                // plausible - a real system has more than a handful of packages.
                 if let Some(n) = info.package_count {
                     assert!(n > 10, "implausible package count {n}");
                     assert!(info.unsupported_reason.is_none());

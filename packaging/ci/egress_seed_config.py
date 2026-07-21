@@ -16,7 +16,7 @@ Modes:
             an arbitrary host is exactly what "the app phones home" looks like.
 
 Schema rules the Rust core is strict about (learned in tests/runtime/, see that
-README): the config is NESTED — [display]/[theme]/[startup]/[widgets] are
+README): the config is NESTED - [display]/[theme]/[startup]/[widgets] are
 required tables, and a flat layout deserialize-fails, gets salvaged into the
 default layout, and silently discards the seed. `ui_state` must be a
 single-quoted TOML *literal* string: the embedded JSON has double quotes, and a
@@ -81,7 +81,7 @@ def main() -> None:
     os.makedirs(config_dir, exist_ok=True)
 
     if mode == "default":
-        print("seeded: nothing (pristine config dir — the hub writes its own defaults)")
+        print("seeded: nothing (pristine config dir - the hub writes its own defaults)")
         return
     ui_state = None if mode == "seeded" else ui_state_for(mode, url)
     with open(os.path.join(config_dir, "config.toml"), "w") as f:

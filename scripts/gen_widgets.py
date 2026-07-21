@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 #
-# DANGER — this generator is STALE SCAFFOLDING, not a live source of truth.
+# DANGER - this generator is STALE SCAFFOLDING, not a live source of truth.
 # It was the original bootstrap for the widget files, but they have since been
 # hand-written far beyond what it emits: of the ~30 names here, most no longer
 # exist in the repo, and the few that do (RamWidget, SensorBarWidget, ...) have
 # diverged to ~10x the size. A plain re-run REPLACES a real, hand-maintained
-# widget with a 20-line stub. That happened on 2026-07-17 — a single accidental
+# widget with a 20-line stub. That happened on 2026-07-17 - a single accidental
 # run clobbered RamWidget.qml and dropped three dead stubs into the tree.
 #
 # So it no longer overwrites anything by default: an existing file is SKIPPED
 # (loudly), and you must pass --force to replace it. If you are regenerating a
 # genuinely new widget, write the one file; do not --force the whole set.
 #
-# (AGENTS.md still says "re-run the script to regenerate" — that advice predates
+# (AGENTS.md still says "re-run the script to regenerate" - that advice predates
 # the divergence and is unsafe now; treat this header as the correction.)
 import os
 import sys
@@ -263,7 +263,7 @@ if novel and not FORCE:
 
 print(f'\nWrote {created}, skipped {skipped} existing.')
 if skipped and not FORCE:
-    print('Existing files were left untouched. Pass --force to overwrite them —')
+    print('Existing files were left untouched. Pass --force to overwrite them -')
     print('but read this script\'s header first: the repo widgets have diverged far')
     print('past this scaffolding, and --force replaces them with stubs.')
 

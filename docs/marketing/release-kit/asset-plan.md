@@ -57,7 +57,7 @@ Every capture must record:
 Use:
 
 ```text
-edgehub-[VERSION]-[surface]-[orientation]-[purpose]-[01].png
+edgehub-v1.0.0-beta.1-[surface]-[orientation]-[purpose]-[01].png
 ```
 
 Examples:

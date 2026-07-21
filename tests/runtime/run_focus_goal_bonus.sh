@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# run_focus_goal_bonus.sh — end-to-end runtime test for the Focus goal bonus.
+# run_focus_goal_bonus.sh - end-to-end runtime test for the Focus goal bonus.
 #
 # Drives the REAL hub binary (not the QML unit harness) through natural session
 # completions and asserts the PERSISTED reward in config.toml: the +50 daily-goal
@@ -39,7 +39,7 @@ echo "Hub: $HUB"
 
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/xeneon-focus-rt.XXXXXX")"
 # `timeout -s KILL` below already reaps each hub run, so no process cleanup is
-# needed here — and a `pkill -f xeneon-edge-hub` would be actively dangerous:
+# needed here - and a `pkill -f xeneon-edge-hub` would be actively dangerous:
 # it matches this script's own command line AND any real hub the user has open.
 trap 'rm -rf "$WORK"' EXIT
 
@@ -55,7 +55,7 @@ run_scenario() {
     python3 "$HERE/focus_seed_config.py" "$cfg_dir" "$done_today" "$goal" >/dev/null
 
     # SIGKILL (not the default SIGTERM): the hub's graceful-shutdown handler can
-    # hang on sensor/socket teardown, and we don't need a clean exit — the
+    # hang on sensor/socket teardown, and we don't need a clean exit - the
     # debounced store save has already written config.toml well before the
     # timeout. 6 s comfortably covers the 1 s tick + ~1.5 s save debounce.
     XDG_CONFIG_HOME="$root/config" XDG_RUNTIME_DIR="$run_dir" \
@@ -80,9 +80,9 @@ run_scenario() {
     fi
 }
 
-echo "Scenario A — crossing the goal (done 3 -> 4 of 4): one-time +10 +50 bonus"
+echo "Scenario A - crossing the goal (done 3 -> 4 of 4): one-time +10 +50 bonus"
 run_scenario cross 3 4 60 4
-echo "Scenario B — past the goal (done 4 -> 5, goal 4): +10 only, no re-fire"
+echo "Scenario B - past the goal (done 4 -> 5, goal 4): +10 only, no re-fire"
 run_scenario past 4 4 10 5
 
 echo
@@ -90,4 +90,4 @@ if [ "$fail" -ne 0 ]; then
     echo "RESULT: FAILURE"
     exit 1
 fi
-echo "RESULT: SUCCESS — Focus goal bonus fires exactly once"
+echo "RESULT: SUCCESS - Focus goal bonus fires exactly once"

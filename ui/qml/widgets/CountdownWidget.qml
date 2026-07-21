@@ -2,18 +2,18 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// Countdown — days until a user-set date. Persisted; genuinely real once set.
+// Countdown - days until a user-set date. Persisted; genuinely real once set.
 //
-// Sizing (W1): layout keys off `sizeClass` (injected by Dashboard — compact/
+// Sizing (W1): layout keys off `sizeClass` (injected by Dashboard - compact/
 // wide/tall/large/full), NEVER off `expanded`, which is only used for the
 // overlay's settings editor. Each declared size earns its space:
-//   • 0.5x0.5 (micro) — the day count + a one-line caption, nothing else.
-//   • 1x1 (compact)   — count + caption + the target-date row.
-//   • wide            — count beside a left-aligned caption/date/progress column
+//   • 0.5x0.5 (micro) - the day count + a one-line caption, nothing else.
+//   • 1x1 (compact)   - count + caption + the target-date row.
+//   • wide            - count beside a left-aligned caption/date/progress column
 //                       (1x0.5 portrait, 0.5x1 + 1x1.5 landscape).
-//   • tall            — count over caption/date/progress, roomier type
+//   • tall            - count over caption/date/progress, roomier type
 //                       (0.5x1 + 1x1.5 portrait, 1x0.5 landscape).
-//   • full            — the overlay: hero count + date + progress + editor.
+//   • full            - the overlay: hero count + date + progress + editor.
 WidgetChrome {
     id: w
     property var metrics: ({})
@@ -34,7 +34,7 @@ WidgetChrome {
     readonly property string dateStr: cfg.date || ""
     readonly property bool repeatYearly: cfg.repeatYearly !== undefined ? cfg.repeatYearly : false
     function dayStart(d) { var x = new Date(d); x.setHours(0, 0, 0, 0); return x }
-    // Parse "YYYY-MM-DD" into a LOCAL-midnight Date, or null when malformed —
+    // Parse "YYYY-MM-DD" into a LOCAL-midnight Date, or null when malformed -
     // new Date(str) would treat it as UTC midnight and, west of UTC, land the
     // countdown one day off. Returns null for impossible days (Feb-31, Apr-31),
     // which JS would otherwise silently roll into the following month.
@@ -50,8 +50,8 @@ WidgetChrome {
             target.getMonth() !== mo || target.getDate() !== d) return null
         return target
     }
-    // The date the countdown is actually aiming at: the stored date, or — for a
-    // yearly repeat — its next occurrence on or after today (skipping non-leap
+    // The date the countdown is actually aiming at: the stored date, or - for a
+    // yearly repeat - its next occurrence on or after today (skipping non-leap
     // years for a Feb-29 anniversary, where new Date(y,1,29) rolls to Mar-1).
     function nextTarget() {
         var target = parseDate(dateStr)
@@ -78,7 +78,7 @@ WidgetChrome {
     }
 
     // ── Progress context (an honest baseline or none at all) ────────────────
-    // • repeatYearly: previous → next occurrence (the year cycle) — always real.
+    // • repeatYearly: previous → next occurrence (the year cycle) - always real.
     // • one-time: from the moment THIS date was stored (dateSetEpoch, stamped
     //   below). No baseline → no bar; a made-up one would be a lie.
     readonly property real progress: {
@@ -114,7 +114,7 @@ WidgetChrome {
 
     // ── Per-size layout flags ────────────────────────────────────────────────
     // 0.5x0.5 and 1x1 are BOTH "compact" (the class describes shape, not
-    // footprint); the micro half-cell is told apart by the box itself — its short
+    // footprint); the micro half-cell is told apart by the box itself - its short
     // side is ~344-416px in either orientation vs ~690px+ for a full cell.
     readonly property bool micro: sizeClass === "compact" && Math.min(width, height) < 480
     readonly property bool horiz: sizeClass === "wide"
@@ -143,7 +143,7 @@ WidgetChrome {
             // Constrain to the cell width and shrink-to-fit so a large (5-digit)
             // day count never overflows/clips a narrow tile. preferredWidth (not
             // just maximumWidth) forces the layout to allocate exactly this
-            // width, so HorizontalFit has a fixed box to shrink into — a bare
+            // width, so HorizontalFit has a fixed box to shrink into - a bare
             // maximumWidth cap is ignored for an oversized implicitWidth on some
             // Qt versions (e.g. 6.7), letting the number overflow.
             Layout.preferredWidth: w.horiz ? Math.round(tileLayout.width * 0.42)
@@ -207,7 +207,7 @@ WidgetChrome {
         }
     }
 
-    // Settings (expanded overlay only — a mode, not a size)
+    // Settings (expanded overlay only - a mode, not a size)
     ColumnLayout {
         anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
         visible: w.expanded; spacing: theme.spacingSm

@@ -1,6 +1,6 @@
 import QtQuick
 
-// EdgeClone — a live WYSIWYG "clone" of the Xeneon Edge. Renders the REAL widgets
+// EdgeClone - a live WYSIWYG "clone" of the Xeneon Edge. Renders the REAL widgets
 // of the current page in a device frame, placed by the SAME WidgetPacker the hub
 // uses, so the clone is one layout viewed twice rather than a second opinion.
 // Interactions:
@@ -30,7 +30,7 @@ Item {
         var p = store.pages()[pageIndex]
         return p ? (p.tiles || []) : []
     }
-    // The page's placement, in semantic space — the hub's own packing, byte for byte
+    // The page's placement, in semantic space - the hub's own packing, byte for byte
     // (same packer, same input, no orientation), which is what makes this a clone.
     property var placements: {
         store.structureRevision
@@ -53,8 +53,8 @@ Item {
         return r === 90 || r === 270
     }
     // How long the device drawn here must be, in half-cells: a full screen (6), or
-    // the page if it is longer. An over-long page is shown WHOLE — a taller device
-    // scaled down — rather than clipped: the Manager is where you see that a page
+    // the page if it is longer. An over-long page is shown WHOLE - a taller device
+    // scaled down - rather than clipped: the Manager is where you see that a page
     // runs past the screen, so hiding it here would defeat the tool.
     property int longExtent: Math.max(sizes.longHalves, packer.longExtent(clone.placements))
 
@@ -66,36 +66,36 @@ Item {
     //
     // This ListModel is SYNCED to `placements` by id instead: a tile that still
     // exists keeps its row, so it keeps its delegate, so it keeps its loaded widget
-    // — and its new slot arrives as a property change it can EASE to (see animS/animL
+    // - and its new slot arrives as a property change it can EASE to (see animS/animL
     // on the cell). Dragging a tile is exactly where a teleport reads worst, which is
     // why the clone needs this at least as much as the hub does.
     //
     // Row order carries no meaning: a cell is positioned absolutely from its own
     // (s, l) and the packer never overlaps two tiles, so rows are patched in place
-    // rather than moved — the minimum churn that still expresses the edit. Nothing
+    // rather than moved - the minimum churn that still expresses the edit. Nothing
     // downstream may assume row order IS tile order; see `targetAt`.
     //
     // The model is also where a tile's LIFETIME lives, which is what lets a removed
-    // tile fade instead of blinking out: `dying` keeps the row — and therefore the
-    // delegate — alive past the packing that dropped it, and `entering` marks a row
+    // tile fade instead of blinking out: `dying` keeps the row - and therefore the
+    // delegate - alive past the packing that dropped it, and `entering` marks a row
     // the page grew after it was seeded. Both are properties of the ROW (a removed
     // tile is exactly "a row that is no longer in the packing"), so neither is a mode
     // flag that can drift out of sync with what is on screen.
     ListModel { id: placementModel }
 
-    // Which page the model currently holds rows FOR — null until the first sync.
+    // Which page the model currently holds rows FOR - null until the first sync.
     //
     // This is the clone's own problem, and the reason it needs no `_live` flag. The
     // hub gives each page its own delegate, so a page can only ever be BORN or edited.
     // The Manager has ONE clone and moves `pageIndex` (Manager.qml binds it to
     // currentPageIndex), so every tile on screen changes at once when the user clicks
     // another page in the sidebar. That is not an edit: nothing was added and nothing
-    // was removed — the user asked to look somewhere else. Read as an edit it would be
+    // was removed - the user asked to look somewhere else. Read as an edit it would be
     // the worst frame in the app: every tile of the old page fading out as a ghost
     // while every tile of the new one faded in through them.
     //
     // So a page switch RE-SEEDS: rows are dropped outright and re-appended inert. It
-    // doubles as the hub's `_live` — nothing has been seeded yet at construction, so
+    // doubles as the hub's `_live` - nothing has been seeded yet at construction, so
     // the first sync is a re-seed and the tiles the clone opens with never fade in.
     // `null` rather than -1 because -1 is a real pageIndex ("no page") in this app.
     property var _shownPage: null
@@ -107,7 +107,7 @@ Item {
     //
     // The extent (the packer's es/el) is deliberately NOT a role: the cell derives its
     // extent from `effSize`, which the resize drag previews live, so a role here would
-    // be a second and staler copy of `semiUnits(size)` — the identical fact.
+    // be a second and staler copy of `semiUnits(size)` - the identical fact.
     //
     // `dying`/`entering` are declared here for the same reason: the first append fixes
     // the ROLE SET too, so a role that only ever appeared later would not exist at all.
@@ -115,7 +115,7 @@ Item {
         return ({ tileId: p.id || "", tileType: p.type || "", tileSize: p.size || "",
                   tileIdx: p.idx, ps: p.s, pl: p.l, dying: false, entering: false })
     }
-    // Drop a faded-out row. Called by the cell when its exit fade ends — by id,
+    // Drop a faded-out row. Called by the cell when its exit fade ends - by id,
     // because rows shift as others are reaped.
     //
     // Only a DYING row may be reaped: this is a fade closing the row it opened, not a
@@ -129,8 +129,8 @@ Item {
             }
         return false
     }
-    // Reconciles the model to the current packing. Returns the row count — one per
-    // PLACED tile, plus any still fading out — so the caller and the tests can check
+    // Reconciles the model to the current packing. Returns the row count - one per
+    // PLACED tile, plus any still fading out - so the caller and the tests can check
     // the sync against it.
     function _syncPlacements() {
         var ps = clone.placements || []
@@ -151,12 +151,12 @@ Item {
         // dropped it or there is nothing left to fade, so the row is marked `dying`
         // and the cell reaps it when its fade ends (see the exit fade below).
         //
-        // REDUCE MOTION: the DURATION TOKEN does the real work — at motionRemove 0 the
+        // REDUCE MOTION: the DURATION TOKEN does the real work - at motionRemove 0 the
         // exit fade finishes SYNCHRONOUSLY when it is started, so the row is reaped in
         // this same event even by the `dying` path. Measured here, not assumed: with
         // this branch deleted, test_reduce_motion_removes_a_tile_instantly still
         // passes. The branch is kept as the explicit statement of intent, and to skip
-        // marking, animating and reaping a row for a fade that cannot be seen — it is
+        // marking, animating and reaping a row for a fade that cannot be seen - it is
         // NOT the mechanism. Smooth is not more motion.
         for (var r = placementModel.count - 1; r >= 0; r--) {
             if (byId[placementModel.get(r).tileId] !== undefined) continue
@@ -177,11 +177,11 @@ Item {
             var p = byId[row.tileId]
             // A row with no placement is one of the dying rows above, held open only
             // for its fade. It is not in the packing, so there is nothing to reconcile
-            // it against — and reading `p.s` off it would throw.
+            // it against - and reading `p.s` off it would throw.
             if (p === undefined) continue
             seen[row.tileId] = true
             // Resurrection: this id was fading out and is back (an undo, or a live
-            // push that re-adds it). Cancel the exit — the tile exists, so it must not
+            // push that re-adds it). Cancel the exit - the tile exists, so it must not
             // vanish when a fade nobody is watching any more happens to finish.
             if (row.dying) placementModel.setProperty(r2, "dying", false)
             if (row.ps !== p.s || row.pl !== p.l || row.tileIdx !== p.idx
@@ -191,12 +191,12 @@ Item {
 
         // Genuinely new tiles → append. A new delegate is born at its final slot (a
         // Behavior does not fire on initial binding), so an add slides its NEIGHBOURS
-        // and never itself — the tile's own arrival is the `entering` fade instead.
+        // and never itself - the tile's own arrival is the `entering` fade instead.
         // Never on a re-seed (the tiles a page is shown with are not an add), and only
         // while the token allows it.
         //
         // REDUCE MOTION, exactly as on the exit above: `theme.motionAdd > 0` is NOT the
-        // mechanism — measured, with that clause deleted a 0ms entrance still lands its
+        // mechanism - measured, with that clause deleted a 0ms entrance still lands its
         // end value synchronously and test_reduce_motion_adds_a_tile_instantly still
         // passes. The DURATION TOKEN does the work. The clause is the statement of
         // intent, and skips animating an arrival nobody can see.
@@ -246,7 +246,7 @@ Item {
         // Calm-by-default, exactly like the hub (main.qml `animatedBackground:
         // false`): an unset config means the orbs backdrop stays STILL. The old
         // `true` default made every preview drive the animated Shapes backdrop
-        // out of the box — a continuous repaint beside the scrolled controls,
+        // out of the box - a continuous repaint beside the scrolled controls,
         // and the single biggest source of the Manager's scroll lag.
         return a.animatedBg === undefined ? false : a.animatedBg
     }
@@ -256,7 +256,7 @@ Item {
 
     // Host-driven: true while the surrounding controls are being scrolled. A
     // continuously-animating preview (animated background, metric sweeps) beside a
-    // scrolling ScrollView forces a full-window repaint every scroll frame — the
+    // scrolling ScrollView forces a full-window repaint every scroll frame - the
     // Manager's scroll lag. Pausing the preview for the duration of the flick keeps
     // scrolling smooth; it resumes the instant the scroll settles.
     property bool scrolling: false
@@ -282,7 +282,7 @@ Item {
         var s = catalog.source(type)
         return s ? s.replace("qrc:/qml/", "qrc:/manager/") : ""
     }
-    // The size class comes from WidgetSizes.classFor — the SAME function the hub's
+    // The size class comes from WidgetSizes.classFor - the SAME function the hub's
     // Dashboard calls, evaluated at THIS clone's live orientation.
     //
     // This used to be a copy of the derivation with `landscape` hardcoded to false,
@@ -290,7 +290,7 @@ Item {
     // reasoning stopped being true when the frame learned to draw landscape pages
     // wide (see `_shortPx` below, and the `clone.landscape` already threaded into
     // `packer.rect`), and the copy was left behind. The result: in landscape the hub
-    // rendered a tile `wide` and the Manager rendered the same tile `tall` — a
+    // rendered a tile `wide` and the Manager rendered the same tile `tall` - a
     // different layout variant with different information density, which is exactly
     // the "widgets are not WYSIWYG in the Manager" report. Call it; never copy it.
     function injectInto(item, id, type, sizeFn) {
@@ -322,7 +322,7 @@ Item {
     }
 
     // ── Drag-move state ──
-    // These are indices into the STORE's tile array (the placement's `idx`) — the
+    // These are indices into the STORE's tile array (the placement's `idx`) - the
     // thing moveTile addresses and the thing `tiles` is indexed by. They are NOT
     // Repeater row numbers: rows are patched in place by _syncPlacements, so after
     // one reorder row order is no longer tile order, and the two would silently
@@ -333,8 +333,8 @@ Item {
     property real dragY: 0
 
     // The STORE tile index of the delegate under (gx, gy), in the tile container's
-    // coordinates; -1 for a miss. Iterates the Repeater's own rows — the delegates
-    // that actually exist — and reads each one's `tileIdx`, rather than assuming a
+    // coordinates; -1 for a miss. Iterates the Repeater's own rows - the delegates
+    // that actually exist - and reads each one's `tileIdx`, rather than assuming a
     // row number is a tile number. (`tiles` is one per stored tile and an unplaceable
     // one has no delegate, so counting tiles here would walk past the end.)
     //
@@ -342,7 +342,7 @@ Item {
     // sits on its old pixels, but it reports a STALE `tileIdx`: removing a tile shifts
     // every later store index down, and the ghost is by definition not in that packing
     // any more. Hit-testing it would hand moveTile an index that now addresses a
-    // DIFFERENT tile — a drop onto a fading box would silently move the wrong widget —
+    // DIFFERENT tile - a drop onto a fading box would silently move the wrong widget -
     // or an index past the end. So dying rows are skipped, and the pixels they are
     // vacating target nothing, exactly as the empty space they are becoming would.
     function targetAt(gx, gy) {
@@ -355,7 +355,7 @@ Item {
         return -1
     }
 
-    // ── Device frame — the WHOLE page, scaled to fit (no scrolling) ──
+    // ── Device frame - the WHOLE page, scaled to fit (no scrolling) ──
     Rectangle {
         id: frame
         anchors.centerIn: parent
@@ -367,7 +367,7 @@ Item {
         // Scale the entire device so the full page is visible at once. Grows and
         // shrinks with the Manager window (the fit ratio tracks clone.width/height),
         // capped at 1.6x so a short page doesn't upscale to blur, and floored so a
-        // narrow window can't shrink the preview toward nothing — a minimum
+        // narrow window can't shrink the preview toward nothing - a minimum
         // readable size (~0.42 => ~170px short axis on the 404px reference).
         scale: Math.max(0.42, Math.min(clone.width / width, clone.height / height, 1.6))
         radius: 26; color: "#050507"; border.width: 2; border.color: "#000000"
@@ -378,13 +378,13 @@ Item {
             anchors.centerIn: parent
             // The Edge's real 2560x720 aspect, extended when the page runs longer than
             // one screen. `_deviceAspect` makes a cell here the same SHAPE as a cell on
-            // the panel — the one thing a clone at a different pixel scale can get
+            // the panel - the one thing a clone at a different pixel scale can get
             // wrong, and exactly what widget authors judge their `sizes` against.
             readonly property real _deviceAspect: 2560 / 720
             // Cells derive from ONE SCREEN (a 0.5x0.5 is a twelfth here too), and the
             // frame grows along the LONG axis for a longer page. Orientation-aware:
             // portrait draws tall (short axis = width), landscape draws wide (short
-            // axis = height, long axis = width) — mirroring the panel so a landscape
+            // axis = height, long axis = width) - mirroring the panel so a landscape
             // preview is not cut off by a portrait-shaped frame.
             readonly property real _shortPx: 404          // the short axis (2 half-cells)
             readonly property real cellShort: _shortPx / sizes.shortHalves
@@ -402,19 +402,19 @@ Item {
             // STATICALLY in the Manager preview (running: false): a small companion
             // thumbnail does not need a live 60fps animation, and an animating
             // backdrop beside a scrolling ScrollView forces a full-window repaint
-            // every scroll frame — the Manager's scroll lag. The chosen style is
+            // every scroll frame - the Manager's scroll lag. The chosen style is
             // still visible; the real Edge animates it. (Wheel scrolling doesn't set
             // Flickable.moving, so a static backdrop is more robust than pausing.)
             BackdropLayer {
                 anchors.fill: parent
                 // Mirror the hub exactly: show the animated backdrop only when the
                 // page has no wallpaper, the theme is decorative, AND the animated
-                // background is on (the hub gates on animatedBg too — calm by
+                // background is on (the hub gates on animatedBg too - calm by
                 // default, so a default config is legitimately still here).
                 visible: clone.wallpaperSource === "" && theme.decorative && clone.animatedBg
                 style: clone.pageBg.style
                 accent: theme.accent
-                // ACTUALLY ANIMATE, like the hub — this was hard-coded false, which
+                // ACTUALLY ANIMATE, like the hub - this was hard-coded false, which
                 // made every style a still image in the preview (not WYSIWYG). Gate
                 // on previewLive (already false while the tab is hidden or the helper
                 // column is scrolling, which was the original scroll-lag concern) and
@@ -443,8 +443,8 @@ Item {
                         model: placementModel
                         delegate: Item {
                             id: tile
-                            // The placement's roles. `tileIdx` — NOT the Repeater's row
-                            // number — is what every store call here addresses.
+                            // The placement's roles. `tileIdx` - NOT the Repeater's row
+                            // number - is what every store call here addresses.
                             required property string tileId
                             required property string tileType
                             required property string tileSize
@@ -459,7 +459,7 @@ Item {
                             required property bool entering
                             // Live preview during a resize drag: the size the drag has
                             // snapped to, "" when not dragging. Only the dragged tile's
-                            // own box previews — the page re-packs on commit, because a
+                            // own box previews - the page re-packs on commit, because a
                             // repack per mouse-move would shuffle the neighbours under
                             // the cursor the drag is aimed at.
                             property string pvSize: ""
@@ -470,12 +470,12 @@ Item {
                             // rather than x/y keeps the ease attached to the one thing
                             // that means "this tile moved", so a structure edit glides
                             // and nothing else has to opt out. No flag, no settling
-                            // timer — the distinction is structural, so it cannot drift.
+                            // timer - the distinction is structural, so it cannot drift.
                             //
                             // The hub eases the EXTENT here too, and separates the ease
                             // from ROTATION that way (a turn re-projects the slot, so it
                             // stays instant). Neither half of that carries over:
-                            //   • the clone's cell grid is a CONSTANT — the frame is a
+                            //   • the clone's cell grid is a CONSTANT - the frame is a
                             //     fixed 420 on the short axis and fits to view by
                             //     scaling as a whole, so cellShort/cellLong never
                             //     change even when `clone.landscape` flips the frame's
@@ -494,11 +494,11 @@ Item {
                             // point dragIdx is already cleared, so the tile glides home at
                             // full opacity), and a resize drag never moves an origin.
                             //
-                            // REDUCE MOTION: the duration token does the real work —
+                            // REDUCE MOTION: the duration token does the real work -
                             // motionPage is 0, and a 0ms Behavior lands its end value
                             // synchronously on write. The `enabled` gate is the explicit
                             // statement of intent, and skips building an animation per
-                            // tile per edit for a value that cannot move — it is not the
+                            // tile per edit for a value that cannot move - it is not the
                             // mechanism. Smooth is not more motion.
                             property real animS: tile.ps
                             property real animL: tile.pl
@@ -510,7 +510,7 @@ Item {
                             // The (eased) origin, re-extended to whatever the drag is
                             // previewing. The ORIGIN stays put during a preview (only a
                             // commit re-packs), so this is the placement with a swapped
-                            // extent. `semiUnits(size)` IS the packer's (es, el) — the
+                            // extent. `semiUnits(size)` IS the packer's (es, el) - the
                             // same derivation, evaluated on the previewed size.
                             readonly property var _u: sizes.semiUnits(tile.effSize)
                             readonly property var _r: packer.rect(
@@ -524,8 +524,8 @@ Item {
                             // the only thing opacity means is "am I coming or going".
                             // In the clone it ALREADY means something else: a tile being
                             // dragged is held at 0.3 so the page reads through it. Those
-                            // are independent facts — a tile can be dragged AND dying (a
-                            // live push can delete the widget in your hand) — and an
+                            // are independent facts - a tile can be dragged AND dying (a
+                            // live push can delete the widget in your hand) - and an
                             // animation ASSIGNS a property, destroying any binding on it.
                             // Animating `opacity` here would silently break the drag
                             // binding for the rest of the delegate's life the first time
@@ -539,17 +539,17 @@ Item {
 
                             // ── The exit ──────────────────────────────────────
                             // A removed tile used to blink out of existence while its
-                            // neighbours glided into the space it left — the one motion
+                            // neighbours glided into the space it left - the one motion
                             // on screen belonged to everything EXCEPT the thing the user
                             // actually acted on. (Confirmed before fixing: the delegate
                             // did not outlive its removal, so there was nothing left to
-                            // fade — the guard was red on the old code.)
+                            // fade - the guard was red on the old code.)
                             //
                             // The delegate has to outlive its removal from the packing
                             // for there to be anything to fade, so the ROW is the thing
                             // held open (`dying`, set by _syncPlacements) and this cell
                             // is what closes it: when the fade ends, it reaps its own
-                            // row. That keeps the lifetime in ONE place — no delegate can
+                            // row. That keeps the lifetime in ONE place - no delegate can
                             // be orphaned by a fade that never ran, because the only
                             // thing that starts a fade is the role that also holds the
                             // row open.
@@ -562,15 +562,15 @@ Item {
                             //
                             // A ghost is not a tile: it must not answer a tap, or offer
                             // ⚙/✕/resize chrome for a tile the store no longer has. (It
-                            // is not a drop target either — see `targetAt`.)
+                            // is not a drop target either - see `targetAt`.)
                             enabled: !tile.dying
                             onDyingChanged: {
                                 if (tile.dying) {
                                     // A FADE MUST NOT FIGHT A DRAG. The drop path clears
                                     // dragIdx before it calls moveTile, so a drop can
                                     // never race its own re-pack. The way in is a removal
-                                    // from OUTSIDE — a live push, or the ✕ on the other
-                                    // clone — deleting the tile being held. `enabled`
+                                    // from OUTSIDE - a live push, or the ✕ on the other
+                                    // clone - deleting the tile being held. `enabled`
                                     // just went false, so this MouseArea's grab dies with
                                     // it and onReleased will never run: the drag state
                                     // would be stranded and the floating name-tag with
@@ -582,7 +582,7 @@ Item {
                                     }
                                     // Only ever one animation owns lifeOpacity. A tile can
                                     // be removed inside its own entrance (add a widget,
-                                    // think better of it, hit ✕ — 200ms is easy to beat),
+                                    // think better of it, hit ✕ - 200ms is easy to beat),
                                     // and two animations writing the same property every
                                     // tick fight rather than blend.
                                     enterFade.stop(); exitFade.start()
@@ -605,7 +605,7 @@ Item {
                             // there is no truthful "from" to fly from.
                             //
                             // `entering` is decided once, when the row is appended (see
-                            // _syncPlacements), so a page SWITCH — which re-seeds — cannot
+                            // _syncPlacements), so a page SWITCH - which re-seeds - cannot
                             // trigger it, and reduce-motion means it is never set and
                             // lifeOpacity stays bound at 1.
                             Component.onCompleted: if (tile.entering) enterFade.start()
@@ -671,8 +671,8 @@ Item {
                                 }
                                 onReleased: {
                                     if (ma.dragging) {
-                                        // Both are STORE tile indices — targetAt reports the
-                                        // hit delegate's own `tileIdx` — so they address
+                                        // Both are STORE tile indices - targetAt reports the
+                                        // hit delegate's own `tileIdx` - so they address
                                         // moveTile directly. There is no longer a placement
                                         // array to index through, which is what kept this
                                         // correct only for as long as row order happened to
@@ -683,7 +683,7 @@ Item {
                                         // name-tag) BEFORE moveTile: a reset placed after it
                                         // may never execute if this handler's delegate dies,
                                         // leaving the name-tag stuck in air. The delegate now
-                                        // SURVIVES a reorder, so this is belt-and-braces —
+                                        // SURVIVES a reorder, so this is belt-and-braces -
                                         // but it is also what lets the dragged tile glide
                                         // home at full opacity instead of being animated
                                         // while still visibly held.
@@ -721,7 +721,7 @@ Item {
                             // are not: the dragged box is SNAPPED to the nearest size the
                             // widget type actually declares, so an illegal shape is never
                             // offered rather than being offered and then corrected. There
-                            // is deliberately no fixed pixel "flip threshold" any more —
+                            // is deliberately no fixed pixel "flip threshold" any more -
                             // the old one hard-coded a 180px row height, which is not a
                             // thing the size model has. Previews live; commits on release.
                             Rectangle {
@@ -746,14 +746,14 @@ Item {
                                     onPositionChanged: (mp) => {
                                         var c = mapToItem(screen, mp.x, mp.y)
                                         // The box the cursor is describing, resolved onto the
-                                        // SEMANTIC axes — so this reads identically whichever
+                                        // SEMANTIC axes - so this reads identically whichever
                                         // way the device is turned.
                                         var pxW = tile.width + (c.x - sx), pxH = tile.height + (c.y - sy)
                                         var pxShort = clone.landscape ? pxH : pxW
                                         var pxLong = clone.landscape ? pxW : pxH
                                         // Snap only among sizes that FIT the page, so the
                                         // preview can never grow the widget past the space
-                                        // left — no transient overflow/scroll during the
+                                        // left - no transient overflow/scroll during the
                                         // drag, and "make bigger with no room" simply does
                                         // not move. Falls back to all declared sizes if the
                                         // store can't answer (defensive).
@@ -789,7 +789,7 @@ Item {
         }
     }
 
-    // Floating drag ghost — tracks the cursor (both axes) and stays on-screen.
+    // Floating drag ghost - tracks the cursor (both axes) and stays on-screen.
     // `dragIdx` indexes `tiles` directly and correctly: it is the store tile index,
     // which is exactly what `tiles` is ordered by. (It used to be a placement/row
     // number that indexed `tiles` anyway, and agreed only while no tile was ever

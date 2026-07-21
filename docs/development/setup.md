@@ -1,6 +1,6 @@
 # Development Guide
 
-**Current Phase: Phase 1 — Application Shell**  
+**Current Phase: Phase 1 - Application Shell**
 Last updated: 2026-07-11
 
 ---
@@ -65,7 +65,7 @@ cargo build          # Debug
 cargo build --release  # Release
 ```
 
-The output is `core/target/{debug,release}/libxeneon_core.a` — a static library with 30 exported FFI symbols.
+The output is `core/target/{debug,release}/libxeneon_core.a` - a static library with 30 exported FFI symbols.
 
 ### Step 2: Build C++/QML Application
 
@@ -85,7 +85,7 @@ cmake --build build -j$(nproc)
 
 ## Testing
 
-### Rust (Self-contained — no system deps beyond Rust)
+### Rust (Self-contained - no system deps beyond Rust)
 ```bash
 cd core
 cargo test           # 15 tests, ~0.1s
@@ -124,7 +124,7 @@ WAYLAND_DEBUG=1 ./build/xeneon-edge-hub
 ## Project Structure
 
 ```
-XeneonEdge_Linux/
+skyphoenix-edgehub-linux/
 ├── core/                   # Rust core library (xeneon-core)
 │   ├── Cargo.toml
 │   ├── xeneon_core.h       # C FFI header

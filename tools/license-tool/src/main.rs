@@ -1,4 +1,4 @@
-//! xeneon-license — the issuer's key tool. NOT shipped in the app.
+//! xeneon-license - the issuer's key tool. NOT shipped in the app.
 //!
 //!   keygen                          generate the issuer keypair (once, ever)
 //!   mint --seed-stdin --to <name> --id <id> [--expires <unix|never>] [--tier pro]
@@ -54,8 +54,8 @@ fn keygen() {
     let sk = SigningKey::from_bytes(&seed);
     let pk = sk.verifying_key();
 
-    println!("Xeneon Edge licence keypair — generate this ONCE.\n");
-    println!("1) PUBLIC key — paste into core/src/license.rs, replacing the all-zero");
+    println!("Xeneon Edge licence keypair - generate this ONCE.\n");
+    println!("1) PUBLIC key - paste into core/src/license.rs, replacing the all-zero");
     println!("   ISSUER_PUBLIC_KEY placeholder (this is what arms verification):\n");
     print!("const ISSUER_PUBLIC_KEY: [u8; 32] = [");
     for (i, b) in pk.to_bytes().iter().enumerate() {
@@ -65,7 +65,7 @@ fn keygen() {
         print!("{b}, ");
     }
     println!("\n];\n");
-    println!("2) PRIVATE seed — the SECRET. Store it in your password manager and");
+    println!("2) PRIVATE seed - the SECRET. Store it in your password manager and");
     println!("   NEVER commit it. Feed it to `mint --seed-stdin` to sign keys.");
     println!("   Anyone with this seed can issue Pro licences:\n");
     println!("   {}\n", b64url_encode(&seed));

@@ -4,15 +4,15 @@ import "../ui" as UI
 import "GuiUtil.js" as G
 
 // Visible GUI tests for the three "connect-a-source" Hub widgets:
-//   • media    (Now Playing)  — real transport via MockMedia (playPause/next/prev)
-//   • httpjson (HTTP / JSON)  — value/gauge/list + every error state
-//   • kpi      (KPI)          — number + trend + stats, http & file sources
+//   • media    (Now Playing)  - real transport via MockMedia (playPause/next/prev)
+//   • httpjson (HTTP / JSON)  - value/gauge/list + every error state
+//   • kpi      (KPI)          - number + trend + stats, http & file sources
 //
 // Each widget is hosted single via UI.WidgetHarness in a REAL KWin-composited
 // window and driven with real store mutations, a real XHR stub (item.xhrFactory,
 // the same seam the existing tst_httpjson_net / tst_kpi_net use), MockMedia
 // transport calls, and real mouse clicks on the tile controls. sizeClass /
-// accentName / cardBackdrop / titleOverride are set directly — the harness has no
+// accentName / cardBackdrop / titleOverride are set directly - the harness has no
 // Dashboard, but that is exactly the public API Dashboard.injectWidget binds, so
 // the visible pixels are identical.
 //
@@ -144,7 +144,7 @@ Item {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // 1) MEDIA — 25 cases
+    // 1) MEDIA - 25 cases
     // ─────────────────────────────────────────────────────────────────────────
     TestCase {
         id: tcMedia
@@ -355,7 +355,7 @@ Item {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // 2) HTTP / JSON — 46 cases
+    // 2) HTTP / JSON - 46 cases
     // ─────────────────────────────────────────────────────────────────────────
     TestCase {
         id: tcHttp
@@ -655,7 +655,7 @@ Item {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // 3) KPI — 46 cases
+    // 3) KPI - 46 cases
     // ─────────────────────────────────────────────────────────────────────────
     TestCase {
         id: tcKpi

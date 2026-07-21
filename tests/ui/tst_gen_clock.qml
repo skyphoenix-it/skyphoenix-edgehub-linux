@@ -6,7 +6,7 @@ import "../../ui/qml" as App
 // COVERS: schema:zoneLabel
 
 // ─────────────────────────────────────────────────────────────────────────
-// tst_gen_clock — COMPREHENSIVE coverage for area "widget:clock"
+// tst_gen_clock - COMPREHENSIVE coverage for area "widget:clock"
 // (ui/qml/widgets/ClockWidget.qml, a digital clock).
 //
 // Covers every config option, zone/offset maths, format derivation, live
@@ -14,24 +14,24 @@ import "../../ui/qml" as App
 // and the audit's suggested cases. Some assertions intentionally encode the
 // CORRECT expected behaviour and therefore FAIL against real bugs in the
 // widget (overflow/clipping, showDate not suppressing the header weekday,
-// duplicate weekday, missing world-clock indicator) — those failures are the
+// duplicate weekday, missing world-clock indicator) - those failures are the
 // point and are reported as likelyRealBug.
 // ─────────────────────────────────────────────────────────────────────────
 Item {
     id: root
     width: 700; height: 1000
 
-    // Main harness: expanded, generous size — logic / config / reactivity.
+    // Main harness: expanded, generous size - logic / config / reactivity.
     WidgetHarness {
         id: h; x: 0; y: 0; width: 420; height: 300
         widgetFile: "ClockWidget.qml"; expanded: true
     }
-    // Portrait "preview" harness (~640px usable) — expanded clipping.
+    // Portrait "preview" harness (~640px usable) - expanded clipping.
     WidgetHarness {
         id: hPortrait; x: 0; y: 300; width: 640; height: 640
         widgetFile: "ClockWidget.qml"; expanded: true
     }
-    // Narrow 2-column tile — non-expanded clipping + world-clock indicator +
+    // Narrow 2-column tile - non-expanded clipping + world-clock indicator +
     // header-status behaviour.
     WidgetHarness {
         id: hTile; x: 0; y: 940; width: 330; height: 40
@@ -325,7 +325,7 @@ Item {
             compare(w.status, "", "showDate=false should also clear the header weekday status")
         }
         // In full style the weekday appears in BOTH the header status ('ddd')
-        // and the date row ('dddd, …') — it should not be duplicated.
+        // and the date row ('dddd, …') - it should not be duplicated.
         function test_weekday_not_duplicated_in_full_style() {
             var w = h.item
             set("showDate", true); set("dateStyle", "full")
@@ -411,7 +411,7 @@ Item {
             hh.storeCtl._touchSettings()
         }
 
-        // 0.5x0.5 — headerless; time only, seconds dropped, zone chip kept.
+        // 0.5x0.5 - headerless; time only, seconds dropped, zone chip kept.
         function test_micro_time_only_but_zone_chip_survives() {
             tryVerify(function () { return hMicro.ready }, 3000)
             reset(hMicro)
@@ -430,7 +430,7 @@ Item {
             verify(chip !== null && chip.visible, "micro still flags non-local time")
         }
 
-        // tall — spelled-out date + the week/day-of-year calendar line.
+        // tall - spelled-out date + the week/day-of-year calendar line.
         function test_tall_earns_full_date_and_calendar_line() {
             tryVerify(function () { return hTallSz.ready }, 3000)
             reset(hTallSz)

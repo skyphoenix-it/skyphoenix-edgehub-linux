@@ -55,7 +55,7 @@ def _catalog_types():
 
 
 def test_catalog_drift(h):
-    """WIDGETS must cover the catalog exactly — no untested type, no ghost."""
+    """WIDGETS must cover the catalog exactly - no untested type, no ghost."""
     try:
         cat = _catalog_types()
         h.check("catalog_parsed", bool(cat), "%d types in WidgetCatalog.qml" % len(cat))
@@ -84,7 +84,7 @@ def _seed(h, wtype, tid, today):
         # make the run flaky and put egress in a test).
         return {tid: {"title": "CI status", "mode": "value"}}
     if wtype == "kpi":
-        # The file source reads a local path — a real number, fully offline.
+        # The file source reads a local path - a real number, fully offline.
         p = os.path.join(h.work, "kpi_value.json")
         try:
             with open(p, "w") as f:

@@ -241,7 +241,7 @@ static void signalHandler(int sig) {
 // --- Find target display ---
 
 // Positive identity match ONLY (hash → model → connector → XENEON → resolution).
-// Returns nullptr when nothing matches — NO primary-screen fallback. Used to decide
+// Returns nullptr when nothing matches - NO primary-screen fallback. Used to decide
 // whether a hotplugged screen is genuinely the Edge: the primary fallback must not
 // count as a match there, or plugging in an unrelated (primary) monitor while the
 // Edge is absent would hijack it fullscreen.
@@ -317,7 +317,7 @@ static QScreen* findTargetScreenStrict(ConfigHandle* config) {
         }
     }
 
-    return nullptr;   // no positive match — caller decides on the fallback
+    return nullptr;   // no positive match - caller decides on the fallback
 }
 
 int main(int argc, char *argv[]) {
@@ -338,7 +338,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // Allow QML XMLHttpRequest to read local file:// paths — the KPI widget's
+    // Allow QML XMLHttpRequest to read local file:// paths - the KPI widget's
     // "local file" source (a bare number or JSON on disk) relies on it. This is
     // a LOCAL read only; it opens no network path (remote egress is separately
     // gated by NetHub), so it does not weaken the no-telemetry guarantee.
@@ -355,7 +355,7 @@ int main(int argc, char *argv[]) {
     // XENEON_VERSION, not a literal: CMakeLists passes the git-describe string
     // (or the packaged pkgver via XENEON_VERSION_OVERRIDE). This used to be a
     // hardcoded "0.1.0", so `--version` reported 0.1.0 for EVERY build ever
-    // made — dev, packaged, and release alike — which made it impossible to
+    // made - dev, packaged, and release alike - which made it impossible to
     // tell which build you were actually running or testing.
 #ifdef XENEON_VERSION
     app.setApplicationVersion(QStringLiteral(XENEON_VERSION));
@@ -372,13 +372,13 @@ int main(int argc, char *argv[]) {
     // QA automation hooks (screenshot capture + auto-expand + single-instance
     // bypass + simulated target removal) are compiled in ONLY when
     // XENEON_QA_HOOKS is defined (CI / tests / marketing builds). In production
-    // packages these stay empty/false, so the env vars are inert — no
+    // packages these stay empty/false, so the env vars are inert - no
     // screenshot/automation surface ships.
 #ifdef XENEON_QA_HOOKS
     const bool    qaGrabMode = qEnvironmentVariableIsSet("XENEON_GRAB");
     const QString qaGrabPath = qEnvironmentVariable("XENEON_GRAB");
     const QString qaExpand   = qEnvironmentVariable("XENEON_EXPAND");
-    // Adds N pages after load and logs the resulting SwipeView.currentIndex — so the
+    // Adds N pages after load and logs the resulting SwipeView.currentIndex - so the
     // add-page navigation can be verified against the REAL stack (main→StackView→
     // Dashboard→SwipeView), which a qmltestrunner can't load (qrc: initialItem).
     const int     qaAddPages = qEnvironmentVariable("XENEON_QA_ADDPAGES", "0").toInt();
@@ -389,7 +389,7 @@ int main(int argc, char *argv[]) {
     const int     qaAddPages = 0;
 #endif
 
-    // Single-instance guard — two hubs racing the shared config.toml corrupt it.
+    // Single-instance guard - two hubs racing the shared config.toml corrupt it.
     // Skipped in grab mode so headless QA captures run alongside a real instance.
     auto instanceLock = xeneon::acquireSingleInstance(
         QStringLiteral("hub"), qaGrabMode);
@@ -429,7 +429,7 @@ int main(int argc, char *argv[]) {
     parser.addVersionOption();
     // The two reset flags are one word apart and differ by the user's whole
     // layout, so the help text has to say which one throws it away. (The core
-    // now copies config.toml to config.toml.bak first, so this is recoverable —
+    // now copies config.toml to config.toml.bak first, so this is recoverable -
     // but a flag that reads as harmless is still the wrong flag to reach for.)
     QCommandLineOption resetOpt(
         "reset", "Discard ALL configuration, including your dashboard layout, and start "
@@ -468,7 +468,7 @@ int main(int argc, char *argv[]) {
     if (!config) {
         // Distinguish the two failures. A reset only fails now if the backup
         // could not be written, in which case the core deliberately left the
-        // config ALONE — saying "failed to load" would send the user hunting for
+        // config ALONE - saying "failed to load" would send the user hunting for
         // a corrupt config that is in fact intact.
         if (resetting) {
             qCritical() << "Reset aborted: could not back up the existing configuration, so it "
@@ -488,7 +488,7 @@ int main(int argc, char *argv[]) {
 
     // Collect display information. A single builder so the initial snapshot and
     // every hotplug refresh serialize screens identically (S9: the list was frozen
-    // at boot — the Display/Diagnostics tabs never saw a plugged/unplugged screen).
+    // at boot - the Display/Diagnostics tabs never saw a plugged/unplugged screen).
     auto buildScreensJson = []() -> QByteArray {
         QJsonArray arr;
         for (auto* screen : QGuiApplication::screens())
@@ -577,7 +577,7 @@ int main(int argc, char *argv[]) {
 
     // Distro identity / package count / system age. QML has no filesystem access,
     // so /etc/os-release and the package db can only be read over the FFI. The
-    // bridge probes on its own thread — see distro_bridge.h.
+    // bridge probes on its own thread - see distro_bridge.h.
     DistroBridge* distroBridge = new DistroBridge(&engine);
     engine.rootContext()->setContextProperty("distro", distroBridge);
 
@@ -612,7 +612,7 @@ int main(int argc, char *argv[]) {
             obj->setProperty("externalUiState", json);
     // EXPLICIT Qt::DirectConnection is REQUIRED, not incidental: both the ack
     // correctness and the validity of the `bool* ok` argument depend on SAME-THREAD
-    // synchronous delivery — the slot must run and write *ok BEFORE handleLine() reads
+    // synchronous delivery - the slot must run and write *ok BEFORE handleLine() reads
     // it (the pointer is into handleLine's stack frame). If ControlServer were ever
     // moved to another thread, an auto/queued connection would (a) deliver AFTER emit
     // returns → the ack always reports false, and (b) write *ok into a since-unwound
@@ -620,7 +620,7 @@ int main(int argc, char *argv[]) {
     }, Qt::DirectConnection);
     // A Pro key pasted in the Manager arrives here (single-writer: the Manager
     // pushes over IPC, the hub is the one that writes config). Persist + re-gate
-    // live. Same Direct-connection discipline as uiStateReceived — `ok` is a
+    // live. Same Direct-connection discipline as uiStateReceived - `ok` is a
     // pointer into the socket handler's stack frame.
     QObject::connect(controlServer, &ControlServer::licenseKeyReceived, &engine,
                      [licenseBridge](const QString& key, bool* ok) {
@@ -688,7 +688,7 @@ int main(int argc, char *argv[]) {
         mainWindow->resize(geo.width(), geo.height());
 
         if (!windowedMode) {
-            // Now safe to go fullscreen — we're on the right screen
+            // Now safe to go fullscreen - we're on the right screen
             mainWindow->showFullScreen();
             mainWindow->setVisible(true);
             qInfo() << "Fullscreen on" << (mainWindow->screen() ? mainWindow->screen()->name() : QStringLiteral("(unknown screen)"));
@@ -723,7 +723,7 @@ int main(int argc, char *argv[]) {
     // the getUiState reply carries the EFFECTIVE content rotation.
     //
     // This used to return the raw SENSOR rotation (orientation->rotation()),
-    // which is -1 when the panel answers no startup GET_REPORT — but in that
+    // which is -1 when the panel answers no startup GET_REPORT - but in that
     // very case the hub DEFAULTS its content to landscape (main.qml
     // contentRotation, "the Edge's primary orientation"). So the panel showed
     // landscape while the Manager, in auto, was told "unknown" and fell back to
@@ -746,7 +746,7 @@ int main(int argc, char *argv[]) {
         return orientation->rotation();
     });
 
-    // O1 — Manager screen mirroring. The getUiState reply reports the page the
+    // O1 - Manager screen mirroring. The getUiState reply reports the page the
     // panel is showing (hubCurrentPage), and setActivePage asks the panel to show
     // the screen the Manager selected (requestHubPage). Both invoke QML functions
     // on the root, on the GUI thread (ControlServer is engine-parented, never
@@ -782,7 +782,7 @@ int main(int argc, char *argv[]) {
     metricsThread.start();
 
     // Screen change monitoring. Pass &engine as the context object so these
-    // connections are severed when the engine is destroyed — otherwise the
+    // connections are severed when the engine is destroyed - otherwise the
     // QGuiApplication (which outlives the engine) emits screenRemoved during its
     // own teardown and the lambda dereferences a freed engine.
     // On any hotplug, rebuild the FULL screen list and push it as `screensData`
@@ -816,7 +816,7 @@ int main(int argc, char *argv[]) {
         // hijack it fullscreen and mislabel it as the target.
         QScreen* newTarget = findTargetScreenStrict(config);
         if (newTarget && shouldReconnectToScreen(reconnectEnabled, newTarget == screen) && mainWindow) {
-            qInfo() << "Hub: target display returned — migrating window to" << screen->name();
+            qInfo() << "Hub: target display returned - migrating window to" << screen->name();
             targetScreen = screen;
             const QRect geo = screen->geometry();
             mainWindow->setScreen(screen);
@@ -898,7 +898,7 @@ int main(int argc, char *argv[]) {
 
     // B5 (two-writer race): while the hub runs it is the SINGLE writer of
     // config.toml, so the Manager stops writing display/startup fields itself and
-    // asks us to apply them. Adopting into the live config is what makes that safe —
+    // asks us to apply them. Adopting into the live config is what makes that safe -
     // a handler that only re-saved the file would still be overwritten by our own
     // next save from an in-memory config that never saw the change.
     //
@@ -918,14 +918,14 @@ int main(int argc, char *argv[]) {
 
         // Live-apply: re-run the SAME match + placement the hub does at boot, so the
         // choice takes effect now instead of at the next start. STRICT (no primary
-        // fallback) — a target that isn't attached must not make the hub hijack
+        // fallback) - a target that isn't attached must not make the hub hijack
         // whatever screen happens to be primary.
         engine.rootContext()->setContextProperty("_targetConnector", connector);
         engine.rootContext()->setContextProperty("_targetModel", model);
         QScreen* s = findTargetScreenStrict(config);
         if (s && mainWindow) {
             qInfo() << "Hub: target display set to" << connector << model
-                    << "— migrating window to" << s->name();
+                    << "- migrating window to" << s->name();
             targetScreen = s;
             const QRect geo = s->geometry();
             mainWindow->setScreen(s);
@@ -936,13 +936,13 @@ int main(int argc, char *argv[]) {
             mainWindow->setVisible(true);
         } else {
             qWarning() << "Hub: target display" << connector << model
-                       << "is not attached — saved, placement unchanged";
+                       << "is not attached - saved, placement unchanged";
         }
     }, Qt::DirectConnection);   // see the uiStateReceived connection: `ok` is a stack pointer
     QObject::connect(controlServer, &ControlServer::autostartReceived, &engine,
                      [config](bool enabled, bool* ok) {
         xeneon_config_set_autostart(config, enabled ? 1 : 0);
-        // The flag on its own does nothing at runtime — the EFFECTIVE state is the
+        // The flag on its own does nothing at runtime - the EFFECTIVE state is the
         // XDG autostart entry (the same one the first-run wizard installs), so write
         // it here. Both halves must succeed for the ack to be honest: the client's
         // "is autostart on?" readback reads the entry, not the flag.

@@ -2,7 +2,7 @@ import QtQuick
 import QtTest
 import "../../ui/qml" as App
 
-// FirstRunWizard (ui/qml/FirstRunWizard.qml) — the setup flow. It resolves
+// FirstRunWizard (ui/qml/FirstRunWizard.qml) - the setup flow. It resolves
 // `theme`, `_screens`, `root` (themeMode/accentName) and `wizardBridge` by name,
 // so we provide them here. Assert: next/back stepping, the display-selection
 // required-field guard, the skip path (no displays), and the completion path
@@ -166,7 +166,7 @@ Item {
         // ── Step indicators reflect the current step ─────────────────────────
         function test_step_count_is_four() {
             // The step-indicator Repeater renders one dot per step (model: 4).
-            // Read the REAL Repeater's count — this fails if the flow ever becomes
+            // Read the REAL Repeater's count - this fails if the flow ever becomes
             // a 3- or 7-step wizard, unlike a self-referential currentStep round-trip.
             var dots = findPred(wiz, function (n) {
                 return n && typeof n.itemAt === "function"
@@ -175,7 +175,7 @@ Item {
             compare(dots.count, 4, "four step-indicator dots (welcome, display, layout, options)")
 
             // The primary button reads the finish label ONLY on the final step
-            // (index 3) and "Next →" before it — pinning the last-step index at 3.
+            // (index 3) and "Next →" before it - pinning the last-step index at 3.
             wiz.currentStep = 2
             verify(findButton("Next →") !== null, "step 2 shows 'Next →'")
             verify(findButton("Finish Setup") === null, "finish label absent before the last step")

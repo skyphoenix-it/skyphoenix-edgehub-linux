@@ -7,21 +7,21 @@ import "../../ui/qml" as App
 // The gap this closes. Two config surfaces exist in this product and only one
 // of them was covered at value level:
 //
-//   • The Manager's WidgetConfigDialog — covered by tst_widget_config_values.qml
+//   • The Manager's WidgetConfigDialog - covered by tst_widget_config_values.qml
 //     and tst_widget_config_more.qml.
 //   • tests/ui/tst_settings_panel.qml drives SettingsPanel STANDALONE, against a
 //     stub `root` whose appearance knobs are plain test properties. It proves the
-//     control writes its bound sink — it CANNOT prove the hub persists that write
+//     control writes its bound sink - it CANNOT prove the hub persists that write
 //     or repaints because of it: there is no store, no Dashboard, no backdrop.
 //
 // Nothing drove the surfaces a user actually touches ON THE DEVICE: the palette
 // button in the hub's own bottom bar, the appearance sheet the Dashboard hosts
 // (wired to the Dashboard's store, theme, NetHub and UpdateChecker), and the
-// per-tile expanded overlay reached by tapping a tile — the ONLY way to configure
+// per-tile expanded overlay reached by tapping a tile - the ONLY way to configure
 // a widget without a second machine.
 //
 // So this file loads the REAL Dashboard.qml (as main.qml's StackView does, with
-// the same shell surface — appearance knobs ALIASED onto Theme exactly like
+// the same shell surface - appearance knobs ALIASED onto Theme exactly like
 // main.qml) and drives those surfaces with real mouse input. Every assertion
 // pairs the write with an observable the write is supposed to move:
 //
@@ -45,7 +45,7 @@ import "../../ui/qml" as App
 //
 // NO EGRESS: the one test that opts into the update check flips the store's
 // netOffline kill switch FIRST, so the checker's single GET is refused by the
-// gate. That is also the assertion — the opt-in surface must honour the switch.
+// gate. That is also the assertion - the opt-in surface must honour the switch.
 Item {
     id: root
     width: 900; height: 1400
@@ -108,7 +108,7 @@ Item {
             return x && x.presetsLocked !== undefined && x.updateChecker !== undefined
         })
     }
-    // The live animated backdrop behind the dashboard — style/running/accent is
+    // The live animated backdrop behind the dashboard - style/running/accent is
     // BackdropLayer's signature. This is the rendered thing the background and
     // theme choices in the sheet have to move.
     function backdrop() {
@@ -147,7 +147,7 @@ Item {
         for (var i = 0; i < cs.length; i++) if (cs[i].tileId === id) return cs[i]
         return null
     }
-    // The tile's touch-sized expand affordance (z:20, square) — the ONLY tap that
+    // The tile's touch-sized expand affordance (z:20, square) - the ONLY tap that
     // opens a tile's config on the device (a body tap deliberately does not).
     function expandTargetIn(cell) {
         return findPred(cell, function (x) {
@@ -161,13 +161,13 @@ Item {
 
     // ── A tile whose widget actually RENDERS offscreen ───────────────────────
     // The shipped catalog addresses its widgets as `qrc:/qml/CpuWidget.qml`, and
-    // that resource only exists inside the built binary — offscreen, every
+    // that resource only exists inside the built binary - offscreen, every
     // shipped tile's Loader fails, so there is no rendered widget to assert on.
     // (tst_dashboard.qml works around this by never rendering one.)
     //
     // The Tier-0 user-widget path is the documented seam that DOES address a
     // widget by file, so we register the REAL CpuWidget.qml through it: same
-    // file, same tile pipeline, same expanded overlay, same WidgetConfigPanel —
+    // file, same tile pipeline, same expanded overlay, same WidgetConfigPanel -
     // the only difference is that the form's schema comes from the manifest
     // instead of WidgetConfigSchema. That gives the on-hub config assertions a
     // genuine rendered observable (the widget's own status text and colour).
@@ -258,7 +258,7 @@ Item {
         // ─────────────────────────────────────────────────────────────────────
 
         // The entry point itself: nothing tested that the hub's own bottom bar
-        // can reach its settings — every settings test so far set `shown` by hand.
+        // can reach its settings - every settings test so far set `shown` by hand.
         function test_palette_button_opens_the_appearance_sheet() {
             var p = root.sheet()
             compare(p.shown, false, "precondition: the sheet is closed")
@@ -295,7 +295,7 @@ Item {
         }
 
         // High Contrast is not just a palette: it turns decoration OFF. Two things
-        // must follow on the device — the backdrop stops rendering, and the
+        // must follow on the device - the backdrop stops rendering, and the
         // background picker DISABLES itself instead of accepting taps that no-op.
         function test_high_contrast_kills_the_backdrop_and_disables_the_background_picker() {
             var p = openSheet()
@@ -329,7 +329,7 @@ Item {
         }
 
         // ═══════════════════════════════════════════════════════════════════
-        // KNOWN BUG — the hub's on-panel Background picker is INERT.
+        // KNOWN BUG - the hub's on-panel Background picker is INERT.
         //
         // Tapping any style chip (or wallpaper thumbnail) in the hub's own
         // appearance sheet writes NOTHING and changes NOTHING. The runtime says
@@ -338,20 +338,20 @@ Item {
         //   BackgroundPicker.qml:55: TypeError: Cannot call method
         //   'setAppearance' of undefined
         //
-        // Root cause — the self-binding trap WidgetConfigPanel.qml:14-19 documents
+        // Root cause - the self-binding trap WidgetConfigPanel.qml:14-19 documents
         // at length, in the one place it was not avoided. BackgroundPicker declares
         // `property var store`, and SettingsPanel.qml:298 binds `store: store`, so
         // the RHS resolves to the picker's OWN (undefined) property instead of the
         // hub's store. What is directly OBSERVED here, not inferred:
         //   • the picker's writes throw on an undefined `store` (the TypeError), so
         //     `store: store` did not deliver the hub's store; while
-        //   • other `store.` uses in the SAME file work — the update-check switch
+        //   • other `store.` uses in the SAME file work - the update-check switch
         //     (SettingsPanel.qml:428) writes the hub's appearance correctly, proving
         //     the name IS reachable from this file for objects that do not shadow it.
         //
         // Why nothing caught it: every other call site binds `store: store` in the
         // SAME document as the store's id (Manager.qml:937/1186, and
-        // tst_background_picker.qml:18-19, which passes) — that shape resolves to
+        // tst_background_picker.qml:18-19, which passes) - that shape resolves to
         // the id and works. SettingsPanel.qml is the only call site that inherits
         // `store` from the enclosing component, i.e. the only one that shadows.
         //
@@ -361,7 +361,7 @@ Item {
         //
         // The fix is the one this repo already made for the config panel: rename
         // the property to `st` (and update the three call sites). This test is
-        // written against the CORRECT behaviour and marked expectFail — when the
+        // written against the CORRECT behaviour and marked expectFail - when the
         // rename lands it will XPASS, which QtTest reports as a failure, forcing
         // the expectFail to be removed rather than letting it rot.
         // ═══════════════════════════════════════════════════════════════════
@@ -451,7 +451,7 @@ Item {
 
         // The opt-in update check, wired to the REAL UpdateChecker + NetHub the
         // Dashboard owns. The standalone panel has no checker, so its result line
-        // could never appear there — this is the only place that surface renders.
+        // could never appear there - this is the only place that surface renders.
         //
         // The kill switch is flipped FIRST so the single GET is refused: this test
         // performs no egress, and the refusal is itself the privacy assertion.
@@ -473,7 +473,7 @@ Item {
             compare(chk.enabled, true, "…and reached the real checker")
             compare(checkNow.visible, true, "…which reveals the result line + re-check button")
             compare(chk.message, "Blocked: the global offline switch is on.",
-                    "the opt-in check was refused by the egress gate — no request left the device")
+                    "the opt-in check was refused by the egress gate - no request left the device")
             var line = findText(p, "Blocked: the global offline switch is on.")
             verify(line !== null && line.visible, "…and the sheet renders that reason")
 
@@ -488,7 +488,7 @@ Item {
         // B. The per-tile config the user reaches by TAPPING a tile
         // ─────────────────────────────────────────────────────────────────────
 
-        // Tap a tile's expand affordance — the real gesture — and wait for the
+        // Tap a tile's expand affordance - the real gesture - and wait for the
         // overlay to be fully open. Returns the tile id.
         function tapTile(id) {
             var d = ld.item
@@ -543,7 +543,7 @@ Item {
             verify(findObj(ld.item, "field-showTemp") === null,
                    "…and shows the tapped tile's fields, not the other tile's")
 
-            // The Done bar is the primary way out on a tall panel — tapped, not called.
+            // The Done bar is the primary way out on a tall panel - tapped, not called.
             var done = findText(d, "Done")
             verify(done !== null && done.visible, "the overlay's Done bar is present")
             mouseClick(done.parent.parent)
@@ -552,7 +552,7 @@ Item {
         }
 
         // A shipped tile's on-hub form writes to THAT tile's settings bucket.
-        // (Its widget cannot render offscreen — see widgetsDir above — so the
+        // (Its widget cannot render offscreen - see widgetsDir above - so the
         // rendered half of this chain is asserted on the file-addressed tile.)
         function test_shipped_tile_form_writes_to_that_tiles_settings() {
             var d = ld.item
@@ -622,7 +622,7 @@ Item {
                     "dragging to the end wrote the maximum into the tile's settings")
             compare(sld.value, 100, "…and the control holds it")
             compare(String(w.statusColor), String(_theme.warning),
-                    "…and 95 °C is no longer an error, only a warning — the render followed")
+                    "…and 95 °C is no longer an error, only a warning - the render followed")
         }
 
         // "Reset to defaults" is on the hub's overlay and nowhere else. It must
@@ -645,7 +645,7 @@ Item {
             compare(String(w.statusColor), String(_theme.error), "…including its default warning threshold")
         }
 
-        // The overlay edits the SAME persisted state as the tile behind it — a
+        // The overlay edits the SAME persisted state as the tile behind it - a
         // config that only moved the preview would be the worst kind of pass.
         function test_overlay_edit_reaches_the_TILE_behind_it() {
             var id = openRenderingTile()

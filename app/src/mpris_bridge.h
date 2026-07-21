@@ -9,7 +9,7 @@
 
 #include "mpris_state.h"
 
-// MprisBridge — exposes the active MPRIS media player (Spotify, browsers /
+// MprisBridge - exposes the active MPRIS media player (Spotify, browsers /
 // YouTube Music, etc.) to QML: now-playing metadata + transport control.
 //
 // It discovers `org.mpris.MediaPlayer2.*` services on the session bus, prefers

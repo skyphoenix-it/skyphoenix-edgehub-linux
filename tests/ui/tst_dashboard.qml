@@ -7,7 +7,7 @@ import "../../ui/qml" as App
 // COVERS: fn:Dashboard.onThemeModeChanged, fn:Dashboard.applyPreset, fn:Dashboard.appendPreset
 // COVERS: fn:Dashboard._sweepStaleDying
 //
-// ui/qml/Dashboard.qml —
+// ui/qml/Dashboard.qml -
 //   • cfgAction: geocode-with-place, empty-place, non-geocode action, no overlay
 //   • closeExpanded: clears all overlay state, idempotent
 //   • applyExternalState: valid doc updates the store + re-applies appearance;
@@ -21,7 +21,7 @@ import "../../ui/qml" as App
 //   • the 7 appearance→store Connections handlers (root change → store.setAppearance)
 //
 // Dashboard resolves the shell (`root`), `theme`, and `metricsJson` through the
-// context scope — we provide them here exactly as main.qml does, then load the
+// context scope - we provide them here exactly as main.qml does, then load the
 // REAL Dashboard.qml via a Loader (as the app's StackView does). We reach its
 // private DashboardStore by duck-typing the object graph. Assertions target the
 // driving properties/store, never rendered pixels.
@@ -133,7 +133,7 @@ Item {
             return x && x.animL !== undefined && x.tileId === undefined
         })
     }
-    // A cell's placement, reassembled from the roles it is built from — the shape
+    // A cell's placement, reassembled from the roles it is built from - the shape
     // WidgetPacker speaks, which is what the slot assertions below compare in.
     function slotOf(c) {
         return ({ id: c.tileId, type: c.tileType, size: c.tileSize, idx: c.tileIdx,
@@ -145,12 +145,12 @@ Item {
     // "Settled" is load-bearing, and it is why the geometry tests below can trust
     // a pixel. A tile now MOVES to its slot and fades in or out around it, so a
     // page can satisfy "N tiles with real geometry" while every one of them is
-    // still in flight — and a tile measured mid-glide is a third of the screen
+    // still in flight - and a tile measured mid-glide is a third of the screen
     // only by luck. (These tests reuse ids across documents: `init()` drops the
     // previous page and the test re-adds `a`/`b`/`c` in the same event, which the
     // model correctly reads as those tiles MOVING, not as new ones appearing.)
     // A tile is settled when its eased mirror has reached the slot it mirrors and
-    // it is at full opacity — i.e. when the pixels mean what the packing says.
+    // it is at full opacity - i.e. when the pixels mean what the packing says.
     function laidOut(n, portrait) {
         var f = pageFlick()
         if (!f || !(f.cellLong > 0)) return false
@@ -167,7 +167,7 @@ Item {
         return true
     }
     // Make the dashboard PORTRAIT (tall: the 720x2560 reflow) or LANDSCAPE (the
-    // 2560x720 strip). Dashboard reads its own width/height — exactly as main.qml's
+    // 2560x720 strip). Dashboard reads its own width/height - exactly as main.qml's
     // contentRoot hands it over on a rotation.
     function orient(portrait) {
         root.width = portrait ? 720 : 2560
@@ -248,8 +248,8 @@ Item {
 
         // ── expanded overlay: content is retained through the close fade (W3) ──
         // closeExpanded() clears the STATE immediately, but the overlay's widget,
-        // title and icon must keep rendering while the card fades out — keyed off
-        // the retained shownType/shownId — or the close pops to an empty card on
+        // title and icon must keep rendering while the card fades out - keyed off
+        // the retained shownType/shownId - or the close pops to an empty card on
         // frame 1. The retained pair clears only once the overlay is fully hidden.
         function test_overlay_content_survives_the_close_fade() {
             var d = ld.item
@@ -258,7 +258,7 @@ Item {
             d.expandedId = "ov1"; d.expandedType = "cpu"
             compare(d.shownType, "cpu", "opening synced the retained type")
             compare(d.shownId, "ov1", "opening synced the retained id")
-            // Let the overlay genuinely fade IN before closing — closing within
+            // Let the overlay genuinely fade IN before closing - closing within
             // the same event-loop turn would find opacity still at 0 (no frame
             // has run), which is not a state a user can ever produce.
             var ovl = root.findPred(ld.item, function (x) { return x && x.ovlWide !== undefined })
@@ -330,7 +330,7 @@ Item {
         // A named size -> how much ROOM the widget has. Named, so widgets ask "have I
         // got room?" rather than re-deriving it from geometry they shouldn't know.
         // Judged on the PROJECTED half-cells, so the same size honestly reports "tall"
-        // in portrait and "wide" in landscape — which is the whole point of a panel
+        // in portrait and "wide" in landscape - which is the whole point of a panel
         // that rotates.
         function test_sizeClassFor_maps_sizes_to_room() {
             var d = ld.item
@@ -358,7 +358,7 @@ Item {
         }
 
         // The hub's half of the WYSIWYG parity contract. `sizeClassFor` is a named
-        // seam, but the DERIVATION must stay in WidgetSizes.classFor — that is the
+        // seam, but the DERIVATION must stay in WidgetSizes.classFor - that is the
         // only file the Manager's preview also instantiates, and therefore the only
         // place the two can be made to agree. The clone once carried its own copy
         // with `landscape` hardcoded false; this fails if the hub grows one back.
@@ -378,7 +378,7 @@ Item {
 
         // COVERS: fn:Dashboard.nextSize
         // The edit-mode resize button. The old fixed 1x1->2x1->1x2->2x2 cycle has NO
-        // equivalent — those spans aren't sizes — so the cycle is the widget TYPE's own
+        // equivalent - those spans aren't sizes - so the cycle is the widget TYPE's own
         // declared list, or it would offer shapes the widget was never built for.
         function test_nextSize_cycles_the_types_own_legal_sizes() {
             var d = ld.item
@@ -403,7 +403,7 @@ Item {
 
         // COVERS: fn:Dashboard._msToNextSecond
         // REGRESSION: the shared tick was `interval: 1000; repeat: true`, which
-        // re-arms 1000ms after each HANDLING — so hitches accumulate into the phase
+        // re-arms 1000ms after each HANDLING - so hitches accumulate into the phase
         // and it is never aligned to the wall-clock second anyway. Widgets format
         // `new Date()` on the tick, so a drifted tick shows a second twice (stall)
         // then skips one (jump). This asserts the property that makes the error
@@ -433,13 +433,13 @@ Item {
             var d = ld.item
             var s = root.store()
             s.load("blank")
-            // The user's own choices, made post-setup — none of these are
+            // The user's own choices, made post-setup - none of these are
             // preset "character" keys and every one must survive the apply.
             s.setAppearance("themeMode", "nord")
             s.setAppearance("accent", "green")
             s.setAppearance("glass", 0.31)
             s.setAppearance("netOffline", true)
-            // reduceMotion IS a preset character key — but a11y beats character.
+            // reduceMotion IS a preset character key - but a11y beats character.
             s.setAppearance("reduceMotion", true)
 
             verify(d.applyPreset("developer"), "applyPreset accepts a known preset id")
@@ -449,7 +449,7 @@ Item {
             compare(s.settingsFor(pages[0].tiles[0].id).title, "CI status", "and the authored per-tile settings")
 
             var a = s.appearance()
-            compare(a.themeMode, "nord", "the user's theme survives the apply — the confirm copy's promise")
+            compare(a.themeMode, "nord", "the user's theme survives the apply - the confirm copy's promise")
             compare(a.accent, "green", "accent survives")
             compare(a.glass, 0.31, "glass survives")
             compare(a.netOffline, true, "the egress kill switch is NEVER silently re-enabled by a preset")
@@ -684,13 +684,13 @@ Item {
 
         // THE BUG THIS EPIC EXISTS FOR.
         // Measured on the old GridLayout: three 1x1 tiles on a 1200px page rendered at
-        // exactly 400px each (correct — which is why nothing LOOKED broken), but a
+        // exactly 400px each (correct - which is why nothing LOOKED broken), but a
         // 0.5x0.5 beside a 1x1 rendered at 600px: HALF the page, when it must be a
         // twelfth of the screen. GridLayout sizes a row by what is IN it and collapses
         // span-only rows, so a tile's size depended on what else was on the page. A size
         // is a fraction of the SCREEN, so it may not. This is that exact page.
         function test_a_half_by_half_beside_a_baseline_is_a_twelfth_not_a_half() {
-            root.orient(true)                       // 720x2560 — the portrait reflow
+            root.orient(true)                       // 720x2560 - the portrait reflow
             ld.item.applyExternalState(root.makeDoc([ { id: "small", type: "cpu", size: "0.5x0.5" },
                                                       { id: "big", type: "cpu", size: "1x1" } ]))
             tryVerify(function () { return root.laidOut(2, true) }, 4000, "the two tiles laid out in portrait")
@@ -716,17 +716,17 @@ Item {
                          "it is a THIRD of what GridLayout gave it along the long axis")
             // 0.5 of the short axis x 1/6 of the long axis = a twelfth of the SCREEN.
             fuzzyCompare(((small.width + gap) * (small.height + gap)) / (pageShort * pageLong),
-                         1 / 12, 0.005, "a twelfth of the screen — the size's whole definition")
+                         1 / 12, 0.005, "a twelfth of the screen - the size's whole definition")
 
             // And its neighbour is untouched: a third, whatever else is on the page.
             fuzzyCompare(big.width + gap, pageShort, 0.51, "the 1x1 keeps the full short axis")
             fuzzyCompare(big.height + gap, pageLong / 3, 0.51, "and exactly a third of the long axis")
             fuzzyCompare(((big.width + gap) * (big.height + gap)) / (pageShort * pageLong),
-                         1 / 3, 0.005, "a third of the screen — unaffected by what sits beside it")
+                         1 / 3, 0.005, "a third of the screen - unaffected by what sits beside it")
         }
 
         // The case that ALWAYS worked, kept honest: three baselines still fill the
-        // screen exactly, and each is a third — the default dashboard.
+        // screen exactly, and each is a third - the default dashboard.
         function test_three_baselines_still_measure_a_third_each() {
             root.orient(true)
             ld.item.applyExternalState(root.makeDoc([ { id: "a", type: "cpu", size: "1x1" },
@@ -769,7 +769,7 @@ Item {
                 portraitPx[ids[i]] = { x: c.x, y: c.y }
             }
 
-            // Turn the panel. Nothing else changes — same document, same store.
+            // Turn the panel. Nothing else changes - same document, same store.
             root.orient(false)
             tryVerify(function () { return root.laidOut(5, false) }, 4000,
                       "the dashboard reflowed to the landscape strip")
@@ -787,7 +787,7 @@ Item {
                 fuzzyCompare(c2.y - _theme.spacingMd / 2, m2.s * cellS, 0.51,
                              ids[j] + ": and its short coordinate is the Y axis")
             }
-            // Rotating BACK restores the original pixels exactly — no drift, no reshuffle.
+            // Rotating BACK restores the original pixels exactly - no drift, no reshuffle.
             root.orient(true)
             tryVerify(function () { return root.laidOut(5, true) }, 4000, "and turned back")
             for (var k = 0; k < 5; k++) {
@@ -799,7 +799,7 @@ Item {
 
         // CAPACITY.
         // The 2x6 grid sizes the CELL, not the page. A page longer than the screen is
-        // placed IN FULL and scrolls — no tile is refused, capped or dropped. This is
+        // placed IN FULL and scrolls - no tile is refused, capped or dropped. This is
         // the policy that keeps the over-long shipped presets renderable.
         function test_an_overlong_page_keeps_every_tile_and_scrolls() {
             root.orient(true)
@@ -809,13 +809,13 @@ Item {
             tryVerify(function () { return root.laidOut(6, true) }, 4000, "six tiles laid out in portrait")
 
             var p = root.pageItem(), f = root.pageFlick()
-            compare(root.tileCells().length, 6, "every tile is placed — none refused, none dropped")
+            compare(root.tileCells().length, 6, "every tile is placed - none refused, none dropped")
             compare(p.longExtent, 12, "the page is exactly two screens long")
-            verify(f.interactive, "so it SCROLLS — the 7th half-unit overflows, it is not refused")
+            verify(f.interactive, "so it SCROLLS - the 7th half-unit overflows, it is not refused")
             fuzzyCompare(f.contentHeight, 12 * f.cellLong, 0.51, "and the scrollable content is that long")
 
             // The decisive part: overflowing does NOT shrink anyone. Each tile is still a
-            // third of the SCREEN — which is the entire reason GridLayout had to go.
+            // third of the SCREEN - which is the entire reason GridLayout had to go.
             for (var j = 0; j < 6; j++)
                 fuzzyCompare(root.cellFor("t" + j).height + _theme.spacingMd, f.height / 3, 0.51,
                              "t" + j + " is still a third of the SCREEN on a 2-screen page")
@@ -824,8 +824,8 @@ Item {
         // ── W3: a structure edit MOVES tiles, it does not rebuild them ───────
         // THE OWNER-REPORTED CLUNK, one level up from the sensors bar: reordering
         // a tile made it TELEPORT. Two Repeaters were handed a fresh JS array on
-        // every structure edit — the pages one (`store.pages()` returns freshly
-        // cloned pages) and the tiles one (`placements` re-packs) — and a Repeater
+        // every structure edit - the pages one (`store.pages()` returns freshly
+        // cloned pages) and the tiles one (`placements` re-packs) - and a Repeater
         // given a new array resets its whole delegate model. Every delegate was
         // destroyed and rebuilt, so there was nothing left alive to animate and
         // the new one was simply already at the destination.
@@ -845,7 +845,7 @@ Item {
 
         // The two halves of the sync, asserted directly: `_row` maps one packer
         // placement onto the model's roles, and `_syncPlacements` reconciles the
-        // whole model to the current packing — idempotently, because the rows ARE
+        // whole model to the current packing - idempotently, because the rows ARE
         // the delegates' identity and re-running it must churn nothing.
         // COVERS: fn:Dashboard._syncPlacements, fn:Dashboard._row
         function test_placement_row_and_sync_map_the_packing_onto_the_model() {
@@ -861,7 +861,7 @@ Item {
 
             var a = root.cellFor("a")
             compare(p._syncPlacements(), 3, "_syncPlacements holds one row per placed tile")
-            compare(p._syncPlacements(), 3, "_syncPlacements is idempotent — no duplicate rows")
+            compare(p._syncPlacements(), 3, "_syncPlacements is idempotent - no duplicate rows")
             verify(root.cellFor("a") === a, "and it rebuilt nothing: same delegate after two syncs")
         }
 
@@ -872,11 +872,11 @@ Item {
             verify(a && b && c, "all three cells found")
             compare(root.slotOf(a).l, 0, "precondition: a is first down the long axis")
             compare(root.slotOf(b).l, 1, "precondition: b is second")
-            // b's tile Loader — the object that OWNS the widget instance's lifetime.
+            // b's tile Loader - the object that OWNS the widget instance's lifetime.
             // (The widget itself cannot be asserted on here: every catalog source is a
             // `qrc:` path and this harness has no compiled resources, so no tile widget
             // ever instantiates offscreen. The Loader surviving with an unchanged `wId`
-            // is exactly the condition under which its widget survives — a reload needs
+            // is exactly the condition under which its widget survives - a reload needs
             // either the Loader to be destroyed or its source key to change.)
             var bLoader = root.findPred(b, function (x) { return x && x.wId === "b" })
             verify(bLoader !== null, "found b's tile Loader")
@@ -891,7 +891,7 @@ Item {
             verify(root.cellFor("a") === a, "a's tile is the SAME object after the reorder")
             verify(root.cellFor("c") === c, "the untouched tile c is the SAME object too")
             var bLoader2 = root.findPred(root.cellFor("b"), function (x) { return x && x.wId === "b" })
-            verify(bLoader2 === bLoader, "b's tile Loader is the SAME object — its widget was never torn down")
+            verify(bLoader2 === bLoader, "b's tile Loader is the SAME object - its widget was never torn down")
             compare(bLoader2.wId, "b", "and its source key never changed, so it never reloaded")
             compare(root.tileCells().length, 3, "still exactly three tiles")
             // …and the surviving delegate's store-addressing index followed the move.
@@ -900,7 +900,7 @@ Item {
 
         // A move EASES: the surviving delegate leaves its old pixels behind
         // gradually and arrives at the new ones. (The eye can only follow a tile
-        // it can see travelling — that is the whole fix.)
+        // it can see travelling - that is the whole fix.)
         function test_reorder_eases_the_tile_to_its_new_slot() {
             _theme.reduceMotionPreference = "off"
             compare(_theme.motionPage, 250, "precondition: move easing enabled")
@@ -913,7 +913,7 @@ Item {
             root.store().moveTile(0, 1, 0)
 
             // Frame 0 of the transition: the TARGET slot is already the new one,
-            // but the eased mirror — and therefore the pixels — have not jumped.
+            // but the eased mirror - and therefore the pixels - have not jumped.
             compare(b.pl, 0, "b's target slot updated immediately")
             verify(b.animL > 0, "but it has NOT teleported: the eased mirror is still en route")
             fuzzyCompare(b.y, startY, 1.0, "and its pixels are still at the old slot on frame 0")
@@ -923,7 +923,7 @@ Item {
             verify(b.y < startY - 1, "b ended up further up the page than it started")
         }
 
-        // REDUCE MOTION: smooth is not more motion. The move must be INSTANT —
+        // REDUCE MOTION: smooth is not more motion. The move must be INSTANT -
         // not a 0ms animation that still lands a frame late.
         function test_reduce_motion_makes_a_reorder_instant() {
             _theme.reduceMotionPreference = "on"
@@ -937,9 +937,9 @@ Item {
             // No tryVerify: with the Behavior disabled the write is direct, so the
             // new slot is already in the pixels on this very line.
             compare(b.pl, 0, "b's target slot updated")
-            compare(b.animL, 0, "and the mirror is ALREADY there — no animation ran")
+            compare(b.animL, 0, "and the mirror is ALREADY there - no animation ran")
             verify(b.y < startY - 1, "b's pixels moved instantly, in the same event")
-            verify(root.cellFor("b") === b, "instant, but still the same delegate — not a rebuild")
+            verify(root.cellFor("b") === b, "instant, but still the same delegate - not a rebuild")
             _theme.reduceMotionPreference = "auto"
         }
 
@@ -950,16 +950,16 @@ Item {
             _threeTilePage()
             var a = root.cellFor("a"), c = root.cellFor("c")
 
-            // Remove the MIDDLE tile — c must slide up, not be reborn there.
+            // Remove the MIDDLE tile - c must slide up, not be reborn there.
             root.store().removeTile(0, "b")
             tryVerify(function () { return root.tileCells().length === 2 }, 4000, "b's tile is gone")
             verify(root.cellFor("b") === null, "b really is removed")
             verify(root.cellFor("a") === a, "a survived the removal")
-            verify(root.cellFor("c") === c, "c MOVED into the freed slot — same object, not a rebuild")
+            verify(root.cellFor("c") === c, "c MOVED into the freed slot - same object, not a rebuild")
             tryVerify(function () { return root.slotOf(root.cellFor("c")).l === 1 }, 4000,
                       "c's placement closed the gap")
 
-            // Add a tile — the incumbents keep their delegates.
+            // Add a tile - the incumbents keep their delegates.
             root.store().addTile(0, "disk")
             tryVerify(function () { return root.tileCells().length === 3 }, 4000, "the new tile is placed")
             verify(root.cellFor("a") === a, "a survived the add")
@@ -986,9 +986,9 @@ Item {
             root.store().removeTile(0, "b")
 
             // THE GUARD: the delegate outlives its removal from the packing. With
-            // the row dropped the instant the packer stopped mentioning it — what
-            // it used to do — there is no delegate left on screen to fade at all.
-            verify(root.cellFor("b") === b, "b's delegate outlived the removal — and is the SAME object")
+            // the row dropped the instant the packer stopped mentioning it - what
+            // it used to do - there is no delegate left on screen to fade at all.
+            verify(root.cellFor("b") === b, "b's delegate outlived the removal - and is the SAME object")
             compare(b.dying, true, "its row is held open for one reason only: the fade")
             compare(b.opacity, 1, "which starts from where the tile actually was")
             verify(!b.enabled, "but it is a ghost, not a tile: it can no longer be tapped or edited")
@@ -1000,12 +1000,12 @@ Item {
             tryVerify(function () { return b.opacity < 1 }, 4000, "the exit fade is running")
             tryVerify(function () { return root.cellFor("b") === null }, 4000,
                       "and the cell reaps its own row when the fade ends")
-            compare(root.tileCells().length, 2, "exactly the two survivors remain — no ghost left behind")
-            verify(root.cellFor("c") === c, "c MOVED into the freed slot — same object, not a rebuild")
+            compare(root.tileCells().length, 2, "exactly the two survivors remain - no ghost left behind")
+            verify(root.cellFor("c") === c, "c MOVED into the freed slot - same object, not a rebuild")
 
             // The reap only ever takes a row that is genuinely DYING: it is a fade
             // closing the row it opened, not a general-purpose delete. (`a` is
-            // alive and on screen — reaping it here would delete a tile the store
+            // alive and on screen - reaping it here would delete a tile the store
             // still has, which is precisely what a resurrected row must survive.)
             compare(root.pageItem()._reapRow("a"), false, "_reapRow refuses a row that is not dying")
             compare(root.tileCells().length, 2, "…and really did not remove it")
@@ -1013,7 +1013,7 @@ Item {
                     "and an id it has never heard of is a no-op")
         }
 
-        // REDUCE MOTION: instant, not a fast fade — and not a 0ms animation that
+        // REDUCE MOTION: instant, not a fast fade - and not a 0ms animation that
         // still reaps a frame late. The token is the mechanism: at motionRemove 0
         // the row is never marked dying at all.
         function test_reduce_motion_removes_a_tile_instantly() {
@@ -1025,9 +1025,9 @@ Item {
             root.store().removeTile(0, "b")
 
             // No tryVerify: gone in THIS event.
-            compare(root.cellFor("b"), null, "b is gone immediately — no ghost, not even for a frame")
+            compare(root.cellFor("b"), null, "b is gone immediately - no ghost, not even for a frame")
             compare(root.tileCells().length, 2, "two tiles remain")
-            verify(root.cellFor("c") === c, "and c is still the same delegate — instant is not a rebuild")
+            verify(root.cellFor("c") === c, "and c is still the same delegate - instant is not a rebuild")
             _theme.reduceMotionPreference = "auto"
         }
 
@@ -1055,7 +1055,7 @@ Item {
             wait(_theme.motionRemove * 2 + 50)
             verify(root.cellFor("b") !== null, "b is STILL there once the old fade's window has passed")
             compare(root.store().pages()[0].tiles.length, 3, "…and the store agrees it exists")
-            compare(root.tileCells().length, 3, "three tiles — the resurrected id did not fork a second row")
+            compare(root.tileCells().length, 3, "three tiles - the resurrected id did not fork a second row")
         }
 
         // A destroyed/interrupted exit animation cannot strand its model row
@@ -1083,7 +1083,7 @@ Item {
 
         // THE ENTRANCE. An added tile is the one thing on screen the user just
         // asked for, so it arrives in its own right instead of merely already
-        // being there. It fades in AT its slot — the packer put it where it
+        // being there. It fades in AT its slot - the packer put it where it
         // belongs, so there is no truthful place to fly in from.
         function test_adding_a_tile_fades_it_in_at_its_final_slot() {
             _theme.reduceMotionPreference = "off"
@@ -1094,13 +1094,13 @@ Item {
             var id = root.store().addTile(0, "disk")
             var n = root.cellFor(id)
             verify(n !== null, "the new tile's delegate exists in the same event")
-            compare(n.entering, true, "the page GREW this tile — that is what an entrance is")
+            compare(n.entering, true, "the page GREW this tile - that is what an entrance is")
             compare(n.opacity, 0, "so it starts invisible…")
             // …at its destination: an entrance is not a move.
             compare(n.animS, n.ps, "its eased mirror was BORN at its final slot (short axis)")
             compare(n.animL, n.pl, "…and at its final slot down the long axis")
             verify(root.cellFor("a") === a, "and the incumbent kept its delegate")
-            compare(a.opacity, 1, "the incumbent did not fade with it — only the new tile arrives")
+            compare(a.opacity, 1, "the incumbent did not fade with it - only the new tile arrives")
 
             tryVerify(function () { return n.opacity === 1 }, 4000, "the new tile fades in to full strength")
         }
@@ -1140,14 +1140,14 @@ Item {
 
             verify(root.pageItems()[1]._live, "the new page finished being born")
             compare(root.cellFor("n1").entering, false,
-                    "a tile the page was BORN with is not an entrance — it was always there")
+                    "a tile the page was BORN with is not an entrance - it was always there")
             compare(root.cellFor("n1").opacity, 1, "…so it was never faded in")
             compare(root.cellFor("n2").entering, false, "…and neither was its neighbour")
         }
 
         // ── W3: the edit-mode "Add widget" slot moves like a tile ────────────
-        // It is a real packed placement — the same packer, as a real baseline tile
-        // — so an edit re-packs it too: remove a widget and the slot the next one
+        // It is a real packed placement - the same packer, as a real baseline tile
+        // - so an edit re-packs it too: remove a widget and the slot the next one
         // lands in closes up behind it. It was the one box on an edit-mode page
         // that still teleported while everything around it glided.
         function test_the_add_slot_eases_to_its_new_place_like_a_tile() {
@@ -1195,15 +1195,15 @@ Item {
 
             root.store().removeTile(0, "a")
 
-            compare(slot.animL, p.addPlacement.l, "the mirror is ALREADY at the new slot — nothing animated")
+            compare(slot.animL, p.addPlacement.l, "the mirror is ALREADY at the new slot - nothing animated")
             verify(slot.y < startY - 1, "its pixels moved in the same event")
             ld.item.editMode = false
             _theme.reduceMotionPreference = "auto"
         }
 
         // A ROTATION must stay instant even though a reorder now eases. The two
-        // are separated structurally — easing lives on the SEMANTIC slot, which a
-        // rotation does not touch (it only re-projects it) — so this is the guard
+        // are separated structurally - easing lives on the SEMANTIC slot, which a
+        // rotation does not touch (it only re-projects it) - so this is the guard
         // that the smoothness work did not slow the panel turning down.
         function test_rotation_is_still_instant_not_eased() {
             _theme.reduceMotionPreference = "off"
@@ -1213,7 +1213,7 @@ Item {
 
             root.orient(false)                       // turn the panel
             // THE GUARD: a rotation does not touch the semantic slot at all, so there
-            // is structurally nothing for the ease to act on — it re-projects. (The
+            // is structurally nothing for the ease to act on - it re-projects. (The
             // pixels themselves settle on the next layout pass, as they always did:
             // the SwipeView/Layout chain polishes deferred.)
             compare(b.animL, 1, "the rotation did not disturb the semantic slot")
@@ -1221,7 +1221,7 @@ Item {
             compare(b.animL, 1, "…and still hasn't after the reflow: nothing eased")
             var f = root.pageFlick()
             fuzzyCompare(b.x - _theme.spacingMd / 2, 1 * f.cellLong, 0.51,
-                         "b's long coordinate is the projected X exactly — not a value in flight")
+                         "b's long coordinate is the projected X exactly - not a value in flight")
             root.orient(true)
         }
 
@@ -1232,7 +1232,7 @@ Item {
         // ~0), so "connect CI to a URL" was impossible on-device. Assert the
         // landscape split structurally: the form gets AT LEAST half the
         // overlay, renders real scrollable content, and the preview keeps a
-        // sane share — and portrait still gives the form the full width.
+        // sane share - and portrait still gives the form the full width.
         function overlayOf() {
             return root.findPred(ld.item, function (x) { return x && x.ovlWide !== undefined })
         }
@@ -1257,7 +1257,7 @@ Item {
             verify(panel !== null, "found the WidgetConfigPanel")
             tryVerify(function () { return panel.width >= ovl.width * 0.5 }, 4000,
                       "the FORM gets at least half the overlay width (got " +
-                      panel.width + " of " + ovl.width + ") — the W5 sliver regression")
+                      panel.width + " of " + ovl.width + ") - the W5 sliver regression")
             verify(panel.height > 200, "the form has real height (" + panel.height + "px)")
             verify(panel.schema.sections.length > 0, "httpjson exposes a real config schema")
 
@@ -1295,7 +1295,7 @@ Item {
             d.closeExpanded()
         }
 
-        // A page that fits must never become scrollable — an inert Flickable is what
+        // A page that fits must never become scrollable - an inert Flickable is what
         // keeps the page swipe usable (they share an axis in landscape).
         function test_a_page_that_fits_is_not_scrollable() {
             root.orient(false)
@@ -1311,7 +1311,7 @@ Item {
         // THE SHIPPED PRESETS, on the real Dashboard.
         //
         // tst_preset_catalog asserts the budget against WidgetPacker directly; this
-        // asserts the same property survives all the way to rendered geometry —
+        // asserts the same property survives all the way to rendered geometry -
         // every tile placed, every page one screen or less, nothing scrolling.
         //
         // It used to pin the OPPOSITE (14 of 17 pages over capacity, worst 2.0x) as
@@ -1328,7 +1328,7 @@ Item {
                 root.store().load(id)
                 var pages = root.store().pages()
                 // Every page is instantiated by the SwipeView, so every tile of every
-                // page must be placed — the count is the document's, not page 1's.
+                // page must be placed - the count is the document's, not page 1's.
                 var want = 0
                 for (var p = 0; p < pages.length; p++) want += pages[p].tiles.length
                 tryVerify(function () { return root.laidOut(want, true) }, 4000,
@@ -1354,7 +1354,7 @@ Item {
             verify(checkedPages >= cat.items.length,
                    "every preset contributed at least one rendered page, got " + checkedPages)
             compare(overCapacity, 0,
-                    "NO shipped preset page runs past one screen — over: [" + over.join(", ") + "]")
+                    "NO shipped preset page runs past one screen - over: [" + over.join(", ") + "]")
             compare(worst, 0, "so there is no worst case to report")
         }
     }

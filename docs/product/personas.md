@@ -1,17 +1,17 @@
 # User Personas
 
-**Version:** 0.1.0-draft  
-**Status:** Phase 0 — Discovery  
-**Last Updated:** 2026-07-11  
+**Version:** 0.1.0-draft
+**Status:** Phase 0 - Discovery
+**Last Updated:** 2026-07-11
 
 ---
 
-## Persona 1: Alex — The Productivity-Focused Developer
+## Persona 1: Alex - The Productivity-Focused Developer
 
-**Role:** Senior software engineer, remote worker  
-**Age:** 29  
-**OS:** CachyOS (Arch-based), KDE Plasma on Wayland  
-**Hardware:** Desktop with 3 monitors + Corsair Xeneon Edge in portrait orientation  
+**Role:** Senior software engineer, remote worker
+**Age:** 29
+**OS:** CachyOS (Arch-based), KDE Plasma on Wayland
+**Hardware:** Desktop with 3 monitors + Corsair Xeneon Edge in portrait orientation
 
 ### Goals
 - Keep current task and priorities visible without cluttering primary workspace
@@ -38,12 +38,12 @@ High. Comprehends config files, terminal, and Linux internals. Prefers configura
 
 ---
 
-## Persona 2: Jordan — The ADHD/Attention-Conscious Creative
+## Persona 2: Jordan - The ADHD/Attention-Conscious Creative
 
-**Role:** Freelance designer and writer  
-**Age:** 34  
-**OS:** Ubuntu LTS, GNOME on Wayland  
-**Hardware:** Laptop + Xeneon Edge in landscape below primary monitor  
+**Role:** Freelance designer and writer
+**Age:** 34
+**OS:** Ubuntu LTS, GNOME on Wayland
+**Hardware:** Laptop + Xeneon Edge in landscape below primary monitor
 
 ### Goals
 - Externalize current focus without adding visual noise
@@ -51,7 +51,7 @@ High. Comprehends config files, terminal, and Linux internals. Prefers configura
 - Use visual timers to maintain time awareness
 - Avoid shame-based productivity tools
 - Easily reset and restart when focus drifts
-- Keep the display calm — no aggressive notifications
+- Keep the display calm - no aggressive notifications
 
 ### Frustrations
 - Most productivity tools are judgmental or gamified in manipulative ways
@@ -78,12 +78,12 @@ Moderate. Comfortable with GUI tools and basic terminal. Appreciates sensible de
 
 ---
 
-## Persona 3: Marcus — The Linux Gamer
+## Persona 3: Marcus - The Linux Gamer
 
-**Role:** IT systems administrator, avid gamer  
-**Age:** 26  
-**OS:** CachyOS, KDE Plasma on X11 (for gaming compatibility)  
-**Hardware:** High-end desktop, AMD GPU, Xeneon Edge in landscape above main monitor  
+**Role:** IT systems administrator, avid gamer
+**Age:** 26
+**OS:** CachyOS, KDE Plasma on X11 (for gaming compatibility)
+**Hardware:** High-end desktop, AMD GPU, Xeneon Edge in landscape above main monitor
 
 ### Goals
 - Monitor GPU/CPU temps, FPS, and utilization while gaming
@@ -110,12 +110,12 @@ High. Administers Linux systems professionally. Wants performance and configurab
 
 ---
 
-## Persona 4: Sam — The Ricing Enthusiast
+## Persona 4: Sam - The Ricing Enthusiast
 
-**Role:** Computer science student  
-**Age:** 21  
-**OS:** Arch Linux, Hyprland (Wayland)  
-**Hardware:** Custom build, multiple monitors, Xeneon Edge in portrait  
+**Role:** Computer science student
+**Age:** 21
+**OS:** Arch Linux, Hyprland (Wayland)
+**Hardware:** Custom build, multiple monitors, Xeneon Edge in portrait
 
 ### Goals
 - Create a visually stunning secondary display that matches their desktop aesthetic
@@ -142,12 +142,12 @@ High. Comfortable building from source, writing configs, and contributing to ope
 
 ---
 
-## Persona 5: Taylor — The Non-Technical Remote Worker
+## Persona 5: Taylor - The Non-Technical Remote Worker
 
-**Role:** Marketing manager  
-**Age:** 38  
-**OS:** Ubuntu LTS, GNOME on X11 (corporate IT provisioned)  
-**Hardware:** Company laptop + Xeneon Edge in landscape  
+**Role:** Marketing manager
+**Age:** 38
+**OS:** Ubuntu LTS, GNOME on X11 (corporate IT provisioned)
+**Hardware:** Company laptop + Xeneon Edge in landscape
 
 ### Goals
 - See calendar, tasks, and time at a glance
@@ -174,12 +174,12 @@ Low. Needs GUI for everything. Will abandon the product if it requires terminal 
 
 ---
 
-## Persona 6: Dana — The Widget Developer
+## Persona 6: Dana - The Widget Developer
 
-**Role:** Full-stack developer, open-source contributor  
-**Age:** 31  
-**OS:** Fedora, GNOME on Wayland  
-**Hardware:** Laptop + Xeneon Edge in landscape  
+**Role:** Full-stack developer, open-source contributor
+**Age:** 31
+**OS:** Fedora, GNOME on Wayland
+**Hardware:** Laptop + Xeneon Edge in landscape
 
 ### Goals
 - Build and share widgets for the Xeneon Edge platform

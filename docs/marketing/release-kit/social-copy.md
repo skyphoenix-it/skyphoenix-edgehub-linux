@@ -1,35 +1,36 @@
 # Social and community copy
 
-> **EMBARGOED DRAFTS.** Every “available” or “released” variant is permitted only
-> after the exact artifacts and release evidence are live.
+> **Prepared launch copy.** Post only after the exact artifacts and release
+> evidence are live.
 
 ## Short launch post
 
-> EdgeHub [VERSION] is available: a native Linux dashboard for the Corsair
+> EdgeHub v1.0.0-beta.1 is available: a native Linux dashboard for the Corsair
 > Xeneon Edge. Build touch-first pages from 30 widgets, or edit the running panel
 > live with EdgeHub Manager. Local config, no account, no telemetry
-> implementation. [RELEASE_URL]
+> implementation. https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/releases/tag/v1.0.0-beta.1
 
 Attach: exact-candidate landscape Hub capture or the Hub + Manager composite.
 
 ## Short launch post with Free/Pro clarity
 
-> EdgeHub [VERSION] is out for [VERIFIED_PLATFORM_SUMMARY]. Free includes all 30
-> widgets, 19 presets, layouts, backgrounds, and the full Manager. Pro adds nine
-> optional colour themes—nothing functional is gated. [RELEASE_URL]
+> EdgeHub v1.0.0-beta.1 is out for CachyOS/Arch Linux with KDE Plasma on
+> Wayland. Portable x86-64 builds require Qt 6.5+. Free includes all 30 widgets,
+> 19 presets, layouts, backgrounds, and the full Manager. Pro adds nine optional
+> colour themes; keys are not sold in this beta. https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/releases/tag/v1.0.0-beta.1
 
 Attach: Manager Appearance capture, only if Pro delivery is actually available.
 
 ## Technical launch post
 
-> We released EdgeHub [VERSION], a Rust + Qt 6/QML dashboard for the Corsair
+> We released EdgeHub v1.0.0-beta.1, a Rust + Qt 6/QML dashboard for the Corsair
 > Xeneon Edge. The Hub and desktop Manager sync over a local socket; config stays
 > local, and network-capable features share one egress gate. Code, artifacts,
-> checksums, and test evidence: [RELEASE_EVIDENCE_URL]
+> checksums, and test evidence: https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/blob/v1.0.0-beta.1/docs/testing/hardware-validation-2026-07-21.md
 
 ## LinkedIn
 
-> Today SKYPhoenix IT is releasing EdgeHub [VERSION], a native Linux dashboard
+> Today SKYPhoenix IT is releasing EdgeHub v1.0.0-beta.1, a native Linux dashboard
 > built for the Corsair Xeneon Edge.
 >
 > EdgeHub turns the panel into touch-first pages for system metrics, focus,
@@ -40,7 +41,7 @@ Attach: Manager Appearance capture, only if Pro delivery is actually available.
 > configuration locally, requires no account, and contains no telemetry
 > implementation. The project source is available under MIT OR Apache-2.0.
 >
-> Download and release evidence: [RELEASE_URL]
+> Download and release evidence: https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/releases/tag/v1.0.0-beta.1
 >
 > EdgeHub is independent and is not affiliated with, sponsored by or endorsed
 > by Corsair.
@@ -49,9 +50,10 @@ Attach: Manager Appearance capture, only if Pro delivery is actually available.
 
 **1/3**
 
-> EdgeHub [VERSION] is available for [VERIFIED_PLATFORM_SUMMARY]: a native Linux
-> dashboard for the Corsair Xeneon Edge. 30 widgets, 19 presets, portrait and
-> landscape layouts, and a companion desktop Manager. [RELEASE_URL]
+> EdgeHub v1.0.0-beta.1 is available for CachyOS/Arch Linux with KDE Plasma on
+> Wayland: a native Linux dashboard for the Corsair Xeneon Edge. 30 widgets, 19
+> presets, portrait/landscape layouts, and a companion desktop Manager.
+> https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/releases/tag/v1.0.0-beta.1
 
 **2/3**
 
@@ -63,18 +65,18 @@ Attach: Manager Appearance capture, only if Pro delivery is actually available.
 
 > Free is the complete functional app; Pro adds nine optional colour themes.
 > Config is local, no account is required, and there is no telemetry
-> implementation. Evidence and source: [RELEASE_EVIDENCE_URL]
+> implementation. Evidence and source: https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/blob/v1.0.0-beta.1/docs/testing/hardware-validation-2026-07-21.md
 
 ## Reddit: r/linux / hardware community
 
 **Title:**
 
-> EdgeHub [VERSION] — a native Linux dashboard for the Corsair Xeneon Edge
+> EdgeHub v1.0.0-beta.1 - a native Linux dashboard for the Corsair Xeneon Edge
 
 **Body:**
 
 > I built EdgeHub to make the Xeneon Edge useful as a native Linux panel rather
-> than a spare browser window. [VERSION] includes 30 first-party widgets, 19
+> than a spare browser window. v1.0.0-beta.1 includes 30 first-party widgets, 19
 > preset screens, portrait/landscape layouts, and a desktop Manager that edits
 > the running Hub live over a local socket.
 >
@@ -85,12 +87,13 @@ Attach: Manager Appearance capture, only if Pro delivery is actually available.
 > Free includes every widget, preset, layout feature, background, wallpaper,
 > accent, and the Manager. Pro adds nine optional colour themes only.
 >
-> Verified platform/artifact matrix: [VERIFIED_PLATFORM_SUMMARY] / [SUPPORTED_PACKAGES]
+> Verified environment: CachyOS/Arch Linux, KDE Plasma, Wayland. Published
+> artifacts: signed source and portable x86-64 tarballs with checksums.
 >
-> Release, source, checksums, and evidence: [RELEASE_EVIDENCE_URL]
+> Release, source, checksums, and evidence: https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/blob/v1.0.0-beta.1/docs/testing/hardware-validation-2026-07-21.md
 >
 > This is an independent project and is not affiliated with or endorsed by
-> Corsair. I would especially value reports about [REQUESTED_FEEDBACK_SCOPE].
+> Corsair. I would especially value reports about reconnect behavior, portrait layouts, and installation on other Qt 6.5+ distributions.
 
 ## Show HN
 
@@ -104,7 +107,7 @@ Attach: Manager Appearance capture, only if Pro delivery is actually available.
 > The Hub is Qt 6/QML with a Rust core, and a separate desktop Manager edits the
 > live layout over a local socket.
 >
-> [VERSION] has 30 first-party widgets and 19 presets. Config is local TOML; no
+> v1.0.0-beta.1 has 30 first-party widgets and 19 presets. Config is local TOML; no
 > account is required; there is no telemetry implementation; and configured
 > network features share a central egress gate. The source is MIT OR Apache-2.0.
 >
@@ -113,16 +116,16 @@ Attach: Manager Appearance capture, only if Pro delivery is actually available.
 > reflection, restart durability, and test gates that fail when a suite silently
 > skips.
 >
-> Demo and evidence: [RELEASE_EVIDENCE_URL]
-> Source: https://github.com/skyphoenix-it/XeneonEdge_Linux
+> Demo and evidence: https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/blob/v1.0.0-beta.1/docs/testing/hardware-validation-2026-07-21.md
+> Source: https://github.com/skyphoenix-it/skyphoenix-edgehub-linux
 
-## Pre-release progress post (safe before launch)
+## Pre-release progress post
 
-> EdgeHub's next release is not published yet. The Hub/Manager integration and
-> real Xeneon Edge test pass are complete, but publication remains blocked on
-> the strict candidate gate, package lifecycle evidence, performance limits,
-> long hardware soak, update round trip, and legal/business review. Progress:
-> [PROJECT_STATUS_URL]
+> EdgeHub v1.0.0-beta.1 is prepared but not published yet. Real Edge and
+> Manager/Hub integration testing is complete. The owner accepted release
+> without the planned 48-hour soak; signed portable artifacts are the remaining
+> publication step. Status:
+> https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/blob/master/docs/BETA_PLAN.md
 
 ## Hashtag pool
 

@@ -3,7 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 // ─────────────────────────────────────────────────────────────────────────
-// Dashboard — registry-driven, persistent, touch-editable widget canvas for
+// Dashboard - registry-driven, persistent, touch-editable widget canvas for
 // the Xeneon Edge (2560×720).
 //
 //   • Layout + per-widget state live in DashboardStore (persisted via config).
@@ -39,7 +39,7 @@ Item {
     // through the close fade. closeExpanded() clears expandedType immediately
     // (that is the state machine), but if the loader/header keyed off it, the
     // widget, title and icon would vanish on frame 1 while the empty overlay
-    // card was still fading out — a visible pop. These clear only once the
+    // card was still fading out - a visible pop. These clear only once the
     // overlay is fully hidden (see the overlay's onVisibleChanged); under
     // reduce-motion the fade is 0ms, so they clear in the same event.
     property string shownType: ""
@@ -77,7 +77,7 @@ Item {
     property bool _applyingAppearance: false
 
     // The app-global egress gate, exposed for Diagnostics' Network tab (W5
-    // finding 6). One NetHub exists per app and it lives here — main.qml's
+    // finding 6). One NetHub exists per app and it lives here - main.qml's
     // bindStackItem finds this property on the stack when Diagnostics is
     // opened via Ctrl+D / --diagnostics rather than the ⚙ push below.
     readonly property var netGate: netHub
@@ -101,7 +101,7 @@ Item {
         return !(dis && dis.length && dis.indexOf(type) >= 0)
     }
     // The add-picker's model for one category, with policy-disabled types
-    // removed — "hidden from picker", not greyed out: an option the user can
+    // removed - "hidden from picker", not greyed out: an option the user can
     // never have should not be advertised.
     function policyFilteredWidgets(category) {
         var all = catalog.inCategory(category)
@@ -113,7 +113,7 @@ Item {
     }
 
     // Resolved background for the CURRENT page. A background is ONE coherent
-    // choice — either a wallpaper image OR an animated style — resolved per page
+    // choice - either a wallpaper image OR an animated style - resolved per page
     // then falling back to the global appearance. A per-page choice fully wins:
     // a page that picks an animated style suppresses any GLOBAL wallpaper on that
     // page (and vice-versa), so switching styles/wallpapers always takes effect.
@@ -136,7 +136,7 @@ Item {
     // uncounted egress path that bypasses NetHub's offline/allowlist policy. A local
     // file (absolute path or bare name in the images dir) is resolved through the
     // C++ configBridge.imageUrl() helper so paths containing spaces or '#' are
-    // percent-encoded — naive "file://"+path concatenation produces a malformed
+    // percent-encoded - naive "file://"+path concatenation produces a malformed
     // URL that fails to load for those characters. (The hub exposes configBridge,
     // not the Manager's `backend`.) Falls back to concatenation if absent.
     property string wallpaperSource: {
@@ -154,7 +154,7 @@ Item {
     property bool animatedBg: root.animatedBackground
 
     // ── Background ─────────────────────────────────────────────────────────
-    // Rich 3-stop gradient (theme-driven — vivid for the "fancy" themes).
+    // Rich 3-stop gradient (theme-driven - vivid for the "fancy" themes).
     Rectangle {
         anchors.fill: parent
         gradient: Gradient {
@@ -170,7 +170,7 @@ Item {
     BackdropLayer {
         anchors.fill: parent
         // "Animated background" OFF now genuinely removes the backdrop (plain
-        // gradient shows) rather than leaving it frozen — that's what the toggle
+        // gradient shows) rather than leaving it frozen - that's what the toggle
         // reads as. Reduce-motion, by contrast, KEEPS the backdrop but stops its
         // motion. Gating visible unloads the component entirely (zero cost) when a
         // wallpaper is set, in High-Contrast, or with the animation switched off.
@@ -190,7 +190,7 @@ Item {
         visible: source != ""
         fillMode: Image.PreserveAspectCrop
         asynchronous: true; cache: true
-        // Async decode means the image lands a beat after the page shows —
+        // Async decode means the image lands a beat after the page shows -
         // fade it over the gradient instead of letting it pop in fully formed.
         // (Instant under reduce-motion; a cached source skips Loading entirely.)
         opacity: status === Image.Ready ? 1.0 : 0.0
@@ -201,11 +201,11 @@ Item {
         // Ride the wallpaper's own fade so the scrim can't darken the plain
         // gradient before the image has arrived.
         opacity: wallpaper.opacity
-        // Light scrim only — enough to keep out-of-card text legible without
+        // Light scrim only - enough to keep out-of-card text legible without
         // washing the wallpaper out. Card legibility comes from the frosted glass.
         color: Qt.rgba(theme.backgroundColor.r, theme.backgroundColor.g, theme.backgroundColor.b, 0.28)
     }
-    // Accent glow wash — subtle vibrancy/depth (skipped in high-contrast).
+    // Accent glow wash - subtle vibrancy/depth (skipped in high-contrast).
     Rectangle {
         anchors.fill: parent
         opacity: theme.decorative ? 0.10 : 0.0
@@ -220,7 +220,7 @@ Item {
     // Drive time-based widgets once per second. Runs unconditionally: this is an
     // always-on secondary-display dashboard that is rarely the "active" window, and
     // gating on Qt.application.active previously froze updates (and, since the scene
-    // then never changed, the compositor stopped presenting frames — which made
+    // then never changed, the compositor stopped presenting frames - which made
     // taps appear to do nothing for seconds).
     // SELF-CORRECTING, and it has to be: a plain `interval: 1000; repeat: true`
     // re-arms 1000ms after each HANDLING, so every frame hitch, GC pause or load
@@ -229,7 +229,7 @@ Item {
     // fires, so a drifting tick renders the same second twice (the clock appears to
     // stall) and then skips one (it appears to jump two). Re-aiming at the next real
     // boundary every tick makes the error non-cumulative: a late fire simply shortens
-    // the next wait. The +5ms lands us just PAST the boundary — Qt may fire a hair
+    // the next wait. The +5ms lands us just PAST the boundary - Qt may fire a hair
     // early, and formatting at 999.7ms would show the second we just left.
     function _msToNextSecond() { return Math.max(1, 1000 - (Date.now() % 1000) + 5) }
     Timer {
@@ -244,7 +244,7 @@ Item {
     WidgetCatalog { id: catalog }
     WidgetSizes { id: sizes }
     WidgetPacker { id: packer }
-    // The curated screen library — consumed post-setup by the PresetPicker
+    // The curated screen library - consumed post-setup by the PresetPicker
     // below (W5 finding 3: it used to have no consumer outside the wizard).
     PresetCatalog { id: presetLib }
     // The single app-global egress gate. Every net widget routes through this one
@@ -254,7 +254,7 @@ Item {
     NetHub {
         id: netHub
         // POLICY PIN (E9): an active org policy with net_offline=true holds the
-        // kill switch ON no matter what the user's appearance flag says — this
+        // kill switch ON no matter what the user's appearance flag says - this
         // is what makes the no-egress attestation enforceable rather than
         // advisory. Without a policy, the user's own flag governs, exactly as
         // before.
@@ -264,21 +264,21 @@ Item {
             return store.appearance().netOffline === true
         }
         // POLICY PIN (E9): allowHosts comes from the org policy and nowhere
-        // else — no user-config path assigns this property, so the binding IS
+        // else - no user-config path assigns this property, so the binding IS
         // the pin and user config cannot widen it. (NetHub.request()'s
         // per-request opts.allow would take precedence over this list; no
-        // shipped widget passes it — see docs/security/managed-config.md.)
+        // shipped widget passes it - see docs/security/managed-config.md.)
         allowHosts: (dashboard.managed && dashboard.orgPolicy.allowedHosts)
                     ? dashboard.orgPolicy.allowedHosts : []
         // E7: the hub's ConfigBridge resolves ${env:}/file: credential refs. The
         // Manager has no configBridge (and does no egress), and the QML test
-        // harness has none either — NetHub fails a ref closed when it is absent
+        // harness has none either - NetHub fails a ref closed when it is absent
         // rather than sending the reference as a token.
         secretResolver: (typeof configBridge !== "undefined") ? configBridge : null
     }
     // E10: the opt-in update check. OFF by default (the `updateCheck` appearance
     // flag is written by SettingsPanel); with a default config this constructs
-    // no request — the no-egress attestation depends on that. When enabled, its
+    // no request - the no-egress attestation depends on that. When enabled, its
     // single GET rides the same NetHub gate as every widget.
     UpdateChecker {
         id: updateChecker
@@ -300,7 +300,7 @@ Item {
     // ── Tier-0 user widgets (E3) ─────────────────────────────────────────────
     // Validates manifests scanned from $XDG_DATA_HOME/xeneon-edge-hub/widgets
     // and feeds WidgetCatalog.userItems (see docs/widgets/manifest-spec.md).
-    // Gated by the `enableUserWidgets` appearance flag, DEFAULT OFF — the
+    // Gated by the `enableUserWidgets` appearance flag, DEFAULT OFF - the
     // attested default configuration never scans the directory.
     UserWidgetCatalog {
         id: userCatalog
@@ -320,11 +320,11 @@ Item {
 
     // Whether Tier-0 user widgets are enabled. A plain config read (managed
     // config can pin it), default FALSE. Registration must happen BEFORE the
-    // store loads — persisted tile sizes validate against declared `sizes` —
+    // store loads - persisted tile sizes validate against declared `sizes` -
     // so before the store is loaded this peeks at the same persisted document
     // store.load() is about to read.
     function _userWidgetsFlag() {
-        // The org policy vetoes user widgets OUTRIGHT — before the user's own
+        // The org policy vetoes user widgets OUTRIGHT - before the user's own
         // preference is even consulted. Policy beating preference is the
         // definition of a managed session, and putting the veto here (not at a
         // call site) means every present and future load path inherits it.
@@ -340,7 +340,7 @@ Item {
         return false
     }
 
-    // (Re)load user widgets into BOTH catalog instances — the dashboard's own
+    // (Re)load user widgets into BOTH catalog instances - the dashboard's own
     // (tiles, picker, overlay) and the store's private one (size validation on
     // addTile/setTileSize/load). Flag off → everything cleared and NO scan
     // happens. Returns how many user widgets are registered.
@@ -386,19 +386,19 @@ Item {
     //  • POLICY (E9): an org-forced preset wins over any interactive choice.
     //    The picker surface is already absent under the lock, but the guard
     //    lives HERE so no other caller can ever bypass the policy.
-    //  • "Your theme stays" — and it must stay across RESTART, not just live.
+    //  • "Your theme stays" - and it must stay across RESTART, not just live.
     //    A preset document carries only its character keys (bgStyle/
     //    animatedBg/reduceMotion/glow/presetSurface), so resetTo() would drop
     //    every other persisted appearance key: themeMode/accent would fall
     //    back to the stale legacy [theme] values on the next launch (W5
-    //    finding 15), and — worse — a user's netOffline/updateCheck/
+    //    finding 15), and - worse - a user's netOffline/updateCheck/
     //    enableUserWidgets choices would silently revert to defaults. So every
     //    prior appearance key the preset does not define is carried over.
     //  • Accessibility beats character: an explicit prior reduce-motion
     //    choice survives even though presets DO define reduceMotion. Post-
     //    setup, that flag is the user's a11y setting; a preset that silently
     //    re-enabled motion would repeat the W3 bug class the calm work fixed.
-    //    (In the wizard the preset's character applies untouched — there is
+    //    (In the wizard the preset's character applies untouched - there is
     //    no prior choice to protect there.)
     //
     // Returns whether the preset was applied.
@@ -424,7 +424,7 @@ Item {
     }
 
     // Add a curated screen as a NEW page (additive) and swipe to it. Unlike
-    // applyPreset (wizard/reset — full replace), this never disturbs the user's
+    // applyPreset (wizard/reset - full replace), this never disturbs the user's
     // other pages or the global appearance. Returns whether a page was added.
     function appendPreset(presetId) {
         var idx = store.appendPreset(presetId)   // -1 when managed/locked or unknown id
@@ -509,7 +509,7 @@ Item {
     // Show a specific screen, on request from the Manager (setActivePage). Uses
     // the same robust landing as preset/append (goToPage re-asserts once the
     // SwipeView has grown to fit), so a page request that arrives right after a
-    // structure change — e.g. the Manager added a screen and selected it — still
+    // structure change - e.g. the Manager added a screen and selected it - still
     // lands instead of being clobbered by the model reset to page 0.
     function goToPageExternal(idx) {
         if (idx >= 0)
@@ -521,11 +521,11 @@ Item {
             applyAppearance()
             // The pushed appearance may have flipped `enableUserWidgets` (e.g.
             // a managed config forcing it off): re-run the loader so the flag
-            // takes effect live — off clears the registry without any scan.
+            // takes effect live - off clears the registry without any scan.
             _loadUserWidgets()
             // A live push may have removed (or replaced) the tile we're currently
             // expanded on. Leaving the overlay open would let its config panel keep
-            // writing to an instanceId that no longer exists on any page — an orphan
+            // writing to an instanceId that no longer exists on any page - an orphan
             // settings entry. Close the overlay when its tile is gone.
             if (dashboard.hasExpanded && !_tileExists(dashboard.expandedId))
                 closeExpanded()
@@ -596,13 +596,13 @@ Item {
     // widget asks "have I got room?" instead of re-deriving it from geometry it
     // shouldn't know about.
     //
-    // The derivation itself lives in WidgetSizes.classFor — it is shared with the
+    // The derivation itself lives in WidgetSizes.classFor - it is shared with the
     // Manager's preview, which MUST answer identically or the preview lies. This
     // stays as a named seam because the dashboard is where the rest of the file
     // (and its tests) ask the question.
     function sizeClassFor(size, landscape) { return sizes.classFor(size, landscape) }
 
-    // The next size in this type's own legal list, wrapping around — the edit-mode
+    // The next size in this type's own legal list, wrapping around - the edit-mode
     // resize button. The old fixed 1x1→2x1→1x2→2x2 cycle has NO equivalent: those
     // spans are not sizes, and every widget type now declares which sizes it can
     // honestly render, so the cycle has to be the type's own list or it would offer
@@ -628,7 +628,7 @@ Item {
         item.instanceId = id
         item.store = store
         // How much room it has. The overlay is the whole screen; a tile gets its
-        // span's class. This is DELIBERATELY not `expanded`: see WidgetChrome —
+        // span's class. This is DELIBERATELY not `expanded`: see WidgetChrome -
         // expanded is a mode, sizeClass is room, and every widget used to conflate
         // them by declaring `big: expanded`.
         if (item.hasOwnProperty("sizeClass")) {
@@ -647,7 +647,7 @@ Item {
             item.titleOverride = Qt.binding(function () {
                 store.revision; var s = store.settingsFor(id); return (s && s.title) ? s.title : ""
             })
-        // Per-widget appearance (universal — any widget's WidgetChrome honours these).
+        // Per-widget appearance (universal - any widget's WidgetChrome honours these).
         if (item.hasOwnProperty("accentName"))
             item.accentName = Qt.binding(function () {
                 store.revision; var s = store.settingsFor(id); return (s && s.accent) ? s.accent : ""
@@ -674,14 +674,14 @@ Item {
             interactive: !dashboard.editMode
 
             // Landing on a just-added page fights the SwipeView's internal ListView:
-            // the int-model Repeater grows `count` a frame later, and — crucially — the
+            // the int-model Repeater grows `count` a frame later, and - crucially - the
             // ListView re-derives currentIndex from `contentX` on a DEFERRED relayout
             // (the new page's build, and in landscape the larger swapped contentRoot
             // geometry, settle late), snapping the view back toward page 0 AFTER a
             // one-shot set. So we (1) COMMIT the position with positionViewAtIndex so
             // there is no stale contentX to snap back to, and (2) re-assert on a timer
             // that keeps going until the index has held for a LONG window (~700ms,
-            // spanning the deferred relayout) — not the earlier ~120ms that a late
+            // spanning the deferred relayout) - not the earlier ~120ms that a late
             // reset simply outlived.
             property int _wantIndex: -1
             function _applyWant() {
@@ -726,7 +726,7 @@ Item {
                 // A COUNT, not the pages array. `store.pages()` returns a fresh array
                 // of freshly-cloned page objects on every structure edit (see
                 // DashboardStore._commitStructure: `data = _clone(data)`), and a
-                // Repeater handed a new JS array resets its whole delegate model —
+                // Repeater handed a new JS array resets its whole delegate model -
                 // every page delegate, and with it every tile delegate and every live
                 // widget instance, was destroyed and rebuilt for a single tile move.
                 // That is why a reorder TELEPORTED: there was no delegate left to
@@ -754,7 +754,7 @@ Item {
                     // Which physical axis the long axis lands on. This is the ONLY
                     // place orientation enters a page's layout: the packing below is
                     // orientation-free, so a rotation re-projects it rather than
-                    // re-packing — the dashboard turns WITH the panel instead of
+                    // re-packing - the dashboard turns WITH the panel instead of
                     // reshuffling under the user. (See WidgetPacker.)
                     property bool landscape: width > height
 
@@ -769,22 +769,22 @@ Item {
                     // ── The tile Repeater's model ────────────────────────────
                     // `placements` is a fresh JS array every time it re-packs, so
                     // feeding it to the Repeater directly reset the delegate model on
-                    // every structure edit — same teleport as the page Repeater above,
+                    // every structure edit - same teleport as the page Repeater above,
                     // one level down. This ListModel is SYNCED to `placements` by id
                     // instead: a tile that still exists keeps its row, so it keeps its
-                    // delegate, so it keeps its loaded widget instance — and its new
+                    // delegate, so it keeps its loaded widget instance - and its new
                     // slot arrives as a property change the delegate can EASE to
                     // (see animS/animL on the cell).
                     //
                     // Row order carries no meaning here: a cell is positioned
                     // absolutely from its own (s, l), and the packer never overlaps
                     // two tiles, so there is nothing for row order to decide. Rows are
-                    // therefore patched in place rather than moved — the minimum
+                    // therefore patched in place rather than moved - the minimum
                     // churn that still expresses the edit.
                     //
                     // The model is also where a tile's LIFETIME lives, which is what
                     // lets a removed tile fade instead of blinking out: `dying` keeps
-                    // the row — and therefore the delegate — alive past the packing that
+                    // the row - and therefore the delegate - alive past the packing that
                     // dropped it, and `entering` marks a row the page grew after it was
                     // born. Both are properties of the ROW (a removed tile is exactly
                     // "a row that is no longer in the packing"), so neither is a mode
@@ -797,7 +797,7 @@ Item {
                     // starting state and must not animate in (or every tile would fade
                     // in on every app start, and on every rotation that recreated a
                     // page), while a row appended after it is an add. Monotonic, set
-                    // exactly once at the end of creation — it cannot come to mean
+                    // exactly once at the end of creation - it cannot come to mean
                     // anything else later.
                     property bool _live: false
 
@@ -818,14 +818,14 @@ Item {
                                   ps: p.s, pl: p.l, pes: p.es, pel: p.el,
                                   dying: false, entering: false })
                     }
-                    // Drop a faded-out row. Called by the cell when its exit fade ends —
+                    // Drop a faded-out row. Called by the cell when its exit fade ends -
                     // by id, because rows shift as others are reaped.
                     //
                     // Only a DYING row may be reaped: this is a fade closing the row it
                     // opened, not a general-purpose delete. A row resurrected mid-fade
                     // (see _syncPlacements) is live again and must survive the animation
                     // that was removing it. That is belt-and-braces with the cell's
-                    // `exitFade.stop()` — measured: either one alone is enough today, so
+                    // `exitFade.stop()` - measured: either one alone is enough today, so
                     // this recheck is not load-bearing for the resurrection path. It is
                     // kept because it is what makes the RULE true of the function itself
                     // rather than of its one caller, and a lifetime rule should not have
@@ -849,8 +849,8 @@ Item {
                     //
                     // A `dying` row is normally removed by _reapRow from the cell's
                     // exitFade.onFinished. If the delegate is destroyed before that
-                    // callback runs — page teardown, a model reset, a sync racing the
-                    // fade — the row is STRANDED: it matches no placement, so the
+                    // callback runs - page teardown, a model reset, a sync racing the
+                    // fade - the row is STRANDED: it matches no placement, so the
                     // removal loop skips it (already dying) and the survivor loop
                     // `continue`s past it. Nothing else can reach it, so it stays in
                     // placementModel for the process lifetime and the model grows
@@ -858,7 +858,7 @@ Item {
                     // avoids this by clearing the model on a page switch; the hub's
                     // per-page models never get that reseed, so they need this instead.)
                     //
-                    // The margin is deliberately wide — 4x the fade, floor 2s — so this
+                    // The margin is deliberately wide - 4x the fade, floor 2s - so this
                     // can never race a fade that is merely slow. It is a backstop for
                     // fades that are GONE, not a second reaper.
                     function _sweepStaleDying() {
@@ -875,7 +875,7 @@ Item {
                             }
                         }
                     }
-                    // Returns how many rows the model ended up with — one per placed
+                    // Returns how many rows the model ended up with - one per placed
                     // tile, plus any still fading out. (Same shape as _loadUserWidgets
                     // above: a count the caller and the tests can check the sync
                     // against.)
@@ -889,13 +889,13 @@ Item {
                         // the row is marked `dying` and the cell reaps it when its fade
                         // ends (see the exit fade below).
                         //
-                        // REDUCE MOTION: the duration token does the real work — at
+                        // REDUCE MOTION: the duration token does the real work - at
                         // motionRemove 0 the exit fade finishes SYNCHRONOUSLY when it is
                         // started, so the row is reaped in this same event even by the
                         // `dying` path (measured: dropping this branch does NOT make the
                         // removal observably late). The branch is kept as the explicit
                         // statement of intent, and to skip marking, animating and reaping
-                        // a row for a fade that cannot be seen — not as the mechanism.
+                        // a row for a fade that cannot be seen - not as the mechanism.
                         // Smooth is not more motion.
                         // Stranded rows from fades that never completed. Runs first so a
                         // swept row cannot be counted as a survivor below.
@@ -924,12 +924,12 @@ Item {
                             var p = byId[row.tileId]
                             // A row with no placement is one of the dying rows above,
                             // held open only for its fade. It is not in the packing, so
-                            // there is nothing to reconcile it against — and reading
+                            // there is nothing to reconcile it against - and reading
                             // `p.s` off it would throw.
                             if (p === undefined) continue
                             seen[row.tileId] = true
                             // Resurrection: this id was fading out and is back (an undo,
-                            // or a live push that re-adds it). Cancel the exit — the tile
+                            // or a live push that re-adds it). Cancel the exit - the tile
                             // exists, so it must not vanish when a fade nobody is watching
                             // any more happens to finish.
                             if (row.dying) {
@@ -944,7 +944,7 @@ Item {
 
                         // Genuinely new tiles → append. A new delegate is born at its
                         // final slot (a Behavior does not fire on initial binding), so
-                        // an add slides its NEIGHBOURS and never itself — the tile's own
+                        // an add slides its NEIGHBOURS and never itself - the tile's own
                         // arrival is the `entering` fade instead. Only once the page is
                         // `_live`, and only while the token allows it: the rows that seed
                         // a page are not an add, and reduce-motion means there is no
@@ -993,9 +993,9 @@ Item {
 
                     // Page body. CAPACITY POLICY: one page = one screen, and a screen
                     // the user can build NEVER scrolls. The store enforces this at the
-                    // source — addTile and setTileSize REFUSE any change that would push
+                    // source - addTile and setTileSize REFUSE any change that would push
                     // a page past the 2x6 half-cell budget (DashboardStore.pageHasRoomFor)
-                    // — so every page created through the Hub or Manager packs to
+                    // - so every page created through the Hub or Manager packs to
                     // longExtent <= longHalves and the content exactly fills the screen,
                     // leaving `interactive` false. When a page is full the add affordance
                     // is HIDDEN rather than parked off-screen where it could not be
@@ -1004,7 +1004,7 @@ Item {
                     // `interactive` is gated on the REAL extent (not hard-false) purely
                     // as a data-safety fallback: a LEGACY config saved before this policy
                     // could still carry an overlong page, and letting it scroll keeps
-                    // every tile reachable — strictly better than clipping tiles out of
+                    // every tile reachable - strictly better than clipping tiles out of
                     // sight. Such a page shrinks back under budget the moment it is edited.
                     //
                     // The fixed 2x6 grid sizes the CELL, not the page: `1x1` is always a
@@ -1041,7 +1041,7 @@ Item {
                                 id: cell
                                 // The placement's roles. NOT the Repeater's `index`:
                                 // that counts rows, and every store call here addresses
-                                // the TILE array — `tileIdx` is that index.
+                                // the TILE array - `tileIdx` is that index.
                                 required property string tileId
                                 required property string tileType
                                 required property string tileSize
@@ -1059,7 +1059,7 @@ Item {
 
                                 // ── The exit ──────────────────────────────────
                                 // A removed tile used to blink out of existence while
-                                // its neighbours glided into the space it left — the one
+                                // its neighbours glided into the space it left - the one
                                 // motion on screen belonged to everything EXCEPT the
                                 // thing the user actually acted on.
                                 //
@@ -1068,7 +1068,7 @@ Item {
                                 // is the thing that is held open (`dying`, set by
                                 // _syncPlacements) and this cell is what closes it: when
                                 // the fade ends, it reaps its own row. That keeps the
-                                // lifetime in ONE place — no delegate can be orphaned by
+                                // lifetime in ONE place - no delegate can be orphaned by
                                 // a fade that never ran, because the only thing that
                                 // starts a fade is the role that also holds the row open.
                                 //
@@ -1084,7 +1084,7 @@ Item {
                                 onDyingChanged: {
                                     // Only ever one animation owns `opacity`. A tile can
                                     // be removed inside its own entrance (add a widget,
-                                    // think better of it, hit remove — 200ms is easy to
+                                    // think better of it, hit remove - 200ms is easy to
                                     // beat), and two animations writing the same property
                                     // every tick fight rather than blend.
                                     if (cell.dying) { enterFade.stop(); exitFade.start() }
@@ -1105,8 +1105,8 @@ Item {
                                 // belongs and there is no truthful "from" to fly from.
                                 //
                                 // `entering` is decided once, when the row is appended
-                                // (see _syncPlacements), so a rotation — which never
-                                // appends — cannot trigger it, and reduce-motion means it
+                                // (see _syncPlacements), so a rotation - which never
+                                // appends - cannot trigger it, and reduce-motion means it
                                 // is never set and `opacity` stays bound at 1.
                                 Component.onCompleted: if (cell.entering) enterFade.start()
                                 NumberAnimation {
@@ -1131,16 +1131,16 @@ Item {
                                 //     dashboard turns WITH the panel; it must not
                                 //     appear to reflow).
                                 //
-                                // No flag, no settling timer — the distinction is
+                                // No flag, no settling timer - the distinction is
                                 // structural, so it cannot drift out of sync.
                                 //
-                                // REDUCE MOTION: the duration token does the real work —
+                                // REDUCE MOTION: the duration token does the real work -
                                 // motionPage is 0, and a 0ms Behavior animation already
                                 // lands its end value synchronously on write (measured:
                                 // dropping this `enabled` gate does NOT make the move
                                 // observably late). The gate is kept as the explicit
                                 // statement of intent, and to skip starting an animation
-                                // object per tile per edit for a value that cannot move —
+                                // object per tile per edit for a value that cannot move -
                                 // not as the mechanism. Smooth is not more motion.
                                 property real animS:  cell.ps
                                 property real animL:  cell.pl
@@ -1168,7 +1168,7 @@ Item {
                                 scale: tapMA.pressed && !dashboard.editMode ? 0.98 : 1.0
                                 Behavior on scale { NumberAnimation { duration: theme.motionFast; easing.type: Easing.OutCubic } }
 
-                                // Body taps NO LONGER open config — only the top-right
+                                // Body taps NO LONGER open config - only the top-right
                                 // corner button does (see below). This frees the whole
                                 // widget body for the widget's own in-place controls
                                 // (start a timer, log a glass, toggle a task…) so basic
@@ -1197,8 +1197,8 @@ Item {
                                     }
                                 }
 
-                                // Error boundary: a tile whose type is unknown/removed —
-                                // or disabled by org policy (E9) — renders the fallback
+                                // Error boundary: a tile whose type is unknown/removed -
+                                // or disabled by org policy (E9) - renders the fallback
                                 // card instead of a blank, confusing tile.
                                 //
                                 // Deliberately NOT gated on `wType !== ""`: a real tile
@@ -1206,7 +1206,7 @@ Item {
                                 // most Unavailable a tile can be, and it must not fall
                                 // through to a silent blank card. Previously `type` was
                                 // read straight off the placement object, so a typeless
-                                // tile arrived here as `undefined` — which passed a
+                                // tile arrived here as `undefined` - which passed a
                                 // `!== ""` test by accident and showed the card. Now the
                                 // role is coerced to "" (see _row), so the condition has
                                 // to say what it always meant.
@@ -1244,7 +1244,7 @@ Item {
                                     Rectangle {
                                         anchors.fill: parent; anchors.margins: theme.spacingXs
                                         radius: theme.radiusSm
-                                        // `pressed`, not just hover: this is a touchscreen —
+                                        // `pressed`, not just hover: this is a touchscreen -
                                         // a finger on the target must light it up.
                                         color: cfgMA.pressed ? Qt.rgba(1, 1, 1, 0.16)
                                              : cfgMA.containsMouse ? Qt.rgba(1, 1, 1, 0.10) : "transparent"
@@ -1274,7 +1274,7 @@ Item {
                                 // ── Edit-mode overlay: reorder + remove ──
                                 Rectangle {
                                     anchors.fill: parent
-                                    // Fade in/out with the mode switch — the scrim +
+                                    // Fade in/out with the mode switch - the scrim +
                                     // controls used to appear on a hard cut, which is
                                     // exactly the "abrupt property jump" class of clunk.
                                     // motionEdit is already 0 under reduce-motion.
@@ -1303,7 +1303,7 @@ Item {
                                             Layout.preferredWidth: theme.touchSecondary; Layout.preferredHeight: theme.touchSecondary
                                             radius: width / 2; color: theme.cardBackgroundAlt; border.width: 1; border.color: theme.cardBorder
                                             // `idx` is the tile's index in the store's tile
-                                            // ARRAY, which is what moveTile addresses —
+                                            // ARRAY, which is what moveTile addresses -
                                             // the delegate's own index counts placements,
                                             // and the two only coincide by luck.
                                             visible: cell.tileIdx > 0
@@ -1329,7 +1329,7 @@ Item {
                                                 onClicked: store.moveTile(pageItem.index, cell.tileIdx, cell.tileIdx + 1) }
                                         }
                                         // Resize: step through THIS widget type's own legal
-                                        // sizes. Hidden for a type with only one — a button
+                                        // sizes. Hidden for a type with only one - a button
                                         // that provably cannot do anything should not be
                                         // offered.
                                         Rectangle {
@@ -1350,8 +1350,8 @@ Item {
                         }
 
                         // "Add widget" placeholder tile (edit mode only). It sits in the
-                        // slot the next widget would ACTUALLY land in — it is packed by
-                        // the same packer, as a real baseline tile — so the affordance
+                        // slot the next widget would ACTUALLY land in - it is packed by
+                        // the same packer, as a real baseline tile - so the affordance
                         // shows where the thing it adds will go rather than guessing.
                         Loader {
                             id: addTile
@@ -1370,7 +1370,7 @@ Item {
                             // It is a real packed placement, so an edit re-packs it just
                             // like a tile: remove a widget and the slot where the next
                             // one lands closes up behind it. It used to JUMP there while
-                            // every tile around it glided — the one box on an edit-mode
+                            // every tile around it glided - the one box on an edit-mode
                             // page that teleported.
                             //
                             // Same shape as a tile's (animS/animL on the cell above) and
@@ -1379,8 +1379,8 @@ Item {
                             //
                             // This needs no flag and no ordering against
                             // _syncPlacements. The add slot is a function of the page's
-                            // TILES, not of the tile model — the two bindings read the
-                            // same `tiles` and never each other — so whichever runs
+                            // TILES, not of the tile model - the two bindings read the
+                            // same `tiles` and never each other - so whichever runs
                             // first, this one still eases from wherever it was to
                             // wherever the packer now puts it. Only the EXTENT is read
                             // straight through: the add slot is always one baseline
@@ -1462,7 +1462,7 @@ Item {
             }
 
             // E9: ONE always-visible line saying the hub is under org
-            // management — in the bottom bar, not buried in a submenu.
+            // management - in the bottom bar, not buried in a submenu.
             Text {
                 visible: dashboard.managed
                 text: "Managed by your organization"
@@ -1495,18 +1495,18 @@ Item {
                 }
             }
 
-            // Add widget (edit mode) — always reachable, even on a full screen where
+            // Add widget (edit mode) - always reachable, even on a full screen where
             // the in-page "＋" ghost is hidden; the store puts it here or on a new
             // screen as it fits. Targets the page currently in view.
             BarButton { iconName: "ui-plus"; visible: dashboard.editMode
                         onClicked: { picker.pageIndex = swipeView.currentIndex; picker.shown = true } }
-            // Add page (edit mode) — land ON the new page (matches the Manager).
+            // Add page (edit mode) - land ON the new page (matches the Manager).
             // goToPage applies the index once the int-model SwipeView grows to fit;
             // setting it synchronously raced the model growth (snapped back to page 0
             // and bled the new page's overlay onto the first screen).
             BarButton { iconName: "ui-add-page"; visible: dashboard.editMode
                         onClicked: { store.addPage(""); swipeView.goToPage(store.pageCount() - 1) } }
-            // Remove current page (edit mode, keep ≥1) — re-clamp the index so the
+            // Remove current page (edit mode, keep ≥1) - re-clamp the index so the
             // view never points past the new end after deleting the last page.
             BarButton { iconName: "ui-del-page"; visible: dashboard.editMode && store.pageCount() > 1
                         onClicked: { var i = swipeView.currentIndex; store.removePage(i)
@@ -1589,7 +1589,7 @@ Item {
             }
         }
 
-        // Modal input barrier — absorbs every tap so nothing reaches the
+        // Modal input barrier - absorbs every tap so nothing reaches the
         // dashboard behind. Declared before the header/content, which stay on top.
         MouseArea {
             anchors.fill: parent
@@ -1640,7 +1640,7 @@ Item {
             }
         }
 
-        // Content — FILLS the whole area below the header: a live preview of the
+        // Content - FILLS the whole area below the header: a live preview of the
         // widget plus a full, scrollable configuration panel (descriptions +
         // every option). Portrait stacks them; landscape places them side by side.
         property bool ovlWide: overlay.width > overlay.height
@@ -1657,8 +1657,8 @@ Item {
             // ── Live, interactive widget ──
             // W5 BLOCKER (finding 2): in landscape both columns declared
             // fillWidth, and a GridLayout hands the stretch out in proportion
-            // to preferred widths — the preview's 0.46×width against the
-            // config panel's implicit ~0 — so the FORM collapsed to a ~10px
+            // to preferred widths - the preview's 0.46×width against the
+            // config panel's implicit ~0 - so the FORM collapsed to a ~10px
             // sliver and on-device configuration ("connect CI to a URL",
             // per-widget backdrop…) was impossible on a landscape mount.
             // The landscape split is now explicit: the preview takes a FIXED
@@ -1723,7 +1723,7 @@ Item {
                     MouseArea {
                         id: resetMA; anchors.fill: parent
                         // Deep-clones the defaults (so array/object defaults aren't
-                        // shared across widgets) + drops stale keys — see the store.
+                        // shared across widgets) + drops stale keys - see the store.
                         onClicked: {
                             store.resetSettings(dashboard.shownId, catalog.defaults(dashboard.shownType))
                             dashboard.cfgStatus = ""
@@ -1736,7 +1736,7 @@ Item {
             WidgetConfigPanel {
                 Layout.fillWidth: true; Layout.fillHeight: true
                 // The form may never be starved below half the overlay in
-                // landscape — this panel is the only way to configure a
+                // landscape - this panel is the only way to configure a
                 // widget on-device (W5 blocker 2).
                 Layout.minimumWidth: overlay.ovlWide ? Math.round(overlay.width * 0.5) : 0
                 // User widgets carry their form in the manifest; shipped ones
@@ -1807,7 +1807,7 @@ Item {
                     }
                 }
                 // A screen never scrolls, so when it is full the next widget simply
-                // starts a new screen. Say so up front — it is helpful, not a blocker.
+                // starts a new screen. Say so up front - it is helpful, not a blocker.
                 Rectangle {
                     Layout.fillWidth: true
                     visible: (store.structureRevision, store.pageIsFull(picker.pageIndex))
@@ -1848,7 +1848,7 @@ Item {
                                         delegate: Rectangle {
                                             required property var modelData
                                             width: 200; height: theme.touchPrimary; radius: theme.radiusMd
-                                            // Touchscreens have no hover — react to `pressed` so a tap
+                                            // Touchscreens have no hover - react to `pressed` so a tap
                                             // gives real feedback (containsMouse alone did nothing).
                                             color: pickMA.pressed ? Qt.rgba(theme.accent.r, theme.accent.g, theme.accent.b, 0.22)
                                                    : (pickMA.containsMouse ? theme.cardBackgroundAlt : theme.backgroundColor)
@@ -1905,9 +1905,9 @@ Item {
         onPresetsRequested: { settings.shown = false; presetPicker.shown = true }
     }
 
-    // Post-setup preset library ("Screens", W5 finding 3) — opened from the
+    // Post-setup preset library ("Screens", W5 finding 3) - opened from the
     // settings sheet. A screen is ADDED as a new page (additive), never replacing
-    // the user's layout — that's the wizard's/reset's job (applyPreset).
+    // the user's layout - that's the wizard's/reset's job (applyPreset).
     PresetPicker {
         id: presetPicker
         catalog: presetLib

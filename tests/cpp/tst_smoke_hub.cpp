@@ -41,7 +41,7 @@ private slots:
     void grabsAndExitsClean() {
         // The grab hook is compiled out unless -DXENEON_QA_HOOKS=ON (product
         // builds must ignore XENEON_GRAB). Without it the hub renders normally
-        // and never exits, so this test can only time out — skip with the real
+        // and never exits, so this test can only time out - skip with the real
         // reason instead. scripts/run_cpp_tests.sh and CI both configure it ON.
         if (!QA_HOOKS_BUILD)
             QSKIP("hub built without XENEON_QA_HOOKS: XENEON_GRAB is compiled out, "

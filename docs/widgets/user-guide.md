@@ -1,6 +1,6 @@
 # Widget User Guide
 
-**Work in progress** — This guide will be completed in Phase 3 (Core Widgets).
+**Work in progress** - This guide will be completed in Phase 3 (Core Widgets).
 
 ## Overview
 
@@ -9,39 +9,39 @@ Widgets are the building blocks of your dashboard. Each widget displays informat
 ## Widget Categories
 
 ### System Widgets
-- **Clock** — Current time and date
-- **CPU Usage** — CPU utilization and temperature
-- **RAM Usage** — Memory utilization
-- **Disk Usage** — Storage space per mount point
-- **Network Throughput** — Upload/download speeds per interface
+- **Clock** - Current time and date
+- **CPU Usage** - CPU utilization and temperature
+- **RAM Usage** - Memory utilization
+- **Disk Usage** - Storage space per mount point
+- **Network Throughput** - Upload/download speeds per interface
 
 ### Productivity Widgets
-- **Focus Timer** — Countdown/up timer for focus sessions
-- **Current Goal** — Single focused objective
-- **Top-Three Priorities** — Editable checklist
-- **Quick Note** — Auto-saving scratchpad
-- **Break Reminder** — Periodic gentle reminders
+- **Focus Timer** - Countdown/up timer for focus sessions
+- **Current Goal** - Single focused objective
+- **Top-Three Priorities** - Editable checklist
+- **Quick Note** - Auto-saving scratchpad
+- **Break Reminder** - Periodic gentle reminders
 
 ### Media Widgets
-- **Media Control** — Playback controls for any MPRIS player
+- **Media Control** - Playback controls for any MPRIS player
 
 ### Control Widgets
-- **Application Launcher** — Launch apps from .desktop entries
-- **Page Switcher** — Navigate between dashboard pages
-- **Lock Screen** — Lock the system
+- **Application Launcher** - Launch apps from .desktop entries
+- **Page Switcher** - Navigate between dashboard pages
+- **Lock Screen** - Lock the system
 
 ## Widget Interactions
 
 ### View Mode
-- **Tap** — Primary widget action (e.g., pause timer, toggle view)
-- **Long press** — Context menu (configure, remove, duplicate)
-- **Swipe** — Scroll content within widget (if applicable)
+- **Tap** - Primary widget action (e.g., pause timer, toggle view)
+- **Long press** - Context menu (configure, remove, duplicate)
+- **Swipe** - Scroll content within widget (if applicable)
 
 ### Edit Mode
-- **Drag** — Move widget to a new position
-- **Drag corner/edge** — Resize widget
-- **Tap ⚙** — Open widget configuration
-- **Tap ✕** — Remove widget
+- **Drag** - Move widget to a new position
+- **Drag corner/edge** - Resize widget
+- **Tap ⚙** - Open widget configuration
+- **Tap ✕** - Remove widget
 
 ## Adding Widgets
 

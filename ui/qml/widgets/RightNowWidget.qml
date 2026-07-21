@@ -2,19 +2,19 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// "Right Now" — one single thing to focus on (ADHD single-tasking aid).
+// "Right Now" - one single thing to focus on (ADHD single-tasking aid).
 // Persisted; the compact tile shows it large, the expanded view lets you set it.
 //
 // Two things here are legitimately keyed off the MODE rather than the room, and
 // both stay:
-//   • `showHeader: expanded` — chrome-header CONTENT, not a dimension. Tiles are
+//   • `showHeader: expanded` - chrome-header CONTENT, not a dimension. Tiles are
 //     headerless at every size by design (the eyebrow carries the identity); the
 //     overlay, a titled view of one widget, gets a header.
-//   • the tile/editor split (`visible: !w.expanded` / `visible: w.expanded`) —
+//   • the tile/editor split (`visible: !w.expanded` / `visible: w.expanded`) -
 //     two genuinely different VIEWS, not one view at two scales. A tile displays
 //     the focus; the overlay is where you type it. Room does not make a display
 //     into an editor.
-// Only the celebration banner was a SIZE wearing the mode's clothes — see
+// Only the celebration banner was a SIZE wearing the mode's clothes - see
 // celebratePx.
 WidgetChrome {
     id: w
@@ -46,7 +46,7 @@ WidgetChrome {
         return cfg.day === key ? (cfg.finishedToday || 0) : 0
     }
     function setText(t) { if (store && t !== w.current) store.setSetting(instanceId, "text", t) }
-    // Finishing a focus is a small win — count it and celebrate, then clear.
+    // Finishing a focus is a small win - count it and celebrate, then clear.
     // Operates on the visible text when given (Done!), else the saved focus.
     function finish(explicitText) {
         var t = explicitText !== undefined ? explicitText : w.current
@@ -63,7 +63,7 @@ WidgetChrome {
     // baseline tile has more room than the overlay's live-preview pane and still
     // popped at 22, while the overlay kept its 40 after W5 shrank that pane to 38%
     // of the width in landscape (~941x456 there, ~656x980 stacked in portrait).
-    // Both axes bind — a wide-but-short pane must not overreach — and 40 stays the
+    // Both axes bind - a wide-but-short pane must not overreach - and 40 stays the
     // designed ceiling.
     readonly property real celebratePx: Math.max(12, Math.min(width * 0.055,
                                                               height * 0.075, 40))
@@ -101,8 +101,8 @@ WidgetChrome {
     readonly property bool micro: sizeClass === "compact" && Math.min(width, height) < 480
     readonly property bool horiz: sizeClass === "wide"
     // What each size earns: micro is the focus text alone (a pure cue); every
-    // larger size adds the eyebrow (identity — the header is hidden on tiles),
-    // the daily momentum line, and a Done button — the single most useful
+    // larger size adds the eyebrow (identity - the header is hidden on tiles),
+    // the daily momentum line, and a Done button - the single most useful
     // action, so a finished focus doesn't need a trip through the overlay.
     readonly property bool showEyebrow: !micro
     readonly property bool showDoneTile: !micro && hasFocus

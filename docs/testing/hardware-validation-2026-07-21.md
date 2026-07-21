@@ -1,4 +1,4 @@
-# Real-hardware validation — 2026-07-21
+# Real-hardware validation - 2026-07-21
 
 ## Outcome
 
@@ -42,7 +42,7 @@ closed every automatable real-input suite on the current KDE Wayland session.
 
 ## Findings and fixes
 
-### F-01 — Release build blocked by an invalid hermetic-test API call
+### F-01 - Release build blocked by an invalid hermetic-test API call
 
 - Status: fixed and verified.
 - Reproduction: `cmake --build build`.
@@ -53,7 +53,7 @@ closed every automatable real-input suite on the current KDE Wayland session.
 - Fix: use `XENEON_REQUIRE_HERMETIC_ENV()` and remove the invalid test slot.
 - Verification: final Release build passed; C++ QtTest passed 22/22.
 
-### F-02 — Release build blocked by an invalid QtTest assertion
+### F-02 - Release build blocked by an invalid QtTest assertion
 
 - Status: fixed and verified.
 - Symptom: `tests/cpp/tst_mpris_state.cpp` passed three arguments to the
@@ -62,7 +62,7 @@ closed every automatable real-input suite on the current KDE Wayland session.
   assertion and diagnostic.
 - Verification: final Release build passed; C++ QtTest passed 22/22.
 
-### F-03 — Valid local QML URL discarded by the wallpaper security filter
+### F-03 - Valid local QML URL discarded by the wallpaper security filter
 
 - Status: fixed and verified.
 - Reproduction: `tst_dashboard.qml::test_wallpaper_source_is_local_only`.
@@ -74,7 +74,7 @@ closed every automatable real-input suite on the current KDE Wayland session.
   local/qrc allowlist.
 - Verification: targeted test passed and the full QML rerun passed 93/93 files.
 
-### F-04 — Manager offline-preview test inspected unstable object ownership
+### F-04 - Manager offline-preview test inspected unstable object ownership
 
 - Status: fixed and verified.
 - Reproduction: `tst_manager.qml::test_config_preview_is_offline_by_construction`.
@@ -87,7 +87,7 @@ closed every automatable real-input suite on the current KDE Wayland session.
   counters directly.
 - Verification: targeted test passed and the full QML rerun passed 93/93 files.
 
-### F-05 — Physical mouse sensor churn blocks the owner-idle safety gate
+### F-05 - Physical mouse sensor churn blocks the owner-idle safety gate
 
 - Status: isolated to the test environment; safety behavior verified; approved
   workaround completed and fully restored.
@@ -112,7 +112,7 @@ closed every automatable real-input suite on the current KDE Wayland session.
   full Edge E2E passed 269/269, including 54 touch swipes during the 1,200-second
   soak. No kill-switch abort occurred.
 
-### F-06 — Hub→Manager reflection suite injected a redundant desktop click
+### F-06 - Hub→Manager reflection suite injected a redundant desktop click
 
 - Status: fixed and verified.
 - Cause: the real Manager already starts on Screens, but the reflection suite
@@ -127,7 +127,7 @@ closed every automatable real-input suite on the current KDE Wayland session.
 - Verification: real Hub + real Manager reflection passed 8/8; hardware contract
   tests passed 9/9.
 
-### F-07 — Mixed-DPI screenshot crops produced false lifecycle failures
+### F-07 - Mixed-DPI screenshot crops produced false lifecycle failures
 
 - Status: fixed and verified.
 - Reproduction: the first real display-lifecycle pass at 125% scale.
@@ -143,7 +143,7 @@ closed every automatable real-input suite on the current KDE Wayland session.
   missing-target checks. The fixed 125% crop measured a dark/light distance of
   about 349, confirming that the Hub had rendered correctly.
 
-### F-08 — Manager hardware test used a soon-to-be-removed Pillow API
+### F-08 - Manager hardware test used a soon-to-be-removed Pillow API
 
 - Status: fixed and verified.
 - Observation: the approved Manager input run emitted a deprecation warning for
@@ -158,11 +158,11 @@ closed every automatable real-input suite on the current KDE Wayland session.
 ### Automated and mocked/offscreen
 
 - Final Release build: PASS.
-- Rust: PASS — 242 tests; clippy on all targets with warnings denied; fmt check.
-- C++ QtTest: PASS — 22/22 against temporary `XDG_CONFIG_HOME`.
-- QML offscreen suite: PASS — 93/93 files after F-03/F-04.
-- Hardware safety tests: PASS — 23/23.
-- Hardware E2E contract tests: PASS — 9/9 after F-06.
+- Rust: PASS - 242 tests; clippy on all targets with warnings denied; fmt check.
+- C++ QtTest: PASS - 22/22 against temporary `XDG_CONFIG_HOME`.
+- QML offscreen suite: PASS - 93/93 files after F-03/F-04.
+- Hardware safety tests: PASS - 23/23.
+- Hardware E2E contract tests: PASS - 9/9 after F-06.
 - Python compile checks: PASS for the modified/new hardware drivers.
 - These checks are automated or mocked/offscreen and are not counted as physical
   interaction evidence.
@@ -176,17 +176,17 @@ closed every automatable real-input suite on the current KDE Wayland session.
   glass, and glow changes.
 - Real IPC: PASS for malformed/partial/oversized input survival; p50 `0.02 ms`,
   p99 `0.11 ms` over 200 requests; 20/20 concurrent replies.
-- Real 1,200-second approved soak: PASS — 2,169 mixed cycles, Hub alive, 54
+- Real 1,200-second approved soak: PASS - 2,169 mixed cycles, Hub alive, 54
   successful touch swipes under load, no abort, no OOM. Sampled Hub RSS stayed
   approximately 627–630 MiB with 35–37 threads and no upward leak trend.
 - Real Manager chrome grabs: PASS for dark, light, and default states with no
   render errors.
-- Real Hub→Manager reflection: PASS 8/8 — page chips, theme recolor, portrait,
+- Real Hub→Manager reflection: PASS 8/8 - page chips, theme recolor, portrait,
   landscape, auto-orientation, and final Hub liveness.
 - Real Manager input/integration runner: PASS 53/53 across all five suites:
   tab navigation/liveness 11/11; 14-widget capacity spill 20/20; page mirror 8/8;
   Hub→Manager reflection 8/8; drag reorder 6/6.
-- Real KDE Wayland display lifecycle: PASS 18/18 — initial placement, restart,
+- Real KDE Wayland display lifecycle: PASS 18/18 - initial placement, restart,
   native landscape, 125% fractional scaling, Edge-as-primary, exact portrait
   restore, logical target disable, same-connector re-enable/migration, and
   configured-target-missing startup without primary-output hijack.
@@ -206,20 +206,20 @@ closed every automatable real-input suite on the current KDE Wayland session.
 
 ## Files changed by this validation session
 
-- `tests/cpp/tst_network_access_policy.cpp` — corrected hermetic test gate.
-- `tests/cpp/tst_mpris_state.cpp` — corrected QtTest assertion form.
-- `ui/qml/Dashboard.qml` — stringify QML URL before local-source validation.
-- `manager/qml/WidgetConfigDialog.qml` — explicit, inspectable network gates and
+- `tests/cpp/tst_network_access_policy.cpp` - corrected hermetic test gate.
+- `tests/cpp/tst_mpris_state.cpp` - corrected QtTest assertion form.
+- `ui/qml/Dashboard.qml` - stringify QML URL before local-source validation.
+- `manager/qml/WidgetConfigDialog.qml` - explicit, inspectable network gates and
   preview item surface.
-- `tests/ui/tst_manager.qml` — stable offline-preview assertions.
-- `tests/hardware/manager_reflection_test.py` — input-free real reflection proof.
-- `tests/hardware/manager_gui_test.py` — Pillow 14-compatible pixel inspection.
-- `tests/hardware/test_e2e_contract.py` — separate input and input-free contracts.
-- `tests/hardware/display_lifecycle_test.py` — gated real lifecycle matrix with
+- `tests/ui/tst_manager.qml` - stable offline-preview assertions.
+- `tests/hardware/manager_reflection_test.py` - input-free real reflection proof.
+- `tests/hardware/manager_gui_test.py` - Pillow 14-compatible pixel inspection.
+- `tests/hardware/test_e2e_contract.py` - separate input and input-free contracts.
+- `tests/hardware/display_lifecycle_test.py` - gated real lifecycle matrix with
   exact baseline restoration and mixed-DPI-aware render proofs.
-- `tests/hardware/README.md` — documented the disruptive gate, scope, isolation,
+- `tests/hardware/README.md` - documented the disruptive gate, scope, isolation,
   and exact restore behavior of the lifecycle matrix.
-- `docs/testing/hardware-validation-2026-07-21.md` — this record.
+- `docs/testing/hardware-validation-2026-07-21.md` - this record.
 
 These files already lived in a heavily dirty worktree in several cases; unrelated
 pre-existing edits were preserved. No attempt was made to reset, reformat, or

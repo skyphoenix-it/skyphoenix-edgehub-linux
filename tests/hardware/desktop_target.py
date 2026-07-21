@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""desktop_target.py — confine synthetic input to a DESKTOP application window.
+"""desktop_target.py - confine synthetic input to a DESKTOP application window.
 
 The Edge harness (`uinput_touch.py`) clamps every event to the Edge rect and
 offers no unclamped API, which is exactly why it is safe. But the Manager
@@ -10,7 +10,7 @@ real input.
 This module relaxes the confinement in the narrowest way that still keeps a hard
 guarantee: instead of "events cannot leave the Edge", the rule becomes **"events
 cannot leave the window under test"**. `VPointer` already accepts an arbitrary
-rect, so no new emit path and no new clamp logic is introduced — only a
+rect, so no new emit path and no new clamp logic is introduced - only a
 different, verified rect.
 
 Owner approval (2026-07-19): "I approve that my cursor moves around, as long as
@@ -150,7 +150,7 @@ def locate_and_verify(tmpdir, edge_name, mutate_a, mutate_b, min_dist=25):
     mutate_a/mutate_b put the app into two visually different states. The screen
     whose rect changes most between the two grabs is the target. If no screen
     changes by more than `min_dist`, we do not know where the window is and
-    injection must not happen — same rule as the Edge probe.
+    injection must not happen - same rule as the Edge probe.
 
     Returns (name, x, y, w, h).
     """
@@ -177,7 +177,7 @@ def locate_and_verify(tmpdir, edge_name, mutate_a, mutate_b, min_dist=25):
     if best_dist < min_dist:
         raise TargetNotVerified(
             "no desktop screen changed between the two app states (best delta "
-            "%.0f < %d). The window is not where we think it is — refusing to "
+            "%.0f < %d). The window is not where we think it is - refusing to "
             "inject." % (best_dist, min_dist))
     print("    TARGET VERIFIED: %s delta=%.0f" % (best[0], best_dist))
     return best
@@ -204,7 +204,7 @@ def manager_rect_from_log(log_path, timeout=15.0):
     (manager/src/main.cpp, placeManagerOffEdge) is the only machine-readable
     source. Clamping to the monitor would satisfy "cannot leave this screen" but
     NOT the owner's actual constraint, which is "clicks focused on the
-    application being tested" — on a 5120x1440 monitor those are very different.
+    application being tested" - on a 5120x1440 monitor those are very different.
 
     Returns (name, x, y, w, h) or None if the line never appears.
     """
@@ -238,5 +238,5 @@ def assert_rect_on_a_desktop_screen(rect, edge_name):
         if sx <= x and sy <= y and x + w <= sx + sw and y + h <= sy + sh:
             return name
     raise TargetNotVerified(
-        "Manager rect %r is not contained in any non-Edge screen — refusing to "
+        "Manager rect %r is not contained in any non-Edge screen - refusing to "
         "inject." % (rect,))

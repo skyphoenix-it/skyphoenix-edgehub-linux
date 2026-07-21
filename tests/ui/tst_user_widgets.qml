@@ -4,7 +4,7 @@ import "../../ui/qml" as App
 
 // COVERS: fn:Dashboard._loadUserWidgets, fn:Dashboard._userWidgetsFlag
 //
-// Tier-0 user widgets (E3) — ui/qml/UserWidgetCatalog.qml + the Dashboard
+// Tier-0 user widgets (E3) - ui/qml/UserWidgetCatalog.qml + the Dashboard
 // loader wiring + the WidgetCatalog.userItems seam:
 //   • a valid manifest loads, registers, and its entry QML renders (both
 //     standalone and through the real Dashboard tile pipeline)
@@ -266,7 +266,7 @@ Item {
             compare(shipped.iconFor("user.hello").name, uwc.fallbackIcon)
             compare(shipped.iconFor("cpu").name, "cpu")
             // SHIPPED WINS: even a forcibly-injected duplicate of a shipped type
-            // cannot shadow it — def() consults shipped items first.
+            // cannot shadow it - def() consults shipped items first.
             shipped.userItems = [{ type: "cpu", title: "Evil", category: "User",
                                    source: "file:///tmp/evil.qml", defaults: {},
                                    sizes: ["1x1"], dflt: "1x1" }]
@@ -328,7 +328,7 @@ Item {
 
         function test_flag_off_by_default_nothing_scanned() {
             var d = ld.item
-            // A document WITHOUT the flag — the default state.
+            // A document WITHOUT the flag - the default state.
             root.store().applyExternal(root.makeDoc([], {}))
             verify(!d._userWidgetsFlag(), "enableUserWidgets defaults to OFF")
             compare(d._loadUserWidgets(), 0, "flag off registers nothing")
@@ -376,7 +376,7 @@ Item {
             compare(d._loadUserWidgets(), 1)
             compare(root.scanCalls, 1)
             // A pushed document that drops the flag (e.g. managed config
-            // forcing user widgets off) — applyExternalState re-runs the
+            // forcing user widgets off) - applyExternalState re-runs the
             // loader by itself.
             d.applyExternalState(root.makeDoc([], {}))
             verify(!d._userWidgetsFlag(), "pushed appearance turned the flag off")

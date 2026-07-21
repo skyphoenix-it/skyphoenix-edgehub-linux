@@ -1,4 +1,4 @@
-# Manager UI/UX + Theme + Robustness — Fix Plan
+# Manager UI/UX + Theme + Robustness - Fix Plan
 
 **Status:** Awaiting approval · **Created:** 2026-07-13
 
@@ -18,7 +18,7 @@ for the chrome but everything reached via `ConfigField`/dialogs is still raw Fus
 
 ---
 
-## Phase 1 — Graphical / UI-UX (the "graphical bugs")
+## Phase 1 - Graphical / UI-UX (the "graphical bugs")
 
 **1a. Install a dark QPalette (single highest-ROI fix).** In `manager/src/main.cpp` (and
 the hub `app/src/main.cpp` for the on-device config), set a dark `QPalette` on the
@@ -45,13 +45,13 @@ Recommend the scale approach for true WYSIWYG.
 
 **1d. Desktop affordances (P1-6).** Add `hoverEnabled: true` + `cursorShape:
 Qt.PointingHandCursor` + a hover color to the clickable Manager chips (theme/accent/page/
-column/orientation/add-widget) — pattern already exists in the nav delegate.
+column/orientation/add-widget) - pattern already exists in the nav delegate.
 
 **1e. Polish (P2):** replace hardcoded `#0D1117` text-on-accent literals with
 `m.textOnAccent` (Manager/EdgeClone/BackgroundPicker/ConfigField); drop the nested
 ScrollView around the Images `GridView`; make `addPicker` responsive like `WidgetConfigDialog`.
 
-## Phase 2 — More theme options
+## Phase 2 - More theme options
 
 Add **6 theme modes** + **6 accents** with exact tokens (from analysis):
 - Themes: `nord`, `dracula`, `solarized_dark`, `solarized_light` (LIGHT), `catppuccin`, `gruvbox`.
@@ -65,7 +65,7 @@ Per accent: `Theme.qml accentPresets` · Manager `m.accentPresets` · `SettingsP
 Test: update the hardcoded 8-accent count/names in `tests/ui/tst_theme.qml:20-21`; add
 `test_applyTheme_<key>` cases + keep the unknown→dark fallback assertion.
 
-## Phase 3 — Robustness
+## Phase 3 - Robustness
 
 **3a. Harden `_normaliseDoc` into a real validator (HIGH, highest-leverage).** In
 `DashboardStore.qml`: `if (!Array.isArray(doc.pages)) doc.pages = []`; each page → object
@@ -83,9 +83,9 @@ malicious-IPC break class (`load`/`applyExternal` currently gate on truthiness o
 
 ## Testing strategy (every change gated)
 
-- **QPalette/control restyle:** headless — assert the restyled Switch/Slider/Button expose
+- **QPalette/control restyle:** headless - assert the restyled Switch/Slider/Button expose
   the token colors (extend `tst_gen_shared_ConfigField`/`tst_manager_dialog`/`tst_controls`);
-  **GUI** — XENEON_GRAB config dialogs (countdown/weather/focus) + Appearance tab, confirm
+  **GUI** - XENEON_GRAB config dialogs (countdown/weather/focus) + Appearance tab, confirm
   controls match the dark theme (before/after screenshots).
 - **Preview overflow:** headless assert the preview content width ≤ pane and no clip on the
   Focus/Media action rows; GUI grab confirms.
@@ -111,7 +111,7 @@ S2 binding re-assertion, debounced writes, geocode UX, responsive `WidgetConfigD
 
 ---
 
-## W2 — Design/Layout/Appearance clarity: audit + restructure (2026-07-16)
+## W2 - Design/Layout/Appearance clarity: audit + restructure (2026-07-16)
 
 **Owner complaint:** "Some features in the Manager are still not 100% clear,
 especially about Design/Layout/Appearance, and which setting is changing which
@@ -128,24 +128,24 @@ the repo.
 
 | # | Finding (with before-still) | Fix (with after-still) |
 |---|---|---|
-| F1 | Two unlabelled "theme" controls: Appearance → "Theme" (the Edge) vs sidebar "MANAGER THEME" (this window). Nothing says which repaints what. | Sidebar renamed **"Manager window style"** + caption "This window only — your Edge's theme is set in Appearance."; Appearance section renamed **"Edge theme"** with a `Whole Edge` scope tag and a caption pointing back at the sidebar. |
-| F2 | Every Appearance control edits the Edge, but the only rendering of the Edge (EdgeClone) lived on the Layout tab — theme/accent/glass changes gave zero visible feedback in-window. | Appearance is now two panes: controls left, a **read-only EdgeClone live preview** right (page chips included). Theme/accent swatches **preview on hover** (`previewTheme`/`previewAccent`, transient — store written only on click; `endThemePreview` restores). Glassiness already previewed live; now the preview is beside it. |
-| F3 | Help card told users to "Switch 1 / 2 columns above" — that control was removed a release ago. | Stale line deleted; hints rewritten to the four real gestures. |
-| F4 | Help card + config dialog claimed "changes apply live/instantly to the Edge" while the sidebar said "Hub offline (saved)". | One shared `liveNote` ("Hub connected — … immediately." / "Hub offline — saved, appear when the hub starts.") shown in the Layout hint card, the Appearance preview, and the config dialog. |
+| F1 | Two unlabelled "theme" controls: Appearance → "Theme" (the Edge) vs sidebar "MANAGER THEME" (this window). Nothing says which repaints what. | Sidebar renamed **"Manager window style"** + caption "This window only - your Edge's theme is set in Appearance."; Appearance section renamed **"Edge theme"** with a `Whole Edge` scope tag and a caption pointing back at the sidebar. |
+| F2 | Every Appearance control edits the Edge, but the only rendering of the Edge (EdgeClone) lived on the Layout tab - theme/accent/glass changes gave zero visible feedback in-window. | Appearance is now two panes: controls left, a **read-only EdgeClone live preview** right (page chips included). Theme/accent swatches **preview on hover** (`previewTheme`/`previewAccent`, transient - store written only on click; `endThemePreview` restores). Glassiness already previewed live; now the preview is beside it. |
+| F3 | Help card told users to "Switch 1 / 2 columns above" - that control was removed a release ago. | Stale line deleted; hints rewritten to the four real gestures. |
+| F4 | Help card + config dialog claimed "changes apply live/instantly to the Edge" while the sidebar said "Hub offline (saved)". | One shared `liveNote` ("Hub connected - … immediately." / "Hub offline - saved, appear when the hub starts.") shown in the Layout hint card, the Appearance preview, and the config dialog. |
 | F5 | Per-page background: a giant duplicate of the Appearance picker sat mid-Layout-tab, pushing the actual layout tool half off-screen; the two pickers differed only by prose. | Moved into the Layout helper column beside the clone as **"This page's background"** with a `This page only` scope tag and a one-line precedence note ("Use global" returns to the shared one). Appearance's picker header gained the matching `All pages` tag. |
 | F6 | No control declared its scope; accent circles had no names. | **ScopeTag pills** on every section: `Whole Edge` (Edge theme, Accent colour, Effects, Orientation), `All pages` (Background), `This page only` (page background), `This widget only` (config dialog header). Accent circles gained name tooltips; accent caption notes that a widget can override it (⚙ → Widget appearance). Effects switches each carry a one-line consequence note (incl. "Reduce motion … wins over the two switches above"). |
-| F7 | "Remove page" deleted a page + its widgets instantly — the only destructive click without a confirm. | `confirmRemovePage()` arms the shared confirm dialog, naming the page and its widget count. |
+| F7 | "Remove page" deleted a page + its widgets instantly - the only destructive click without a confirm. | `confirmRemovePage()` arms the shared confirm dialog, naming the page and its widget count. |
 | F8 | Images tab spread its few rows over the full window height when empty. | Trailing `fillHeight` filler keeps the column top-packed. |
-| F9 | (Follow-up item) The Manager registered the `systemSettings` OS reduce-motion probe but its Theme never read it — OS reduce-motion stilled the hub yet not the Manager previews. | `Theme.systemReduceMotion` bound with the hub's typeof-guard pattern; EdgeClone backdrops now key off `theme.effectiveReduceMotion`. |
+| F9 | (Follow-up item) The Manager registered the `systemSettings` OS reduce-motion probe but its Theme never read it - OS reduce-motion stilled the hub yet not the Manager previews. | `Theme.systemReduceMotion` bound with the hub's typeof-guard pattern; EdgeClone backdrops now key off `theme.effectiveReduceMotion`. |
 
 ### Deliberately unchanged
 - No settings were added or removed; every capability (theme/accent/background/
   effects/orientation/per-page override/per-widget config) is intact.
 - The shared `BackgroundPicker`/`ConfigField`/`WidgetConfigPanel` (ui/qml) were
-  not touched — W1/W3 own that tree right now. The per-widget "Widget
+  not touched - W1/W3 own that tree right now. The per-widget "Widget
   appearance" schema section still can't show a scope tag inside the shared
   form; the dialog-level `This widget only` pill covers it from the outside.
-- Switch labels ("Widget glow", "Animated background", "Reduce motion") kept —
+- Switch labels ("Widget glow", "Animated background", "Reduce motion") kept -
   tests and the hub's on-device panel use the same wording.
 
 ### Tests

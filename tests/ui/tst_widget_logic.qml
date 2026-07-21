@@ -137,7 +137,7 @@ Item {
         function test_work_window_cannot_invert() {
             var w = hEod.item
             hEod.storeCtl.patchSettings("test-instance", { startHour: 9, endHour: 17 })
-            // Try to push start past end — the guard keeps a ≥1h window.
+            // Try to push start past end - the guard keeps a ≥1h window.
             w.setHours(20, 17)
             verify(w.endHour > w.startHour, "end stays after start (start=" + w.startHour + " end=" + w.endHour + ")")
             // Try to pull end below start.

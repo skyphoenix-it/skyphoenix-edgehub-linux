@@ -1,12 +1,12 @@
 # EdgeHub marketing claim register
 
-**Status:** internal draft; not approved for publication
-**Product status:** alpha/development; no beta, freeze or release candidate declared
+**Status:** beta.1 campaign prepared; publish after signed artifacts are live
+**Product status:** `v1.0.0-beta.1` - Ready with accepted risks
 
-Marketing work remains on hold until the release gate in
-[`BETA_PLAN.md`](BETA_PLAN.md) passes. Screenshots and design experiments may be
-used for internal review, but this file does not authorize a launch, sale or
-availability claim.
+The release owner waived the planned 48-hour soak. Marketing may describe the
+completed real-hardware and integration evidence, but must not claim a stability
+duration, formal performance result, package repository, automatic update, or
+commercial Pro availability.
 
 An embargoed, claim-controlled campaign pack is prepared under
 [`marketing/release-kit/`](marketing/release-kit/README.md). It remains internal
@@ -39,10 +39,9 @@ by or endorsed by Corsair. Do not use Corsair logos or trade dress.
 These implementation facts do not prove release availability, cross-distro
 support, performance, stability or store fulfilment.
 
-## Claims prohibited until evidence exists
+## Claims prohibited for beta.1
 
-- “Released beta”, “release ready”, “shipping quality”, “feature frozen”, “code
-  frozen” or equivalent wording.
+- “Shipping quality”, “stable”, or a 24/48/72-hour stability claim.
 - Any CPU, RSS, startup, leak or battery number. Earlier performance estimates
   were unsupported.
 - “Available on AUR/AppImage/Flatpak/Flathub/DEB/RPM” unless the exact referenced
@@ -54,7 +53,8 @@ support, performance, stability or store fulfilment.
   are tested.
 - GNOME, X11, arbitrary-display or broad distro support beyond recorded
   candidate evidence.
-- A 48–72-hour stability claim until that physical-hardware soak completes.
+- AppImage, AUR freshness, DEB/RPM repository, Flatpak, or self-update
+  availability claims.
 
 ## Material that may be prepared after the gate
 

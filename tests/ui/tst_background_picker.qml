@@ -3,7 +3,7 @@ import QtTest
 import "../../ui/qml" as App
 import "../../ui/qml/widgets" as W
 
-// BackgroundPicker — the unified control that replaced the scattered background/
+// BackgroundPicker - the unified control that replaced the scattered background/
 // wallpaper settings. Verifies the mutually-exclusive "style OR wallpaper" choice
 // and the global vs per-page precedence ("Use global" drops a page override).
 Item {

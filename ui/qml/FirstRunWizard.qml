@@ -28,7 +28,7 @@ Item {
     readonly property var screensList: {
         try { return JSON.parse(_screens || "[]") } catch (e) { return [] }
     }
-    // Step 1 can advance once a display is picked — OR immediately if none were
+    // Step 1 can advance once a display is picked - OR immediately if none were
     // detected (otherwise a headless/odd-EDID setup is a hard dead-end).
     readonly property bool canAdvance: currentStep !== 1 || selectedScreen !== null
                                        || screensList.length === 0
@@ -130,7 +130,7 @@ Item {
                         id: screenList
                         Layout.fillWidth: true
                         // Size to the rows and let the outer Flickable do the
-                        // scrolling — a fillHeight ListView inside an unsized
+                        // scrolling - a fillHeight ListView inside an unsized
                         // parent collapsed the whole step to 0px.
                         Layout.preferredHeight: contentHeight
                         interactive: false
@@ -246,7 +246,7 @@ Item {
                         color: theme.textSecondary
                     }
 
-                    // The recommended few-screen starter (work + system + home) —
+                    // The recommended few-screen starter (work + system + home) -
                     // selected by default, so a new user has pages to swipe at once.
                     Rectangle {
                         Layout.fillWidth: true

@@ -24,7 +24,7 @@ message(STATUS "Xeneon build version: ${XENEON_GIT_VERSION}")
 #
 # execute_process() above runs at CONFIGURE time, so `cmake --build` alone bakes
 # in whatever the version was when the build dir was last configured. Every
-# incremental dev build therefore reported a stale version — the exact confusion
+# incremental dev build therefore reported a stale version - the exact confusion
 # that had a test run reporting r190 while r200 was installed. This target makes
 # a reconfigure happen whenever HEAD moves, so the version tracks the tree.
 if(NOT (DEFINED XENEON_VERSION_OVERRIDE AND XENEON_VERSION_OVERRIDE))
@@ -53,7 +53,7 @@ set(CMAKE_AUTORCC ON)
 # Default to an optimized Release build unless the user overrides it.
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
-    message(STATUS "No build type specified — defaulting to Release")
+    message(STATUS "No build type specified - defaulting to Release")
 endif()
 
 # Enable Link-Time Optimization for Release builds when supported.
@@ -290,7 +290,7 @@ foreach(_sz 16 32 48 64 128 256 512)
         DESTINATION "share/icons/hicolor/${_sz}x${_sz}/apps")
 endforeach()
 
-# License — including the bundled fonts' OFL texts: the OFL permits bundling in
+# License - including the bundled fonts' OFL texts: the OFL permits bundling in
 # a sold product but REQUIRES its licence text to accompany the fonts, so a
 # package that ships the TTFs without these is non-compliant.
 install(FILES LICENSE LICENSE-MIT LICENSE-APACHE
@@ -308,8 +308,8 @@ install(FILES packaging/udev/99-xeneon-edge.rules DESTINATION "${UDEV_RULES_DIR}
 # ─────────────────────────────────────────────────────────────────────────────
 # CPack: generate distro packages from the install rules above.
 #   cpack -G TGZ   (generator works anywhere; runtime dependencies still apply)
-#   cpack -G DEB   (build on Debian/Ubuntu — needs dpkg for shlibdeps)
-#   cpack -G RPM   (build on Fedora/openSUSE — needs rpmbuild)
+#   cpack -G DEB   (build on Debian/Ubuntu - needs dpkg for shlibdeps)
+#   cpack -G RPM   (build on Fedora/openSUSE - needs rpmbuild)
 # ─────────────────────────────────────────────────────────────────────────────
 if(PROJECT_IS_TOP_LEVEL)
     # An explicit package override must bind the embedded appVersion and CPack
@@ -344,7 +344,7 @@ if(PROJECT_IS_TOP_LEVEL)
     set(CPACK_XENEON_NATIVE_PACKAGE_VERSION "${XENEON_NATIVE_PACKAGE_VERSION}")
     set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
         "Native Linux widget dashboard for the Corsair Xeneon Edge and other secondary touchscreens")
-    set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/skyphoenix-it/XeneonEdge_Linux")
+    set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/skyphoenix-it/skyphoenix-edgehub-linux")
     set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
     set(CPACK_PACKAGING_INSTALL_PREFIX "/usr")
     set(CPACK_STRIP_FILES ON)

@@ -1,24 +1,24 @@
 import QtQuick
 
 // ─────────────────────────────────────────────────────────────────────────
-// UserWidgetCatalog — the Tier-0 user-widget loader (E3).
+// UserWidgetCatalog - the Tier-0 user-widget loader (E3).
 //
 // Validates the raw scan entries handed over by ConfigBridge.listUserWidgets()
 // (one JSON string per subdirectory of $XDG_DATA_HOME/xeneon-edge-hub/widgets)
 // against docs/widgets/manifest-spec.md, and turns the valid ones into entries
-// in the exact shape WidgetCatalog.items uses — so the rest of the hub (the
+// in the exact shape WidgetCatalog.items uses - so the rest of the hub (the
 // picker, tile loaders, size validation, the expanded overlay) treats them
 // like any shipped widget via WidgetCatalog.userItems.
 //
 // Everything invalid SKIPS that one directory with a recorded reason (surfaced
-// in Diagnostics and as a structured stderr warning) — a broken manifest must
+// in Diagnostics and as a structured stderr warning) - a broken manifest must
 // never take the dashboard down. Collisions are refused here AND in
 // WidgetCatalog.def(), which consults shipped items first: shipped wins twice.
 //
 // SECURITY: this file gates nothing. A user widget is arbitrary QML running
 // unsandboxed in the hub process (see the spec's security section). The
-// validation here buys honest failure modes — visible skip reasons, no crash,
-// no shipped-type shadowing — not containment.
+// validation here buys honest failure modes - visible skip reasons, no crash,
+// no shipped-type shadowing - not containment.
 // ─────────────────────────────────────────────────────────────────────────
 QtObject {
     id: uc
@@ -77,7 +77,7 @@ QtObject {
     function _isObj(v) { return v !== null && typeof v === "object" && !Array.isArray(v) }
 
     // A plain file name inside the widget directory: no path separators, no
-    // parent traversal — a manifest may only reference its own directory.
+    // parent traversal - a manifest may only reference its own directory.
     function _plainFileName(p) {
         return typeof p === "string" && p.length > 0
             && p.indexOf("/") < 0 && p.indexOf("\\") < 0 && p.indexOf("..") < 0
@@ -147,7 +147,7 @@ QtObject {
         var description = m.description === undefined ? "" : m.description
         if (typeof description !== "string") return no("description must be a string")
 
-        // Icon: optional, and never fatal past shape checks — a declared-but-
+        // Icon: optional, and never fatal past shape checks - a declared-but-
         // absent file degrades to the fallback glyph; the widget still loads.
         var iconName = uc.fallbackIcon, iconSource = ""
         if (m.icon !== undefined) {
@@ -158,7 +158,7 @@ QtObject {
                               "- declared icon '" + m.icon + "' not found; using the fallback glyph")
         }
 
-        // Config fields: strict — a manifest that lies about its form is
+        // Config fields: strict - a manifest that lies about its form is
         // skipped whole, not half-loaded. Only known-safe properties carry
         // through to the form renderer.
         var fields = []

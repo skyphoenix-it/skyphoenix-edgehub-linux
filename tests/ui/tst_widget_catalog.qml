@@ -4,7 +4,7 @@ import "../../ui/qml" as App
 
 // COVERS: widget:*
 
-// WidgetCatalog (ui/qml/WidgetCatalog.qml) — the registry every widget picker,
+// WidgetCatalog (ui/qml/WidgetCatalog.qml) - the registry every widget picker,
 // the grid and the expanded overlay read from. Assert every entry is complete,
 // the lookup helpers behave, categories are well-formed, and every `source`
 // resolves to a real widget file in ui/qml/widgets.
@@ -139,7 +139,7 @@ Item {
             }
         }
 
-        // No entry declares a size it has no content for. 1x3 is the WHOLE screen —
+        // No entry declares a size it has no content for. 1x3 is the WHOLE screen -
         // it is the size a stretched card hides in, so the few that claim it are
         // pinned here by name and a new claim has to be argued for in review.
         function test_full_screen_is_rare_and_deliberate() {
@@ -168,12 +168,12 @@ Item {
                     "mutating a returned size list does not poison the catalog")
         }
 
-        // An unknown type must be answerable, not throw — and must not report that it
+        // An unknown type must be answerable, not throw - and must not report that it
         // supports anything.
         function test_size_helpers_handle_an_unknown_type() {
             compare(catalog.sizesFor("nonexistent").length, 0, "unknown type has no sizes")
             compare(catalog.supports("nonexistent", "1x1"), false,
-                    "unknown type supports nothing — not even the baseline")
+                    "unknown type supports nothing - not even the baseline")
             compare(catalog.defaultSize("nonexistent"), sz.baseline,
                     "unknown type falls back to the WidgetSizes baseline")
         }

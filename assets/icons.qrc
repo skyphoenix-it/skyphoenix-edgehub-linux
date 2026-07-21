@@ -53,7 +53,7 @@
         <file alias="ui-trash.svg">icons/ui-trash.svg</file>
         <file alias="ui-warning.svg">icons/ui-warning.svg</file>
         <file alias="weather.svg">icons/weather.svg</file>
-        <!-- Preset "screen" glyphs — Phosphor (regular), matching the icon set. -->
+        <!-- Preset "screen" glyphs - Phosphor (regular), matching the icon set. -->
         <file alias="flower-lotus.svg">icons/flower-lotus.svg</file>
         <file alias="note-pencil.svg">icons/note-pencil.svg</file>
         <file alias="house.svg">icons/house.svg</file>

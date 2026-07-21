@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
-# EdgeHub release helper — run this on the maintainer's own machine, by hand.
+# EdgeHub release helper - run this on the maintainer's own machine, by hand.
 #
 # WHY THIS IS A LOCAL SCRIPT AND NOT A CI WORKFLOW:
 #   The release key's passphrase belongs to the maintainer and is never delegated
-#   — not to a CI secret, not to an environment variable, not to this script. gpg
+#   - not to a CI secret, not to an environment variable, not to this script. gpg
 #   prompts a human; the human answers. Automating that away would move the trust
 #   root off the maintainer's machine, which is the one property a signature is
 #   supposed to prove. If you ever find yourself wanting to pass a passphrase to
@@ -30,7 +30,7 @@
 # re-downloading ~46 MB. The .zsync lands in dist/ BEFORE SHA256SUMS is
 # written, so it is checksummed and covered by the signature like everything
 # else. Native packages (AUR/deb/rpm/Flatpak) update through their package
-# manager — no zsync for those; see docs/DISTRIBUTION.md "Updates".
+# manager - no zsync for those; see docs/DISTRIBUTION.md "Updates".
 #
 set -euo pipefail
 
@@ -43,9 +43,9 @@ unset XENEON_TEST_LICENSE_KEY
 # The EdgeHub release key (SKYPhoenix IT <simon.kreitmayer@skyphoenix-it.com>).
 # Full 40-hex fingerprint, not the short id: short ids are forgeable by
 # construction, so anything that decides trust must pin the full fingerprint.
-# Expires 2028-07-14 — see docs/DISTRIBUTION.md for the rotation policy.
+# Expires 2028-07-14 - see docs/DISTRIBUTION.md for the rotation policy.
 readonly RELEASE_KEY="2F0CAD36DC1D46F3347B7EF293CDC77EACF98990"
-readonly RELEASE_REPO="skyphoenix-it/XeneonEdge_Linux"
+readonly RELEASE_REPO="skyphoenix-it/skyphoenix-edgehub-linux"
 
 readonly REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly DIST_DIR="${REPO_DIR}/dist"
@@ -175,11 +175,11 @@ readonly EXPECTED_BIN_TARBALL="xeneon-edge-hub_${PREFLIGHT_PKGVER}_${PREFLIGHT_A
 # executable *.AppImage with a different name: its generated .zsync would be
 # invisible to AppImageUpdate.
 readonly EXPECTED_APPIMAGE="xeneon-edge-hub-${PREFLIGHT_PKGVER}-x86_64.AppImage"
-readonly EXPECTED_APPIMAGE_UPDATE_INFO="gh-releases-zsync|skyphoenix-it|XeneonEdge_Linux|latest|xeneon-edge-hub-*-x86_64.AppImage.zsync"
+readonly EXPECTED_APPIMAGE_UPDATE_INFO="gh-releases-zsync|skyphoenix-it|skyphoenix-edgehub-linux|latest|xeneon-edge-hub-*-x86_64.AppImage.zsync"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Preflight. Everything that can refuse must refuse HERE, before we build or
-# write a single artifact — a 20-minute build that dies at the signing step and
+# write a single artifact - a 20-minute build that dies at the signing step and
 # leaves an unsigned dist/ behind is the failure mode this ordering prevents.
 # ─────────────────────────────────────────────────────────────────────────────
 step "Preflight: source provenance"
@@ -246,7 +246,7 @@ release signing key not available in this keyring.
   Expected secret key: $RELEASE_KEY
   GNUPGHOME:           ${GNUPGHOME:-$HOME/.gnupg}
 
-This script will NOT produce an unsigned release — an unsigned artifact that
+This script will NOT produce an unsigned release - an unsigned artifact that
 looks official is worse than no artifact. Import the key (or unset GNUPGHOME)
 and re-run. The public half lives at packaging/edgehub-signing.pub; the secret
 half only ever exists on the maintainer's machine.
@@ -266,7 +266,7 @@ key_validity="$(printf '%s' "$key_line" | cut -d: -f2)"
 
 case "$key_validity" in
     r) die "release key $RELEASE_KEY is REVOKED. Refusing to sign." ;;
-    e) die "release key $RELEASE_KEY is EXPIRED. Extend it (gpg --edit-key $RELEASE_KEY expire) or rotate — see docs/DISTRIBUTION.md. Refusing to sign." ;;
+    e) die "release key $RELEASE_KEY is EXPIRED. Extend it (gpg --edit-key $RELEASE_KEY expire) or rotate - see docs/DISTRIBUTION.md. Refusing to sign." ;;
 esac
 case "$key_caps" in
     *s*|*S*) ;;
@@ -281,7 +281,7 @@ note "uid:     $(gpg --list-keys --with-colons "$RELEASE_KEY" | awk -F: '$1=="ui
 [ -n "$key_expiry" ] && note "expires: $(date -d "@$key_expiry" +%F)"
 
 if [ "$PUBLISH" -eq 0 ] && ! command -v gh >/dev/null 2>&1; then
-    note "WARNING: gh not found — the release command will be printed, not run."
+    note "WARNING: gh not found - the release command will be printed, not run."
 fi
 
 step "Preflight: prerequisites"
@@ -328,19 +328,19 @@ done
     || die "exactly one AppImage is supported; multiple updater targets are ambiguous"
 # zsync is part of the AppImage update contract (docs/DISTRIBUTION.md): an
 # AppImage published without its .zsync silently breaks delta updates for
-# everyone on the previous release. So it fails HERE, before the build —
+# everyone on the previous release. So it fails HERE, before the build -
 # not "skipped" and discovered after publishing.
 if [ "$HAVE_APPIMAGE" -eq 1 ]; then
     command -v zsyncmake >/dev/null 2>&1 \
         || die "zsyncmake not found but an .AppImage was passed via --extra.
 Install it (Arch/CachyOS: 'zsync' [AUR]; Debian/Ubuntu: 'zsync'; Fedora: 'zsync')
 or drop the AppImage from this release. Refusing to publish an AppImage without
-its .zsync — that breaks delta updates for existing users."
+its .zsync - that breaks delta updates for existing users."
 fi
 
 # The other half of the same contract, and the one that actually bit: publishing
 # a release with NO AppImage at all. Every release so far shipped tarballs only,
-# because attaching the AppImage is a manual --extra and nobody remembered — so
+# because attaching the AppImage is a manual --extra and nobody remembered - so
 # `X-AppImage-UpdateInformation` points at "latest", finds no AppImage asset, and
 # every AppImage user silently never sees an update. That is indistinguishable
 # from "there are no updates", which is why it went unnoticed through two
@@ -348,7 +348,7 @@ fi
 if [ "$HAVE_APPIMAGE" -eq 0 ] && [ "${ALLOW_NO_APPIMAGE:-0}" != "1" ]; then
     die "no .AppImage passed via --extra.
 
-Publishing without one means AppImage users get NO update from this release —
+Publishing without one means AppImage users get NO update from this release -
 their embedded update-information resolves to a release with no AppImage asset,
 which looks exactly like 'you are up to date'. Two releases have already shipped
 this way.
@@ -357,8 +357,8 @@ Either:
   • build it and attach it:
         packaging/appimage/build-appimage.sh
         scripts/release.sh --version <tag> --extra <path>.AppImage …
-    (the AppImage build needs a CI-era toolchain — linuxdeploy's bundled strip
-     cannot read .relr.dyn on a modern host — so in practice take the artifact
+    (the AppImage build needs a CI-era toolchain - linuxdeploy's bundled strip
+     cannot read .relr.dyn on a modern host - so in practice take the artifact
      from the distro.yml 'appimage' job)
   • or acknowledge the gap deliberately:
         ALLOW_NO_APPIMAGE=1 scripts/release.sh …
@@ -419,7 +419,7 @@ step "Building source tarball from tag $VERSION"
 # of the tag alone. gzip -n drops the timestamp, which would otherwise make two
 # builds of the same tag hash differently for no semantic reason.
 src_tarball="xeneon-edge-hub-${pkgver}.tar.gz"
-git -C "$REPO_DIR" archive --format=tar --prefix="XeneonEdge_Linux-${pkgver}/" "$tag_commit" \
+git -C "$REPO_DIR" archive --format=tar --prefix="skyphoenix-edgehub-linux-${pkgver}/" "$tag_commit" \
     | gzip -n -9 > "${DIST_DIR}/${src_tarball}"
 note "$src_tarball ($(du -h "${DIST_DIR}/${src_tarball}" | cut -f1))"
 record_final_artifact "${DIST_DIR}/${src_tarball}"
@@ -533,7 +533,7 @@ step "Generating SHA256SUMS"
 ( cd "$DIST_DIR" && sha256sum ./* | sed 's| \./| |' > SHA256SUMS )
 cat "${DIST_DIR}/SHA256SUMS"
 
-step "Signing (gpg will prompt you for the passphrase — this is intentional)"
+step "Signing (gpg will prompt you for the passphrase - this is intentional)"
 note "Signing SHA256SUMS and ${src_tarball}."
 note "If gpg does not prompt, your agent has the passphrase cached from earlier."
 echo
@@ -585,13 +585,13 @@ printf '\n'
 cat <<EOF
 
 Reminders (the parts a script must not do for you):
-  1. Write RELEASE_NOTES.md first — state that artifacts are signed by
+  1. Write RELEASE_NOTES.md first - state that artifacts are signed by
      $RELEASE_KEY and point at README "Verifying your download".
   2. After publishing, refresh packaging/aur/ for the new pkgver and push to AUR:
        cd packaging/aur && updpkgsums && makepkg --printsrcinfo > .SRCINFO
      makepkg will verify ${src_tarball}.sig against validpgpkeys.
   3. If an AppImage is in this release, its .zsync is in dist/ and is uploaded
-     by the command above (it lists every dist/ file). Upload BOTH — the
+     by the command above (it lists every dist/ file). Upload BOTH - the
      .zsync without its AppImage (or vice versa) breaks delta updates.
 EOF
 

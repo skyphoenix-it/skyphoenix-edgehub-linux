@@ -4,17 +4,17 @@ import QtTest
 import "GuiUtil.js" as G
 
 // ─────────────────────────────────────────────────────────────────────────
-// VISIBLE GUI tests for the Hub SHELL — Orientation + SettingsPanel.
+// VISIBLE GUI tests for the Hub SHELL - Orientation + SettingsPanel.
 //
 // Hosts the REAL shell (ui/qml/main.qml → Dashboard.qml) ONCE in initTestCase,
 // replacing its resolved initial page with one deterministic source-tree
 // Dashboard. Every case
 // asserts an OBJECTIVE, GUI-observable outcome after a real interaction:
-//   • Orientation — win.contentRotation ∈ {0,90,180,270}, the contentRoot
+//   • Orientation - win.contentRotation ∈ {0,90,180,270}, the contentRoot
 //     aspect swap, grabImage aspect, current-page PRESERVED across a rotation
 //     (the rotation analogue of the add-page snap-back), the reorient fx dip,
 //     and reduce-motion collapsing both the fx and the rotation.
-//   • SettingsPanel — every control, driven by REAL mouse input under KWin;
+//   • SettingsPanel - every control, driven by REAL mouse input under KWin;
 //     CRUCIALLY a REAL DRAG of the glass slider (mousePress/Move/Release) that
 //     must NOT snap back after a wait AND after a churny store revision (the
 //     glass-slider regression, S2).
@@ -144,11 +144,11 @@ Item {
             if (_shown) return
             win.width = baseW; win.height = baseH
             // Use `visibility`, NOT `visible`. ui/qml/main.qml:11 declares
-            // `visibility: Window.Hidden` (deliberate — C++ positions the window on
+            // `visibility: Window.Hidden` (deliberate - C++ positions the window on
             // the target screen and only then calls showFullScreen(); critical on
             // Wayland). Assigning `visible` as well makes QQC2 emit "Conflicting
             // properties 'visible' and 'visibility'" and the window is never
-            // properly mapped/exposed, so NO synthetic pointer input is delivered —
+            // properly mapped/exposed, so NO synthetic pointer input is delivered -
             // every mouseClick/drag test then fails while programmatic tests pass.
             win.visibility = Window.Windowed
             wait(500)
@@ -215,7 +215,7 @@ Item {
             verify(checker !== null, "found the app-global UpdateChecker")
 
             // Zero-egress guarantee for the whole file: the update check can never
-            // reach the network — it fails closed at the gate instead.
+            // reach the network - it fails closed at the gate instead.
             if (dash.netGate) dash.netGate.offline = true
 
             store.load("blank")
@@ -232,10 +232,10 @@ Item {
         }
 
         // ══════════════════════════════════════════════════════════════════════
-        // AREA 3 — ORIENTATION (34)
+        // AREA 3 - ORIENTATION (34)
         // ══════════════════════════════════════════════════════════════════════
 
-        // 3a — each fixed mode sets the right rotation (4). ORI-01/03/05/07.
+        // 3a - each fixed mode sets the right rotation (4). ORI-01/03/05/07.
         function test_ori_a_fixed_rotation_data() {
             return [
                 { tag: "portrait",           mode: "portrait",           rot: 0 },
@@ -249,7 +249,7 @@ Item {
             compare(win.contentRotation, d.rot, d.mode + " → " + d.rot + "°")
         }
 
-        // 3a — each mode swaps (or not) the contentRoot aspect (4). ORI-02/04/06/08.
+        // 3a - each mode swaps (or not) the contentRoot aspect (4). ORI-02/04/06/08.
         function test_ori_a_fixed_swap_data() {
             return [
                 { tag: "portrait",           mode: "portrait",           swapped: false },
@@ -271,7 +271,7 @@ Item {
             }
         }
 
-        // ORI-09 — auto follows the sensor reading.
+        // ORI-09 - auto follows the sensor reading.
         function test_ori_a_auto_follows_sensor() {
             win.orientationMode = "auto"
             win.sensorRotation = -1; win._stableSensorRotation = -1
@@ -280,7 +280,7 @@ Item {
             compare(win.contentRotation, 90, "auto follows the sensor to 90°")
         }
 
-        // ORI-10 — auto default (no reading) derives landscape from the window aspect.
+        // ORI-10 - auto default (no reading) derives landscape from the window aspect.
         function test_ori_a_auto_default_aspect() {
             win.orientationMode = "auto"
             win.sensorRotation = -1; win._stableSensorRotation = -1
@@ -290,7 +290,7 @@ Item {
             compare(win.contentRotation, 0, "auto, no reading, landscape window → landscape (0°)")
         }
 
-        // 3b — grabImage aspect reflects the swap (4).
+        // 3b - grabImage aspect reflects the swap (4).
         // ORI-11 landscape grab wider-than-tall.
         function test_ori_b_landscape_grab_wider() {
             win.reduceMotion = true                    // collapse fx: only dims matter
@@ -349,7 +349,7 @@ Item {
             wait(120)
         }
 
-        // 3c — current page PRESERVED across a rotation (8). The rotation analogue
+        // 3c - current page PRESERVED across a rotation (8). The rotation analogue
         // of the add-page snap-back: reach a page, rotate, wait past the settle,
         // assert it STAYED.
         // ORI-15..18.
@@ -416,7 +416,7 @@ Item {
         }
 
         // ORI-22 tiles are re-projected, not re-packed: the store layout is identical
-        // across a rotation (same ids, same order) — only the projected geometry differs.
+        // across a rotation (same ids, same order) - only the projected geometry differs.
         function test_ori_c_tiles_not_repacked() {
             win.reduceMotion = true
             store.load("blank")
@@ -431,7 +431,7 @@ Item {
             verify(cr.swapped, "…and the contentRoot did actually swap to the landscape aspect")
         }
 
-        // 3d — reorient fx (6).
+        // 3d - reorient fx (6).
         // ORI-23 fx dips opacity mid-rotation.
         function test_ori_d_fx_dips_opacity() {
             win.reduceMotion = false
@@ -487,7 +487,7 @@ Item {
             for (var i = 0; i < 6; i++) { verify(!Qt.inputMethod.visible, "no VK visible during the reorient"); wait(60) }
         }
 
-        // 3e — orientation persisted + restored (6).
+        // 3e - orientation persisted + restored (6).
         // ORI-29 setting the mode persists to the store.
         function test_ori_e_write_persists() {
             win.orientationMode = "landscape"
@@ -538,10 +538,10 @@ Item {
         }
 
         // ══════════════════════════════════════════════════════════════════════
-        // AREA 4 — SETTINGS PANEL (44)
+        // AREA 4 - SETTINGS PANEL (44)
         // ══════════════════════════════════════════════════════════════════════
 
-        // 4a — Screens entry (3).
+        // 4a - Screens entry (3).
         // SET-01 visible + touch sized.
         function test_set_a_screens_entry_visible() {
             openSettings()
@@ -573,7 +573,7 @@ Item {
             verify(entry.visible, "clearing the lock restores the entry")
         }
 
-        // 4b — Theme selection (8).
+        // 4b - Theme selection (8).
         // SET-04 the theme groups render.
         function test_set_b_theme_groups_render() {
             openSettings()
@@ -648,7 +648,7 @@ Item {
                    "the dashboard background pixel changed with the theme (" + before + " → " + after + ")")
         }
 
-        // 4c — Accent colour (8).
+        // 4c - Accent colour (8).
         // SET-12..15 house accents.
         function test_set_c_house_accent_data() {
             return [ { tag: "blue", name: "blue" }, { tag: "green", name: "green" },
@@ -686,7 +686,7 @@ Item {
             verify(chk !== null && chk.visible, "the check icon is shown on the active swatch")
         }
 
-        // 4d — Orientation picker chips (5). SET-20..24.
+        // 4d - Orientation picker chips (5). SET-20..24.
         function test_set_d_orientation_chip_data() {
             return [ { tag: "auto", v: "auto" }, { tag: "portrait", v: "portrait" },
                      { tag: "landscape", v: "landscape" }, { tag: "inverted-portrait", v: "inverted-portrait" },
@@ -700,7 +700,7 @@ Item {
             compare(win.orientationMode, d.v, "tapping the chip wrote orientationMode=" + d.v)
         }
 
-        // 4e — GLASS SLIDER, real drag + the snap-back regression (5).
+        // 4e - GLASS SLIDER, real drag + the snap-back regression (5).
         // SET-25 the slider reflects an external glassOpacity.
         function test_set_e_slider_reflects_external() {
             openSettings()
@@ -736,7 +736,7 @@ Item {
             verify(s.value > 0.45, "handle moved")
             fuzzyCompare(win.glassOpacity, s.value, 0.001, "onMoved committed the dragged value to root.glassOpacity")
         }
-        // SET-28 the handle does NOT snap back — after a wait AND after a churny
+        // SET-28 the handle does NOT snap back - after a wait AND after a churny
         // store revision (the glass-slider regression, S2).
         function test_set_e_slider_no_snapback() {
             openSettings()
@@ -749,7 +749,7 @@ Item {
             verify(dragged > 0.45, "handle moved to " + dragged.toFixed(2))
             wait(400)
             verify(s.value > 0.45, "no snap-back after settle (" + s.value.toFixed(2) + ")")
-            // Bump a churny store revision several times — the handle must not snap.
+            // Bump a churny store revision several times - the handle must not snap.
             for (var i = 0; i < 6; i++) store.setAppearance("glow", win.showWidgetGlow)
             wait(400)
             verify(s.value > 0.45, "no snap-back after a churny store revision (" + s.value.toFixed(2) + ")")
@@ -766,10 +766,10 @@ Item {
             verify(s.value > 0.45, "handle moved by the drag")
             win.glassOpacity = 0.15                     // external push
             tryVerify(function () { return Math.abs(s.value - 0.15) < 0.02 }, 2000,
-                      "the binding survived the drag — an external push still moves the handle")
+                      "the binding survived the drag - an external push still moves the handle")
         }
 
-        // 4f — Toggles: glow / animated bg / reduce motion (6).
+        // 4f - Toggles: glow / animated bg / reduce motion (6).
         // SET-30 glow switch reflects state.
         function test_set_f_glow_reflects() {
             openSettings()
@@ -819,7 +819,7 @@ Item {
             compare(sw.checked, true, "the switch re-reflects the source after the rebind")
         }
 
-        // 4g — Software updates toggle + Check now (6).
+        // 4g - Software updates toggle + Check now (6).
         // SET-36 update switch off by default.
         function test_set_g_update_off_default() {
             store.load("blank"); wait(60)
@@ -865,7 +865,7 @@ Item {
             verify(checkNow !== null, "Check now text is present")
             tryVerify(function () { return effVisible(checkNow) }, 2000, "the result line / Check now shows when enabled")
         }
-        // SET-41 Check now triggers the checker (status leaves idle) — no egress (offline gate).
+        // SET-41 Check now triggers the checker (status leaves idle) - no egress (offline gate).
         function test_set_g_check_now() {
             store.load("blank"); wait(60)
             openSettings()
@@ -881,7 +881,7 @@ Item {
                       "Check now invoked the checker (status left idle → '" + checker.status + "')")
         }
 
-        // 4h — Panel chrome (3).
+        // 4h - Panel chrome (3).
         // SET-42 scrim tap closes the panel.
         function test_set_h_scrim_closes() {
             openSettings()

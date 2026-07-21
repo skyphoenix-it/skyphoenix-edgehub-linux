@@ -4,7 +4,7 @@ import "../../ui/qml" as App
 
 // COVERS: schema:zoneId
 
-// ClockWidget — verifies every config option actually changes what's shown:
+// ClockWidget - verifies every config option actually changes what's shown:
 // 12/24-hour, seconds, date visibility + style, and the world clock (real IANA
 // zones with daylight-saving, plus the legacy fixed-offset model).
 //
@@ -66,7 +66,7 @@ Item {
         // So the split of responsibility is: the REAL DST correctness (every zone,
         // every transition, to the second) is proven against the OS tzdata in
         // tests/cpp/tst_timezone_bridge.cpp. What is provable HERE is the part QML
-        // owns — that the widget asks the bridge, and that it degrades safely when
+        // owns - that the widget asks the bridge, and that it degrades safely when
         // the bridge is absent or the zone unknown. A fake keeps that deterministic
         // and independent of the host's tzdata.
         function fakeTz(offsetsByZone) {
@@ -87,7 +87,7 @@ Item {
 
         // The picker offers a curated set of chips (a `segmented` field cannot show
         // ~600 zones), but every value must be a REAL IANA id: a typo would ship a
-        // city chip that silently falls back to the fixed offset — the exact class
+        // city chip that silently falls back to the fixed offset - the exact class
         // of silent wrongness this epic exists to remove. Shape-checked here; the
         // ids themselves are resolved against the OS tzdata in the C++ suite.
         function test_schema_zone_options_are_well_formed_iana_ids() {
@@ -120,7 +120,7 @@ Item {
             w.timeZones = null
         }
 
-        // The offset must come from the bridge per-instant — that is what makes it
+        // The offset must come from the bridge per-instant - that is what makes it
         // follow DST rather than being a constant.
         function test_offset_comes_from_the_bridge_per_instant() {
             var w = h.item
@@ -140,7 +140,7 @@ Item {
         }
 
         // A zoneId this build/tzdata cannot resolve must fall back to the user's
-        // stored offset — never render a confidently wrong time, and never UTC.
+        // stored offset - never render a confidently wrong time, and never UTC.
         function test_unresolvable_zone_falls_back_to_the_stored_offset() {
             var w = h.item
             w.timeZones = fakeTz({ "America/New_York": -4 })

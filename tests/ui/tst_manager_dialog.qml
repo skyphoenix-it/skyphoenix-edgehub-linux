@@ -5,8 +5,8 @@ import QtTest
 import "../../ui/qml" as App
 import "../../ui/qml/widgets" as W
 
-// Reproduces the Edge Manager's config DIALOG structure — a Controls Dialog whose
-// contentItem holds the shared WidgetConfigPanel — and drives it with real clicks
+// Reproduces the Edge Manager's config DIALOG structure - a Controls Dialog whose
+// contentItem holds the shared WidgetConfigPanel - and drives it with real clicks
 // + wheel, to catch bugs that only appear inside the Dialog wrapper (which the
 // isolated panel test cannot). This is "the config options in the Manager".
 Item {
@@ -82,7 +82,7 @@ Item {
         function toggleOf(key) { return findChild(findChild(panel, "field-" + key), "control") }
 
         // Phase 1c: the scaled preview renders the 688px-wide expanded widget but its
-        // ON-SCREEN width (logicalW * scale) must fit inside the pane — no horizontal
+        // ON-SCREEN width (logicalW * scale) must fit inside the pane - no horizontal
         // overflow/clip of the Focus 4-button action row.
         function test_preview_content_not_clipped() {
             var clip = findChild(dlg.contentItem, "previewClip")
@@ -106,7 +106,7 @@ Item {
         }
 
         // Scrolling must work INSIDE the Dialog so lower options are reachable
-        // (the form is taller than the dialog — "clipped, can't reach the rest").
+        // (the form is taller than the dialog - "clipped, can't reach the rest").
         function test_scroll_works_inside_dialog() {
             var f = findChild(panel, "cfgScroll")
             verify(f, "scroll flickable exists")

@@ -14,7 +14,7 @@ EOF
 post_upgrade() {
   # This hook runs as ROOT inside the pacman transaction, with no access to your
   # graphical session (no DISPLAY/WAYLAND_DISPLAY, wrong UID), so it CANNOT
-  # restart your running hub/manager itself — doing so reliably needs your user
+  # restart your running hub/manager itself - doing so reliably needs your user
   # session. `./scripts/update-local.sh` (the dev/dogfood path) does the full
   # restart of both; a plain `pacman -U` / `yay -Syu` cannot, so it says so:
   cat <<'EOF'

@@ -4,7 +4,7 @@
 //! design constraints are deliberate and non-negotiable:
 //!
 //! * **Offline.** Verification is a signature check against a public key
-//!   compiled into this binary. It opens no socket and reads no file — running
+//!   compiled into this binary. It opens no socket and reads no file - running
 //!   the hub under `unshare -n` cannot change the answer.
 //! * **No hardware fingerprint.** A key is bound to nothing but its own
 //!   contents. It keeps working on a reinstall, a new machine, or a VM.
@@ -13,8 +13,8 @@
 //!   `rand_core` feature of `ed25519-dalek` is switched off, so this crate
 //!   cannot even generate a keypair. The test module below signs with a key
 //!   that exists solely under `#[cfg(test)]`.
-//! * **Fail closed, but soft.** Every failure path — absent, truncated,
-//!   garbage, forged, expired — resolves to [`Tier::Free`]. There is no panic
+//! * **Fail closed, but soft.** Every failure path - absent, truncated,
+//!   garbage, forged, expired - resolves to [`Tier::Free`]. There is no panic
 //!   and no nag: a broken key means the free product, not a broken product.
 //!   Expiry is reported as its own state so the UI can say "renew" rather than
 //!   the accusatory "invalid".
@@ -25,7 +25,7 @@
 //! XE1.<base64url(payload JSON)>.<base64url(64-byte Ed25519 signature)>
 //! ```
 //!
-//! The signature covers the ASCII bytes of `XE1.<base64url(payload)>` — the
+//! The signature covers the ASCII bytes of `XE1.<base64url(payload)>` - the
 //! encoded form, not the decoded JSON. This is the JWT rule and it exists for a
 //! reason: verifying the exact bytes that are later parsed means no JSON
 //! canonicalisation question can ever arise (key order, whitespace and escaping
@@ -34,7 +34,7 @@
 //!
 //! `base64url` **unpadded** (RFC 4648 §5) is used throughout: the alphabet has
 //! no `+`, `/` or `=`, so a key survives being pasted into a URL, a shell, a
-//! CSV or an email without escaping — the places keys actually travel.
+//! CSV or an email without escaping - the places keys actually travel.
 //!
 //! NOTHING here may log a key or its holder. [`License`] therefore has a
 //! hand-written [`Debug`] that redacts `issued_to`, and the error type names
@@ -54,7 +54,7 @@ const KEY_PREFIX: &str = "XE1";
 /// The Ed25519 public key that licences are verified against.
 ///
 /// ARMED (2026-07-19, ROTATED): the real issuer public key is embedded below.
-/// The private seed lives only in the owner's password manager (Bitwarden) — it
+/// The private seed lives only in the owner's password manager (Bitwarden) - it
 /// is NOT in this repo, NOT the project's GPG release key (`93CDC77EACF98990`),
 /// and never touches CI. Licence signing is fully offline (`tools/license-tool`).
 ///
@@ -71,8 +71,8 @@ const KEY_PREFIX: &str = "XE1";
 ///
 /// The all-zero form is kept commented as the "unissued" sentinel: [`issuer_key`]
 /// still returns `None` for all-zero (a small-order point that must never be
-/// trusted), so if this ever regresses to zeros the app fails CLOSED — every
-/// licence becomes free — rather than trusting a bad key. `production_issuer_key_
+/// trusted), so if this ever regresses to zeros the app fails CLOSED - every
+/// licence becomes free - rather than trusting a bad key. `production_issuer_key_
 /// is_armed_and_valid` guards against that regression.
 //const ISSUER_PUBLIC_KEY: [u8; 32] = [0u8; 32];
 const ISSUER_PUBLIC_KEY: [u8; 32] = [
@@ -113,14 +113,14 @@ pub struct License {
     /// time-zone ambiguity, and cannot be mis-read across locales.
     #[serde(default)]
     pub expires: Option<i64>,
-    /// Who the licence was issued to. Holder data — display, never log.
+    /// Who the licence was issued to. Holder data - display, never log.
     pub issued_to: String,
     /// Opaque licence id, for support and revocation lists.
     pub id: String,
 }
 
-// Hand-written so that a stray `{:?}` on a License — in a log line, a panic
-// message, a test failure — cannot leak the holder's name or email. The derived
+// Hand-written so that a stray `{:?}` on a License - in a log line, a panic
+// message, a test failure - cannot leak the holder's name or email. The derived
 // impl would print it verbatim, and that is exactly the accident this type
 // exists to prevent.
 impl fmt::Debug for License {
@@ -141,7 +141,7 @@ impl fmt::Debug for License {
 /// ends up in a log file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum LicenseError {
-    /// No key supplied (empty or whitespace) — the ordinary unlicensed state.
+    /// No key supplied (empty or whitespace) - the ordinary unlicensed state.
     #[error("no licence key")]
     Absent,
     /// Not `XE1.<payload>.<signature>`: wrong prefix, or not three segments.
@@ -153,7 +153,7 @@ pub enum LicenseError {
     /// Base64 decoded, but the payload is not the expected JSON.
     #[error("licence payload is not readable")]
     BadPayload,
-    /// The signature does not match this issuer's key — forged, tampered, or
+    /// The signature does not match this issuer's key - forged, tampered, or
     /// issued by someone else. All three are the same answer: not ours.
     #[error("licence signature does not verify")]
     BadSignature,
@@ -345,7 +345,7 @@ fn check(key: &str, issuer: &VerifyingKey) -> Result<License, LicenseError> {
 
 fn now_epoch() -> i64 {
     // A clock before 1970 (or a failure to read it) must not become a huge
-    // positive number and silently un-expire every licence, so clamp to 0 —
+    // positive number and silently un-expire every licence, so clamp to 0 -
     // which expires everything instead. Fail closed.
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -358,7 +358,7 @@ fn now_epoch() -> i64 {
 // Hand-rolled rather than adding a crate. It is ~40 lines against a frozen
 // standard, the decoder is STRICT (any byte outside the alphabet, and any
 // length that cannot arise from real base64, is rejected), and every failure
-// simply reports Damaged — decode is never trusted, only the signature is. The
+// simply reports Damaged - decode is never trusted, only the signature is. The
 // property test below pins encode/decode as exact inverses.
 
 const B64_ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
@@ -389,7 +389,7 @@ pub fn b64url_encode(data: &[u8]) -> String {
 /// That last rule is not pedantry, and a property test caught its absence: a
 /// 64-byte signature encodes to 86 chars, whose final char carries only 2
 /// meaningful bits. A lax decoder ignores the other 4, so 16 different key
-/// strings decode to the same signature and all unlock Pro — the key stops
+/// strings decode to the same signature and all unlock Pro - the key stops
 /// being canonical, and anything keyed on the string (a revocation list, a
 /// support lookup, a dedup check) can be evaded by flipping one character.
 /// Rejecting non-zero trailing bits makes the encoding injective.
@@ -449,7 +449,7 @@ mod tests {
         SigningKey::from_bytes(&seed)
     }
 
-    /// Mint a key with the given seed — the issuing side, mirrored here so the
+    /// Mint a key with the given seed - the issuing side, mirrored here so the
     /// tests exercise the real verifier against real signatures.
     fn mint(seed: [u8; 32], payload_json: &str) -> String {
         let sk = signing_key(seed);
@@ -520,7 +520,7 @@ mod tests {
         assert_eq!(st.state(), "expired");
         assert_eq!(st.tier(), Tier::Free, "expired must not unlock Pro");
         match st {
-            // The holder is still known — the UI says "renew", not "invalid".
+            // The holder is still known - the UI says "renew", not "invalid".
             Status::Expired(l) => assert_eq!(l.id, "XE-0001"),
             other => panic!("expected Expired, got {:?}", other),
         }
@@ -576,7 +576,7 @@ mod tests {
         );
     }
 
-    // Escalating "free" to "pro" in the payload must break the signature — this
+    // Escalating "free" to "pro" in the payload must break the signature - this
     // is the attack the whole module exists to stop.
     #[test]
     fn upgrading_the_tier_in_the_payload_breaks_the_signature() {
@@ -637,7 +637,7 @@ mod tests {
         }
     }
 
-    // Every truncation of a real key must fail cleanly — no panic, no slice
+    // Every truncation of a real key must fail cleanly - no panic, no slice
     // out-of-bounds, no Pro. This is the "user pasted half the key" case.
     #[test]
     fn every_truncation_of_a_valid_key_is_rejected_without_panicking() {
@@ -723,7 +723,7 @@ mod tests {
 
     #[test]
     fn production_issuer_key_is_armed_and_valid() {
-        // The real key is embedded — NOT the all-zero placeholder — and parses as
+        // The real key is embedded - NOT the all-zero placeholder - and parses as
         // a well-formed Ed25519 verifying key. If this ever reverts to zeros,
         // every licence silently becomes free; this is the guard against that.
         assert_ne!(
@@ -739,7 +739,7 @@ mod tests {
     #[test]
     fn a_key_from_a_different_issuer_does_not_unlock_pro() {
         // Now that the real key is armed, a key signed by ANY other seed (here the
-        // test seed — the real one is secret and never in the repo) must fail to
+        // test seed - the real one is secret and never in the repo) must fail to
         // verify and stay Free. Arming must not make a foreign key trusted.
         let foreign = mint(TEST_SEED, &pro_payload(None));
         assert_eq!(verify_at(&foreign, NOW).tier(), Tier::Free);
@@ -759,7 +759,7 @@ mod tests {
         // The key is read from the environment and is NEVER written to the repo.
         // Set XENEON_TEST_LICENSE_KEY to a real Pro key to run it; without it the
         // test SKIPS (so CI, which has no key, still passes). `verify()` uses the
-        // embedded ISSUER_PUBLIC_KEY — the real one.
+        // embedded ISSUER_PUBLIC_KEY - the real one.
         let key = match std::env::var("XENEON_TEST_LICENSE_KEY") {
             Ok(k) if !k.trim().is_empty() => k,
             _ => {
@@ -771,7 +771,7 @@ mod tests {
             verify(&key).tier(),
             Tier::Pro,
             "the owner's real key must unlock Pro against the shipped issuer key \
-             — if this fails, the armed public key does not match the seed that \
+             - if this fails, the armed public key does not match the seed that \
              mints the keys, and no customer's key would work"
         );
         // Tamper the signature: a single flipped character must drop it to Free.
@@ -894,7 +894,7 @@ mod tests {
 
     // The encoding must be injective: exactly ONE string per byte string. A lax
     // decoder ignores the unused low bits of a short final group, which made a
-    // flipped last character of a signature decode to the same 64 bytes — a
+    // flipped last character of a signature decode to the same 64 bytes - a
     // property test caught it, and these vectors pin the fix.
     #[test]
     fn b64url_decode_rejects_non_zero_trailing_bits() {
@@ -918,7 +918,7 @@ mod tests {
         assert_eq!(b64url_decode("Zm9v").unwrap(), b"foo");
     }
 
-    // Every string the encoder emits must decode, including short final groups —
+    // Every string the encoder emits must decode, including short final groups -
     // the strictness above must not reject our own output.
     #[test]
     fn strictness_does_not_reject_the_encoders_own_output() {
@@ -958,7 +958,7 @@ mod tests {
             b[pos] = byte;
             let Ok(mutated) = String::from_utf8(b) else { return Ok(()) };
             // Whitespace is stripped before parsing, so inserting some is a no-op
-            // by design (see `check`) — that is the line-wrap tolerance, not a hole.
+            // by design (see `check`) - that is the line-wrap tolerance, not a hole.
             proptest::prop_assume!(!(byte as char).is_whitespace());
             let st = verify_with(&mutated, &issuer(TEST_SEED), NOW);
             proptest::prop_assert_eq!(st.tier(), Tier::Free, "mutation at {} survived", pos);

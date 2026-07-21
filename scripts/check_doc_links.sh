@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# check_doc_links.sh — every relative link in our markdown must resolve.
+# check_doc_links.sh - every relative link in our markdown must resolve.
 #
 # Extracted from an inline docs.yml step that had two bugs:
 #
-#   1. It tested `[ -e "docs/DISTRIBUTION.md#release-signing" ]` — anchor and
-#      all — so a PERFECTLY VALID anchor link was reported broken and docs.yml
+#   1. It tested `[ -e "docs/DISTRIBUTION.md#release-signing" ]` - anchor and
+#      all - so a PERFECTLY VALID anchor link was reported broken and docs.yml
 #      went red on master. The link was right; the checker was wrong. A gate
 #      that cries wolf gets ignored, which is how the OTHER real breakage below
 #      survived.
@@ -14,7 +14,7 @@
 #      security policy's were pointing at things that never existed.
 #
 # So this checks every tracked or newly created .md, strips the anchor before
-# the file test, and — when the target is markdown — verifies the anchor actually
+# the file test, and - when the target is markdown - verifies the anchor actually
 # names a heading, because a link to a renamed heading is broken in the way that
 # matters to a reader even though the file still exists. Including untracked
 # files keeps the local pre-commit check equivalent to CI after those files are
@@ -35,7 +35,7 @@ slugify() {
 
 # ANTI-VACUITY: a lint that scans nothing passes everything. `check_no_raw_xhr.sh`
 # guards this ("the gate must still own exactly one construction site"); this did
-# not — pointed at a tree with no markdown it reported OK. Count the subjects and
+# not - pointed at a tree with no markdown it reported OK. Count the subjects and
 # the links, and fail if there is nothing to judge.
 fail=0
 files=0
@@ -81,7 +81,7 @@ done < <(git ls-files --cached --others --exclude-standard -- '*.md')
 
 if [ "$files" -eq 0 ] || [ "$links" -eq 0 ]; then
     echo "FAIL: scanned $files markdown file(s) and found $links relative link(s)."
-    echo "      With nothing to judge this lint would pass on any tree — refusing to."
+    echo "      With nothing to judge this lint would pass on any tree - refusing to."
     exit 1
 fi
 

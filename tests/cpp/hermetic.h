@@ -13,7 +13,7 @@
 //     saves defaults over the user's REAL ~/.config/xeneon-edge-hub/config.toml;
 //   * ControlServer::start() / the FakeHub helpers call
 //     QLocalServer::removeServer("xeneon-edge-hub-ctl"), which UNLINKS the
-//     socket of the user's LIVE hub — the hub keeps its listening fd, so it
+//     socket of the user's LIVE hub - the hub keeps its listening fd, so it
 //     looks healthy while the Manager can never connect again.
 // Both happened. The tests must therefore protect themselves rather than trust
 // whoever launches them: an unsafe environment is a BUG IN THE INVOCATION, and
@@ -24,14 +24,14 @@
 //   2. Each one exists and, once fully resolved (realpath: symlinks, `..` and
 //      all), lies inside one of the sandbox roots:
 //        - XENEON_TEST_SANDBOX_ROOT: the build tree's own per-test tmp root,
-//          baked in at compile time by add_qt_test() — i.e. the exact place the
+//          baked in at compile time by add_qt_test() - i.e. the exact place the
 //          build system creates the sandboxes ctest hands out;
 //        - the system temp dir ($TMPDIR or /tmp), which is what a hand-rolled
 //          `mktemp -d` sandbox uses (tests/runtime/ does exactly this).
 //   3. As a backstop against a pathological temp root (e.g. TMPDIR pointed at
 //      $HOME/.config, which would satisfy #2 while still being lethal), none of
 //      the three may be the real home itself or live under the real
-//      ~/.config — where "real home" is read from the PASSWD DATABASE via
+//      ~/.config - where "real home" is read from the PASSWD DATABASE via
 //      getpwuid(getuid()), NOT from $HOME. $HOME is precisely the variable a
 //      sandbox overrides, so trusting it here would defeat the check.
 //
@@ -39,17 +39,17 @@
 // heuristic. A normal developer shell has XDG_CONFIG_HOME unset (rule 1 fails)
 // or pointing at ~/.config (rules 2 and 3 fail), and XDG_RUNTIME_DIR at
 // /run/user/$UID (rule 2 fails). There is no ambient configuration that lands
-// all three inside the build tree's tmp root or a temp dir — you only get there
+// all three inside the build tree's tmp root or a temp dir - you only get there
 // by deliberately constructing a sandbox, which is the whole point.
 //
 // USAGE: `XENEON_REQUIRE_HERMETIC_ENV();` once at file scope in every tst_*.cpp.
 // It installs a namespace-scope static whose ctor runs during dynamic
-// initialisation — BEFORE main(), therefore before QTEST_*_MAIN builds the
+// initialisation - BEFORE main(), therefore before QTEST_*_MAIN builds the
 // QCoreApplication and before any test object (or any ConfigHandle /
 // ControlServer / ManagerBackend it owns) is constructed. That ordering is the
 // requirement: QFAIL/QSKIP inside a test slot would already be too late, since
-// the damage happens in constructors. Deliberately pure POSIX + <string> — no
-// Qt — so it is safe to run this early, with no dependency on Qt's own static
+// the damage happens in constructors. Deliberately pure POSIX + <string> - no
+// Qt - so it is safe to run this early, with no dependency on Qt's own static
 // initialisation.
 
 #include <cstdio>
@@ -65,7 +65,7 @@
 namespace xeneon {
 namespace test {
 
-// Fully resolve `p`. Returns "" when it does not exist or cannot be resolved —
+// Fully resolve `p`. Returns "" when it does not exist or cannot be resolved -
 // callers treat that as "not sandboxed", so a missing dir fails closed.
 inline std::string realPathOf(const std::string& p) {
     if (p.empty())
@@ -94,7 +94,7 @@ inline bool isWithin(const std::string& child, const std::string& root) {
     return child.compare(0, prefix.size(), prefix) == 0;
 }
 
-// The invoking user's REAL home, from the passwd database rather than $HOME —
+// The invoking user's REAL home, from the passwd database rather than $HOME -
 // see the rule-3 note above.
 inline std::string realHomeFromPasswd() {
     if (const struct passwd* pw = ::getpwuid(::getuid()))
@@ -106,7 +106,7 @@ inline std::string realHomeFromPasswd() {
 inline std::vector<std::string> sandboxRoots() {
     std::vector<std::string> roots;
 #ifdef XENEON_TEST_SANDBOX_ROOT
-    // The build tree's tests/cpp/tmp — where add_qt_test() creates the per-test
+    // The build tree's tests/cpp/tmp - where add_qt_test() creates the per-test
     // sandbox that ctest points the environment at.
     const std::string baked = realPathOf(XENEON_TEST_SANDBOX_ROOT);
     if (!baked.empty())
@@ -161,7 +161,7 @@ inline std::string hermeticFailureReason() {
 // Refuse to run outside a sandbox.
 //
 // _Exit (not abort/exit): terminate NOW, with no core dump to litter the
-// developer's session and no atexit handlers or static destructors — anything
+// developer's session and no atexit handlers or static destructors - anything
 // that runs on the way out is more code touching the very environment we just
 // judged unsafe. 99 distinguishes "refused to run" from any QtTest failure
 // count (QtTest reports the number of failed slots, capped at 127).
@@ -197,7 +197,7 @@ inline void abortUnlessHermetic() {
         abortUnlessHermeticImpl(reason);
 }
 
-// Ctor runs during dynamic initialisation, i.e. before main() — see USAGE.
+// Ctor runs during dynamic initialisation, i.e. before main() - see USAGE.
 struct HermeticGate {
     HermeticGate() { abortUnlessHermetic(); }
 };

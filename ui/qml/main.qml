@@ -46,7 +46,7 @@ ApplicationWindow {
     onExternalUiStateChanged: {
         if (!externalUiState.length) return
         // Route to whichever stack item can apply it (the Dashboard), even when
-        // Diagnostics or the wizard is on top — otherwise a live Manager push is
+        // Diagnostics or the wizard is on top - otherwise a live Manager push is
         // silently dropped while any other page is showing.
         var target = stackView.find(function (item) { return item && item.applyExternalState })
         if (target) target.applyExternalState(externalUiState)
@@ -111,7 +111,7 @@ ApplicationWindow {
     Theme {
         id: _theme
         // OS reduce-motion signal, read by C++ over the XDG settings portal
-        // (SystemSettingsProbe — QML/Qt cannot see this setting on any Qt 6).
+        // (SystemSettingsProbe - QML/Qt cannot see this setting on any Qt 6).
         // Guarded so harnesses without the context property keep the safe
         // default (false = no OS signal). Precedence lives in Theme.qml:
         // an explicit reduceMotionPreference still beats this.
@@ -182,7 +182,7 @@ ApplicationWindow {
         case "inverted-landscape": return 270
         // Auto: follow the sensor once it has reported. Until then (first boot on a
         // panel that answers no startup GET_REPORT, before any physical rotation),
-        // default to LANDSCAPE — the Edge's primary orientation — rather than sitting
+        // default to LANDSCAPE - the Edge's primary orientation - rather than sitting
         // in portrait. Derived from the window aspect so it's correct whether the OS
         // exposes the panel as portrait (720x2560 → rotate 90 to landscape) or already
         // landscape (2560x720 → 0). The sensor overrides this the moment it reports,
@@ -194,10 +194,10 @@ ApplicationWindow {
 
     // NOTE: Diagnostics is reached via the ⚙ button on the dashboard and the
     // Ctrl+D shortcut. Earlier there were whole-window TapHandlers here (3-finger
-    // + right-click) — removed because a root-level gesture handler can delay
+    // + right-click) - removed because a root-level gesture handler can delay
     // touch delivery to the widget buttons underneath, hurting responsiveness.
 
-    // Rotating content container — rotates + reflows the whole UI to match the
+    // Rotating content container - rotates + reflows the whole UI to match the
     // device orientation. When rotated 90/270 it swaps width/height so the
     // dashboard inside lays out for the effective aspect (landscape → more cols).
     Item {
@@ -256,7 +256,7 @@ ApplicationWindow {
                          Qt.resolvedUrl("Dashboard.qml").toString()
 
             // The initial page is instantiated from a URL, so no properties get
-            // passed in — inject the live bindings once it exists. Without this,
+            // passed in - inject the live bindings once it exists. Without this,
             // starting with --diagnostics shows an empty Diagnostics page.
             Component.onCompleted: root.bindStackItem(currentItem)
 
@@ -294,7 +294,7 @@ ApplicationWindow {
             // flash during a rotation (when contentRoot's height changes under it).
             visible: inputPanel.active
             y: active ? contentRoot.height - height : contentRoot.height
-            // Slide only for genuine show/hide — not when the container resizes
+            // Slide only for genuine show/hide - not when the container resizes
             // on rotation (which would otherwise re-animate the hidden panel).
             Behavior on y { enabled: inputPanel.active; NumberAnimation { duration: theme.motionEdit; easing.type: Easing.OutCubic } }
         }

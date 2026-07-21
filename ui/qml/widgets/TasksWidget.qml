@@ -2,22 +2,22 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// Task tracker — persisted per-instance. Add / check-off / remove; the tile
+// Task tracker - persisted per-instance. Add / check-off / remove; the tile
 // and the expanded view share the same list (via the store + revision).
 //
-// Sizing (W1 wave 2b): a checklist earns MORE ROWS, not bigger ones — and never
+// Sizing (W1 wave 2b): a checklist earns MORE ROWS, not bigger ones - and never
 // a smaller target. The tile rows were 24px with an 18px-wide checkbox cell that
 // carried a MouseArea: an 18x24 hit area for "complete this task", a third of
 // theme.touchTertiary (52). Rows are touchTertiary at every size now, the
 // checkbox owns a full-height touchTertiary cell, and the add field is
 // touchSecondary (60) rather than a fixed 40.
-//   • wide  — the list BESIDE its progress + add controls; a 696x409 box stacked
+//   • wide  - the list BESIDE its progress + add controls; a 696x409 box stacked
 //             into bar/list/field/button is almost all chrome.
-//   • every other shape — progress, the list, then the add row, as before.
-//   • 1x3 (the whole 720x2560 panel) — the same list, ~40 rows of it.
+//   • every other shape - progress, the list, then the add row, as before.
+//   • 1x3 (the whole 720x2560 panel) - the same list, ~40 rows of it.
 // Removal stays expanded-only, deliberately: a ✕ on a tile is a mis-tap away
 // from the checkbox, and the tile's own tap-to-expand is the way to get it.
-// (No 0.5x0.5 is declared, so `micro` is never true here — see WidgetCatalog.)
+// (No 0.5x0.5 is declared, so `micro` is never true here - see WidgetCatalog.)
 WidgetChrome {
     id: w
     property var metrics: ({})
@@ -57,7 +57,7 @@ WidgetChrome {
     readonly property bool horiz: sizeClass === "wide"
 
     // Does this instance have half-screen room? HabitWidget's predicate, derived
-    // the same way and for the same reason — the room itself answers it, not a
+    // the same way and for the same reason - the room itself answers it, not a
     // size name. Reachable here as a TILE: 1x1.5 (696x1229 / 1269x612) clears the
     // 480 half-cell threshold WidgetChrome uses, and 1x2 / 1x3 are `large`.
     readonly property bool roomy: sizeClass === "large" || sizeClass === "full"
@@ -80,11 +80,11 @@ WidgetChrome {
     // The checkbox is sized by its ROW, and the row is theme.touchTertiary at
     // EVERY size by explicit design (see the header). So the box is a constant
     // too, and `w.expanded ? 30` was a mode-keyed exception to a deliberate
-    // constant — the overlay's rows are not one pixel taller than a tile's. The
+    // constant - the overlay's rows are not one pixel taller than a tile's. The
     // overlay's box is therefore 27 rather than 30; the 52px TARGET around it is
     // unchanged, which is the number that matters.
     readonly property real boxSize: Math.max(20, Math.min(w.rowH * 0.52, 30))
-    // The celebration banner spans the whole CARD, so the card sizes it — the
+    // The celebration banner spans the whole CARD, so the card sizes it - the
     // same shape HabitWidget uses. `expanded ? 34 : 18` asked the wrong question
     // and got both answers wrong: a 696x819 baseline tile has more room than the
     // overlay's live-preview pane and still popped at 18, while the overlay kept
@@ -135,7 +135,7 @@ WidgetChrome {
         id: celebrateLabel; anchors.centerIn: parent; z: 20
         // Bounded to the card and allowed to wrap/elide. It had no width, no
         // wrapMode and no elide, so a centred banner longer than the card simply
-        // spilled out of both edges — celebrateNow() takes an arbitrary string and
+        // spilled out of both edges - celebrateNow() takes an arbitrary string and
         // the only thing keeping this honest was that today's is short.
         width: parent.width - 2 * theme.spacingLg
         text: w.celebrateMsg; opacity: 0
@@ -189,7 +189,7 @@ WidgetChrome {
                     required property int index
                     required property var modelData
                     width: ListView.view ? ListView.view.width : 0
-                    // A full touch target at EVERY size — see the header.
+                    // A full touch target at EVERY size - see the header.
                     height: w.rowH
                     spacing: theme.spacingSm
                     // Checkbox in a full touchTertiary cell (the visual box stays
@@ -206,7 +206,7 @@ WidgetChrome {
                                 color: "#0D1117"; font.bold: true
                                 font.pixelSize: Math.round(w.boxSize * 0.57) }
                         }
-                        // Tapping the box toggles done in BOTH modes — the tile is
+                        // Tapping the box toggles done in BOTH modes - the tile is
                         // a live control surface (config lives in the corner).
                         MouseArea { anchors.fill: parent; onClicked: w.toggle(modelData.idx) }
                     }
@@ -229,7 +229,7 @@ WidgetChrome {
             }
 
             Text {
-                // Only claim "no tasks" when the list is genuinely empty — not
+                // Only claim "no tasks" when the list is genuinely empty - not
                 // merely when every task is hidden by hideCompleted (status +
                 // Clear button would otherwise contradict it).
                 anchors.centerIn: parent
@@ -238,14 +238,14 @@ WidgetChrome {
                 horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
                 // The TEXT stays keyed off the mode, deliberately. It is content,
                 // not a size, and the long form names a DIRECTION ("below") that
-                // only the overlay's composition guarantees: a roomy wide box —
-                // 1x1.5 landscape is 1269x612 — puts the add row BESIDE the list,
+                // only the overlay's composition guarantees: a roomy wide box -
+                // 1x1.5 landscape is 1269x612 - puts the add row BESIDE the list,
                 // so a room-keyed long form would print a lie there. Converting
                 // this needs a second string, which is a copy decision, not a
                 // sizing one.
                 text: w.expanded ? "No tasks yet - add one below." : "No tasks"
                 // The SIZE does follow the room. `expanded ? 15 : 12` had the
-                // overlay's pane and a 696-wide tile — the wider box of the two —
+                // overlay's pane and a 696-wide tile - the wider box of the two -
                 // on opposite sides of the same literal.
                 color: theme.textTertiary
                 font.pixelSize: Math.round(Math.max(12,
@@ -260,7 +260,7 @@ WidgetChrome {
             Layout.alignment: w.horiz ? Qt.AlignVCenter : Qt.AlignBottom
             spacing: theme.spacingSm
 
-            // Progress toward "all done" — a glanceable momentum bar, now earned
+            // Progress toward "all done" - a glanceable momentum bar, now earned
             // by any tile with room rather than kept behind the overlay.
             Rectangle {
                 visible: w.showSummary && w.items.length > 0
@@ -274,7 +274,7 @@ WidgetChrome {
                 }
             }
 
-            // Quick add — available at EVERY size; both paths call add().
+            // Quick add - available at EVERY size; both paths call add().
             RowLayout {
                 Layout.fillWidth: true; spacing: theme.spacingSm
                 TextField {
@@ -287,7 +287,7 @@ WidgetChrome {
                     // room-keyed via `horiz`.
                     placeholderText: w.expanded || w.horiz ? "Add a task…" : "Add…"
                     // The field is a constant theme.touchSecondary tall at every
-                    // size, but the COLUMN it sits in is not — `horiz` caps that
+                    // size, but the COLUMN it sits in is not - `horiz` caps that
                     // column at 40% of the card (see Layout.maximumWidth below),
                     // so the text measures against the room it actually has. 16
                     // stays the designed ceiling; the overlay's narrow portrait
@@ -304,7 +304,7 @@ WidgetChrome {
                 PillButton { label: w.expanded ? "Add" : ""; glyph: "＋"; primary: true; tint: w.effAccent
                     onClicked: { w.add(input.text); input.text = "" } }
             }
-            // Bulk "clear completed" — only when there's something to clear, and
+            // Bulk "clear completed" - only when there's something to clear, and
             // only where there is room for a deliberate act.
             PillButton {
                 Layout.alignment: Qt.AlignHCenter

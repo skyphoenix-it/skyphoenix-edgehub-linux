@@ -4,7 +4,7 @@ import "../../ui/qml" as App
 
 // COVERS: schema:ageUnit, schema:showDate
 
-// SinceInstallWidget — how long the system has been installed.
+// SinceInstallWidget - how long the system has been installed.
 //
 // Every age below is computed from an epoch pinned RELATIVE TO NOW (now - N
 // days), never from a hard-coded date: an absolute epoch would silently change
@@ -52,7 +52,7 @@ Item {
             compare(w.dateText, "", "no date to show")
         }
 
-        // installEpoch null must never become "installed 1 Jan 1970" — the reason
+        // installEpoch null must never become "installed 1 Jan 1970" - the reason
         // the core sends null rather than a 0 sentinel.
         function test_missing_install_date_is_unknown_not_the_epoch() {
             var w = h.item
@@ -117,7 +117,7 @@ Item {
             compare(w.unitText, "years since install")
 
             w.distroOverride = fakeDistro(agedInfo(1461))
-            compare(w.valueText, "4.0", "1461/365.25 = exactly 4.0 — leap years counted")
+            compare(w.valueText, "4.0", "1461/365.25 = exactly 4.0 - leap years counted")
         }
 
         // "days" pins the unit: 1461 days IS the flex for some people.

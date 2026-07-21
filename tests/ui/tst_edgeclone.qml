@@ -4,7 +4,7 @@ import "../../ui/qml" as App
 
 // COVERS: fn:EdgeClone.injectInto, fn:EdgeClone.targetAt, fn:EdgeClone.wsrc
 //
-// manager/qml/EdgeClone.qml —
+// manager/qml/EdgeClone.qml -
 //   • wsrc(type): rewrites the hub qrc path to the manager alias; "" for unknown
 //   • injectInto: sets instanceId/store/expanded/active + binds titleOverride/
 //     accentName/cardBackdrop/metrics/tick; null item is safe
@@ -13,7 +13,7 @@ import "../../ui/qml" as App
 //   • resize handle drag → snaps to a size the TYPE declares → store.setTileSize
 //
 // `spanH(h) = 180n + 10(n-1)` is GONE with its test: it hard-coded a 180px row
-// height, and the size model has no such thing — a cell is a fraction of the screen,
+// height, and the size model has no such thing - a cell is a fraction of the screen,
 // so there is no fixed pixel row to encode. Placement now comes from WidgetPacker.
 //
 // EdgeClone resolves store/catalog/theme/media/backend from the Manager scope;
@@ -26,7 +26,7 @@ Item {
     App.Theme { id: theme }
     App.DashboardStore { id: store }
     App.WidgetCatalog { id: catalog }
-    App.WidgetSizes { id: hubSizes }   // the HUB's copy — the parity reference
+    App.WidgetSizes { id: hubSizes }   // the HUB's copy - the parity reference
     // Drives the live-binding test below. A real QML property, so a Qt.binding over
     // it genuinely re-evaluates (a closure over a JS local would not).
     property string previewSize: "1x1"
@@ -87,7 +87,7 @@ Item {
     // reason EdgeClone.targetAt skips them: a removal shifts every later store index
     // down, so a dying row's `tileIdx` is stale. This suite shares one Loader and
     // re-seeds per test, so an earlier test's ghost really was answering to `tileIdx`
-    // here and handing back the wrong box — test_targetAt's corner probe caught it.
+    // here and handing back the wrong box - test_targetAt's corner probe caught it.
     function tileAtIdx(i) {
         var ds = tileDelegates()
         for (var k = 0; k < ds.length; k++) if (!ds[k].dying && ds[k].tileIdx === i) return ds[k]
@@ -104,11 +104,11 @@ Item {
     // The widget instance the clone ACTUALLY loaded for a tile, reached through the
     // delegate's own Loader (`wId`). Going through the real Loader is the point: a
     // test that supplies its own sizeFn to injectInto proves only that injectInto
-    // binds what it is handed — it cannot see the clone passing the WRONG thing,
+    // binds what it is handed - it cannot see the clone passing the WRONG thing,
     // which is precisely how the hardcoded-portrait size class survived.
     // Ghosts are skipped for the SAME reason tileAtIdx skips them: a dying row is
     // held open for its exit fade, and since this suite re-seeds per case the store
-    // hands out the same tile id again — so an earlier case's ghost answers to the
+    // hands out the same tile id again - so an earlier case's ghost answers to the
     // new id and returns ITS class. That cost a real debugging round: the landscape
     // pass read the portrait pass's fading tile and reported "tall" for a fix that
     // was correctly in place.
@@ -149,7 +149,7 @@ Item {
             verify(/CpuWidget\.qml$/.test(mgr), "manager path points at CpuWidget.qml: " + mgr)
             // Bundled, the Manager has its OWN alias for the same bytes, and the
             // rewrite must produce it. Run from the source tree there is only one
-            // copy of the file, so the rewrite is correctly a no-op — asserting
+            // copy of the file, so the rewrite is correctly a no-op - asserting
             // the qrc literal there would pin the harness, not the behaviour.
             if (hub.indexOf("qrc:") === 0)
                 compare(mgr, "qrc:/manager/CpuWidget.qml", "rewritten to the manager alias")
@@ -186,19 +186,19 @@ Item {
         //
         // THE WYSIWYG PARITY PIN. The clone used to own a copy-paste of the hub's
         // derivation with `landscape` hardcoded to false. In landscape the hub
-        // rendered a tile `wide` and the Manager rendered the SAME tile `tall` — a
+        // rendered a tile `wide` and the Manager rendered the SAME tile `tall` - a
         // different layout variant at a different information density, which is what
         // "widgets are not WYSIWYG in the Manager" meant.
         //
         // The old test could not see it: it compared the clone's answer to STRING
         // LITERALS ("1x1" is "compact", …), never to the hub, and only ever in
-        // portrait — where the two agree. Two implementations could drift arbitrarily
+        // portrait - where the two agree. Two implementations could drift arbitrarily
         // and stay green. They did.
         //
         // What this asserts instead: the class the clone ACTUALLY hands a rendered
         // widget equals the hub's answer for the same size at the same orientation,
         // over the full size × orientation cross product. The reference is the hub's
-        // own WidgetSizes instance, not a literal — so if the hub's derivation
+        // own WidgetSizes instance, not a literal - so if the hub's derivation
         // changes, this fails until the preview follows.
         function test_size_class_matches_the_hub_in_BOTH_orientations() {
             var c = ld.item
@@ -219,7 +219,7 @@ Item {
 
                     // Order matters: `load` replaces the whole document, appearance
                     // included, so the orientation has to be set AFTER it. Setting it
-                    // first silently reverted every case to portrait — which is the
+                    // first silently reverted every case to portrait - which is the
                     // very answer this test exists to distinguish from, so the test
                     // would have agreed with the bug it is meant to catch.
                     store.load("blank")
@@ -247,7 +247,7 @@ Item {
             store.load("blank")
         }
 
-        // The same size is a DIFFERENT class per orientation — that asymmetry is the
+        // The same size is a DIFFERENT class per orientation - that asymmetry is the
         // whole point of a rotating panel, and it is the specific thing the hardcode
         // erased. Stated as its own case so a regression names itself.
         function test_orientation_actually_changes_the_class() {
@@ -267,7 +267,7 @@ Item {
                     "EdgeClone must call WidgetSizes.classFor, never own a copy")
         }
 
-        // The injected class is BOUND, not read once — on BOTH its inputs. A live
+        // The injected class is BOUND, not read once - on BOTH its inputs. A live
         // resize PREVIEW (pvSize) must reflow the widget exactly as committing the
         // size would on the hub, and a rotation must re-class it in place.
         //
@@ -310,7 +310,7 @@ Item {
             }, 3000, "two tiles laid out")
 
             var t0 = tileAtIdx(0), t1 = tileAtIdx(1)
-            // Delegate x/y are in the tile container's coordinate space — exactly what
+            // Delegate x/y are in the tile container's coordinate space - exactly what
             // targetAt() compares against (it reads rep.itemAt(i).x/y).
             var c0x = t0.x + t0.width / 2, c0y = t0.y + t0.height / 2
             var c1x = t1.x + t1.width / 2, c1y = t1.y + t1.height / 2
@@ -323,7 +323,7 @@ Item {
             compare(c.targetAt(t0.x + t0.width, t0.y + t0.height), 0,
                     "the tile's bottom-right corner is inside (inclusive bound)")
 
-            // Two 1x1 tiles are two thirds of the SCREEN, stacked along its long axis —
+            // Two 1x1 tiles are two thirds of the SCREEN, stacked along its long axis -
             // so the gap between them runs across, not down. (Under the old column grid
             // they sat side by side; the gap has simply changed axis with the layout.)
             verify(t1.y > t0.y && Math.abs(t1.x - t0.x) < 1,
@@ -351,7 +351,7 @@ Item {
             var startH = t0.height
             var h = resizeHandles()[0]
 
-            // Drag the corner DOWN — along the long axis — by most of a third of the
+            // Drag the corner DOWN - along the long axis - by most of a third of the
             // screen. In the unscaled `screen` space the handler measures in.
             mousePress(h, 12, 12)
             mouseMove(h, 12, 12 + startH * 0.4)
@@ -385,7 +385,7 @@ Item {
 
             mousePress(h, 12, 12)
             mouseMove(h, 12, 12 + startH * 0.5)
-            // Read the geometry in the SAME event as the move — before any animation
+            // Read the geometry in the SAME event as the move - before any animation
             // could have ticked.
             var immediate = t0.height
             compare(t0.pvSize, "1x1.5", "the drag snapped the preview to the next declared size")
@@ -393,7 +393,7 @@ Item {
 
             wait(400)   // comfortably longer than motionPage (250ms)
             compare(t0.height, immediate,
-                    "the box was ALREADY at its previewed size — the extent never eased")
+                    "the box was ALREADY at its previewed size - the extent never eased")
 
             mouseRelease(h, 12, 12 + startH * 0.5)
             theme.reduceMotionPreference = "auto"
@@ -422,7 +422,7 @@ Item {
 
         // THE GUARD: a drag can never produce a size the widget type does not declare.
         // `focus` needs a squarish box (its ring is min(w,h)-scaled with the Start row
-        // anchored over it), so it declares only 1x1 and 1x1.5 — no half sizes at all.
+        // anchored over it), so it declares only 1x1 and 1x1.5 - no half sizes at all.
         // A huge drag must stop at 1x1.5, and a tiny one must not reach 0.5x0.5.
         function test_resize_drag_never_lands_on_a_size_the_type_lacks() {
             root.seed([ { type: "focus" } ])
@@ -440,7 +440,7 @@ Item {
             mouseMove(h, 12 + t0.width * 4, 12 + t0.height * 6)
             mouseRelease(h, 12 + t0.width * 4, 12 + t0.height * 6)
             compare(tile0().size, "1x1.5",
-                    "a runaway drag stops at focus's largest DECLARED size — never 1x2 or 1x3")
+                    "a runaway drag stops at focus's largest DECLARED size - never 1x2 or 1x3")
 
             // …and a runaway drag inward cannot reach the half sizes it does not declare.
             t0 = tileAtIdx(0)
@@ -448,12 +448,12 @@ Item {
             mousePress(h, 12, 12)
             mouseMove(h, 12 - t0.width * 2, 12 - t0.height * 2)
             mouseRelease(h, 12 - t0.width * 2, 12 - t0.height * 2)
-            compare(tile0().size, "1x1", "and inward it stops at 1x1 — never 0.5x0.5")
+            compare(tile0().size, "1x1", "and inward it stops at 1x1 - never 0.5x0.5")
             verify(catalog.supports("focus", tile0().size), "whatever the drag, the size is one focus declares")
         }
 
         // A type with exactly one legal size has nothing to resize TO, so the handle is
-        // not offered — a control that provably cannot do anything should not be there.
+        // not offered - a control that provably cannot do anything should not be there.
         function test_resize_handle_is_hidden_when_there_is_only_one_size() {
             root.seed([ { type: "cpu" } ])
             tryVerify(function () { return resizeHandles().length === 1 }, 3000,
@@ -462,8 +462,8 @@ Item {
         }
 
         // Preview mode (Appearance tab): editable=false renders the same WYSIWYG
-        // clone but hides every edit affordance — drag/select overlay, ⚙/✕
-        // controls, resize handle — so the preview can't become a second,
+        // clone but hides every edit affordance - drag/select overlay, ⚙/✕
+        // controls, resize handle - so the preview can't become a second,
         // competing layout editor.
         function test_editable_false_hides_every_edit_affordance() {
             root.seed([ { type: "cpu" } ])

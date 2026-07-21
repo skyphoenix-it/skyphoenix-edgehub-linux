@@ -111,8 +111,8 @@ Run the catalog tests and repeat the count audit before publication.
 
 Use one primary action per placement:
 
-- **Download [VERSION]** — only after artifacts are live and verified.
-- **Read the release evidence** — link to checksums, signatures, test matrix,
+- **Download v1.0.0-beta.1** - only after artifacts are live and verified.
+- **Read the release evidence** - link to checksums, signatures, test matrix,
   package lifecycle, performance, and soak results.
-- **View the source** — suitable before commercial delivery is available.
-- **Report an issue** — point to the repository's issue template/support route.
+- **View the source** - suitable before commercial delivery is available.
+- **Report an issue** - point to the repository's issue template/support route.

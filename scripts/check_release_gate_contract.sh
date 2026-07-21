@@ -324,7 +324,7 @@ echo "==> Portable payload release boundary"
 portable_copy_line="$(grep -nF 'cp -v "${BUILD_DIR}/${bin_tarball}" "$DIST_DIR/"' "$RELEASE_SCRIPT" | head -1 | cut -d: -f1)"
 portable_extract_line="$(grep -nF 'tar -xzf "${DIST_DIR}/${bin_tarball}" -C "$smoke_root"' "$RELEASE_SCRIPT" | head -1 | cut -d: -f1)"
 portable_smoke_line="$(grep -nF 'bash "$RELEASE_SOURCE_DIR/packaging/ci/smoke.sh"' "$RELEASE_SCRIPT" | head -1 | cut -d: -f1)"
-signing_line="$(grep -nF 'step "Signing (gpg will prompt you for the passphrase — this is intentional)"' "$RELEASE_SCRIPT" | head -1 | cut -d: -f1)"
+signing_line="$(grep -nF 'step "Signing (gpg will prompt you for the passphrase - this is intentional)"' "$RELEASE_SCRIPT" | head -1 | cut -d: -f1)"
 if [ -n "$portable_copy_line" ] && [ -n "$portable_extract_line" ] \
         && [ -n "$portable_smoke_line" ] && [ -n "$signing_line" ] \
         && [ "$portable_copy_line" -lt "$portable_extract_line" ] \

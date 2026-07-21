@@ -4,7 +4,7 @@ import QtTest
 // COVERS: schema:steps
 
 // ─────────────────────────────────────────────────────────────────────────
-// tst_routine — ui/qml/widgets/RoutineWidget.qml.
+// tst_routine - ui/qml/widgets/RoutineWidget.qml.
 //
 // Two requirements, both asserted rather than reviewed:
 //   1. It resets each day. Yesterday's ticks must not read as today's, and the
@@ -13,7 +13,7 @@ import QtTest
 //   2. It does not punish. The "no shaming" rule is enforced STRUCTURALLY: the
 //      widget must persist no cross-day state at all, so there is nothing a bad
 //      day can decrement. That is a stronger, testable claim than "we picked calm
-//      colours" — so the test asserts the absence of streak-shaped keys on disk,
+//      colours" - so the test asserts the absence of streak-shaped keys on disk,
 //      not just the absence of red.
 // ─────────────────────────────────────────────────────────────────────────
 Item {
@@ -37,7 +37,7 @@ Item {
     function todayKey() { return Qt.formatDate(new Date(), "yyyy-MM-dd") }
     // A round-trip must go through a doc that OWNS the settings bucket: the store
     // prunes settings whose id no tile claims (an orphan bucket is a leak), so a
-    // harness instance with no tile is dropped on reload — correctly. Give the
+    // harness instance with no tile is dropped on reload - correctly. Give the
     // document the tile a real config.toml would have, then reload it.
     function reloadWith(harness, doc, type) {
         doc.pages = [ { name: "Test", tiles: [ { id: "test-instance", type: type, size: "1x1" } ] } ]
@@ -120,14 +120,14 @@ Item {
             h.item.toggle("Meds")
             var onDisk = JSON.parse(JSON.stringify(h.storeCtl._persistableData()))
             compare(onDisk.settings["test-instance"].done[0], "Meds", "persistable, not ephemeral")
-            // applyExternal() is the real reload path — the same one the hub and the
-            // Manager push a document through — and it forces the doc back through
+            // applyExternal() is the real reload path - the same one the hub and the
+            // Manager push a document through - and it forces the doc back through
             // JSON, so this exercises the serialization config.toml actually uses.
             compare(root.reloadWith(h, onDisk, "routine"), true, "the document reloads")
             compare(h.item.isDone("Meds"), true, "still ticked after a reload")
         }
 
-        // Identity is the step text, not the index — inserting a line above must
+        // Identity is the step text, not the index - inserting a line above must
         // not silently move a tick onto a different step.
         function test_ticks_survive_inserting_a_step_above() {
             h.storeCtl.patchSettings("test-instance", { steps: "Pack bag" })
@@ -196,7 +196,7 @@ Item {
             var allowed = ["steps", "day", "done"]
             for (var k in saved)
                 verify(allowed.indexOf(k) >= 0,
-                       "routine persists no '" + k + "' — nothing to lose by skipping a day")
+                       "routine persists no '" + k + "' - nothing to lose by skipping a day")
             verify(saved.streak === undefined, "no streak is kept")
             verify(saved.bestStreak === undefined, "no personal best to fall short of")
             verify(saved.history === undefined, "no history of bad days")
@@ -216,7 +216,7 @@ Item {
             compare(afterGap.all, h.item.allDone)
         }
 
-        // An unticked step is a normal thing you might do — not an error.
+        // An unticked step is a normal thing you might do - not an error.
         function test_an_unticked_step_is_not_rendered_as_an_error() {
             h.storeCtl.patchSettings("test-instance", { steps: "Meds\nPack bag" })
             h.item.toggle("Meds")
@@ -298,7 +298,7 @@ Item {
                 return n.hasOwnProperty("contentY") && n.hasOwnProperty("model") }, [])[0]
         }
 
-        // The row is a real touch target at EVERY size — it was 22px on a tile.
+        // The row is a real touch target at EVERY size - it was 22px on a tile.
         function test_every_tile_row_is_a_real_touch_target() {
             tryVerify(function () { return rTall.ready }, 3000)
             tryVerify(function () { return rWide.ready }, 3000)
@@ -314,7 +314,7 @@ Item {
                     verify(rows[j].height >= hosts[i].theme.touchTertiary,
                            classes[i] + " row " + j + " is >= touchTertiary ("
                            + rows[j].height + " >= " + hosts[i].theme.touchTertiary
-                           + ") — a tick is never a 22px target")
+                           + ") - a tick is never a 22px target")
             }
         }
 
@@ -333,7 +333,7 @@ Item {
                    + listOf(rWide).height.toFixed(0) + "px of list)")
         }
 
-        // wide — the summary moves BESIDE the list.
+        // wide - the summary moves BESIDE the list.
         function test_wide_puts_the_summary_beside_the_list() {
             tryVerify(function () { return rWide.ready }, 3000)
             var r = rWide.item
@@ -348,7 +348,7 @@ Item {
             r.sizeClass = "tall"
         }
 
-        // The summary is earned by room — and it still never scolds.
+        // The summary is earned by room - and it still never scolds.
         function test_the_summary_is_earned_and_still_states_a_fact() {
             tryVerify(function () { return rLarge.ready }, 3000)
             var r = rLarge.item

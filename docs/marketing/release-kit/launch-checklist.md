@@ -3,31 +3,36 @@
 The checklist is fail-closed: an unchecked blocking item means the launch copy
 remains internal.
 
-## 1. Release identity and evidence — blocking
+**Accepted-risk decision (2026-07-21):** the release owner waived the 48-hour
+soak and formal performance limits for beta.1. No stability-duration or
+performance-number claim is permitted. Only signed source and portable x86-64
+tarballs are advertised.
+
+## 1. Release identity and evidence - blocking
 
 - [ ] The signed tag exists and identifies the exact commit under test.
 - [ ] `scripts/run_release_tests.sh` passed with no failure, skip, ignored test,
       expected failure, or compatibility exception.
-- [ ] The 48-hour idle soak and its 24-hour checkpoint passed.
-- [ ] Short idle/active performance profiles passed the approved limits.
+- [x] The 48-hour soak is explicitly waived; no long-soak claim is present.
+- [x] Performance numbers are omitted; no formal performance claim is present.
 - [ ] The real owner-issued Pro key passed against the shipped issuer key.
 - [ ] Coverage met the strict Rust, C++, merged, and QML gates.
 - [ ] Real Edge, Manager/Hub, display lifecycle, touch, reconnect, and suspend
       evidence belongs to the exact candidate.
 - [ ] Release notes no longer contain the development hold.
 
-## 2. Artifacts and install lifecycle — blocking
+## 2. Artifacts and install lifecycle - blocking
 
 - [ ] Every advertised artifact is uploaded and its SHA-256/signature verifies.
 - [ ] Each advertised package completed clean install, upgrade, uninstall, and
       reinstall on its named platform.
-- [ ] Both binaries report `[VERSION]` from the published payload.
-- [ ] AppImage launch and update metadata are verified.
-- [ ] Any advertised zsync/delta update passed between two published releases.
+- [ ] Both binaries report `v1.0.0-beta.1` from the published payload.
+- [x] AppImage is not advertised for beta.1.
+- [x] zsync/delta update is not advertised for beta.1.
 - [ ] Download links were tested from a clean consumer environment.
 - [ ] Rollback/recovery instructions are documented.
 
-## 3. Product and business claims — blocking
+## 3. Product and business claims - blocking
 
 - [ ] Catalog counts were regenerated from the exact candidate.
 - [ ] Supported distro/desktop/session wording matches completed evidence.
@@ -35,10 +40,10 @@ remains internal.
 - [ ] Inspired theme names and palettes passed legal/trademark review.
 - [ ] If Pro is sold, provider, product, price, tax, delivery, key recovery,
       refund, privacy, and support paths are live and tested.
-- [ ] If Pro is not sold, every draft clearly says it is not available.
+- [x] Pro is not sold and every selected draft says keys are unavailable.
 - [ ] Required Corsair independence disclaimer was approved.
 
-## 4. Copy review — blocking
+## 4. Copy review - blocking
 
 - [ ] `rg -n '\[[A-Z][A-Z0-9_ -]*\]' docs/marketing/release-kit` returns no
       unresolved publication placeholder in selected assets.
@@ -49,7 +54,7 @@ remains internal.
 - [ ] Spelling, capitalization, product naming, and legal wording are consistent.
 - [ ] Release announcement, website, store, email, and social copy agree.
 
-## 5. Visual review — blocking
+## 5. Visual review - blocking
 
 - [ ] All launch visuals were recaptured from the exact candidate.
 - [ ] Version, commit, binary hashes, platform, and config are recorded for each.

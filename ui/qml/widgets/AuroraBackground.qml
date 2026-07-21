@@ -1,6 +1,6 @@
 import QtQuick
 
-// AuroraBackground — northern-lights curtains: a few tall, soft vertical bands
+// AuroraBackground - northern-lights curtains: a few tall, soft vertical bands
 // (transparent at both ends, coloured in the middle) in green/teal/purple theme
 // colours that slide horizontally on slow sinusoidal loops with gently animated
 // opacity. Uses plain Rectangle vertical gradients (reliable everywhere) rather

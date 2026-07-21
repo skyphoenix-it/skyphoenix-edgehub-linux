@@ -4,11 +4,11 @@ import QtTest
 // COVERS: schema:showTimes
 
 // ─────────────────────────────────────────────────────────────────────────
-// tst_braindump — ui/qml/widgets/BraindumpWidget.qml.
+// tst_braindump - ui/qml/widgets/BraindumpWidget.qml.
 //
 // What must hold: capture is one line and one key, the newest entry is the one
 // you see, entries survive a store round-trip, and the list cannot grow the
-// config without bound. The ordering assertion is not cosmetic — an entry that
+// config without bound. The ordering assertion is not cosmetic - an entry that
 // lands off-screen is an entry the user believes was lost.
 // ─────────────────────────────────────────────────────────────────────────
 Item {
@@ -39,7 +39,7 @@ Item {
     }
     // A round-trip must go through a doc that OWNS the settings bucket: the store
     // prunes settings whose id no tile claims (an orphan bucket is a leak), so a
-    // harness instance with no tile is dropped on reload — correctly. Give the
+    // harness instance with no tile is dropped on reload - correctly. Give the
     // document the tile a real config.toml would have, then reload it.
     function reloadWith(harness, doc, type) {
         doc.pages = [ { name: "Test", tiles: [ { id: "test-instance", type: type, size: "1x1" } ] } ]
@@ -111,7 +111,7 @@ Item {
             compare(h.storeCtl.settingsFor("test-instance").entries.length, 0, "and it persisted")
         }
 
-        // An unbounded array here would grow config.toml forever — this is the
+        // An unbounded array here would grow config.toml forever - this is the
         // widget you dump into without thinking.
         function test_list_is_capped_and_drops_the_oldest() {
             var w = h.item
@@ -137,8 +137,8 @@ Item {
             compare(saved.entries.length, 2, "entries are persistable, not ephemeral")
             compare(saved.entries[0].text, "email Dana")
             verify(saved.entries[0].at > 0, "the timestamp is persisted too")
-            // applyExternal() is the real reload path — the same one the hub and the
-            // Manager push a document through — and it forces the doc back through
+            // applyExternal() is the real reload path - the same one the hub and the
+            // Manager push a document through - and it forces the doc back through
             // JSON, so this exercises the serialization config.toml actually uses.
             compare(root.reloadWith(h, onDisk, "braindump"), true, "the document reloads")
             var e = h.item.entries
@@ -193,7 +193,7 @@ Item {
         when: windowShown
         function init() { tryVerify(function () { return hc.ready }, 3000); clearSettings(hc) }
 
-        // Capture has to work from the tile itself, with Enter — that IS the widget.
+        // Capture has to work from the tile itself, with Enter - that IS the widget.
         function test_typing_and_pressing_enter_captures_from_the_tile() {
             var f = root.fieldIn(hc.item)
             verify(f !== null, "the tile carries the capture field")
@@ -210,12 +210,12 @@ Item {
     // ── Delegate survival (W1 wave 2b) ──────────────────────────────────────
     // store.revision is GLOBAL: every widget's setting write bumps it, and the
     // metric tiles write their sparkline `hist` every ~2s. `entries` is derived
-    // off `cfg`, so it IS a brand-new array roughly every two seconds — which
+    // off `cfg`, so it IS a brand-new array roughly every two seconds - which
     // looks like the SensorsWidget clunk (a model rebuilt on every tick).
     //
     // Measured, it is not: a ListView fed a JS array diffs it and reuses the
     // delegates when the content is equal. That is the property the user actually
-    // feels, so it is pinned HERE rather than left to a comment — if a future
+    // feels, so it is pinned HERE rather than left to a comment - if a future
     // change starts genuinely rebuilding the queue while someone is reading it,
     // this fails.
     TestCase {
@@ -254,7 +254,7 @@ Item {
                 if (after.indexOf(before[j]) >= 0) survived++
             compare(survived, before.length,
                     "every realised delegate survives an unrelated sparkline tick ("
-                    + survived + "/" + before.length + ") — the queue is not rebuilt "
+                    + survived + "/" + before.length + ") - the queue is not rebuilt "
                     + "under the reader every 2s")
         }
 
@@ -297,7 +297,7 @@ Item {
                 return n.hasOwnProperty("contentY") && n.hasOwnProperty("model") }, [])[0]
         }
 
-        // The capture row is a real touch target at every size — it was a fixed
+        // The capture row is a real touch target at every size - it was a fixed
         // 40px, under theme.touchTertiary (52), and capture is the whole product.
         function test_the_capture_row_is_a_real_touch_target() {
             tryVerify(function () { return dTall.ready }, 3000)
@@ -328,7 +328,7 @@ Item {
                    + listOf(dTall).height.toFixed(0) + "px)")
         }
 
-        // wide — the capture column moves BESIDE the queue.
+        // wide - the capture column moves BESIDE the queue.
         function test_wide_puts_capture_beside_the_queue() {
             tryVerify(function () { return dWide.ready }, 3000)
             var d = dWide.item

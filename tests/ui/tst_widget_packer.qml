@@ -6,7 +6,7 @@ import "../../ui/qml" as App
 // COVERS: fn:WidgetPacker.rect, fn:WidgetPacker.snap, fn:WidgetPacker._grid
 // COVERS: fn:WidgetPacker._free, fn:WidgetPacker._fill, fn:WidgetPacker._firstFit
 //
-// WidgetPacker — the placement authority that replaced GridLayout.
+// WidgetPacker - the placement authority that replaced GridLayout.
 //
 // The two properties that matter are asserted head-on, because they are the two
 // things GridLayout got wrong and the two things a rewrite could quietly get wrong
@@ -31,7 +31,7 @@ Item {
         for (var i = 0; i < ps.length; i++) if (ps[i].id === id) return ps[i]
         return null
     }
-    // "s,l,es,el" — a whole placement as one comparable string.
+    // "s,l,es,el" - a whole placement as one comparable string.
     function slot(p) { return p ? (p.s + "," + p.l + "," + p.es + "," + p.el) : "none" }
 
     TestCase {
@@ -56,7 +56,7 @@ Item {
         function test_first_fit_backfills_the_short_axis() {
             var ps = packer.pack([ t("a", "0.5x1"), t("b", "0.5x1"), t("c", "1x1") ])
             compare(slot(ps[0]), "0,0,1,2", "a takes the first half")
-            compare(slot(ps[1]), "1,0,1,2", "b takes the OTHER half of the same row — backfilled")
+            compare(slot(ps[1]), "1,0,1,2", "b takes the OTHER half of the same row - backfilled")
             compare(slot(ps[2]), "0,2,2,2", "c, needing the full short axis, starts the next row")
             compare(packer.longExtent(ps), 4, "three tiles in two thirds of the screen, no hole")
         }
@@ -68,7 +68,7 @@ Item {
             compare(slot(ps[0]), "0,0,1,1", "a takes one twelfth at the origin")
             compare(slot(ps[1]), "0,1,2,2", "b cannot fit beside a, so it starts after it")
             compare(slot(ps[2]), "1,0,1,1",
-                    "c goes BACK into the gap beside a — the whole point of first fit")
+                    "c goes BACK into the gap beside a - the whole point of first fit")
         }
 
         // ── Determinism ──────────────────────────────────────────────────────
@@ -79,27 +79,27 @@ Item {
             compare(JSON.stringify(two), JSON.stringify(one), "same tiles in, same placement out")
         }
 
-        // ── ROTATION STABILITY — the reason packing is semantic ──────────────
+        // ── ROTATION STABILITY - the reason packing is semantic ──────────────
         // There is only ONE packing, so there is nothing for a rotation to change.
         // Packing in physical coordinates scrambled 99.2% of 5-tile pages here.
         function test_rotation_cannot_change_the_packing() {
             var tiles = [ t("a", "0.5x1"), t("b", "0.5x0.5"), t("c", "1x1"),
                           t("d", "0.5x0.5"), t("e", "1x0.5") ]
             var ps = packer.pack(tiles)
-            // pack() takes no orientation argument at all — the defining property.
+            // pack() takes no orientation argument at all - the defining property.
             compare(packer.pack.length, 1, "pack() accepts ONLY the tiles: orientation cannot enter")
             for (var i = 0; i < ps.length; i++) {
                 var p = ps[i]
                 var portrait = packer.project(p, false)
                 var land = packer.project(p, true)
-                // Same semantic slot, both ways round — the tile is where it was.
+                // Same semantic slot, both ways round - the tile is where it was.
                 compare(land.x, portrait.y, p.id + ": the long axis moves from y to x, unchanged")
                 compare(land.y, portrait.x, p.id + ": and the short axis from x to y")
                 compare(land.w * land.h, portrait.w * portrait.h, p.id + ": rotation conserves area")
             }
         }
 
-        // The projection agrees with WidgetSizes.halfUnits for the EXTENT — the two
+        // The projection agrees with WidgetSizes.halfUnits for the EXTENT - the two
         // must not drift, or a tile would be placed on one grid and sized on another.
         function test_project_extent_matches_halfUnits() {
             var all = sz.all()
@@ -127,13 +127,13 @@ Item {
             compare(packer.longExtent(null), 0, "a null page is not a crash")
         }
 
-        // Overflow is placed IN FULL — never dropped, never clipped away. The store
+        // Overflow is placed IN FULL - never dropped, never clipped away. The store
         // and the presets both produce over-long pages; they scroll (Dashboard.qml).
         function test_an_overlong_page_places_every_tile() {
             var many = []
             for (var i = 0; i < 9; i++) many.push(t("t" + i, "1x1"))
             var ps = packer.pack(many)
-            compare(ps.length, 9, "all nine placed — capacity is not a thing the packer does")
+            compare(ps.length, 9, "all nine placed - capacity is not a thing the packer does")
             for (var j = 0; j < 9; j++)
                 compare(slot(ps[j]), "0," + (j * 2) + ",2,2", "tile " + j + " runs on past the screen")
         }
@@ -178,7 +178,7 @@ Item {
             compare(l.x, 400, "landscape: the same third is 400px ACROSS")
             compare(l.y, 0)
             compare(l.width, 400); compare(l.height, 240, "and it is transposed, not moved")
-            // The gap comes out of the TILE — the grid stays screen/(2x6) exactly, so
+            // The gap comes out of the TILE - the grid stays screen/(2x6) exactly, so
             // the tile centres do not move when the gap changes.
             var g = packer.rect(ps[1], false, 120, 200, 20)
             compare(g.x, 10, "half a gap of inset")
@@ -198,7 +198,7 @@ Item {
             compare(packer.snap(cpu, 90, 210, 100, 100), "0.5x1", "a narrow tall box snaps to the sixth")
             // A drag WAY past everything cannot invent a bigger size than cpu declares.
             compare(packer.snap(cpu, 9999, 9999, 100, 100), "1x1.5",
-                    "a runaway drag stops at the largest size the TYPE allows — never 1x3")
+                    "a runaway drag stops at the largest size the TYPE allows - never 1x3")
         }
 
         function test_snap_never_offers_a_size_the_type_lacks() {
@@ -233,7 +233,7 @@ Item {
         function test_grid_free_fill_and_firstFit() {
             var g = packer._grid()
             compare(g.cols, sz.shortHalves, "_grid is 2 half-cells across the SHORT axis")
-            compare(g.rows.length, 0, "and unbounded along the long axis — it starts empty")
+            compare(g.rows.length, 0, "and unbounded along the long axis - it starts empty")
 
             verify(packer._free(g, 0, 0, 2, 2), "an empty grid is free")
             verify(packer._free(g, 0, 99, 2, 6), "_free probes far past the end without growing it")

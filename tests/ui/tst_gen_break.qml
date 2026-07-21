@@ -4,7 +4,7 @@ import QtTest
 // COVERS: schema:intervalMin, schema:message, schema:showSuggestion
 
 // ─────────────────────────────────────────────────────────────────────────
-// Comprehensive coverage for widget:break — ui/qml/widgets/BreakWidget.qml.
+// Comprehensive coverage for widget:break - ui/qml/widgets/BreakWidget.qml.
 //
 // Drives the SAME persistent store contract the Dashboard uses (via the
 // WidgetHarness). Verifies every config option, the remaining/countdown math,
@@ -12,7 +12,7 @@ import QtTest
 // accent theming, and the daily-momentum counter.
 //
 // Some assertions target audited bugs and are EXPECTED to fail until the code
-// under test is fixed — those are called out in comments as "REAL BUG".
+// under test is fixed - those are called out in comments as "REAL BUG".
 // ─────────────────────────────────────────────────────────────────────────
 Item {
     id: root
@@ -21,7 +21,7 @@ Item {
     // Expanded instance (buttons + full controls exercised through functions).
     WidgetHarness { id: h; anchors.fill: parent; widgetFile: "BreakWidget.qml"; expanded: true }
 
-    // Fixed-size hosts for the per-sizeClass structure tests (W1) — real
+    // Fixed-size hosts for the per-sizeClass structure tests (W1) - real
     // projected cell footprints (half-cell ≈ 344x416, full cell ≈ 696x840).
     Item { id: bMicroWrap; width: 344; height: 416
         WidgetHarness { id: hBMicro; anchors.fill: parent; widgetFile: "BreakWidget.qml"; expanded: false } }
@@ -317,7 +317,7 @@ Item {
         }
     }
 
-    // ── AUDITED BUGS — these assertions describe correct behavior and are
+    // ── AUDITED BUGS - these assertions describe correct behavior and are
     //    expected to FAIL until BreakWidget.qml is fixed. ─────────────────
     TestCase {
         name: "BreakBugs"
@@ -357,7 +357,7 @@ Item {
         }
 
         // BUG (low): pausing while a break is due snapshots pausedRemaining from
-        // `remaining`, which is forced to 0 when due — corrupting the state.
+        // `remaining`, which is forced to 0 when due - corrupting the state.
         function test_pause_while_due_does_not_zero_paused() {
             var w = h.item
             h.storeCtl.patchSettings("test-instance",
@@ -372,7 +372,7 @@ Item {
 
     // ── Per-sizeClass structure (W1) ─────────────────────────────────────────
     // The Dashboard injects sizeClass; the tests assign it the same way and pin
-    // what each size shows — a future edit can't silently collapse the sizes
+    // what each size shows - a future edit can't silently collapse the sizes
     // back into one stretched countdown.
     TestCase {
         name: "BreakSizes"
@@ -383,14 +383,14 @@ Item {
             hh.storeCtl.patchSettings("test-instance", patch || { running: false, due: false, pausedRemaining: 600 })
         }
 
-        // 0.5x0.5 — a bare headerless ring: no caption, no controls.
+        // 0.5x0.5 - a bare headerless ring: no caption, no controls.
         function test_micro_is_a_bare_ring() {
             tryVerify(function () { return hBMicro.ready }, 3000)
             prep(hBMicro)
             var w = hBMicro.item
             w.sizeClass = "compact"
             compare(w.micro, true, "a 344x416 compact box is the micro tile")
-            compare(w.showHeader, false, "micro hides the header — nothing competes with the ring")
+            compare(w.showHeader, false, "micro hides the header - nothing competes with the ring")
             compare(w.showTileControls, false, "micro carries no pause/reset controls")
             verify(root.findRing(hBMicro) !== null, "the interval ring is there")
             var pause = root.findByProp(w, "label", "Pause")
@@ -408,7 +408,7 @@ Item {
             verify(done.height >= 44, "and it is touch sized (got " + done.height + ")")
         }
 
-        // 1x1 — header + ring + caption + touch-token pause/reset + momentum.
+        // 1x1 - header + ring + caption + touch-token pause/reset + momentum.
         function test_baseline_ring_caption_controls() {
             tryVerify(function () { return hBBase.ready }, 3000)
             prep(hBBase, { running: false, due: false, pausedRemaining: 600,
@@ -438,7 +438,7 @@ Item {
                    "15 of 30 minutes left reads 0.5 (got " + w.ringFrac + ")")
         }
 
-        // wide — ring beside the control column, in BOTH projections of the
+        // wide - ring beside the control column, in BOTH projections of the
         // class (1x0.5 portrait 696x416, 0.5x1 landscape 840x344).
         function test_wide_ring_beside_controls_both_orientations() {
             tryVerify(function () { return hBWide.ready }, 3000)
@@ -454,7 +454,7 @@ Item {
             bWideWrap.width = 696; bWideWrap.height = 416
         }
 
-        // tall — stacked ring over controls (0.5x1 portrait, 1x0.5 landscape).
+        // tall - stacked ring over controls (0.5x1 portrait, 1x0.5 landscape).
         function test_tall_stacks_ring_over_controls() {
             tryVerify(function () { return hBTall.ready }, 3000)
             prep(hBTall)
@@ -465,7 +465,7 @@ Item {
             verify(w.ringDia <= 344 * 0.8, "the ring is width-bound in the narrow tall box")
         }
 
-        // The overlay (full) keeps the complete control set — ±5m lives there.
+        // The overlay (full) keeps the complete control set - ±5m lives there.
         function test_full_overlay_has_interval_controls() {
             tryVerify(function () { return h.ready }, 3000)
             root.clear(h)

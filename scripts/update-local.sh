@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# update-local.sh — build the current checkout and install it, one command.
+# update-local.sh - build the current checkout and install it, one command.
 #
 #   ./scripts/update-local.sh              build + sudo pacman -U + restart hub
 #   ./scripts/update-local.sh --no-install build only (CI / dry-run)
@@ -9,7 +9,7 @@
 # The dogfood path for an Arch/CachyOS dev box: pacman stays the owner of the
 # installed files (no side-loaded binaries drifting from the package DB), you
 # type your password once for `pacman -U`, and the hub restart is a graceful
-# SIGTERM — the hub SAVES ITS CONFIG on TERM, and skipping that once cost a
+# SIGTERM - the hub SAVES ITS CONFIG on TERM, and skipping that once cost a
 # whole dashboard layout. Never SIGKILL here.
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
@@ -27,19 +27,19 @@ for arg in "$@"; do
 done
 
 if [ "$(id -u)" -eq 0 ]; then
-    echo "Run as your user, not root — pacman is invoked with sudo only where needed." >&2
+    echo "Run as your user, not root - pacman is invoked with sudo only where needed." >&2
     exit 2
 fi
 
 echo "==> Building: $(git -C "$REPO" log --oneline -1)"
 if ! git -C "$REPO" diff --quiet || ! git -C "$REPO" diff --cached --quiet; then
-    echo "    NOTE: working tree is dirty — you are installing uncommitted changes"
+    echo "    NOTE: working tree is dirty - you are installing uncommitted changes"
     echo "    (the UI version will carry a -dirty suffix so this is visible later)."
 fi
 
 # Pre-flight the sudo credential BEFORE the multi-minute build. Under
 # `set -euo pipefail` a password prompt that goes unanswered makes `sudo
-# pacman -U` exit non-zero and kills the script instantly — after the package is
+# pacman -U` exit non-zero and kills the script instantly - after the package is
 # built, before it is installed. That failure mode is near-silent: you are left
 # with a fresh .pkg.tar.zst, an untouched system, and no obvious reason why.
 # It has now happened for real (r234 built 02:51, last install r229 at 01:57).
@@ -47,7 +47,7 @@ if [ "$DO_INSTALL" -eq 1 ] && ! sudo -n true 2>/dev/null; then
     echo "==> pacman needs your password to install. Priming sudo first so the"
     echo "    build is not thrown away by an unanswered prompt at the end."
     if ! sudo -v; then
-        echo "!! Could not obtain sudo credentials — aborting BEFORE the build." >&2
+        echo "!! Could not obtain sudo credentials - aborting BEFORE the build." >&2
         echo "   Run this from an interactive terminal, or pass --no-install." >&2
         exit 2
     fi
@@ -58,7 +58,7 @@ makepkg -f
 
 # makepkg -f leaves exactly one package per pkgver; take the newest so a stale
 # artifact from an older revision can never be the one we install. (A previous
-# release script swept up a stale tarball with a glob — same trap.)
+# release script swept up a stale tarball with a glob - same trap.)
 PKG="$(ls -t "$PKGDIR"/xeneon-edge-hub-*.pkg.tar.zst | head -1)"
 echo "==> Built: $(basename "$PKG")"
 
@@ -74,12 +74,12 @@ if [ "$DO_RESTART" -eq 0 ]; then
     exit 0
 fi
 
-# Reopen the Manager BEFORE the hub restart — the ORDER is the whole point. A
+# Reopen the Manager BEFORE the hub restart - the ORDER is the whole point. A
 # Wayland compositor opens a new window on the ACTIVE output. If the Manager is
 # relaunched AFTER the hub takes the Edge fullscreen, the Edge is the active output
 # and the Manager opens ON the Edge (wrong: it configures the Edge, it must live on
-# your main screen). Relaunching it now — while THIS terminal, on your main
-# display, is still the active window — lands it on the main screen. It connects to
+# your main screen). Relaunching it now - while THIS terminal, on your main
+# display, is still the active window - lands it on the main screen. It connects to
 # the still-running old hub, and its 2s reconnect timer re-attaches to the new hub
 # after the restart below. We only reopen one if one was already open (never pop an
 # unwanted window). The Manager also picks a non-Edge screen itself as a fallback.
@@ -101,7 +101,7 @@ if [ "$MGR_WAS_OPEN" -eq 1 ]; then
 fi
 
 if pgrep -x xeneon-edge-hub >/dev/null; then
-    echo "==> Restarting the hub (SIGTERM — it saves config on the way out)"
+    echo "==> Restarting the hub (SIGTERM - it saves config on the way out)"
     pkill -TERM -x xeneon-edge-hub
     # Wait for a real exit rather than racing the save: up to 10s.
     for _ in $(seq 1 20); do
@@ -109,7 +109,7 @@ if pgrep -x xeneon-edge-hub >/dev/null; then
         sleep 0.5
     done
     if pgrep -x xeneon-edge-hub >/dev/null; then
-        echo "    hub did not exit within 10s — NOT killing it harder (that loses"
+        echo "    hub did not exit within 10s - NOT killing it harder (that loses"
         echo "    the in-memory config). Investigate, then restart it yourself." >&2
         exit 1
     fi
@@ -118,7 +118,7 @@ fi
 setsid /usr/bin/xeneon-edge-hub >/dev/null 2>&1 &
 sleep 2
 if ! pgrep -x xeneon-edge-hub >/dev/null; then
-    echo "    hub failed to start — run /usr/bin/xeneon-edge-hub in a terminal to see why." >&2
+    echo "    hub failed to start - run /usr/bin/xeneon-edge-hub in a terminal to see why." >&2
     exit 1
 fi
 
@@ -142,7 +142,7 @@ if [ "$MGR_WAS_OPEN" -eq 1 ]; then
     if pgrep -f xeneon-edge-manager >/dev/null; then
         echo "==> Manager reopened on the main screen (reconnecting to the new hub)"
     else
-        echo "    Manager did not come back up — launch xeneon-edge-manager yourself." >&2
+        echo "    Manager did not come back up - launch xeneon-edge-manager yourself." >&2
     fi
 fi
 # Anti-vacuity: assert the DB actually moved to what we just built. Without
@@ -157,4 +157,4 @@ if [ "$BUILT_VER" != "$INSTALLED_VER" ]; then
     echo "   The package was produced but pacman is still on the old version." >&2
     exit 1
 fi
-echo "==> Done: $(pacman -Q xeneon-edge-hub) — hub and (if it was open) Manager both on the new build"
+echo "==> Done: $(pacman -Q xeneon-edge-hub) - hub and (if it was open) Manager both on the new build"

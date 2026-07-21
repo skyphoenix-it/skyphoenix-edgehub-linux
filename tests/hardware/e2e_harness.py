@@ -13,18 +13,18 @@ The hub binds its control socket at $XDG_RUNTIME_DIR/xeneon-edge-hub-ctl
 (app/src/control_socket_path.h) and its single-instance lock next to it. This
 harness used to keep the REAL XDG_RUNTIME_DIR (Wayland's socket lives there),
 which meant a spawned hub bound the REAL control socket and the harness's
-cleanup os.remove() could strand the user's live hub — the hub keeps its
+cleanup os.remove() could strand the user's live hub - the hub keeps its
 listening fd, so it looks healthy while the Manager can never reach it again.
 
 The fix, per spawned hub:
   * XDG_RUNTIME_DIR points at a private, 0700, SHORT directory (sockaddr_un
-    caps the socket path at ~107 bytes — never a deep workdir);
+    caps the socket path at ~107 bytes - never a deep workdir);
   * WAYLAND_DISPLAY is rewritten to an ABSOLUTE path into the real runtime
     dir. Wayland resolves an absolute WAYLAND_DISPLAY without consulting
     XDG_RUNTIME_DIR, so the hub still reaches the compositor and renders on
     the Edge while every socket/lock it creates lands in the private dir.
-    (Verified on the real session: a hub launched exactly this way renders —
-    grab-confirmed — with its control socket in the isolated dir.)
+    (Verified on the real session: a hub launched exactly this way renders -
+    grab-confirmed - with its control socket in the isolated dir.)
   * cleanup REFUSES to remove any socket it did not create: the guard checks
     the path is inside this instance's private runtime dir. There is no code
     path that removes the user's socket, even on a crashed or half-torn-down
@@ -44,9 +44,9 @@ ensure_injection_ready() has, in this order:
   2. render-probe VERIFIED the hub actually occupies the Edge rect (two
      distinct wallpaper states must show up in grabs of that exact rect);
   3. built a confined injector and IPC-verified a landing probe:
-     preferred VTouch — an ABS_MT touchscreen physically bound to the Edge
+     preferred VTouch - an ABS_MT touchscreen physically bound to the Edge
      output via KWin's InputDevice.outputName DBus property (readback-
-     verified, axis transform probed); fallback VPointer — arithmetically
+     verified, axis transform probed); fallback VPointer - arithmetically
      clamped to the Edge rect at the emit layer.
 Any REAL input-device event afterwards raises UserActivityAbort and
 permanently disables injection for the rest of the run (input_aborted).
@@ -62,7 +62,7 @@ from input_guard import UserActivityAbort  # noqa: E402  (re-exported for suites
 
 
 class InjectionRefused(RuntimeError):
-    """A safety precondition failed — suites must skip loudly, not inject."""
+    """A safety precondition failed - suites must skip loudly, not inject."""
 
 
 # Edge-local centres of the two compact controls used to prove that an injector
@@ -82,7 +82,7 @@ PAGE_SWIPE_PREVIOUS = (360, 500, 360, 2100)
 HUB = os.path.join(REPO, "build", "xeneon-edge-hub")
 MANAGER = os.path.join(REPO, "build", "xeneon-edge-manager")
 
-# The control socket's BASENAME — must match app/src/control_socket_path.h.
+# The control socket's BASENAME - must match app/src/control_socket_path.h.
 # Deliberately NOT a full path at module level any more: the old module-level
 # SOCK pointed into the real XDG_RUNTIME_DIR, and everything that touched it
 # (launch cleanup, stop_hub, raw IPC in the suites) operated on the LIVE hub's
@@ -144,16 +144,16 @@ def assert_binaries_current(binaries=(HUB, MANAGER)):
     want = subprocess.run(["git", "describe", "--tags", "--always", "--dirty"],
                           cwd=REPO, capture_output=True, text=True).stdout.strip()
     if not want:
-        return None                      # no git (packaged tree) — nothing to check
+        return None                      # no git (packaged tree) - nothing to check
     for b in binaries:
         if not os.path.exists(b):
-            raise RuntimeError("missing binary %s — run ./scripts/build.sh" % b)
+            raise RuntimeError("missing binary %s - run ./scripts/build.sh" % b)
         try:
             got = subprocess.run([b, "--version"], capture_output=True,
                                  text=True, timeout=10).stdout.strip()
         except subprocess.TimeoutExpired:
             raise RuntimeError(
-                "%s did not answer --version within 10s — it probably launched "
+                "%s did not answer --version within 10s - it probably launched "
                 "its GUI instead of printing a version. Fix the binary; a "
                 "version check that hangs is worse than none."
                 % os.path.basename(b))
@@ -161,7 +161,7 @@ def assert_binaries_current(binaries=(HUB, MANAGER)):
             raise RuntimeError(
                 "STALE BINARY: %s reports %r but the tree is %r.\n"
                 "  Rebuild before testing:  cmake -S . -B build && cmake --build build\n"
-                "  (configure, not just build — git describe is evaluated at configure time)"
+                "  (configure, not just build - git describe is evaluated at configure time)"
                 % (os.path.basename(b), got, want))
     return want
 
@@ -202,7 +202,7 @@ class E2E:
         return ok
 
     def skip(self, name, reason):
-        """Loud, first-class skip — visible in output AND in the summary."""
+        """Loud, first-class skip - visible in output AND in the summary."""
         self.skips.append((name, reason))
         print("  SKIP " + name + " -> " + reason, flush=True)
 
@@ -230,7 +230,7 @@ class E2E:
         open(os.path.join(self.cfg, "xeneon-edge-hub", "config.toml"), "w").write(body)
 
     def _remove_own_socket(self):
-        """Remove a stale socket — ONLY ours. The guard is structural: this
+        """Remove a stale socket - ONLY ours. The guard is structural: this
         refuses any path outside the private runtime dir this instance
         created, so no bug upstream can turn it into `os.remove(<live sock>)`
         (the exact mistake that used to strand the user's running hub)."""
@@ -307,7 +307,7 @@ class E2E:
     def hub_current_page(self):
         """The 0-based screen the panel is currently SHOWING (or -1 if the hub
         does not report it). A sibling field of the getUiState reply, like
-        `rotation` — NOT inside `state`. Used to verify the hub mirrors the
+        `rotation` - NOT inside `state`. Used to verify the hub mirrors the
         Manager's selected screen (O1)."""
         return self._ipc({"type": "getUiState"}).get("currentPage", -1)
 
@@ -320,7 +320,7 @@ class E2E:
 
     # ── synthetic touch (Edge-local pixels 0..ew, 0..eh) ───────────────────
     #
-    # SAFETY PIPELINE — no injection happens before every step here passed.
+    # SAFETY PIPELINE - no injection happens before every step here passed.
     # See the module docstring; each step is structural, not a convention.
 
     def verify_target_window(self):
@@ -399,7 +399,7 @@ class E2E:
 
     def ensure_injection_ready(self):
         """Build (once) the guarded, verified injector. Raises InjectionRefused
-        / InputGateError / UserActivityAbort — callers turn that into a loud
+        / InputGateError / UserActivityAbort - callers turn that into a loud
         skip. NEVER emits anything before window verification passed."""
         if self._injector is not None:
             return self._injector[0]
@@ -410,7 +410,7 @@ class E2E:
             raise UserActivityAbort("injection disabled earlier in this run")
         if not self.ping():
             raise InjectionRefused("hub not reachable over IPC")
-        # 1. kill switch first — without an activity signal nothing may inject
+        # 1. kill switch first - without an activity signal nothing may inject
         if self.guard is None:
             self.guard = input_guard.ActivityGuard.connect()
         self.guard.require_user_idle()          # owner hands-off for >= N s
@@ -550,7 +550,7 @@ class E2E:
         would leave the PREVIOUS file in place, so two different UI states
         compared byte-identical. That is what made verify_target_window report
         "colour distance 0" and refuse injection on a hub that was rendering
-        perfectly — measured on the real panel 2026-07-19.
+        perfectly - measured on the real panel 2026-07-19.
 
         So: unique filename per grab, delete before capture, and WAIT for the
         file to actually appear rather than trusting the exit code.

@@ -11,7 +11,7 @@ import QtTest
 // "finished today" label) and the compact hero display.
 //
 // Some assertions intentionally encode the DESIGN CONTRACT / INTENDED behaviour
-// and therefore fail against the current code — those pin the audit's bugs
+// and therefore fail against the current code - those pin the audit's bugs
 // (frozen todayKey, dead pluralization ternary, un-accented hero text, Done!
 // discarding unsaved edits). Test-side mistakes are fixed; genuine code defects
 // are left failing on purpose.
@@ -23,7 +23,7 @@ Item {
     WidgetHarness { id: hRN;      anchors.fill: parent; widgetFile: "RightNowWidget.qml"; expanded: true  }
     WidgetHarness { id: hCompact; anchors.fill: parent; widgetFile: "RightNowWidget.qml"; expanded: false }
 
-    // Fixed-size hosts for the per-sizeClass structure tests (W1) — real
+    // Fixed-size hosts for the per-sizeClass structure tests (W1) - real
     // projected cell footprints (half-cell ≈ 344x416, full cell ≈ 696x840).
     Item { id: rMicroWrap; width: 344; height: 416
         WidgetHarness { id: hRMicro; anchors.fill: parent; widgetFile: "RightNowWidget.qml"; expanded: false } }
@@ -35,7 +35,7 @@ Item {
         WidgetHarness { id: hRTall; anchors.fill: parent; widgetFile: "RightNowWidget.qml"; expanded: false } }
     // The OVERLAY, at the two boxes Dashboard actually gives it: the live-preview
     // pane beside the config form, ~941x456 landscape and ~656x980 portrait.
-    // `expanded: true` AND sizeClass "full" — the real pairing — because a
+    // `expanded: true` AND sizeClass "full" - the real pairing - because a
     // mode-keyed literal can only be caught with the mode switched ON.
     Item { width: 941; height: 456
         WidgetHarness { id: hOvlL; anchors.fill: parent; widgetFile: "RightNowWidget.qml"; expanded: true } }
@@ -163,7 +163,7 @@ Item {
         // 'today' bucket must reset. todayKey is a plain, non-reactive property set
         // once at load, so a widget created 'yesterday' keeps a stale key. We
         // emulate that stale-at-load state and assert the count resets for the real
-        // current day — a correct widget would recompute todayKey and read 0.
+        // current day - a correct widget would recompute todayKey and read 0.
         function test_frozen_todayKey_never_rolls_over_midnight() {
             var w = hRN.item
             var yesterday = keyOf(new Date(Date.now() - 86400000))
@@ -324,7 +324,7 @@ Item {
 
     // ── Per-sizeClass structure (W1) ─────────────────────────────────────────
     // The Dashboard injects sizeClass; the tests assign it the same way and pin
-    // what each size shows — a future edit can't silently collapse the sizes
+    // what each size shows - a future edit can't silently collapse the sizes
     // back into one stretched hero line.
     TestCase {
         name: "RightNowSizes"
@@ -342,7 +342,7 @@ Item {
             hh.storeCtl.patchSettings("test-instance", patch)
         }
 
-        // 0.5x0.5 — the focus text alone: no eyebrow, no button, no counter.
+        // 0.5x0.5 - the focus text alone: no eyebrow, no button, no counter.
         function test_micro_is_a_pure_cue() {
             tryVerify(function () { return hRMicro.ready }, 3000)
             seed(hRMicro, "Ship it", 2)
@@ -356,7 +356,7 @@ Item {
             verify(hero !== null && hero.visible, "the focus text is the whole tile")
         }
 
-        // 1x1 — eyebrow + hero + Done + momentum: the tile earns real actions.
+        // 1x1 - eyebrow + hero + Done + momentum: the tile earns real actions.
         function test_baseline_has_eyebrow_done_and_count() {
             tryVerify(function () { return hRBase.ready }, 3000)
             seed(hRBase, "Ship it", 2)
@@ -400,7 +400,7 @@ Item {
             verify(ph !== null && ph.visible, "the placeholder cue is shown")
         }
 
-        // wide — hero beside the action column, in BOTH projections of the class
+        // wide - hero beside the action column, in BOTH projections of the class
         // (1x0.5 portrait 696x416, 0.5x1 landscape 840x344).
         function test_wide_hero_beside_action_both_orientations() {
             tryVerify(function () { return hRWide.ready }, 3000)
@@ -415,7 +415,7 @@ Item {
             rWideWrap.width = 696; rWideWrap.height = 416
         }
 
-        // tall — stacked, with more hero lines than the short classes.
+        // tall - stacked, with more hero lines than the short classes.
         function test_tall_stacks_and_earns_lines() {
             tryVerify(function () { return hRTall.ready }, 3000)
             seed(hRTall, "Ship it", 0)
@@ -460,7 +460,7 @@ Item {
             compare(bM.font.pixelSize, Math.round(micro.celebratePx),
                     "…and on a micro tile")
             verify(bB.font.pixelSize > bM.font.pixelSize,
-                   "a 696x840 tile pops bigger than a 344x416 one — the banner reads "
+                   "a 696x840 tile pops bigger than a 344x416 one - the banner reads "
                    + "the card, not the mode (" + bB.font.pixelSize + " vs "
                    + bM.font.pixelSize + ")")
         }
@@ -469,14 +469,14 @@ Item {
         // actually given. This is the shape that catches a mode-keyed literal: the
         // test above holds the mode fixed at false, where a surviving
         // `w.expanded ? 40 : <derived>` never fires its literal at all.
-        // Both hosts are expanded AND "full"; only the BOX differs — the real
+        // Both hosts are expanded AND "full"; only the BOX differs - the real
         // live-preview panes beside the config form, NOT a 2560x720 screen.
         function test_overlay_banner_is_sized_by_its_pane_not_by_a_mode_literal() {
             tryVerify(function () { return hOvlL.ready && hOvlP.ready }, 3000)
             var land = hOvlL.item; land.sizeClass = "full"
             var port = hOvlP.item; port.sizeClass = "full"
             land.celebrateNow("🎉 Done!"); port.celebrateNow("🎉 Done!")
-            // A real event-loop turn, not wait(0) — these hosts default to "tall"
+            // A real event-loop turn, not wait(0) - these hosts default to "tall"
             // (height > 240) and only become "full" on the lines above, and a
             // wait(0) read reports pre-change geometry. waitForRendering is not
             // the tool: offscreen never swaps a frame.

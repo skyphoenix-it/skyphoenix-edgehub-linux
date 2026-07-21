@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 
 // ─────────────────────────────────────────────────────────────────────────
-// WidgetChrome — the shared, uniform frame for EVERY widget.
+// WidgetChrome - the shared, uniform frame for EVERY widget.
 //
 // This is the "common thread" of the design language: a glass card with a
 // subtle gradient, an accent glow, and a consistent header (icon + title +
@@ -14,14 +14,14 @@ import QtQuick.Layouts
 //       // ...your content here...
 //   }
 //
-// SIZE vs EXPANDED — they are not the same thing, and conflating them is why no
+// SIZE vs EXPANDED - they are not the same thing, and conflating them is why no
 // widget currently adapts to its tile:
 //   • `sizeClass` = how much ROOM this instance has. Injected by Dashboard from the
 //     tile's span (or "full" for the overlay). This is what layout should key off.
 //   • `expanded`  = the widget is hosted in the full-screen overlay. A MODE, not a
 //     size.
 // Every widget used to declare `big: expanded`, which made "big" mean "is the
-// overlay" — so a 2-row tile rendered the compact layout STRETCHED, and the
+// overlay" - so a 2-row tile rendered the compact layout STRETCHED, and the
 // geometric intent below was dead code. `big` is now derived from sizeClass and is
 // READONLY: a widget cannot re-tie it to expanded, which is the whole point.
 // ─────────────────────────────────────────────────────────────────────────
@@ -34,15 +34,15 @@ Item {
     property string iconName: ""        // professional SVG icon (qrc:/icons/<name>.svg)
     property color accentColor: theme.accent
     // Per-widget appearance (set per-instance via config; applies to ANY widget):
-    //   accentName  — a theme accent preset name that overrides accentColor.
-    //   cardBackdrop — an animated backdrop rendered INSIDE this card so the widget
+    //   accentName  - a theme accent preset name that overrides accentColor.
+    //   cardBackdrop - an animated backdrop rendered INSIDE this card so the widget
     //                  stands out ("none" | orbs | mesh | aurora | waves | stars | bokeh | grid).
     property string accentName: ""
     property string cardBackdrop: "none"
     // Resolve the effective accent. A named preset (accentName) wins; otherwise
     // fall back to accentColor. Guard against a self-referential binding loop
     // (a widget setting `accentColor: someChrome.effAccent`), which resolves to
-    // an invalid/transparent colour — use theme.accent so content never renders
+    // an invalid/transparent colour - use theme.accent so content never renders
     // black/invisible.
     readonly property color effAccent: (accentName !== "" && theme.accentPresets[accentName])
                                        ? theme.accentPresets[accentName].a
@@ -53,17 +53,17 @@ Item {
     // tile's span, or "full" for the overlay:
     //   "compact" 1 col × 1 row · "wide" 2×1 · "tall" 1×2 · "large" 2×2 · "full" overlay
     // The default derives from actual geometry so a standalone host (tests, the
-    // Manager preview) still gets a sane value instead of always-compact — it
+    // Manager preview) still gets a sane value instead of always-compact - it
     // restores the intent of the original `big: height > 240`.
     property string sizeClass: height > 240 ? "tall" : "compact"
 
     // Does this instance have vertical room for the richer chrome? DERIVED from
-    // sizeClass, and readonly ON PURPOSE — the old `big: expanded` override is what
+    // sizeClass, and readonly ON PURPOSE - the old `big: expanded` override is what
     // this change exists to make impossible.
     readonly property bool big: sizeClass === "tall" || sizeClass === "large"
                                 || sizeClass === "full"
 
-    // Is this the MICRO footprint — a half-cell (`0.5x0.5`), as opposed to the
+    // Is this the MICRO footprint - a half-cell (`0.5x0.5`), as opposed to the
     // baseline third (`1x1`)? Both project to sizeClass "compact" (they are the
     // same SHAPE, just different areas), so the wave-1 widgets each re-derived
     // this locally as `min(width,height) < 480`. Centralised here so later waves
@@ -116,7 +116,7 @@ Item {
 
         // Diagonal glass gradient. The top frosted highlight scales with the
         // Glassiness slider (theme.cardSheen) so more glass reads as a stronger
-        // sheen — the second visible cue alongside the brightened border.
+        // sheen - the second visible cue alongside the brightened border.
         Rectangle {
             visible: theme.decorative
             anchors.fill: parent
@@ -129,7 +129,7 @@ Item {
             }
         }
 
-        // Accent wash in the top-left corner — ties each widget to its category.
+        // Accent wash in the top-left corner - ties each widget to its category.
         Rectangle {
             visible: theme.decorative
             anchors.fill: parent
@@ -206,7 +206,7 @@ Item {
             }
         }
 
-        // Body — the widget's own content lives here.
+        // Body - the widget's own content lives here.
         Item {
             id: body
             Layout.fillWidth: true

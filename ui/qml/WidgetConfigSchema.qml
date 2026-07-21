@@ -1,6 +1,6 @@
 import QtQuick
 
-// WidgetConfigSchema — declarative config schema per widget type, shared by the
+// WidgetConfigSchema - declarative config schema per widget type, shared by the
 // on-device (hub) config view and the desktop Manager. The config renderer turns
 // these into a professional, sectioned form. Field types:
 //   text | textarea | number | slider | toggle | segmented | date | hour |
@@ -8,7 +8,7 @@ import QtQuick
 // Fields may carry `help` (a one-line hint under the label). Every widget gets a
 // "General" section (custom title) and an "About" section describing it.
 //
-// IMPORTANT: every option here is honoured by the corresponding widget — nothing
+// IMPORTANT: every option here is honoured by the corresponding widget - nothing
 // is decorative. Keep keys in sync with the widget's `cfg` reads + catalog defaults.
 QtObject {
     id: sc
@@ -21,7 +21,7 @@ QtObject {
     function about(text) {
         return { title: "About this widget", cols: 1, fields: [ { type: "info", text: text } ] }
     }
-    // Universal per-widget appearance — added to EVERY widget so any of them can
+    // Universal per-widget appearance - added to EVERY widget so any of them can
     // be given its own accent + an animated in-card backdrop to stand out.
     function appearanceSection() {
         return { title: "Widget appearance", cols: 1,
@@ -275,7 +275,7 @@ QtObject {
 
         // The three E5 wellness widgets deliberately expose a SMALL surface. The
         // best-supported finding in the neurodivergent-UI literature is "make it
-        // adjustable, default to the OS, keep the adjustment surface small" — not
+        // adjustable, default to the OS, keep the adjustment surface small" - not
         // "add a calm mode". So each gets the one field that changes behaviour and
         // nothing decorative; there is no "hide the red" toggle because there is no
         // red to hide.

@@ -132,7 +132,7 @@ Item {
         }
 
         // ══════════════════════════════════════════════════════════════════════
-        // FOCUS — sizes
+        // FOCUS - sizes
         // ══════════════════════════════════════════════════════════════════════
         function test_focus_sizes_data() {
             return [
@@ -152,7 +152,7 @@ Item {
             verify(G.byText(wh.item, "Focus") !== null, "phase label 'Focus' visible")
         }
 
-        // FOCUS — config fields (drive store, assert visible output)
+        // FOCUS - config fields (drive store, assert visible output)
         function test_focus_config_data() {
             return [
                 { tag: "workMin-26", sc: "tall", w: 696, h: 1229, seed: { preset: "custom", workMin: 26, phase: "work" }, want: "26:00" },
@@ -195,7 +195,7 @@ Item {
             snap(wh, "focus_title")
         }
 
-        // FOCUS — body interactions
+        // FOCUS - body interactions
         function test_focus_start() {
             prep("FocusWidget.qml", "compact", 846, 612, false, { preset: "classic", running: false, phase: "work" })
             var p = pill("Start"); verify(p, "Start pill present")
@@ -270,7 +270,7 @@ Item {
             compare(clockText(), "25:00", "clock reset to work length")
         }
 
-        // FOCUS — states
+        // FOCUS - states
         function test_focus_states_data() {
             return [
                 { tag: "idle-label", seed: { running: false, phase: "work" }, kind: "text", sub: "Start", present: true },
@@ -309,7 +309,7 @@ Item {
             snap(wh, "focus_dots")
         }
 
-        // FOCUS — natural completion (driven by a past endEpoch + the 1s tick)
+        // FOCUS - natural completion (driven by a past endEpoch + the 1s tick)
         function test_focus_natural_short() {
             prep("FocusWidget.qml", "compact", 846, 612, false,
                  { preset: "classic", phase: "work", running: true, doneToday: 0, day: todayKey(),
@@ -354,7 +354,7 @@ Item {
             verify(G.byText(wh.item, "Goal") === null, "no goal banner either")
         }
 
-        // FOCUS — chrome (backdrop + accent)
+        // FOCUS - chrome (backdrop + accent)
         function test_focus_backdrop_data() {
             return [
                 { tag: "none", style: "none", vis: false },
@@ -385,7 +385,7 @@ Item {
         }
 
         // ══════════════════════════════════════════════════════════════════════
-        // RIGHT NOW — sizes
+        // RIGHT NOW - sizes
         // ══════════════════════════════════════════════════════════════════════
         function test_rightnow_sizes_data() {
             return [
@@ -405,7 +405,7 @@ Item {
             verify(G.byText(wh.item, "focus text") !== null, "focus text hero visible")
         }
 
-        // RIGHT NOW — config
+        // RIGHT NOW - config
         function test_rightnow_config_data() {
             return [
                 { tag: "text-set", seed: { text: "finish report" }, sub: "finish report", present: true, placeholderGone: true },
@@ -424,7 +424,7 @@ Item {
             verify(G.byText(wh.item, "My Focus") !== null, "expanded header shows titleOverride")
         }
 
-        // RIGHT NOW — body interactions
+        // RIGHT NOW - body interactions
         function test_rightnow_done_tile() {
             prep("RightNowWidget.qml", "compact", 696, 819, false, { text: "ship it", day: todayKey(), finishedToday: 0 })
             wait(120)
@@ -457,7 +457,7 @@ Item {
             snap(wh, "rn_done_expanded")
         }
 
-        // RIGHT NOW — states
+        // RIGHT NOW - states
         function test_rightnow_states_data() {
             return [
                 { tag: "empty-placeholder", sc: "compact", w: 696, h: 819, exp: false, seed: { text: "" }, sub: "Tap to set your one focus", present: true },
@@ -483,7 +483,7 @@ Item {
             else verify(f === null, "should be absent: " + d.sub)
         }
 
-        // RIGHT NOW — chrome
+        // RIGHT NOW - chrome
         function test_rightnow_backdrop_data() {
             return [
                 { tag: "none", style: "none", vis: false },
@@ -512,7 +512,7 @@ Item {
         }
 
         // ══════════════════════════════════════════════════════════════════════
-        // TASKS — sizes
+        // TASKS - sizes
         // ══════════════════════════════════════════════════════════════════════
         function test_tasks_sizes_data() {
             return [
@@ -533,7 +533,7 @@ Item {
             verify(G.byText(wh.item, "sample task") !== null, "task row visible")
         }
 
-        // TASKS — config / display
+        // TASKS - config / display
         function test_tasks_config_data() {
             return [
                 { tag: "hide-on", seed: { items: [{ text: "done one", done: true }, { text: "todo one", done: false }], hideCompleted: true }, hidden: "done one", shown: "todo one" },
@@ -561,7 +561,7 @@ Item {
             snap(wh, "tasks_status")
         }
 
-        // TASKS — body interactions
+        // TASKS - body interactions
         function test_tasks_add_enter() {
             prep("TasksWidget.qml", "compact", 846, 612, false, { items: [] })
             var f = fieldByPlaceholder("Add"); verify(f, "add field present")
@@ -683,7 +683,7 @@ Item {
             verify(ratio > 0.9, "progress fill full when all done (" + ratio.toFixed(2) + ")")
         }
 
-        // TASKS — states
+        // TASKS - states
         function test_tasks_states_data() {
             return [
                 { tag: "empty-tile", sc: "compact", w: 696, h: 819, exp: false, seed: { items: [] }, sub: "No tasks", present: true },
@@ -715,7 +715,7 @@ Item {
             snap(wh, "tasks_wide")
         }
 
-        // TASKS — chrome
+        // TASKS - chrome
         function test_tasks_backdrop_data() {
             return [
                 { tag: "none", style: "none", vis: false },

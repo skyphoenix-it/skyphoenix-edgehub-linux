@@ -20,7 +20,7 @@ if [[ -z "$TYPE" || -z "$TITLE" ]]; then
     echo "Usage: $0 <type> \"<Title>\" [Category]" >&2
     echo "  <type>     lowercase id, e.g. stocks   (also the icon file name)" >&2
     echo "  <Title>    display name, e.g. \"Stock Ticker\"" >&2
-    echo "  [Category] picker group (default: Info) — System/Time/Focus/Media/Info" >&2
+    echo "  [Category] picker group (default: Info) - System/Time/Focus/Media/Info" >&2
     exit 1
 fi
 if ! [[ "$TYPE" =~ ^[a-z][a-z0-9]*$ ]]; then
@@ -50,7 +50,7 @@ cat > "$QML" <<QMLEOF
 import QtQuick
 import QtQuick.Layouts
 
-// ${TITLE} — TODO: one-line description of what this widget does.
+// ${TITLE} - TODO: one-line description of what this widget does.
 WidgetChrome {
     id: w
     property var metrics: ({})
@@ -66,7 +66,7 @@ WidgetChrome {
         var _ = store ? store.revision : 0
         return (store && instanceId) ? store.settingsFor(instanceId) : ({})
     }
-    // Example option — keep the default in sync with the schema \`dflt\`:
+    // Example option - keep the default in sync with the schema \`dflt\`:
     readonly property string label: cfg.label !== undefined ? cfg.label : "${TITLE}"
 
     ColumnLayout {
@@ -88,7 +88,7 @@ if [[ ! -e "$ICON" ]]; then
 cat > "$ICON" <<'SVGEOF'
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="#FFFFFF"><path d="M208,32H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32Zm0,176H48V48H208V208ZM140,128a12,12,0,1,1-12-12A12,12,0,0,1,140,128Z"/></svg>
 SVGEOF
-echo "created  $ICON  (placeholder — replace with a real icon from phosphoricons.com)"
+echo "created  $ICON  (placeholder - replace with a real icon from phosphoricons.com)"
 fi
 
 # --- 3. Wire the resource bundles ---
@@ -121,7 +121,7 @@ cat <<MSG
 Almost done. Paste these two snippets by hand (they live in JS, not easily
 auto-edited safely):
 
-1) ui/qml/WidgetCatalog.qml — add to the \`items\` array:
+1) ui/qml/WidgetCatalog.qml - add to the \`items\` array:
 
         { type: "${TYPE}", title: "${TITLE}", category: "${CATEGORY}",
           source: "qrc:/qml/${CAMEL}Widget.qml", defaults: { label: "${TITLE}" } },
@@ -130,7 +130,7 @@ auto-edited safely):
 
         "${TYPE}": "TODO: one-line description shown in the expanded header.",
 
-2) ui/qml/WidgetConfigSchema.qml — add a case in schemaFor() (optional but nice):
+2) ui/qml/WidgetConfigSchema.qml - add a case in schemaFor() (optional but nice):
 
         case "${TYPE}": return { sections: [
             { title: "Settings", cols: 1, fields: [

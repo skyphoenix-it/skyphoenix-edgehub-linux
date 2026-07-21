@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# capture-device.sh — capture the REAL Xeneon Edge panel for marketing.
+# capture-device.sh - capture the REAL Xeneon Edge panel for marketing.
 #
 # Runs on YOUR machine with the hub live on the Edge. Unlike the headless
 # gen_screenshots.py (which renders the app offscreen), this grabs the actual
-# panel — exactly what's on screen, real fonts, real compositor.
+# panel - exactly what's on screen, real fonts, real compositor.
 #
 #   ./scripts/capture-device.sh detect            # find the Edge output
 #   ./scripts/capture-device.sh shot <name>       # screenshot the Edge → captures/<name>.png
@@ -14,9 +14,9 @@
 # Workflow for the trailer footage:
 #   1. Update + launch the hub on the Edge (./scripts/update-local.sh).
 #   2. `record navigate` then swipe through your screens, open the Manager, resize
-#      a tile, switch a theme — narrate the story. Ctrl-C when done.
+#      a tile, switch a theme - narrate the story. Ctrl-C when done.
 #   3. `series` to also grab a crisp still of each screen.
-#   4. Film the physical rotation (vertical↔horizontal) on your phone — that one
+#   4. Film the physical rotation (vertical↔horizontal) on your phone - that one
 #      bit can't be captured from software.
 #   5. Hand me captures/ and I'll cut them into the rendered trailer.
 # ─────────────────────────────────────────────────────────────────────────────
@@ -85,7 +85,7 @@ case "$cmd" in
     echo "saved $dst" ;;
 
   series)
-    echo "Guided still series — swipe the Edge to each screen, then press Enter."
+    echo "Guided still series - swipe the Edge to each screen, then press Enter."
     echo "Ctrl-C when done. Files land in $OUT/screen-NN.png."
     i=1
     while true; do

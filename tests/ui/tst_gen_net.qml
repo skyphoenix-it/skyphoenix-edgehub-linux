@@ -12,7 +12,7 @@ import QtTest
 // WidgetChrome, and robustness against empty/missing metrics.
 //
 // Assertions that encode the *intended* behaviour but fail against the current
-// code are deliberate — they pin real bugs called out in the audit:
+// code are deliberate - they pin real bugs called out in the audit:
 //   • fmt(1023.7) rounds up to "1024 B/s" instead of rolling into KB/s.
 //   • peaks + history live on the widget instance, not the shared store, so a
 //     tile and its expanded overlay do NOT share them.
@@ -145,7 +145,7 @@ Item {
         // ── Config defaults + reactivity ─────────────────────────────────────
         function test_defaults_when_settings_empty() {
             var w = h.item
-            // init() cleared settings — nothing set.
+            // init() cleared settings - nothing set.
             compare(w.showHistory, true, "showHistory defaults true")
             compare(w.unit, "bytes", "unit defaults to bytes")
         }
@@ -174,7 +174,7 @@ Item {
             feed(1000, 500)
             feed(5000, 200)      // new rx peak
             feed(800, 9000)      // new tx peak
-            feed(100, 100)       // smaller — peaks must hold
+            feed(100, 100)       // smaller - peaks must hold
             compare(w.peakRx, 5000, "peakRx holds the session max down-rate")
             compare(w.peakTx, 9000, "peakTx holds the session max up-rate")
         }
@@ -184,7 +184,7 @@ Item {
             w.hist = []
             // Feed a long contiguous ramp; only the last 60 samples must survive.
             // (The handler records the previous tick's rate, so we assert on the
-            // shape of the window — contiguous, length 60 — not absolute values.)
+            // shape of the window - contiguous, length 60 - not absolute values.)
             for (var i = 1; i <= 80; i++) feed(i, i * 2)
             compare(w.hist.length, 60, "history buffer caps at 60 samples (push/shift)")
             var n = w.hist.length
@@ -198,7 +198,7 @@ Item {
         // BUG (audit, medium): peaks + history are plain instance properties, not
         // stored in the shared DashboardStore. A tile and its expanded overlay are
         // SEPARATE instances, so the overlay resets peaks to 0 / an empty graph on
-        // every open — contradicting the store's documented shared-state design.
+        // every open - contradicting the store's documented shared-state design.
         // The intended behaviour: session state lives in the store so both share it.
         function test_peaks_persisted_to_shared_store() {
             var w = h.item
@@ -274,13 +274,13 @@ Item {
         WidgetHarness { id: hTall; anchors.fill: parent; widgetFile: "NetWidget.qml"; expanded: false } }
     Item { width: 696; height: 840
         WidgetHarness { id: hBase; anchors.fill: parent; widgetFile: "NetWidget.qml"; expanded: false } }
-    // 1x1.5 portrait — the same "tall" class as hTall (344x840), but with genuine
+    // 1x1.5 portrait - the same "tall" class as hTall (344x840), but with genuine
     // half-screen room. The pair exists to move the BOX while holding the class.
     Item { width: 696; height: 1229
         WidgetHarness { id: hRoomy; anchors.fill: parent; widgetFile: "NetWidget.qml"; expanded: false } }
 
     // The OVERLAY, at the two boxes Dashboard actually gives it. `expanded: true`
-    // AND sizeClass "full" — the real pairing — because a mode-keyed literal can
+    // AND sizeClass "full" - the real pairing - because a mode-keyed literal can
     // only be caught with the mode switched ON. These are the live-preview pane
     // beside the config form (Dashboard: 38% of the width in landscape, a <=46%-
     // tall band stacked in portrait), NOT a 2560x720 screen.
@@ -309,7 +309,7 @@ Item {
             host.metricsJson = JSON.stringify({ net_rx_bytes_per_sec: r, net_tx_bytes_per_sec: t })
         }
 
-        // 0.5x0.5 — headerless; the two rates, big and centred; no graph, no peaks.
+        // 0.5x0.5 - headerless; the two rates, big and centred; no graph, no peaks.
         function test_micro_is_the_two_rates() {
             tryVerify(function () { return hMicro.ready }, 3000)
             var w = hMicro.item
@@ -321,10 +321,10 @@ Item {
             var cv = findCanvas(hMicro)
             verify(cv !== null, "the sparkline canvas exists")
             compare(cv.visible, false, "but micro does not draw it")
-            verify(w.rateFont > 19, "the two rates are the tile — they scale up")
+            verify(w.rateFont > 19, "the two rates are the tile - they scale up")
         }
 
-        // wide — rates + peaks beside a full-width sparkline, in both projections.
+        // wide - rates + peaks beside a full-width sparkline, in both projections.
         function test_wide_puts_graph_beside_rates() {
             tryVerify(function () { return hWide.ready }, 3000)
             var w = hWide.item
@@ -338,7 +338,7 @@ Item {
             wideWrap.width = 696; wideWrap.height = 416
         }
 
-        // tall — rates + peaks above a sparkline that takes the height.
+        // tall - rates + peaks above a sparkline that takes the height.
         function test_tall_earns_peaks_and_graph_height() {
             tryVerify(function () { return hTall.ready }, 3000)
             var w = hTall.item
@@ -404,7 +404,7 @@ Item {
             // A real event-loop turn, not wait(0). These hosts default to
             // sizeClass "tall" (height > 240) and only become "full" on the lines
             // above; wait(0) returns BEFORE the layout re-polishes, so a rendered
-            // read then reports PRE-change geometry — a flake that says nothing
+            // read then reports PRE-change geometry - a flake that says nothing
             // about the widget. waitForRendering is not the tool either: offscreen
             // never swaps a frame, so it just burns its timeout.
             wait(16)
@@ -435,14 +435,14 @@ Item {
                    + lt.font.pixelSize + " vs " + pt.font.pixelSize + ")")
 
             // The peaks are derived FROM the rates, so they move with the pane too
-            // — `expanded ? 14` used to pin them at 14 beside a 30px rate number.
+            // - `expanded ? 14` used to pin them at 14 beside a 30px rate number.
             var lp = peakTextOf(hOvlL), pp = peakTextOf(hOvlP)
             verify(lp !== null && pp !== null, "both peak readouts resolve")
             verify(lp.font.pixelSize > pp.font.pixelSize,
                    "the peaks follow the rates, so the pane moves them as well ("
                    + lp.font.pixelSize + " vs " + pp.font.pixelSize + ")")
 
-            // The rates still FIT the pane they were sized for — the structural
+            // The rates still FIT the pane they were sized for - the structural
             // guarantee, not glyph ink (paintedWidth is meaningless headless).
             verify(lt.width <= land.width + 0.51,
                    "the landscape rate line stays inside its pane ("
@@ -453,7 +453,7 @@ Item {
         }
 
         // The mirror image: hold the MODE fixed and move the room. Both hosts are
-        // expanded:false AND the same sizeClass, so only the box differs —
+        // expanded:false AND the same sizeClass, so only the box differs -
         // anything that changes is genuinely sized by its box.
         function test_sizing_follows_the_room_while_the_mode_is_held_fixed() {
             tryVerify(function () { return hTall.ready && hRoomy.ready }, 3000)
@@ -491,8 +491,8 @@ Item {
         // `showPeaks` opened with `w.expanded ||`, which was already dead (the
         // overlay is injected as "full", which `big` covers). Dead is not the same
         // as gone: this pins that the peaks are decided by the ROOM alone. The
-        // combination below is synthetic — Dashboard always injects "full" with
-        // the overlay — and that is precisely the point: the mode must not be able
+        // combination below is synthetic - Dashboard always injects "full" with
+        // the overlay - and that is precisely the point: the mode must not be able
         // to answer this question even when it is switched on.
         function test_peaks_are_decided_by_the_room_alone_not_the_mode() {
             tryVerify(function () { return hProbe.ready }, 3000)
@@ -503,7 +503,7 @@ Item {
             compare(w.expanded, true, "precondition: the mode is ON")
             compare(w.micro, false, "precondition: 696x840 is the baseline, not micro")
             compare(w.showPeaks, false,
-                    "a 696x840 baseline box has no peaks REGARDLESS of the mode — "
+                    "a 696x840 baseline box has no peaks REGARDLESS of the mode - "
                     + "the `expanded ||` term is gone, not merely shadowed by `big`")
         }
     }

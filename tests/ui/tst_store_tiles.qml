@@ -55,7 +55,7 @@ Item {
 
         // ── named sizes ────────────────────────────────────────────────────
         // A tile is born with a size, so `size === undefined` can only ever mean
-        // "this document predates the size key" — never "this tile is new".
+        // "this document predates the size key" - never "this tile is new".
         function test_add_tile_is_born_with_a_size() {
             store.addTile(0, "cpu")
             verify(sizes.isLegal(tiles()[0].size),
@@ -67,7 +67,7 @@ Item {
         // setTileSize takes a NAMED size and applies every legal one. `kpi` is the one
         // type that declares all seven (it is the "one number read across a room"
         // widget, so it genuinely earns the full screen), which makes it the only
-        // honest subject for a whole-vocabulary sweep — legality is not the gate here,
+        // honest subject for a whole-vocabulary sweep - legality is not the gate here,
         // the TYPE is.
         function test_set_tile_size_applies_each_legal_size() {
             var id = store.addTile(0, "kpi")
@@ -94,7 +94,7 @@ Item {
         }
 
         // A size can be perfectly LEGAL and still be refused: the widget type decides.
-        // This is the gate the resize UI (and a Manager push) rests on — without it a
+        // This is the gate the resize UI (and a Manager push) rests on - without it a
         // tile can be put into a shape its widget was never built to render.
         function test_set_tile_size_rejects_a_size_the_type_does_not_declare() {
             var id = store.addTile(0, "cpu")
@@ -158,7 +158,7 @@ Item {
         function test_shared_state_between_two_readers() {
             // The tile and its expanded overlay share per-widget state THROUGH the
             // store: once a value is set, every reader sees it. (settingsFor is now
-            // a non-mutating getter — it no longer creates a persisted bucket as a
+            // a non-mutating getter - it no longer creates a persisted bucket as a
             // read side-effect, so we don't assert object identity, only shared value.)
             var id = store.addTile(0, "notes")
             store.setSetting(id, "text", "typed in the overlay")
@@ -170,7 +170,7 @@ Item {
 
         // Metric sparkline history / peaks are volatile per-session state: they must
         // stay in memory (so the compact tile and its expanded overlay share one
-        // sparkline) yet NEVER reach config.toml — otherwise the metric widgets
+        // sparkline) yet NEVER reach config.toml - otherwise the metric widgets
         // rewrite the config on every ~2s sample (flash wear + a save race with the
         // Manager). The persisted document strips them; a plain setting is kept.
         function test_ephemeral_metric_keys_not_persisted() {
@@ -217,7 +217,7 @@ Item {
         when: windowShown
 
         function test_seed_shapes_the_document() {
-            // Presets are single-page "screens" now — each seeds exactly one page.
+            // Presets are single-page "screens" now - each seeds exactly one page.
             var cases = {
                 "blank":        { pages: ["Home"], firstTileCount: 0 },
                 "minimal":      { pages: ["Home"] },
@@ -239,8 +239,8 @@ Item {
         }
 
         function test_unknown_seed_falls_back_to_the_starter_bundle() {
-            // An unknown/empty seed id resolves to the recommended starter BUNDLE —
-            // a few single-page screens — not a single preset.
+            // An unknown/empty seed id resolves to the recommended starter BUNDLE -
+            // a few single-page screens - not a single preset.
             var unknown = store.seed("nonsense").pages.map(function (p) { return p.name })
             var starter = store.seed("starter").pages.map(function (p) { return p.name })
             compare(unknown, starter, "unknown seed falls back to the starter bundle")

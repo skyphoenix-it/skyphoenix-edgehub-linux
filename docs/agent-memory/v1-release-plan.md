@@ -1,7 +1,7 @@
 ---
 name: v1-release-plan
-description: "The approved EdgeHub v1.0 major-release plan — Platform 1.0, presets, primitive widgets, calm/a11y, enterprise B2B, alpha→beta→RC→GA"
-metadata: 
+description: "The approved EdgeHub v1.0 major-release plan - Platform 1.0, presets, primitive widgets, calm/a11y, enterprise B2B, alpha→beta→RC→GA"
+metadata:
   node_type: memory
   type: project
   originSessionId: 139278eb-bb8f-423b-b2ef-fffa145da6cd
@@ -9,9 +9,9 @@ metadata:
 
 Approved v1.0 plan lives at `~/.claude/plans/glittery-sauteeing-sonnet.md` (assembled from 9
 research/design agents). Direction confirmed by Simon:
-- **Platform 1.0** — turn EdgeHub from a fixed 22-widget app into a privacy-first, touch-first
+- **Platform 1.0** - turn EdgeHub from a fixed 22-widget app into a privacy-first, touch-first
   dashboard PLATFORM: segment **presets** (a curated library of 12–15 "perfect", non-overloaded
-  screens — headline), **generic primitive widgets** (HTTP/JSON, KPI, command, webhook — network
+  screens - headline), **generic primitive widgets** (HTTP/JSON, KPI, command, webhook - network
   stays OUT of the Rust core via a `NetHub.qml` gate so "no-outbound" is provable), **calm/a11y
   foundation** (Atkinson Hyperlegible/Lexend, Okabe-Ito, Calm↔Energized + low-sensory, OS
   reduce-motion), new wellness widgets (meds, brain-dump, visual Time-Timer, Now/Next).
@@ -24,7 +24,7 @@ research/design agents). Direction confirmed by Simon:
 MIT/Apache) · build-guard `XENEON_QA_HOOKS` · FUNDING.yml.
 
 **Alpha progress:**
-- **E2 (preset system) — DONE** (`917ca25`, verified on real Edge). `ui/qml/PresetCatalog.qml`
+- **E2 (preset system) - DONE** (`917ca25`, verified on real Edge). `ui/qml/PresetCatalog.qml`
   = 15 curated presets; `buildDoc(id)` → full `ui_state` (fresh `type-N` ids, per-tile settings,
   appearance sets only bg/motion/glow). `DashboardStore.seed()` routes through it; `FirstRunWizard`
   picker is a scrollable grid. Tests: `tst_preset_catalog.qml` + updated store tests, suite green.
@@ -32,7 +32,7 @@ MIT/Apache) · build-guard `XENEON_QA_HOOKS` · FUNDING.yml.
   E1 lands. Real-device grab recipe recorded in `docs/SESSION_HANDOFF.md` (temp `XDG_CONFIG_HOME`
   from the real config + `ui_state` swap, `--windowed` + `XENEON_GRAB`, grab mode skips the
   single-instance lock). Fixed a wizard `pixelSize` float→int bug found via the grab.
-- **E1 (HTTP/JSON + KPI primitives + NetHub egress gate) — DONE** (`eb552c1`, verified on
+- **E1 (HTTP/JSON + KPI primitives + NetHub egress gate) - DONE** (`eb552c1`, verified on
   real Edge with live GitHub API + local-file KPI). `NetHub.qml` = the single egress choke
   point (only place a raw XHR may be built; offline switch → host allowlist → local-file
   bypass → per-host attestation counters); injected app-global by Dashboard, per-widget

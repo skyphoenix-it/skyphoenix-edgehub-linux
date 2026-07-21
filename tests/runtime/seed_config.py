@@ -7,14 +7,14 @@ Generalisation of focus_seed_config.py for the scenario battery: the caller
 builds the ui_state document (layout + per-widget settings + appearance) and
 pipes it in as JSON; this writes the full NESTED config.toml around it.
 
-Schema details the hub's Rust core (`toml` crate + serde) is strict about —
+Schema details the hub's Rust core (`toml` crate + serde) is strict about -
 learned the hard way (see tests/runtime/README.md):
 
   * The config is NESTED: [display] / [theme] / [startup] / [widgets] are
     required tables. A flat key layout deserialize-fails ("TOML parse error at
     line 1, column 1") and the core salvages into the default starter layout,
     silently discarding the seed.
-  * `ui_state` must be a single-quoted TOML *literal* string — exactly how the
+  * `ui_state` must be a single-quoted TOML *literal* string - exactly how the
     hub itself serializes it. JSON never contains a single quote, so a literal
     needs no escaping (asserted below).
 """

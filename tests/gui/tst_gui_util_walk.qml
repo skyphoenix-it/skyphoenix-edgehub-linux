@@ -11,7 +11,7 @@ import "GuiUtil.js" as G
 // reachable by k distinct paths had its whole subtree re-walked k times. The real
 // Manager tree: 1,701 unique nodes, >2,000,000 visits.
 //
-// These cases are deterministic and headless — no compositor, no Manager, no
+// These cases are deterministic and headless - no compositor, no Manager, no
 // timing. They fail loudly if the seen-set is ever removed.
 // ─────────────────────────────────────────────────────────────────────────────
 Item {
@@ -41,19 +41,19 @@ Item {
     TestCase {
         name: "GuiUtilWalk"
 
-        // THE guard: the walk must be linear — every node visited exactly once.
+        // THE guard: the walk must be linear - every node visited exactly once.
         function test_walk_visits_each_node_once() {
             var st = G.walkStats(fixture)
             verify(st.unique > 3, "fixture actually has a tree (" + st.unique + " nodes)")
             compare(st.calls, st.unique,
                     "eachItem must visit each node exactly once (calls=" + st.calls
                     + " unique=" + st.unique + "). calls>unique means the visited-set "
-                    + "was removed — this is the OOM regression.")
+                    + "was removed - this is the OOM regression.")
         }
 
         // The teeth of the guard. Build a tree where each level is reachable by
         // two paths, so path count doubles per level: the pre-fix walk is
-        // O(2^depth). At depth 16 that is >65,000 callbacks over ~50 nodes —
+        // O(2^depth). At depth 16 that is >65,000 callbacks over ~50 nodes -
         // the same blow-up that reached 18.8 GB on the Manager tree. The fixed
         // walk is exactly linear, so this stays instant.
         function test_walk_is_linear_not_exponential() {
@@ -105,7 +105,7 @@ Item {
 
         // findPred must stop as soon as it has a match rather than walking on.
         // Order-independent: abort on the very first node and require exactly one
-        // callback. (Asserting on a named node would depend on traversal order —
+        // callback. (Asserting on a named node would depend on traversal order -
         // branchA legitimately comes last.)
         function test_walk_aborts_when_fn_returns_true() {
             var visited = 0

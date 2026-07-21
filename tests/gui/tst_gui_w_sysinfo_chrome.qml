@@ -4,10 +4,10 @@ import "../ui" as UI
 import "GuiUtil.js" as G
 
 // ─────────────────────────────────────────────────────────────────────────
-// Visible GUI suite — Packages + System-Age (sinceinstall) widgets, plus the
+// Visible GUI suite - Packages + System-Age (sinceinstall) widgets, plus the
 // shared S0 WidgetChrome / Appearance suite. Everything renders in a REAL
 // KWin-composited window (WidgetHarness) and is asserted via item geometry,
-// item.visible, on-screen text, and grabImage() pixel colour — never "the
+// item.visible, on-screen text, and grabImage() pixel colour - never "the
 // function returned X".
 //
 //   • Packages  (23): sizes, showDistro/title config, loading/counted/
@@ -476,12 +476,12 @@ Item {
         }
 
         // ══════════════════════════════════════════════════════════════════════
-        //  S0 — Shared WidgetChrome / Appearance suite  (54)
+        //  S0 - Shared WidgetChrome / Appearance suite  (54)
         //  Hosted on ClockWidget (the representative widget).
         // ══════════════════════════════════════════════════════════════════════
 
         // Host clock and make the accent-tinted zone chip visible (its text is
-        // painted in chrome.effAccent — a reliable accent pixel source).
+        // painted in chrome.effAccent - a reliable accent pixel source).
         function hostClockChip(id, w, h, sizeClass) {
             var it = host("ClockWidget.qml", id, w, h, sizeClass)
             wh.storeCtl.setSetting(it.instanceId, "customZone", true)
@@ -571,7 +571,7 @@ Item {
                    "statusColor applied (error tint, nearest " + _lastPx + ")")
         }
 
-        // S0-8 — accent swatch matrix: Auto + 29 presets (×30).
+        // S0-8 - accent swatch matrix: Auto + 29 presets (×30).
         function test_s0_08_accent_matrix_data() {
             var rows = [ { tag: "Auto", name: "" } ]
             for (var i = 0; i < presetNames.length; i++)
@@ -586,7 +586,7 @@ Item {
             verify(chip !== null && chip.visible, "accent zone chip visible for " + row.tag)
             var expected = row.name === "" ? ("" + wh.theme.catSystem)
                                            : wh.theme.accentPresets[row.name].a
-            // Grab the whole (opaque, dark-backed) card and scan for the accent —
+            // Grab the whole (opaque, dark-backed) card and scan for the accent -
             // the zone chip is the only accent-tinted element in a clock.
             var img = snap(it, "s0_08_accent_" + row.tag)
             var d = nearestDist(img, expected)
@@ -595,7 +595,7 @@ Item {
                    + ", nearest " + _lastPx + ")")
         }
 
-        // S0-9 — accent persists to the store and drives the visible chrome via
+        // S0-9 - accent persists to the store and drives the visible chrome via
         // the real store→binding path used by Dashboard.injectWidget.
         function test_s0_09_accent_persists() {
             var it = hostClockChip("s0-09", 560, 320, "large")
@@ -614,7 +614,7 @@ Item {
                    "stored accent drives the visible chrome via store binding (nearest " + _lastPx + ")")
         }
 
-        // S0-10 — binding-loop guard: a self-referential accentColor must not
+        // S0-10 - binding-loop guard: a self-referential accentColor must not
         // collapse effAccent to transparent/black (content stays a visible colour).
         function test_s0_10_binding_loop_guard() {
             var it = hostClockChip("s0-10", 560, 320, "large")
@@ -630,7 +630,7 @@ Item {
                    "falls back to theme.accent (nearest " + _lastPx + ")")
         }
 
-        // S0-11 — cardBackdrop options each render (×8).
+        // S0-11 - cardBackdrop options each render (×8).
         function test_s0_11_backdrop_options_data() {
             var rows = []
             for (var i = 0; i < backdropStyles.length; i++)
@@ -656,7 +656,7 @@ Item {
             }
         }
 
-        // S0-12 — backdrop off when theme.decorative false.
+        // S0-12 - backdrop off when theme.decorative false.
         function test_s0_12_backdrop_off_decorative() {
             var it = host("ClockWidget.qml", "s0-12", 560, 320, "large")
             it.cardBackdrop = "orbs"
@@ -671,7 +671,7 @@ Item {
             wait(120)
         }
 
-        // S0-13 — backdrop honours reduce-motion (running:false).
+        // S0-13 - backdrop honours reduce-motion (running:false).
         function test_s0_13_backdrop_reduce_motion() {
             var it = host("ClockWidget.qml", "s0-13", 560, 320, "large")
             it.cardBackdrop = "waves"
@@ -686,7 +686,7 @@ Item {
             wait(120)
         }
 
-        // S0-14 — glass sheen scales with glassOpacity (top highlight brightens).
+        // S0-14 - glass sheen scales with glassOpacity (top highlight brightens).
         function test_s0_14_glass_sheen() {
             var it = host("ClockWidget.qml", "s0-14", 560, 320, "large")
             wh.theme.glassOpacity = 0.05
@@ -704,7 +704,7 @@ Item {
             wait(120)
         }
 
-        // S0-15 — glow hairline visible with theme.glow.
+        // S0-15 - glow hairline visible with theme.glow.
         function test_s0_15_glow_hairline() {
             var it = host("ClockWidget.qml", "s0-15", 560, 320, "large")
             it.accentName = "red"
@@ -729,7 +729,7 @@ Item {
             wait(120)
         }
 
-        // S0-16 — contentMargins big vs compact differ (body inset geometry).
+        // S0-16 - contentMargins big vs compact differ (body inset geometry).
         function test_s0_16_content_margins() {
             var it = host("ClockWidget.qml", "s0-16", 560, 560, "large")
             wait(120)
@@ -747,7 +747,7 @@ Item {
             verify(bigX > compactX, "body inset larger in big (" + bigX + " > " + compactX + ")")
         }
 
-        // S0-17 — chromeless drops the card surface + padding.
+        // S0-17 - chromeless drops the card surface + padding.
         function test_s0_17_chromeless() {
             var it = host("ClockWidget.qml", "s0-17", 560, 320, "large")
             var surface = directChild(it, "Rectangle")
@@ -760,7 +760,7 @@ Item {
             compare(it.contentMargins, 0, "contentMargins collapse to 0 when chromeless")
         }
 
-        // S0-18 — touch-target sweep: every standard PillButton tap host is ≥44px.
+        // S0-18 - touch-target sweep: every standard PillButton tap host is ≥44px.
         function test_s0_18_touch_targets() {
             var it = host("HydrationWidget.qml", "s0-18", 696, 819, "full")
             wh.expanded = true

@@ -4,7 +4,7 @@ This is the practical, end-to-end guide to adding a new widget to the Xeneon Edg
 Hub. A widget is a single self-contained QML file plus a few one-line
 registrations. If you can write basic QML, you can ship a widget in ~20 minutes.
 
-> **Fast path:** run `./scripts/new-widget.sh` — it scaffolds the file, wires the
+> **Fast path:** run `./scripts/new-widget.sh` - it scaffolds the file, wires the
 > resource bundles, drops a placeholder icon, and prints the two snippets you
 > paste by hand. The rest of this doc explains what it generates and why.
 
@@ -14,7 +14,7 @@ registrations. If you can write basic QML, you can ship a widget in ~20 minutes.
 
 Every widget:
 
-- Has its root be a **`WidgetChrome`** — the shared glass card that draws the
+- Has its root be a **`WidgetChrome`** - the shared glass card that draws the
   header (icon + title), the frosted surface, and the accent glow. You only write
   the *content*.
 - Is registered once in **`WidgetCatalog.qml`** (the registry) and reused
@@ -23,12 +23,12 @@ Every widget:
 - Reads live per-instance settings from the **store** and writes them back, so a
   tile and its expanded/config view share one live state.
 - Declares an optional **config schema** so the on-device config view and the
-  desktop Manager both render a professional form for it — with descriptions and
+  desktop Manager both render a professional form for it - with descriptions and
   real options. **Every option you declare must actually be honoured** by the
   widget (no decorative toggles).
 
 The same widget file runs in two hosts (the hub and the Manager). Don't assume a
-running hub, network, or specific screen — degrade gracefully.
+running hub, network, or specific screen - degrade gracefully.
 
 ---
 
@@ -42,12 +42,12 @@ use:
 | `metrics` | `var` | Parsed system metrics JSON (CPU/GPU/RAM/net/disk). Updates ~2 s. |
 | `expanded` | `bool` | `true` in the full-screen view; drive richer layouts off this. |
 | `active` | `bool` | `false` when a background tile should pause timers (an overlay is open / edit mode). Gate `Timer { running: w.active }`. |
-| `store` | `var` | The DashboardStore — read/write per-instance settings. |
+| `store` | `var` | The DashboardStore - read/write per-instance settings. |
 | `instanceId` | `string` | This tile's unique id; the key into settings. |
-| `tick` | `int` | *(optional)* a once-per-second counter — declare it if you show time. |
+| `tick` | `int` | *(optional)* a once-per-second counter - declare it if you show time. |
 | `titleOverride` | `string` | *(optional, on WidgetChrome)* user's custom title; already handled by WidgetChrome. |
 
-`theme` and (for media) `media` resolve from context — reference them
+`theme` and (for media) `media` resolve from context - reference them
 unqualified, e.g. `theme.accent`. Don't import or instantiate them.
 
 ---
@@ -113,7 +113,7 @@ WidgetChrome {
 ```
 
 That already renders as a proper glass tile, expands full-screen, and shows up in
-the picker — once you register it.
+the picker - once you register it.
 
 ---
 
@@ -121,7 +121,7 @@ the picker — once you register it.
 
 For a widget of type `hello` (file `HelloWidget.qml`):
 
-1. **Catalog entry** — add to the `items` array in `ui/qml/WidgetCatalog.qml`:
+1. **Catalog entry** - add to the `items` array in `ui/qml/WidgetCatalog.qml`:
    ```js
    { type: "hello", title: "Hello", category: "Info",
      source: "qrc:/qml/HelloWidget.qml", defaults: { who: "world" } },
@@ -129,20 +129,20 @@ For a widget of type `hello` (file `HelloWidget.qml`):
    `defaults` seeds a fresh instance's settings. `category` groups it in the picker
    (reuse an existing one: System / Time / Focus / Media / Data / Info).
 
-2. **Description** — add to the `_desc` map in the same file (shown in the
+2. **Description** - add to the `_desc` map in the same file (shown in the
    expanded header):
    ```js
    "hello": "Greets someone. Set the name in config.",
    ```
 
-3. **Icon** — drop a white-filled SVG at `assets/icons/hello.svg` (the file name
+3. **Icon** - drop a white-filled SVG at `assets/icons/hello.svg` (the file name
    **must equal the type**) and add one line to `assets/icons.qrc`:
    ```xml
    <file alias="hello.svg">icons/hello.svg</file>
    ```
    Icons are [Phosphor](https://phosphoricons.com) SVGs normalised to `fill="#FFFFFF"`
    (AppIcon tints them). Keep the `viewBox="0 0 256 256"`. A stroked glyph
-   (`fill="none" stroke="#FFFFFF" stroke-width="16"`) tints identically — match the
+   (`fill="none" stroke="#FFFFFF" stroke-width="16"`) tints identically - match the
    existing weight either way.
 
    The picker resolves the icon **by type** (`AppIcon { name: modelData.type }`), so
@@ -150,17 +150,17 @@ For a widget of type `hello` (file `HelloWidget.qml`):
    the source tree, with no qrc), so `scripts/check_widget_icons.sh` gates it: every
    catalog type must have an SVG on disk **and** a line in `assets/icons.qrc`.
 
-4. **Bundle for the hub** — add to `ui/qml.qrc`:
+4. **Bundle for the hub** - add to `ui/qml.qrc`:
    ```xml
    <file alias="qml/HelloWidget.qml">qml/widgets/HelloWidget.qml</file>
    ```
 
-5. **Bundle for the Manager** — add to `manager/manager.qrc`:
+5. **Bundle for the Manager** - add to `manager/manager.qrc`:
    ```xml
    <file alias="HelloWidget.qml">../ui/qml/widgets/HelloWidget.qml</file>
    ```
 
-6. **Config schema** *(optional but recommended)* — add a `case` in
+6. **Config schema** *(optional but recommended)* - add a `case` in
    `ui/qml/WidgetConfigSchema.qml` so the config view shows real options:
    ```js
    case "hello": return { sections: [
@@ -174,9 +174,9 @@ For a widget of type `hello` (file `HelloWidget.qml`):
    `case`, the widget still works and gets a General (custom title) section by
    default. **Whatever options you declare, read them via `cfg` and honour them.**
 
-7. **Networking** *(only if the widget fetches something)* — **never construct an
+7. **Networking** *(only if the widget fetches something)* - **never construct an
    `XMLHttpRequest`.** All egress goes through the `NetHub` gate, which owns the
-   global offline switch, the host allowlist and the request counters — the single
+   global offline switch, the host allowlist and the request counters - the single
    audited choke point behind the "no telemetry / local-only" claim:
    ```qml
    property var netHub: null          // injected by Dashboard (one app-global hub)
@@ -192,7 +192,7 @@ For a widget of type `hello` (file `HelloWidget.qml`):
    (`DashboardStore._ephemeralKeys`) or every poll rewrites `config.toml` (flash
    wear + a save race with the Manager). See `HttpJsonWidget.qml` for the full shape.
 
-   **Credentials — pass the stored value, never a resolved secret.** Anything a
+   **Credentials - pass the stored value, never a resolved secret.** Anything a
    widget holds can ride its settings into `ui_state` → `config.toml`, so a widget
    must NOT build its own `Authorization` header. Hand the raw stored string to the
    gate and let it resolve:
@@ -208,7 +208,7 @@ For a widget of type `hello` (file `HelloWidget.qml`):
 > ⚠️ **The #1 gotcha:** forgetting steps 4/5. The QML test suite loads widgets from
 > the source tree and will pass, but the real app loads from the compiled `qrc`
 > and fails at runtime with `HelloWidget is not a type`. Always rebuild and launch
-> the actual hub to verify. The same blind spot hides missing icons (step 3) — both
+> the actual hub to verify. The same blind spot hides missing icons (step 3) - both
 > are now gated by lints in `run_all_tests.sh`, but a real grab is still the only
 > thing that proves it *looks* right.
 
@@ -220,7 +220,7 @@ For a widget of type `hello` (file `HelloWidget.qml`):
   `cpu_core_count`, `ram_usage_percent`, `ram_total_bytes`, `ram_used_bytes`,
   `gpu_usage_percent`, `gpu_temp_celsius`, `net_rx_bytes_per_sec`,
   `net_tx_bytes_per_sec`, `disk_total_bytes`, `disk_used_bytes`,
-  `disk_usage_percent`. That's the whole set — don't declare options the metrics
+  `disk_usage_percent`. That's the whole set - don't declare options the metrics
   can't back (e.g. per-interface network or an arbitrary disk mount).
 - **Network / the internet**: use `XMLHttpRequest` directly (see `WeatherWidget`
   for a debounced fetch + a config `action` that geocodes). Handle offline.
@@ -229,7 +229,7 @@ For a widget of type `hello` (file `HelloWidget.qml`):
   widget in the same family before writing a new one.
 - **Design tokens**: colours (`theme.accent`, `theme.catSystem/Info/Gaming/…`),
   spacing (`theme.spacingSm/Md/Lg`), radii, touch sizes (`theme.touchPrimary`
-  ≈ 76 px — keep tap targets big), fonts (`theme.fontDisplay/fontMono`), motion
+  ≈ 76 px - keep tap targets big), fonts (`theme.fontDisplay/fontMono`), motion
   (`theme.motionFast`). Never hard-code colours or sizes.
 
 ---
@@ -238,7 +238,7 @@ For a widget of type `hello` (file `HelloWidget.qml`):
 
 - `./scripts/run_ui_tests.sh` runs the offscreen QML suite. `tst_smoke.qml`
   **auto-covers every catalog widget** across nominal/zero/saturated/empty
-  settings × compact/expanded — so once you register your widget it's smoke-tested
+  settings × compact/expanded - so once you register your widget it's smoke-tested
   for free. Add a `tst_<type>.qml` if it has real interaction/logic.
 - Build + launch the real hub and confirm zero `is not a type` lines:
   `QT_QPA_PLATFORM=offscreen ./build/xeneon-edge-hub --windowed`
@@ -250,7 +250,7 @@ For a widget of type `hello` (file `HelloWidget.qml`):
 
 ---
 
-## Size vs expanded — they are NOT the same thing
+## Size vs expanded - they are NOT the same thing
 
 Two different questions, and conflating them is why no widget currently adapts to
 its tile:
@@ -258,8 +258,8 @@ its tile:
 | property | question it answers | set by |
 |---|---|---|
 | `sizeClass` | **how much room have I got?** `"compact"` (1×1) · `"wide"` (2×1) · `"tall"` (1×2) · `"large"` (2×2) · `"full"` (the overlay) | injected by `Dashboard.injectWidget` |
-| `expanded` | **am I in the full-screen overlay?** — a *mode* | injected |
-| `big` | derived: has vertical room (`tall`/`large`/`full`) | **readonly — never declare it** |
+| `expanded` | **am I in the full-screen overlay?** - a *mode* | injected |
+| `big` | derived: has vertical room (`tall`/`large`/`full`) | **readonly - never declare it** |
 
 Every widget used to write `big: expanded`, which made "big" mean "is the overlay".
 The consequence: a 2-row **tile** rendered the compact layout *stretched*, and
@@ -272,13 +272,13 @@ adds an editor only in the overlay keys off `expanded`.
 
 > Today `sizeClass` still comes from the `[1,2]` spans, so `"tall"`/`"large"` are the
 > only large classes. When real fractional sizes land the spans change meaning but
-> the class vocabulary does not — which is why layout should ask for a *class*, not
+> the class vocabulary does not - which is why layout should ask for a *class*, not
 > re-derive one from `w`/`h`.
 
 ## Style rules (so widgets feel like one product)
 
 - Root is always `WidgetChrome`; content in the default slot. **Never declare
-  `big`** — it is readonly and derived (see "Size vs expanded" below).
+  `big`** - it is readonly and derived (see "Size vs expanded" below).
 - Large, tappable controls; no tiny hit areas. Use `PillButton` / `SegmentedControl`.
 - Gate timers on `active`. Keep idle CPU near zero (paint-once Canvas + GPU
   transforms, not per-frame repaints).

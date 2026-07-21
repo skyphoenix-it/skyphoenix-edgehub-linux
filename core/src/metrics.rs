@@ -38,7 +38,7 @@ pub struct SystemMetrics {
 // CPU-usage and network-rate deltas are computed against the *previous* sample.
 // These baselines are kept thread-local: the GUI thread and the metrics worker
 // thread each collect on their own cadence, and a process-global baseline made
-// them race — each poisoning the other's delta and producing spurious 100% /
+// them race - each poisoning the other's delta and producing spurious 100% /
 // multi-GB/s spikes. Per-thread baselines give each caller a consistent series.
 thread_local! {
     /// Previous `/proc/stat` CPU times for this thread, for delta computation.
@@ -184,7 +184,7 @@ fn disk_info_from_statvfs(f_blocks: u64, f_bfree: u64, f_bavail: u64, f_frsize: 
 }
 
 /// Read CPU usage from /proc/stat using cached previous sample.
-/// No sleep needed — computes delta from the last call.
+/// No sleep needed - computes delta from the last call.
 fn read_cpu_usage() -> f64 {
     let current = match read_proc_stat_cpu() {
         Some(c) => c,
@@ -306,7 +306,7 @@ fn read_cpu_temperature() -> Option<f64> {
 /// Parse a sysfs millidegree-Celsius reading (e.g. `"38000"`) into Celsius
 /// (`38.0`). Tolerates surrounding whitespace; returns `None` on non-numeric or
 /// empty input. Every finite value is passed through, including negatives
-/// (`"-1000"` → `-1.0`) — the caller reserves `None`, not `-1.0`, for "no sensor".
+/// (`"-1000"` → `-1.0`) - the caller reserves `None`, not `-1.0`, for "no sensor".
 fn millideg_to_celsius(raw: &str) -> Option<f64> {
     let millideg = raw.trim().parse::<f64>().ok()?;
     Some(millideg / 1000.0)
@@ -315,7 +315,7 @@ fn millideg_to_celsius(raw: &str) -> Option<f64> {
 /// Discover the CPU temperature sensor path and cache it.
 ///
 /// Priority matters: a real CPU sensor is identified by its hwmon `name`
-/// (k10temp/coretemp/…). The generic globs are only a last resort — if tried
+/// (k10temp/coretemp/…). The generic globs are only a last resort - if tried
 /// first they latch onto whatever hwmon device `read_dir` returns first (NVMe,
 /// Wi-Fi, chipset), which is nondeterministic and usually wrong.
 fn discover_temp_sensor() -> Option<String> {
@@ -461,7 +461,7 @@ fn read_gpu_temperature() -> Option<f64> {
 /// Discover the primary GPU's sysfs paths and cache them.
 ///
 /// When multiple DRM cards expose `gpu_busy_percent` (e.g. an integrated GPU
-/// plus a discrete one), the card with the largest VRAM is chosen — that is the
+/// plus a discrete one), the card with the largest VRAM is chosen - that is the
 /// discrete GPU users care about for a gaming/monitoring dashboard.
 fn discover_gpu() -> Option<GpuPaths> {
     let dir = std::fs::read_dir("/sys/class/drm").ok()?;
@@ -469,7 +469,7 @@ fn discover_gpu() -> Option<GpuPaths> {
 
     for entry in dir.flatten() {
         let name = entry.file_name().to_string_lossy().to_string();
-        // Only real cards ("card0", "card1", …) — skip "card0-DP-1" outputs.
+        // Only real cards ("card0", "card1", …) - skip "card0-DP-1" outputs.
         if !name.starts_with("card") || name.contains('-') {
             continue;
         }
@@ -747,7 +747,7 @@ mod tests {
 
     #[test]
     fn test_discover_gpu_does_not_panic() {
-        // May be None on machines/CI without a DRM GPU — must not panic either way.
+        // May be None on machines/CI without a DRM GPU - must not panic either way.
         let _ = discover_gpu();
     }
 
@@ -854,7 +854,7 @@ Cached:          4000000 kB
     #[test]
     fn test_ram_info_skips_blank_lines_and_unknown_labels() {
         // A blank line (no first token) must be skipped, and an unrecognized
-        // label (e.g. SwapTotal) must be ignored — not mis-parsed as a field.
+        // label (e.g. SwapTotal) must be ignored - not mis-parsed as a field.
         let meminfo = "\
 MemTotal:       16000000 kB
 
@@ -1064,7 +1064,7 @@ MemAvailable:    4000000 kB
     #[test]
     fn get_or_discover_recovers_from_transient_absence() {
         let cache: Mutex<Discovered<u32>> = Mutex::new(Discovered::new());
-        // Absent on the first two attempts, then appears — must be picked up.
+        // Absent on the first two attempts, then appears - must be picked up.
         let attempt = std::cell::Cell::new(0);
         let mut last = None;
         for _ in 0..4 {

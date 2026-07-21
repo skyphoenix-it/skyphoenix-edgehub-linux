@@ -7,8 +7,8 @@ import "../../ui/qml" as App
 // COVERS: fn:DashboardStore._coerceTileSize, fn:DashboardStore._largestSupportedAtMost
 //
 // Robustness (Phase 3a): `_normaliseDoc` is a real VALIDATOR. A corrupt or hostile
-// UI-state document — pushed over the control socket (applyExternal) or read from a
-// clobbered config.toml (load) — must SELF-HEAL into a well-formed structure rather
+// UI-state document - pushed over the control socket (applyExternal) or read from a
+// clobbered config.toml (load) - must SELF-HEAL into a well-formed structure rather
 // than reaching the page/tile Repeater and `addTile` as a number/string/id-less
 // object → TypeError → blank dashboard. Both entry points share `_normaliseDoc`, so
 // each malformed shape is exercised end-to-end through applyExternal AND directly
@@ -17,7 +17,7 @@ Item {
     width: 100; height: 100
     App.DashboardStore { id: store }
     App.WidgetSizes { id: sizes }
-    // The per-type size contract the store enforces on the way in — asserted here
+    // The per-type size contract the store enforces on the way in - asserted here
     // against the REAL catalog, so a widget that changes the sizes it declares
     // shows up as a migration change rather than a surprise on someone's device.
     App.WidgetCatalog { id: catalog }
@@ -27,7 +27,7 @@ Item {
         when: windowShown
         function init() { store.load("blank") }
 
-        // "pages":5 — a non-array pages field is discarded to an empty array.
+        // "pages":5 - a non-array pages field is discarded to an empty array.
         function test_pages_number_self_heals() {
             var ok = store.applyExternal('{"pages":5}')
             verify(ok, "applyExternal accepted (truthy pages) and did not throw")
@@ -35,7 +35,7 @@ Item {
             compare(store.pageCount(), 0, "junk pages coerced to []")
         }
 
-        // "pages":{} — an object (not an array) is likewise discarded.
+        // "pages":{} - an object (not an array) is likewise discarded.
         function test_pages_object_self_heals() {
             var ok = store.applyExternal('{"pages":{}}')
             verify(ok, "did not throw")
@@ -71,7 +71,7 @@ Item {
         }
 
         // A size pushed over the control socket by another process is COERCED unless
-        // the TYPE declares it — being one of the seven legal names is not enough.
+        // the TYPE declares it - being one of the seven legal names is not enough.
         // Tile "e" is the sharp case: `1x3` is perfectly legal and `cpu` still cannot
         // render it, so a push must not be able to force it.
         function test_hostile_size_coerced_via_applyExternal() {
@@ -84,14 +84,14 @@ Item {
             verify(ok, "did not throw")
             var tiles = store.pages()[0].tiles
             compare(tiles.length, 5, "no tile is dropped over a bad size")
-            // a/b/c are JUNK — not one of the seven names, so there is no size to rank
+            // a/b/c are JUNK - not one of the seven names, so there is no size to rank
             // them against and the type's default is the only honest answer.
             for (var i = 0; i < 3; i++)
                 compare(tiles[i].size, store._defaultSizeFor(tiles[i].type),
                         tiles[i].type + ": an unrankable size falls back to its default")
             // "e" is the sharp one: LEGAL but unsupported, so it coerces DOWN to what
-            // cpu declares. Refusal is what matters — 1x3 is a full screen, 1x1.5 is
-            // half — and a hostile push still cannot claim a shape cpu cannot render.
+            // cpu declares. Refusal is what matters - 1x3 is a full screen, 1x1.5 is
+            // half - and a hostile push still cannot claim a shape cpu cannot render.
             verify(sizes.isLegal("1x3"), "1x3 is a LEGAL size …")
             verify(!store._sizeSupported("cpu", "1x3"), "… that cpu does not declare")
             compare(tiles[3].size, "1x1.5", "so the push is clamped to cpu's largest")
@@ -101,7 +101,7 @@ Item {
         }
 
         // Page names that collide with JS prototype members (toString/valueOf/
-        // constructor/hasOwnProperty) must NOT be spuriously renamed by the dedup —
+        // constructor/hasOwnProperty) must NOT be spuriously renamed by the dedup -
         // the name-set uses a null-prototype object, so these aren't false collisions.
         function test_prototype_name_not_spuriously_renamed() {
             var ok = store.applyExternal('{"pages":[{"name":"valueOf","tiles":[]},{"name":"toString","tiles":[]},{"name":"constructor","tiles":[]}]}')
@@ -152,7 +152,7 @@ Item {
             compare(doc.pages[0].tiles[0].id, "keep")
         }
 
-        // Missing `settings` — the doc is accepted and settings becomes an object,
+        // Missing `settings` - the doc is accepted and settings becomes an object,
         // so settingsFor() / mutations don't throw.
         function test_missing_settings_becomes_object() {
             var ok = store.applyExternal('{"pages":[{"name":"A","tiles":[{"id":"t1","type":"cpu"}]}]}')
@@ -212,9 +212,9 @@ Item {
 
     // ── Migration: the w/h span vocabulary → the named `size` key ────────────
     // Old `w` was a column span against the page's declared column count (so it
-    // recovers exactly as w/cols). Old `h` was a row span against SIBLING tiles —
+    // recovers exactly as w/cols). Old `h` was a row span against SIBLING tiles -
     // its real height depended on how many rows the page packed, which nothing on
-    // disk records — while the new long axis is a fixed count of thirds. That half
+    // disk records - while the new long axis is a fixed count of thirds. That half
     // of the mapping is therefore best-effort and genuinely lossy; these tests pin
     // down what it does, not that it is perfect.
     TestCase {
@@ -250,7 +250,7 @@ Item {
             // The case with NO exact target: half-wide + two-thirds-tall is not one
             // of the seven (the short axis has no 2-thirds partner). Area is kept.
             compare(store._migratedSize({ w: 1, h: 2 }, 2), "1x1",
-                    "2 cols, w:1 h:2 (0.5x2 — illegal) keeps its THIRD of the screen as 1x1")
+                    "2 cols, w:1 h:2 (0.5x2 - illegal) keeps its THIRD of the screen as 1x1")
         }
 
         // The area-preserving fallback that the illegal-combination case rests on.
@@ -264,17 +264,17 @@ Item {
         // ── An unsupported size coerces DOWN, never to the default ──────────
         //
         // THE REGRESSION THIS PREVENTS: a legacy calm-focus on disk has its timer at
-        // h:2, which maps to `1x2` — a real size, but not one `focus` declares (it
+        // h:2, which maps to `1x2` - a real size, but not one `focus` declares (it
         // renders 1x1 and 1x1.5 only). Defaulting sent it to `1x1` and the user's
         // hero timer silently became an ordinary tile on upgrade. The size the tile
-        // cannot have still carries one recoverable fact — that it was THIS BIG — so
+        // cannot have still carries one recoverable fact - that it was THIS BIG - so
         // it lands on the largest shape the widget can actually render.
         function test_focus_h2_coerces_down_to_its_hero_not_to_the_default() {
             var t = mig([ { id: "f", type: "focus", h: 2 } ], 1)
             compare(store._migratedSize({ h: 2 }, 1), "1x2", "h:2 maps to 1x2 …")
             verify(!catalog.supports("focus", "1x2"), "… which `focus` does not declare")
             compare(t[0].size, "1x1.5",
-                    "so it coerces DOWN to the largest size focus declares — the hero timer")
+                    "so it coerces DOWN to the largest size focus declares - the hero timer")
             verify(t[0].size !== catalog.defaultSize("focus"),
                     "and NOT to focus's 1x1 default, which would drop the hero")
             verify(sizes.area(t[0].size) > sizes.area(sizes.baseline),
@@ -295,7 +295,7 @@ Item {
         // The exemplar is `hydration`, not `habit`: habit grew a 1x1.5 in W1 wave
         // 2c (it earns the best-ever record line and a transposed map), so it no
         // longer tops out at the baseline. Hydration still does, and for a reason
-        // that will not drift — it keeps no history, so there is nothing to grow
+        // that will not drift - it keeps no history, so there is nothing to grow
         // into. The rule under test is unchanged; only the type that illustrates
         // it moved.
         function test_coerce_down_stops_at_what_the_type_declares() {
@@ -314,7 +314,7 @@ Item {
                     "an unknown type declares nothing at all")
         }
 
-        // A tile that declares nothing smaller falls back to the type's default —
+        // A tile that declares nothing smaller falls back to the type's default -
         // the coercion is a preference, not a way to end up sizeless.
         function test_no_smaller_declared_size_falls_back_to_the_default() {
             var t = mig([ { id: "f", type: "focus", size: "0.5x0.5" } ], 1)
@@ -348,7 +348,7 @@ Item {
         }
 
         // IDEMPOTENCE: migration is detected by `size === undefined`, so a second
-        // pass must be a strict no-op — including for a size that migration itself
+        // pass must be a strict no-op - including for a size that migration itself
         // produced.
         function test_migration_is_idempotent() {
             var once = store._normaliseDoc({ pages: [ { name: "P", cols: 2, tiles: [
@@ -394,7 +394,7 @@ Item {
             var halves = 0
             for (var j = 0; j < t.length; j++) halves += sizes.halfUnits(t[j].size, false).h
             compare(t.length, 6, "all six tiles are kept")
-            compare(halves, 12, "6 x 1x1 = 12 half-rows — twice the grid's 6 (overflow is deferred, not solved)")
+            compare(halves, 12, "6 x 1x1 = 12 half-rows - twice the grid's 6 (overflow is deferred, not solved)")
             verify(halves > sizes.gridRows(false), "the page genuinely overflows the grid")
         }
 
@@ -414,7 +414,7 @@ Item {
 
         // The per-tile coercion helper, exercised directly on each of its branches.
         // `tasks` is the subject for the migration branch because it actually declares
-        // `1x2` — with a type that does not, the two branches would fire in sequence
+        // `1x2` - with a type that does not, the two branches would fire in sequence
         // and the test could not tell which one produced the result.
         function test_coerce_tile_size_branches() {
             var fresh = { id: "a", type: "tasks", w: 2, h: 2 }
@@ -429,11 +429,11 @@ Item {
         }
 
         // BOTH branches on ONE tile, which is the common real case: `cpu` with h:2 on a
-        // 1-column page migrates to `1x2` (geometry alone — `_migratedSize` does not
+        // 1-column page migrates to `1x2` (geometry alone - `_migratedSize` does not
         // know about types) and is THEN coerced against the type, because cpu tops out
         // at half the screen. The two rules compose; migration does not get to smuggle
         // in a size the widget cannot render. This is exactly what the shipped presets
-        // used to hit — `{ type: "focus", h: 2 }` and friends.
+        // used to hit - `{ type: "focus", h: 2 }` and friends.
         function test_migration_output_is_still_type_checked() {
             compare(store._migratedSize({ h: 2 }, 1), "1x2", "geometry alone says 1x2")
             verify(!store._sizeSupported("cpu", "1x2"), "but cpu does not declare 1x2")

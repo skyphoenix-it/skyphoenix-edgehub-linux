@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 
-// SegmentedControl — a uniform tab/segment selector (e.g. timer modes).
+// SegmentedControl - a uniform tab/segment selector (e.g. timer modes).
 Rectangle {
     id: seg
     property var options: []          // array of {label, value} or strings
@@ -42,7 +42,7 @@ Rectangle {
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    // Emit only — do NOT imperatively assign seg.currentValue, which
+                    // Emit only - do NOT imperatively assign seg.currentValue, which
                     // would clobber the caller's declarative binding and stop the
                     // control from following external state changes.
                     onClicked: seg.selected(seg._val(modelData))

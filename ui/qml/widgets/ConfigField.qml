@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// ConfigField — renders a single schema field into the right control. Reads/
+// ConfigField - renders a single schema field into the right control. Reads/
 // writes live through the shared store, so edits apply immediately (and, in the
 // Manager, push to the Edge). `col` carries colour + sizing tokens so the SAME
 // component works in the desktop Manager and the on-device (touch) config view.
@@ -37,7 +37,7 @@ Item {
     // Text legible on an accent fill. Prefer a theme token so a dark accent can't
     // make selected/on labels vanish; fall back to the historic literal.
     function onAccent() { return (col && col.textOnAccent) ? col.textOnAccent : "#0D1117" }
-    // Tasks values are user/IPC-sourced — coerce to an array so a corrupt (non-array)
+    // Tasks values are user/IPC-sourced - coerce to an array so a corrupt (non-array)
     // stored value renders as empty instead of throwing on .slice()/Repeater.
     function curTasks() { var v = cur(); return Array.isArray(v) ? v : [] }
     function numStr() {
@@ -131,7 +131,7 @@ Item {
                     placeholderText: f.field.placeholder || ""
                     color: f.col.textPrimary; placeholderTextColor: f.col.textSecondary
                     font.pixelSize: f.fontBase; background: null
-                    // Commit on blur, not on every keystroke — otherwise each character
+                    // Commit on blur, not on every keystroke - otherwise each character
                     // bumps store.revision and re-runs every revision-bound binding.
                     onActiveFocusChanged: if (!activeFocus && text !== f.cur()) f.setV(text)
                     // S2: re-assert from the store on external pushes when not editing.
@@ -172,7 +172,7 @@ Item {
                 Layout.fillWidth: true; Layout.preferredHeight: f.ctlH; radius: 10
                 color: f.col.bg; border.width: 1
                 border.color: numIn.activeFocus ? f.col.accent : f.col.border
-                // Keyboard entry path — steppers alone can't reach e.g. lat/lon at
+                // Keyboard entry path - steppers alone can't reach e.g. lat/lon at
                 // step 0.01. Typed input is parsed, clamped and snapped on commit.
                 TextField {
                     id: numIn
@@ -277,12 +277,12 @@ Item {
     Component {
         id: segC
         // A JOINED segmented control (one bordered track, segments inside), matching
-        // the Manager's MSegment and the app's SegmentedControl — reads as "pick one
+        // the Manager's MSegment and the app's SegmentedControl - reads as "pick one
         // of a set" rather than the old row of loose pills. Selected = accent fill;
         // uses the shared f.col tokens so it themes for both the hub and the Manager.
         Rectangle {
             // Track wraps the segments (content-sized, +6 for the 3px margins) rather
-            // than the segments filling the track — so each chip keeps its explicit
+            // than the segments filling the track - so each chip keeps its explicit
             // touch height even where the parent has no resolved height (e.g. a config
             // column that sizes to content), exactly like the accent swatches.
             implicitHeight: segRow.implicitHeight + 6
@@ -298,7 +298,7 @@ Item {
                     model: f.field.options || []
                     delegate: Rectangle {
                         required property var modelData
-                        // Explicit touch height (>= 44px), independent of the parent —
+                        // Explicit touch height (>= 44px), independent of the parent -
                         // the width still fills the track evenly across the segments.
                         Layout.fillWidth: true
                         implicitHeight: Math.max(44, f.ctlH - 2)
@@ -420,7 +420,7 @@ Item {
                             border.color: parent.activeFocus ? f.col.accent : f.col.border }
                         onEditingFinished: {
                             var a = f.curTasks().slice()
-                            if (!a[index]) return   // row vanished (live push) — drop the edit
+                            if (!a[index]) return   // row vanished (live push) - drop the edit
                             a[index] = { text: text, done: a[index].done }; f.setV(a)
                         }
                     }

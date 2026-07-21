@@ -1,7 +1,7 @@
 # Widerrufsbelehrung (Right of Withdrawal)
 
 > Template for the EU/DE consumer right of withdrawal for **digital content**.
-> Fill `[[...]]`. Not legal advice — have it reviewed. The key for instant-download
+> Fill `[[...]]`. Not legal advice - have it reviewed. The key for instant-download
 > software is the **explicit-consent + waiver** (§356 Abs. 5 BGB): without it, a buyer
 > could download and still withdraw within 14 days.
 

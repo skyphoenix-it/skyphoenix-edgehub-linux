@@ -1,32 +1,32 @@
-"""Pure-python synthetic touch/pointer for the real Xeneon Edge — no sudo, no
-ydotool, no external libraries — HARD-CONFINED to the Edge output.
+"""Pure-python synthetic touch/pointer for the real Xeneon Edge - no sudo, no
+ydotool, no external libraries - HARD-CONFINED to the Edge output.
 
 ## Safety design (this is a live desktop; see README "Synthetic-input safety")
 
-1. OPT-IN GATE — creating a real /dev/uinput device requires
+1. OPT-IN GATE - creating a real /dev/uinput device requires
    XENEON_HW_INPUT=1. Without it, construction raises InputGateError before
    the device node is even opened. `CaptureSink` (unit tests) never touches
    the kernel and is exempt.
-2. STRUCTURAL CLAMP — every coordinate passes through the injector's single
+2. STRUCTURAL CLAMP - every coordinate passes through the injector's single
    emit path, which clamps to the target rect BEFORE converting to device
    units. There is no API to emit an unclamped position; callers cannot opt
    out. Unit-testable without injection via CaptureSink.
-3. PHYSICAL CONFINEMENT (preferred) — `VTouch` is a true multitouch
+3. PHYSICAL CONFINEMENT (preferred) - `VTouch` is a true multitouch
    (ABS_MT) touchscreen device. KWin maps touchscreens to a single output
    (`org.kde.KWin.InputDevice.outputName`, writable via DBus); after
    `map_to_output("DP-3")` + readback verification, the kernel events are
-   scaled by the compositor onto the Edge ONLY — they cannot land on another
+   scaled by the compositor onto the Edge ONLY - they cannot land on another
    monitor even if our geometry were wrong. (Measured on the real box: the
    Edge's own "wch.cn TouchScreen" is mapped exactly this way.)
-4. KILL SWITCH — every kernel write consults an input_guard.ActivityGuard;
+4. KILL SWITCH - every kernel write consults an input_guard.ActivityGuard;
    real user activity raises UserActivityAbort mid-gesture. A real sink
    REFUSES to exist without a guard.
-5. STALE-GEOMETRY DEFENSE — XENEON_EDGE_GEOM/XENEON_CANVAS overrides are
+5. STALE-GEOMETRY DEFENSE - XENEON_EDGE_GEOM/XENEON_CANVAS overrides are
    cross-checked against live `kscreen-doctor` output and rejected on
    mismatch (set XENEON_GEOM_TRUST=1 only on setups without kscreen).
 
 Two Wayland gotchas (both handled):
-  * input_event on 64-bit is 24 bytes — pack '=qqHHi'.
+  * input_event on 64-bit is 24 bytes - pack '=qqHHi'.
   * A single absolute jump + immediate click does NOT register: settle first
     (move -> wait -> move -> button -> hold -> release).
 """
@@ -119,7 +119,7 @@ def detect_edge_ex():
     Auto-detects via `kscreen-doctor -o` (KDE), preferring an output whose
     name contains XENEON/EDGE, else a tall portrait output. Env overrides
     XENEON_EDGE_GEOM="x,y,w,h" + XENEON_CANVAS="w,h" are CROSS-CHECKED
-    against the live layout and REJECTED when stale — a wrong rect here is
+    against the live layout and REJECTED when stale - a wrong rect here is
     exactly what would send clicks into the owner's other monitors. Set
     XENEON_GEOM_TRUST=1 to skip the cross-check on setups without kscreen.
     """
@@ -361,7 +361,7 @@ class VTouch(_Clamped):
     """True multitouch (ABS_MT) touchscreen taking EDGE-LOCAL coordinates.
 
     After map_to_output(), the compositor itself scales every contact onto
-    the bound output — the physical confinement layer. The arithmetic clamp
+    the bound output - the physical confinement layer. The arithmetic clamp
     (all coords through clamp_local) stays as the second layer, and the
     device axis range is exactly 0..ABS_MAX with the compositor mapping the
     full range onto ONE output."""

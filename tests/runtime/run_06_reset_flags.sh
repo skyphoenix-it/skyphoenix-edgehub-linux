@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Scenario 06 — --reset vs --reset-wizard: the destructive/non-destructive pair.
+# Scenario 06 - --reset vs --reset-wizard: the destructive/non-destructive pair.
 #
 # These two flags are one keystroke apart and documented one line apart
 # (AGENTS.md: "--reset flag loads fresh defaults; --reset-wizard re-triggers the
@@ -9,23 +9,23 @@
 #
 # Three launches over the same seed (an httpjson tile polling a loopback sink):
 #
-#   1. CONTROL (no flag)  — the sink IS hit and config.toml survives. Establishes
+#   1. CONTROL (no flag)  - the sink IS hit and config.toml survives. Establishes
 #      the observation channel; the zeros below are meaningful only because the
 #      same seed demonstrably produces hits without a flag.
-#   2. --reset-wizard     — ZERO sink hits (the wizard is up: main.qml's StackView
+#   2. --reset-wizard     - ZERO sink hits (the wizard is up: main.qml's StackView
 #      takes `initialItem: isFirstRun ? FirstRunWizard : Dashboard`, so the
-#      Dashboard — and the user's polling tile with it — is never instantiated)
+#      Dashboard - and the user's polling tile with it - is never instantiated)
 #      AND config.toml is byte-identical, first_run_complete still true. The
 #      wizard re-triggers for the SESSION without touching the user's file.
-#   3. --reset            — config.toml is gone and the user's layout with it;
+#   3. --reset            - config.toml is gone and the user's layout with it;
 #      a relaunch comes up on defaults, not on the seeded page.
 #
 # The wizard is observed BEHAVIORALLY (the user's tile does not run), not by
-# pixels — the same technique scenario 02 uses for a forced preset, and the only
+# pixels - the same technique scenario 02 uses for a forced preset, and the only
 # one available: QML console.log is filtered out of the product log.
 #
 # NOT asserted, deliberately: that --reset leaves no backup. It does not (unlike
-# the corruption path, which preserves a .corrupt-*.bak — see scenario 05), but
+# the corruption path, which preserves a .corrupt-*.bak - see scenario 05), but
 # pinning that here would make a future "back up before reset" improvement fail
 # a test whose subject is the flag contract. Reported in the W4 findings instead.
 set -uo pipefail
@@ -51,17 +51,17 @@ seed() { # $1 = config dir
 EOF
 }
 
-# ── 1. CONTROL: no flag — the dashboard runs, the file stays ────────────────
-echo "Run 1 — control (no flag): the user's layout runs, config.toml survives"
+# ── 1. CONTROL: no flag - the dashboard runs, the file stays ────────────────
+echo "Run 1 - control (no flag): the user's layout runs, config.toml survives"
 rt_mkroot control; seed "$RT_CFG"
 before="$(rt_sink_count)"
 rt_run_hub "$RT_ROOT" 8
 rt_assert_live "control" "$RT_ROOT" || fail=1
 hits=$(( $(rt_sink_count) - before ))
 if [ "$hits" -gt 0 ]; then
-    echo "  [control] PASS: sink received $hits request(s) — the dashboard channel is observable"
+    echo "  [control] PASS: sink received $hits request(s) - the dashboard channel is observable"
 else
-    echo "  [control] FAIL: sink got no requests — every zero below would be vacuous"
+    echo "  [control] FAIL: sink got no requests - every zero below would be vacuous"
     fail=1
 fi
 if [ -f "$RT_CFG/config.toml" ]; then
@@ -72,7 +72,7 @@ else
 fi
 
 # ── 2. --reset-wizard: wizard up, user's file untouched ─────────────────────
-echo "Run 2 — --reset-wizard: wizard re-triggers, the user's layout is preserved"
+echo "Run 2 - --reset-wizard: wizard re-triggers, the user's layout is preserved"
 rt_mkroot wizard; seed "$RT_CFG"
 cp "$RT_CFG/config.toml" "$RT_WORK/wizard-seed.toml"
 before="$(rt_sink_count)"
@@ -80,13 +80,13 @@ RT_HUB_ARGS=(--reset-wizard); rt_run_hub "$RT_ROOT" 8; RT_HUB_ARGS=()
 rt_assert_live "wizard" "$RT_ROOT" || fail=1
 hits=$(( $(rt_sink_count) - before ))
 if [ "$hits" -eq 0 ]; then
-    echo "  [wizard] PASS: 0 sink hits — the Dashboard never ran (the wizard is up)"
+    echo "  [wizard] PASS: 0 sink hits - the Dashboard never ran (the wizard is up)"
 else
-    echo "  [wizard] FAIL: $hits sink hit(s) — the dashboard is live, so --reset-wizard did NOT re-trigger the wizard"
+    echo "  [wizard] FAIL: $hits sink hit(s) - the dashboard is live, so --reset-wizard did NOT re-trigger the wizard"
     fail=1
 fi
 if cmp -s "$RT_WORK/wizard-seed.toml" "$RT_CFG/config.toml"; then
-    echo "  [wizard] PASS: config.toml byte-identical — --reset-wizard destroyed nothing"
+    echo "  [wizard] PASS: config.toml byte-identical - --reset-wizard destroyed nothing"
 else
     echo "  [wizard] FAIL: --reset-wizard rewrote/destroyed the user's config.toml"
     fail=1
@@ -106,7 +106,7 @@ else
 fi
 
 # ── 3. --reset: the config is discarded ─────────────────────────────────────
-echo "Run 3 — --reset: the user's config is discarded for fresh defaults"
+echo "Run 3 - --reset: the user's config is discarded for fresh defaults"
 rt_mkroot reset; seed "$RT_CFG"
 before="$(rt_sink_count)"
 RT_HUB_ARGS=(--reset); rt_run_hub "$RT_ROOT" 8; RT_HUB_ARGS=()
@@ -114,21 +114,21 @@ rt_assert_live "reset" "$RT_ROOT" || fail=1
 if grep -aq "Configuration reset to defaults" "$RT_ROOT/hub.log"; then
     echo "  [reset] PASS: hub took the reset path (log)"
 else
-    echo "  [reset] FAIL: no reset log line — did --reset engage at all?"
+    echo "  [reset] FAIL: no reset log line - did --reset engage at all?"
     fail=1
 fi
 hits=$(( $(rt_sink_count) - before ))
 if [ "$hits" -eq 0 ]; then
-    echo "  [reset] PASS: 0 sink hits — the user's polling tile is gone"
+    echo "  [reset] PASS: 0 sink hits - the user's polling tile is gone"
 else
-    echo "  [reset] FAIL: $hits sink hit(s) — the user's tile still ran after --reset"
+    echo "  [reset] FAIL: $hits sink hit(s) - the user's tile still ran after --reset"
     fail=1
 fi
 # The user's layout must not survive anywhere in the live config (the file is
-# removed outright today; assert the CONTRACT — "the seeded page is not what
-# loads" — rather than the mechanism, so a future defaults-rewrite still passes).
+# removed outright today; assert the CONTRACT - "the seeded page is not what
+# loads" - rather than the mechanism, so a future defaults-rewrite still passes).
 if grep -aqs "MyHandBuiltPage" "$RT_CFG/config.toml"; then
-    echo "  [reset] FAIL: --reset kept the user's layout — it did not reset to defaults"
+    echo "  [reset] FAIL: --reset kept the user's layout - it did not reset to defaults"
     fail=1
 else
     echo "  [reset] PASS: the user's layout is not in the live config after --reset"
@@ -136,4 +136,4 @@ fi
 
 echo
 if [ "$fail" -ne 0 ]; then echo "RESULT: FAILURE"; exit 1; fi
-echo "RESULT: SUCCESS — --reset-wizard re-triggers the wizard without data loss; --reset discards the config"
+echo "RESULT: SUCCESS - --reset-wizard re-triggers the wizard without data loss; --reset discards the config"

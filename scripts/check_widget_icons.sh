@@ -3,7 +3,7 @@
 # Lint: every WidgetCatalog type must have a bundled, registered icon.
 #
 # The add-widget picker renders `AppIcon { name: modelData.type }`
-# (ui/qml/Dashboard.qml), so an icon is resolved by the widget's TYPE — a type
+# (ui/qml/Dashboard.qml), so an icon is resolved by the widget's TYPE - a type
 # with no `assets/icons/<type>.svg` shows a BLANK tile in the picker. Nothing
 # else catches this: tst_appicon.qml asserts the derived qrc path string, not
 # that the asset exists, and the QML tests run against the source tree with no
@@ -25,7 +25,7 @@ checked=0
 
 # `type: "<name>"` entries in the catalog's items list.
 types=$(grep -oE '\{ *type: *"[a-z0-9]+"' "$CATALOG" | sed -E 's/.*type: *"([a-z0-9]+)".*/\1/' | sort -u)
-[ -n "$types" ] || { echo "  ✗ no widget types parsed from $CATALOG — the lint would pass vacuously"; exit 1; }
+[ -n "$types" ] || { echo "  ✗ no widget types parsed from $CATALOG - the lint would pass vacuously"; exit 1; }
 
 for t in $types; do
     checked=$((checked + 1))

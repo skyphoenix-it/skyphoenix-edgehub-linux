@@ -3,7 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 // ─────────────────────────────────────────────────────────────────────────
-// PresetPicker — the post-setup "Screens" surface (W5 finding 3).
+// PresetPicker - the post-setup "Screens" surface (W5 finding 3).
 //
 // The curated 15-preset library used to be reachable exactly once, in the
 // first-run wizard; a user who finished setup could never apply a preset
@@ -11,12 +11,12 @@ import QtQuick.Layouts
 // overlay reopens the same library from the Settings sheet.
 //
 // Selecting a card ARMS it; a light confirm bar then ADDS it as a new screen
-// (additive — the user's other screens and their look are untouched). The apply
+// (additive - the user's other screens and their look are untouched). The apply
 // is emitted upward (applyRequested) and performed by the Dashboard via
 // store.appendPreset, so this stays a dumb surface with no store access of its own.
 //
 // Org policy (E9): under a forced preset (`lockToPreset`) the surface is
-// ABSENT, not greyed out — `locked` gates visibility outright, so a managed
+// ABSENT, not greyed out - `locked` gates visibility outright, so a managed
 // device never advertises a choice its user cannot make. The Dashboard's
 // applyPreset() guards independently, so even a stray signal cannot bypass
 // the policy.
@@ -101,7 +101,7 @@ Rectangle {
                 }
             }
 
-            // The library grid — the wizard's card design, reused.
+            // The library grid - the wizard's card design, reused.
             Flickable {
                 Layout.fillWidth: true; Layout.fillHeight: true
                 clip: true
@@ -185,7 +185,7 @@ Rectangle {
                 }
             }
 
-            // Confirm bar — armed by a selection. Adding is additive (a new screen),
+            // Confirm bar - armed by a selection. Adding is additive (a new screen),
             // so this is a light touch-confirm, not a "you're about to replace
             // everything" gate.
             Rectangle {

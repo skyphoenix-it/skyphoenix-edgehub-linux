@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# check_qml_diagnostics.sh — fail on QML runtime diagnostics in a test log.
+# check_qml_diagnostics.sh - fail on QML runtime diagnostics in a test log.
 #
 # WHY THIS EXISTS
 # The hub's Settings->Background picker shipped completely inert: a QML
@@ -38,7 +38,7 @@ echo "  QML diagnostics [$TIER]: fatal=$fatal_hits resource=$res_hits"
 
 rc=0
 if [ "$fatal_hits" -gt 0 ]; then
-  echo "  !! FAIL: $fatal_hits QML runtime diagnostic(s) — these are product bugs:"
+  echo "  !! FAIL: $fatal_hits QML runtime diagnostic(s) - these are product bugs:"
   grep -E 'QWARN' "$LOG" | grep -E "$FATAL" | sed 's/^/     /' | sort -u | head -40
   rc=1
 fi
@@ -48,7 +48,7 @@ if [ "$TIER" = "composed" ] && [ "$res_hits" -gt 0 ]; then
   grep -E 'QWARN|No such file' "$LOG" | grep -E "$RESOURCE" | sed 's/^/     /' | sort -u | head -40
   rc=1
 elif [ "$res_hits" -gt 0 ]; then
-  echo "     (offscreen: $res_hits resource misses not enforced — qrc is not"
+  echo "     (offscreen: $res_hits resource misses not enforced - qrc is not"
   echo "      registered in qmltestrunner. See TEST-STRATEGY-v2.md Phase 1.)"
 fi
 
