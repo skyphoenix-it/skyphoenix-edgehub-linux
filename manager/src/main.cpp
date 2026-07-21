@@ -23,6 +23,7 @@
 
 #include "xeneon_core.h"
 #include "manager_backend.h"
+#include "manager_display_policy.h"
 #include <cstdio>
 #include "../../app/src/single_instance.h"
 #include "../../app/src/timezone_bridge.h"
@@ -72,25 +73,28 @@ static QPalette darkPalette() {
 // in either orientation.
 static bool screenIsEdge(const QScreen* s) {
     if (!s) return false;
-    if (s->model().contains(QStringLiteral("XENEON"), Qt::CaseInsensitive)
-        || s->manufacturer().contains(QStringLiteral("Corsair"), Qt::CaseInsensitive))
-        return true;
-    const QSize sz = s->size();
-    return (sz.width() == 2560 && sz.height() == 720)
-        || (sz.width() == 720 && sz.height() == 2560);
+    return managerScreenIsEdge({s->model(), s->manufacturer(), s->size()});
 }
 
 // The Manager must never OPEN on the Edge (it configures it). Place it on a
-// non-Edge screen, preferring the primary, centered. No-op if the Edge is the only
-// display connected (nothing better to do).
-static void placeManagerOffEdge(QQuickWindow* win) {
-    if (!win) return;
-    QScreen* primary = QGuiApplication::primaryScreen();
-    QScreen* target = (primary && !screenIsEdge(primary)) ? primary : nullptr;
-    if (!target)
-        for (QScreen* s : QGuiApplication::screens())
-            if (!screenIsEdge(s)) { target = s; break; }
-    if (!target) return;                       // only the Edge is connected
+// non-Edge screen, preferring the primary, centered. Return false instead of
+// mapping the window when the Edge is the only detected display.
+static bool placeManagerOffEdge(QQuickWindow* win) {
+    if (!win) return false;
+    const QList<QScreen*> screens = QGuiApplication::screens();
+    QVector<ManagerScreenIdentity> identities;
+    identities.reserve(screens.size());
+    for (QScreen* screen : screens)
+        identities.append({screen->model(), screen->manufacturer(), screen->size()});
+    const int primaryIndex = screens.indexOf(QGuiApplication::primaryScreen());
+    const int targetIndex = managerSafeScreenIndex(identities, primaryIndex);
+    if (targetIndex < 0) {
+        std::fprintf(stderr,
+                     "Manager refused to open: no non-Edge display is available.\n");
+        std::fflush(stderr);
+        return false;
+    }
+    QScreen* target = screens.at(targetIndex);
     // Always assert the screen + a centred position on it, even if Qt already
     // reports this as the current screen: it is the explicit placement hint the
     // compositor reads for the first map, and skipping it let the compositor fall
@@ -114,6 +118,25 @@ static void placeManagerOffEdge(QQuickWindow* win) {
                  target->name().toUtf8().constData(), px, py,
                  win->width(), win->height());
     std::fflush(stderr);
+    return true;
+}
+
+static bool showManagerOffEdge(QQuickWindow* win) {
+    if (!placeManagerOffEdge(win)) return false;
+    QObject::connect(win, &QQuickWindow::screenChanged, win, [win](QScreen* screen) {
+        if (!screenIsEdge(screen)) return;
+        win->hide();
+        qCritical() << "Manager closed because the compositor placed it on the Edge";
+        QCoreApplication::exit(2);
+    });
+    win->setVisible(true);
+    QTimer::singleShot(0, win, [win]() {
+        if (!screenIsEdge(win->screen())) return;
+        win->hide();
+        qCritical() << "Manager closed because it opened on the Edge";
+        QCoreApplication::exit(2);
+    });
+    return true;
 }
 
 int main(int argc, char* argv[]) {
@@ -227,7 +250,7 @@ int main(int argc, char* argv[]) {
             const int gw = qEnvironmentVariable("XENEON_GRAB_W", "0").toInt();
             const int gh = qEnvironmentVariable("XENEON_GRAB_H", "0").toInt();
             if (gw > 0 && gh > 0) gwin->resize(gw, gh);
-            gwin->setVisible(true);   // QML starts hidden (see below); grab needs it shown
+            if (!showManagerOffEdge(gwin)) return 2;
         }
         QObject* root = engine.rootObjects().first();
         QTimer::singleShot(1800, [root, grabPath]() {
@@ -251,8 +274,7 @@ int main(int argc, char* argv[]) {
         // pick a non-Edge screen (prefer the primary) and only THEN show it, because
         // a Wayland client can only choose its output before the surface is mapped.
         if (auto* w = qobject_cast<QQuickWindow*>(engine.rootObjects().first())) {
-            placeManagerOffEdge(w);
-            w->setVisible(true);
+            if (!showManagerOffEdge(w)) return 2;
         }
     }
 

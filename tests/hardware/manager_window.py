@@ -43,11 +43,13 @@ import os
 
 import desktop_target as dt
 
-# Sidebar row centres, measured on a real 1440x1300 capture. Fractions of the
-# window, so they survive a resize: y = 164/220/276/332/388 px, x = 120 px.
-ROW_FY = {"Screens": 164 / 1300, "Look": 220 / 1300, "Images": 276 / 1300,
-          "Device": 332 / 1300, "About": 388 / 1300}
-ROW_FX = 120 / 1440
+# Sidebar row centres in logical pixels. The sidebar is anchored at the top and
+# its rows have fixed QML heights, so these coordinates do not move when only
+# the window height changes. The old height fractions turned Screens at y=164
+# into y=126 in a 1000px-tall Manager and falsely reported the selected Look row.
+ROW_Y = {"Screens": 164, "Look": 220, "Images": 276,
+         "Device": 332, "About": 388}
+ROW_X = 120
 
 
 def active_row(path, win_w=None, win_h=None):
@@ -61,14 +63,9 @@ def active_row(path, win_w=None, win_h=None):
     """
     from PIL import Image
     im = Image.open(path).convert("RGB")
-    w, h = im.size
-    if win_w:
-        w = win_w
-    if win_h:
-        h = win_h
     hits = []
-    for name, fy in ROW_FY.items():
-        x, y = int(w * ROW_FX), int(h * fy)
+    for name, y in ROW_Y.items():
+        x = ROW_X
         if 0 <= x < im.size[0] and 0 <= y < im.size[1]:
             r, g, b = im.getpixel((x, y))
             if r > 180 and g < 160 and b < 130:

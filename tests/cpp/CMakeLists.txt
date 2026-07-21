@@ -107,6 +107,7 @@ add_qt_test(metrics_json    SOURCES "${APP_SRC}/display_match.cpp")
 add_qt_test(path_sanitize)
 add_qt_test(orientation_byte SOURCES "${APP_SRC}/orientation_sensor.cpp")
 add_qt_test(reconcile       SOURCES "${MGR_SRC}/reconcile.cpp")
+add_qt_test(manager_display_policy)
 add_qt_test(autostart       SOURCES "${APP_SRC}/autostart.cpp")
 # Offline licence FFI. No extra sources: it calls the Rust core directly, which
 # is the whole surface the app uses. Qt6::Test already brings QJson*.

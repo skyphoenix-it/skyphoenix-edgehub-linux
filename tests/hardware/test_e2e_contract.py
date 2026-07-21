@@ -10,6 +10,7 @@ import ast
 import os
 import re
 import sys
+import tempfile
 import unittest
 from types import SimpleNamespace
 from unittest import mock
@@ -23,6 +24,7 @@ from e2e_harness import assert_binaries_current, tile  # noqa: E402
 import e2e_widgets  # noqa: E402
 import edge_e2e  # noqa: E402
 import input_guard  # noqa: E402
+import manager_window  # noqa: E402
 
 
 class TestTileContract(unittest.TestCase):
@@ -147,6 +149,22 @@ class TestManagerInputLifecycle(unittest.TestCase):
                 self.assertEqual([], self._call_lines(tree, {"arm"}))
                 self.assertEqual([], self._call_lines(tree, self.EMITTERS))
                 self.assertNotIn("XENEON_HW_INPUT", text)
+
+
+class TestManagerWindowProof(unittest.TestCase):
+    def test_fixed_sidebar_row_is_detected_at_supported_window_heights(self):
+        from PIL import Image
+
+        with tempfile.TemporaryDirectory() as work:
+            for height in (1000, 1300):
+                with self.subTest(height=height):
+                    path = os.path.join(work, "manager-%d.png" % height)
+                    image = Image.new("RGB", (1440, height), (255, 253, 250))
+                    image.putpixel((manager_window.ROW_X,
+                                    manager_window.ROW_Y["Screens"]),
+                                   (237, 109, 31))
+                    image.save(path)
+                    self.assertEqual("Screens", manager_window.active_row(path))
 
 
 class TestSoakCompleteness(unittest.TestCase):
