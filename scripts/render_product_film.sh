@@ -95,8 +95,8 @@ ffmpeg -hide_banner -loglevel error -y \
       [orientation-hi]zoompan=z='max(1,1.30-0.30*on/90)':x='(iw-iw/zoom)*0.92':y='(ih-ih/zoom)*0.55':d=1:s=1920x1080:fps=30[orientation-zoom];
       [orientation-steady-source]trim=start=3.1,setpts=PTS-STARTPTS[orientation-steady];
       [orientation-zoom][orientation-steady]concat=n=2:v=1:a=0[orientation-camera];
-      [orientation-camera]drawtext=fontfile='${font_bold}':text='Turn it. Keep designing.':fontcolor=0x121722:fontsize=40:x=1160:y=82:alpha='if(lt(t,0.6),t/0.6,if(lt(t,8.2),1,(9-t)/0.8))',
-             drawtext=fontfile='${font_regular}':text='Manager follows every orientation, live.':fontcolor=0x526479:fontsize=20:x=1163:y=144:alpha='if(lt(t,0.9),t/0.9,if(lt(t,8.2),1,(9-t)/0.8))',
+      [orientation-camera]drawtext=fontfile='${font_bold}':text='Turn it. Keep designing.':fontcolor=0x121722:fontsize=40:x=1200:y=82:alpha='if(lt(t,3.15),0,if(lt(t,3.95),(t-3.15)/0.8,if(lt(t,8.2),1,(9-t)/0.8)))',
+             drawtext=fontfile='${font_regular}':text='Manager follows every orientation, live.':fontcolor=0x526479:fontsize=20:x=1203:y=144:alpha='if(lt(t,3.35),0,if(lt(t,4.15),(t-3.35)/0.8,if(lt(t,8.2),1,(9-t)/0.8)))',
              fade=t=in:st=0:d=0.35,format=yuv420p[v]" \
     -map "[v]" -t 9 "${encode[@]}" "$work_dir/clips/03-live-orientation.mp4"
 

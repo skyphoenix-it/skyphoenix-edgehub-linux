@@ -75,7 +75,6 @@ def demo_state(orientation="landscape"):
             harness.tile("demo-cpu", "cpu", "1x1"),
             harness.tile("demo-gpu", "gpu", "1x1"),
             harness.tile("demo-ram", "ram", "1x1"),
-            harness.tile("demo-net", "network", "1x1"),
         ]),
         harness.page("Focus", [
             harness.tile("demo-focus", "focus", "1x1"),

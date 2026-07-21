@@ -141,18 +141,25 @@ frame-to-frame velocity deviation from 0.8543 to 0.2441 pixels and acceleration
 RMS from 1.3720 to 0.4010 pixels. Marketing headlines use alpha crossfades
 instead of hard cuts.
 
+The final continuity pass removed a stale `network` demo tile that Manager
+showed as an empty fourth placeholder while the Hub omitted it. The corrected
+isolated configuration contains CPU, GPU, and Memory only, so Manager and Hub
+both show the same three full-width landscape widgets. The orientation headline
+now starts after the 3.1-second Manager reveal is complete, so it is never
+covered by the incoming monitor or display.
+
 | Item | SHA-256 or verified value |
 |---|---|
-| Landscape Hub recording | `d8e68f3d4aa0573622ef4d2a6363e0225bc61527bfbdb209f942cdbdba17dafc` |
-| Manager recording | `20200480096062607fe2383c9ed063a84ce478a404aa2c5822937161abb63c66` |
-| Capture manifest | `68634392160802cd309b74e9e223b5a0f3c1a76311fe8a2ce65f2ae9e310d1fc` |
+| Landscape Hub recording | `51d0fe914b53451a14788222a8cbd5bd4ac565f95f2e6aa6160dfd29c5004a54` |
+| Manager recording | `a77f6fbc57e688f36c981f6c5379348aee8b4ee7ae77c47ff474afebb9ba2ad0` |
+| Capture manifest | `d9c654608fc537e1510b049cb79a0f8fdc211751eab24f39ae3969e3d4e186a6` |
 | Portrait Hub recording | `c48ca70f678c8e9e70c4849680a4f89c1026d7780cef88c3cbd6d196be891fdc` |
 | Portrait manifest | `421517c5cfb43acfa0552039a2efbca152f74db3c70a5e2b16b47d05ab9fee57` |
-| Orientation Hub recording | `2f6f5d7d039c9f8a16f410823ec93a9b510346923af721ba1a7fe7ec1730a65e` |
-| Orientation Manager recording | `0474a4c6f498b000d31597424a02c8e66d4b9f15820ef2bddf0c5cda1a0200d9` |
-| Orientation manifest | `32c8f2619d4f5cd9dc3ad4f98a0e9856749ec7a10063d2ec1ebcd002382c9966` |
-| Final MP4 | `97922adc6b5408d280a5cedcc5574708f9f68ed2d09b80829ee0c5a4cbbbbf4e` |
-| Thumbnail | `6611de07f9fde51156b6e599f48cce87c3f1cbaca6e4cde301fe621011ca9356` |
+| Orientation Hub recording | `e220ea7900021a72bcc91b77aef0b8bcebc845e1424cca451e49f57810fd38ad` |
+| Orientation Manager recording | `b34e2507fe288aabd1a174137ac179567fa5f659e28d2a318ec071a54adfbcfc` |
+| Orientation manifest | `5c7f089ea2b42fa28f29d531e40fc14a5633ab44fff85930a7b603f1f7b501ed` |
+| Final MP4 | `75889fcc392491425f20f63e461f963f88e37785ba9115082cfed3227da5dbe4` |
+| Thumbnail | `e6ee0de2c50e5daba4ea58d80e32e6c1758dc2e30b36ef3ae66f4793a0da7304` |
 | Format | H.264 1920x1080 at 30 fps, AAC stereo at 48 kHz |
 | Duration | 70.700 seconds |
 
