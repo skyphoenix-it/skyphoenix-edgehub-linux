@@ -13,10 +13,12 @@
 #      ROADMAP.md and friends were never checked. Both had dead links; the
 #      security policy's were pointing at things that never existed.
 #
-# So this checks every tracked .md, strips the anchor before the file test, and
-# — when the target is markdown — verifies the anchor actually names a heading,
-# because a link to a renamed heading is broken in the way that matters to a
-# reader even though the file still exists.
+# So this checks every tracked or newly created .md, strips the anchor before
+# the file test, and — when the target is markdown — verifies the anchor actually
+# names a heading, because a link to a renamed heading is broken in the way that
+# matters to a reader even though the file still exists. Including untracked
+# files keeps the local pre-commit check equivalent to CI after those files are
+# added to the commit.
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -75,7 +77,7 @@ while IFS= read -r f; do
             fi
         fi
     done < <(grep -oE '\]\([^)]+\)' "$f" | sed -E 's/^\]\(//; s/\)$//' | sed -E 's/ +".*"$//')
-done < <(git ls-files '*.md')
+done < <(git ls-files --cached --others --exclude-standard -- '*.md')
 
 if [ "$files" -eq 0 ] || [ "$links" -eq 0 ]; then
     echo "FAIL: scanned $files markdown file(s) and found $links relative link(s)."

@@ -50,7 +50,7 @@ The source of truth is:
 
 - [`../../MARKETING.md`](../../MARKETING.md) for allowed and prohibited claims;
 - [`../../BETA_PLAN.md`](../../BETA_PLAN.md) for release blockers;
-- [`../../RELEASE_NOTES.md`](../../RELEASE_NOTES.md) for the publication hold;
+- [`../../../RELEASE_NOTES.md`](../../../RELEASE_NOTES.md) for the publication hold;
 - [`../free-vs-pro.md`](../free-vs-pro.md) for entitlement details;
 - [`../../testing/release-gate.md`](../../testing/release-gate.md) for the final
   verification process.
