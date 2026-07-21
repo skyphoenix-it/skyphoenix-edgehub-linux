@@ -8,6 +8,10 @@ Marketing work remains on hold until the release gate in
 used for internal review, but this file does not authorize a launch, sale or
 availability claim.
 
+An embargoed, claim-controlled campaign pack is prepared under
+[`marketing/release-kit/`](marketing/release-kit/README.md). It remains internal
+until its fail-closed launch checklist and this document's evidence gates pass.
+
 ## Positioning
 
 EdgeHub is a native Linux widget dashboard for the Corsair Xeneon Edge and other

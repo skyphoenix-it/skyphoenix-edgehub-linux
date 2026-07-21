@@ -7,6 +7,11 @@ The previous Product Hunt, Show HN and Reddit drafts were removed because they
 mixed current implementation facts with unsupported performance, package-store,
 auto-update, paid-download, refund and support promises.
 
+Replacement channel templates are maintained in the embargoed
+[`marketing/release-kit/`](marketing/release-kit/README.md). They are structured
+around placeholders and a fail-closed checklist so preparation does not become
+an accidental availability claim.
+
 ## Verified factual core for a future draft
 
 > EdgeHub is a native Rust + Qt 6/QML dashboard for the Corsair Xeneon Edge and
