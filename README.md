@@ -18,11 +18,12 @@ is required. Broad display and desktop support remains evidence-gated.
 > no long-duration stability or formal performance claim. See the
 > [beta decision](docs/BETA_PLAN.md) and [release notes](RELEASE_NOTES.md).
 
-**[Watch the 59-second live product film](docs/marketing-site/trailer.html)** or
+**[Watch the 71-second live product film](docs/marketing-site/trailer.html)** or
 **[open the MP4 directly](docs/marketing-site/assets/release/v1.0.0-beta.1/edgehub-v1.0.0-beta.1-live-product-film.mp4)**.
 
-It shows the running Hub change screens, turn from landscape to portrait, add a
-screen and widget from Manager, and apply a theme and accent live.
+It shows the running Hub change screens, turn between landscape and portrait
+while Manager follows, add a screen and widget from Manager, and apply a theme
+and accent live.
 
 **[Watch all 20 Free themes and ten accent colours](docs/marketing-site/assets/release/v1.0.0-beta.1/edgehub-v1.0.0-beta.1-manager-theme-showcase.mp4)**.
 

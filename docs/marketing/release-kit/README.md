@@ -43,8 +43,9 @@ self-update, performance, or long-soak promise.
 The versioned launch assets live under
 [`../../marketing-site/assets/release/v1.0.0-beta.1/`](../../marketing-site/assets/release/v1.0.0-beta.1/):
 
-- `edgehub-v1.0.0-beta.1-live-product-film.mp4`, a 59-second 1080p film showing
-  live Hub motion, hardware rotation, and synchronized Manager actions;
+- `edgehub-v1.0.0-beta.1-live-product-film.mp4`, a 71-second 1080p film showing
+  live Hub motion, animated rotation, Manager orientation reflection, and
+  synchronized Manager actions;
 - `edgehub-v1.0.0-beta.1-feature-tour.mp4`, the earlier capture-led tour;
 - `edgehub-v1.0.0-beta.1-manager-theme-showcase.mp4`, a 45-second reel of all 20
   Free themes and ten representative accent colours;

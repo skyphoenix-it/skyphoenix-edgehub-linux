@@ -9,13 +9,19 @@ EdgeHub v1.0.0-beta.1 is now available for the Corsair Xeneon Edge on
 **CachyOS/Arch Linux with KDE Plasma on Wayland**. Portable x86-64 builds
 require Qt 6.5 or newer.
 
-**Watch the 59-second live product film:**
+**Leaving Windows behind? Your Edge can come with you.**
+
+Watch the 71-second live product film:
 https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/releases/download/v1.0.0-beta.1/edgehub-v1.0.0-beta.1-live-product-film.mp4
 
 The camera pushes into the running Hub, turns the display smoothly from
-landscape to portrait, then pulls back to show Manager selecting screens, adding
-a screen and widget, changing the page layout, applying a theme and accent,
-restyling Manager, and updating a Device preference.
+landscape to portrait, then pulls back to show the separate Manager reflect the
+same orientation. It follows Manager selecting screens, adding a screen and
+widget, changing the page layout, applying a theme and accent, restyling
+Manager, and updating a Device preference.
+
+Your favorite features. Your chosen OS. Commissioned development and custom
+widgets are available for workflows that need something more specific.
 
 **Explore all 20 Free themes and ten accent looks:**
 https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/releases/download/v1.0.0-beta.1/edgehub-v1.0.0-beta.1-manager-theme-showcase.mp4

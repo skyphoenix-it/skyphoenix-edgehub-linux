@@ -1,31 +1,37 @@
 WEBVTT
 
 00:00.000 --> 00:06.300
-The live EdgeHub dashboard moves between System, Focus, and Glance screens.
+Leaving Windows behind? Your Edge can come with you. The live EdgeHub dashboard moves between System, Focus, and Glance screens.
 
 00:06.300 --> 00:10.100
 The front-facing display turns smoothly from landscape to portrait while the real Hub reflows.
 
-00:10.100 --> 00:13.100
-The camera pulls back to reveal EdgeHub Manager on a separate desktop monitor.
+00:10.100 --> 00:13.200
+The camera pulls back from the portrait Hub to reveal EdgeHub Manager showing the matching portrait preview on a separate desktop monitor.
 
-00:13.100 --> 00:19.100
+00:13.200 --> 00:18.400
+Manager changes the orientation to landscape. The Hub turns smoothly and Manager returns to the matching landscape preview.
+
+00:18.400 --> 00:27.400
 Selecting screens in Manager changes the screen shown on the Hub.
 
-00:19.100 --> 00:25.100
+00:27.400 --> 00:33.400
 Manager adds a new screen. The Hub immediately opens the empty screen.
 
-00:25.100 --> 00:31.100
+00:33.400 --> 00:39.400
 Manager adds a CPU widget and changes the screen to two columns. Both changes appear live.
 
-00:31.100 --> 00:38.100
+00:39.400 --> 00:46.400
 Manager opens Look and selects the Aurora Edge theme.
 
-00:38.100 --> 00:48.100
+00:46.400 --> 00:56.400
 The Manager switches to dark mode, then a purple accent appears on both the preview and Hub.
 
-00:48.100 --> 00:53.400
+00:56.400 --> 01:01.700
 Device settings show the fixed landscape orientation and automatic update preference.
 
-00:53.400 --> 00:59.400
-Build your Edge with EdgeHub for Linux.
+01:01.700 --> 01:05.900
+Your favorite features. Your chosen OS. Custom development, built around the way you work.
+
+01:05.900 --> 01:10.700
+Build your Edge with EdgeHub for Linux. Tested on CachyOS, based on Arch Linux, with KDE Plasma on Wayland.

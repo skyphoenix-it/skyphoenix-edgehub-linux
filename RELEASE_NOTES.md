@@ -7,14 +7,15 @@ live Manager-to-Hub editing, reconnect behavior, and durable configuration.
 
 ## See it in action
 
-Watch the [59-second live Hub and Manager product film](https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/releases/download/v1.0.0-beta.1/edgehub-v1.0.0-beta.1-live-product-film.mp4).
+Watch the [71-second live Hub and Manager product film](https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/releases/download/v1.0.0-beta.1/edgehub-v1.0.0-beta.1-live-product-film.mp4).
 It uses the exact signed beta.1 binaries and shows the running Hub change
-screens, turn from landscape to portrait, receive a new screen and widget from
-Manager, change the page layout, apply an Aurora theme and purple accent, switch
-the Manager to dark mode, and change a Device preference. The front bezel and
-camera presentation are editorial; every pixel inside both screens is
-synchronized output from the real applications. English captions and detailed
-capture evidence are included in the repository.
+screens, turn between landscape and portrait while Manager follows the same
+orientation, receive a new screen and widget from Manager, change the page
+layout, apply an Aurora theme and purple accent, switch the Manager to dark
+mode, and change a Device preference. The front bezel and camera presentation
+are editorial; every pixel inside both screens is synchronized output from the
+real applications. English captions and detailed capture evidence are included
+in the repository.
 
 The separate [45-second theme and accent showcase](https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/releases/download/v1.0.0-beta.1/edgehub-v1.0.0-beta.1-manager-theme-showcase.mp4)
 shows all 20 themes included in Free and ten representative accent colours in

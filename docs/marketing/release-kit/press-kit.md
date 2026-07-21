@@ -108,8 +108,9 @@ generated concepts, or third-party hardware branding as release evidence.
 
 ## Media files
 
-- `edgehub-v1.0.0-beta.1-live-product-film.mp4`: 59-second captioned behavior
-  film with animated hardware rotation and synchronized Manager-to-Hub edits.
+- `edgehub-v1.0.0-beta.1-live-product-film.mp4`: 71-second captioned behavior
+  film with animated display rotation, live Manager orientation reflection, and
+  synchronized Manager-to-Hub edits.
 - `edgehub-v1.0.0-beta.1-feature-tour.mp4`: earlier capture-led product tour.
 - `edgehub-v1.0.0-beta.1-manager-theme-showcase.mp4`: 45-second captioned reel
   covering all 20 Free themes and ten accent colours.

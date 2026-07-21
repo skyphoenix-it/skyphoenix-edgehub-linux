@@ -124,10 +124,10 @@ available.
 
 ## Video-first launch post
 
-> Turn a secondary touch display into a dashboard that follows what you are
-> doing. EdgeHub beta.1 brings 30 widgets, 19 ready-made screens, portrait and
-> landscape layouts, plus a desktop Manager that changes the live Hub locally.
-> Watch the 59-second live film:
+> Leaving Windows behind? Your Edge can come with you. EdgeHub beta.1 brings 30
+> widgets, 19 ready-made screens, portrait and landscape layouts, plus a desktop
+> Manager that follows the display orientation and changes the live Hub locally.
+> Your favorite features. Your chosen OS. Watch the 71-second live film:
 > https://github.com/skyphoenix-it/skyphoenix-edgehub-linux/releases/download/v1.0.0-beta.1/edgehub-v1.0.0-beta.1-live-product-film.mp4
 
 ## Theme showcase post
