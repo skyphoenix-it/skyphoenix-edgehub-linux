@@ -56,10 +56,20 @@ fi
 cd "$PKGDIR"
 makepkg -f
 
-# makepkg -f leaves exactly one package per pkgver; take the newest so a stale
-# artifact from an older revision can never be the one we install. (A previous
-# release script swept up a stale tarball with a glob - same trap.)
-PKG="$(ls -t "$PKGDIR"/xeneon-edge-hub-*.pkg.tar.zst | head -1)"
+# Take the newest package without an `ls | head` pipeline. Under `pipefail`, ls
+# can receive SIGPIPE when several old packages exist and make a successful build
+# exit with status 141 before installation. A direct timestamp comparison also
+# prevents a stale tarball from an older revision from being selected.
+shopt -s nullglob
+packages=("$PKGDIR"/xeneon-edge-hub-*.pkg.tar.zst)
+if [ "${#packages[@]}" -eq 0 ]; then
+    echo "!! makepkg completed without producing a package." >&2
+    exit 1
+fi
+PKG="${packages[0]}"
+for candidate in "${packages[@]:1}"; do
+    if [ "$candidate" -nt "$PKG" ]; then PKG="$candidate"; fi
+done
 echo "==> Built: $(basename "$PKG")"
 
 if [ "$DO_INSTALL" -eq 0 ]; then
