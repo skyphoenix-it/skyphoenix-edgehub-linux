@@ -34,7 +34,8 @@ ffmpeg -hide_banner -loglevel error -y \
       [2:v]scale=1600:620,format=rgba[frame];
       [0:v][hub]overlay=246:335[a];
       [a][frame]overlay=160:230[scene];
-      [scene]zoompan=z='min(1.10,1+on*0.00048)':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d=1:s=1920x1080:fps=30[zoom];
+      [scene]scale=7680:4320:flags=lanczos[scene-hi];
+      [scene-hi]zoompan=z='min(1.10,1+on*0.00048)':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d=1:s=1920x1080:fps=30[zoom];
       [zoom]drawtext=fontfile='${font_bold}':text='Your dashboard. Alive.':fontcolor=0x121722:fontsize=52:x=(w-text_w)/2:y=80:alpha='if(lt(t,0.6),t/0.6,if(lt(t,5.8),1,(7-t)/1.2))',
             drawtext=fontfile='${font_regular}':text='Real EdgeHub output. Real Linux metrics.':fontcolor=0x4d5a6c:fontsize=24:x=(w-text_w)/2:y=150:alpha='if(lt(t,0.9),t/0.9,if(lt(t,5.8),1,(7-t)/1.2))',
             fade=t=in:st=0:d=0.35,format=yuv420p[v]" \

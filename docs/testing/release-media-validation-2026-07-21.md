@@ -130,6 +130,12 @@ and the 1.5-second eased landscape-to-portrait turn are editorial animation.
 Every pixel inside the Hub and Manager apertures comes from the synchronized
 application recordings.
 
+The opening camera push is spatially supersampled at 7680x4320 before its final
+1080p output. This removes the whole-pixel stepping that made the bezel appear
+to shake in the first render. Tracking the left bezel across the opening reduced
+frame-to-frame velocity deviation from 0.8543 to 0.2441 pixels and acceleration
+RMS from 1.3720 to 0.4010 pixels.
+
 | Item | SHA-256 or verified value |
 |---|---|
 | Landscape Hub recording | `d8e68f3d4aa0573622ef4d2a6363e0225bc61527bfbdb209f942cdbdba17dafc` |
@@ -137,8 +143,8 @@ application recordings.
 | Capture manifest | `68634392160802cd309b74e9e223b5a0f3c1a76311fe8a2ce65f2ae9e310d1fc` |
 | Portrait Hub recording | `c48ca70f678c8e9e70c4849680a4f89c1026d7780cef88c3cbd6d196be891fdc` |
 | Portrait manifest | `421517c5cfb43acfa0552039a2efbca152f74db3c70a5e2b16b47d05ab9fee57` |
-| Final MP4 | `b397252e00a0167fb91693b61542722aa87502417058572582208b6a9e695315` |
-| Thumbnail | `d7a6c865faf56aaa1b2120dd271d7484ebcb94b87797a141dc7037ee9fcf0371` |
+| Final MP4 | `a97b7859c2419700604452c062e7531dc894c6e65d320fe711e95daaa6fbe503` |
+| Thumbnail | `a80886f590443daaf0cdce53d9cb6151f85d555b31e8abd27eda42b9a6a154f9` |
 | Format | H.264 1920x1080 at 30 fps, AAC stereo at 48 kHz |
 | Duration | 59.400 seconds |
 
