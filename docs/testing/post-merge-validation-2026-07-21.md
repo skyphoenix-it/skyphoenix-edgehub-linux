@@ -106,14 +106,20 @@ This report complements the [real-hardware validation report](hardware-validatio
   files to five, which turned the per-file hangs into a 45-minute cascade.
 - Fix: retain the real OpenGL scenegraph and rendered-pixel coverage while
   explicitly selecting Mesa's CPU renderer for this headless job with
-  `LIBGL_ALWAYS_SOFTWARE=true` and `GALLIUM_DRIVER=llvmpipe`. Physical-device
-  validation continues to use the native GPU path.
+  `LIBGL_ALWAYS_SOFTWARE=true` and `GALLIUM_DRIVER=llvmpipe`. Limit LLVMpipe to
+  one rendering thread per process and four concurrent files so the GPU-less
+  four-core runner is not oversubscribed by a worker pool in every compositor
+  and Qt Quick process. Physical-device validation continues to use the native
+  GPU path.
 - Regression proof: the previously hung sample passes 5/5 with the Qt log
   identifying OpenGL/LLVMpipe. The exact full compositor command passes
   1,311/1,311 checks across all 16 files with no failure or skip. A rejected
   intermediate software-scenegraph attempt passed 1,310 checks but produced one
   empty Wayland shared-memory capture; it was not committed because it weakened
-  the rendered evidence.
+  the rendered evidence. A first hosted LLVMpipe run was then replaced after 31
+  minutes when local reproduction proved its default per-process worker pools
+  were oversubscribing the runner; with `LP_NUM_THREADS=1` and four slots, the
+  full rendered suite passes locally in under three minutes.
 
 ## Safety and traceability
 
@@ -123,6 +129,8 @@ This report complements the [real-hardware validation report](hardware-validatio
   `/home/simon/IdeaProjects/.codex-backups/XeneonEdge_Linux/20260721T173138Z-marketing`.
 - Pre-renderer-fix backup:
   `/home/simon/IdeaProjects/.codex-backups/XeneonEdge_Linux/20260721T192300Z-gui-ci-renderer`.
+- Pre-thread-cap backup:
+  `/home/simon/IdeaProjects/.codex-backups/XeneonEdge_Linux/20260721T195100Z-gui-ci-thread-cap`.
 - The attempted read-modify-write audit of GitHub default CodeQL configuration
   was rejected by the API before any change. The remote configuration remained
   unchanged; the fix is entirely in repository source.

@@ -358,7 +358,11 @@ jobs:
         env:
           LIBGL_ALWAYS_SOFTWARE: "true"
           GALLIUM_DRIVER: llvmpipe
-        run: bash tests/gui/run_gui_tests.sh -j8
+          # Each compositor and Qt Quick process otherwise creates a worker per
+          # host core. Five parallel slots oversubscribe a four-core runner and
+          # can exhaust the per-file wall clock despite making forward progress.
+          LP_NUM_THREADS: "1"
+        run: bash tests/gui/run_gui_tests.sh -j4
       - name: Upload GUI evidence
         if: always()
         uses: actions/upload-artifact@v7
