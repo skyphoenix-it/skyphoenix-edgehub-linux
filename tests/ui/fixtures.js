@@ -1,4 +1,3 @@
-.pragma library
 // ─────────────────────────────────────────────────────────────────────────
 // fixtures.js — network payloads + a FakeXHR for the QML network tests
 // (tst_weather_net.qml, tst_calendar_net.qml).

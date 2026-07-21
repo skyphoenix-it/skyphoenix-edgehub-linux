@@ -1,5 +1,3 @@
-.pragma library
-
 // Shared helpers for the visible GUI test suite (tests/gui/). Pure JS — no
 // grabImage here (that is a TestCase method; call it in the test and pass the
 // result to snap()). These walk the live scene graph of a REAL rendered window.
