@@ -89,6 +89,49 @@ class TestE18SecretsPattern(unittest.TestCase):
         tracked = [".env.example", "README.md", "src/main.rs", "docs/secrets-handling.md"]
         self.assertEqual(e18_bad(tracked), [])
 
+    def test_per_environment_example_files_are_not_flagged(self):
+        """`.env.<name>.example` is the ordinary convention and carries no secret.
+
+        The exemption was written as a lookahead immediately after `.env.`, so it only
+        ever cleared the exact name `.env.example`. For `.env.prod.example` the lookahead
+        inspects `prod.example`, does not match `example`, and the file is flagged.
+
+        Found on skyphoenix-mobile-device-cloud, which tracks
+        infra/compose/.env.prod.example and .env.browser.example — both headed "Every
+        value below is a placeholder, not a secret". E18 failed, so `ci.sh` failed, for
+        using the convention the framework's own initialize-project.sh assumes when it
+        does `cp .env.example .env.local`.
+        """
+        tracked = [
+            "infra/compose/.env.prod.example",
+            "infra/compose/.env.browser.example",
+            ".env.local.example",
+            "apps/api/.env.sample",
+            "deploy/.env.template",
+        ]
+        self.assertEqual(e18_bad(tracked), [],
+                         "example/sample/template env files carry placeholders by "
+                         "definition and must not be reported as tracked secrets")
+
+    def test_real_env_files_are_still_flagged_next_to_the_examples(self):
+        """Negative control: the exemption must not swallow the real files beside them."""
+        tracked = [
+            "infra/compose/.env.prod.example",   # exempt
+            "infra/compose/.env.prod",           # must still be caught
+            ".env",
+            ".env.local",
+            "apps/x/.env.production",
+        ]
+        self.assertEqual(
+            e18_bad(tracked),
+            ["infra/compose/.env.prod", ".env", ".env.local", "apps/x/.env.production"])
+
+    def test_example_suffix_does_not_exempt_keys_and_pems(self):
+        """A .pem or .key is material regardless of what the filename claims."""
+        for f in ("certs/server.key.example", "certs/server.pem"):
+            with self.subTest(f=f):
+                self.assertEqual(e18_bad([f]), [f] if f.endswith((".pem", ".key")) else [])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -488,7 +488,22 @@ def e18_no_sensitive_config():
     # Anchoring costs little, because the directory rule is only the coarse net: a genuine
     # secret nested at apps/api/secrets/prod.pem or config/secrets/.env is still caught by
     # the extension and filename rules below, which are depth-independent and precise.
-    bad = [f for f in tracked if re.search(r"(^|/)\.env($|\.)(?!example)", f)
+    # The template exemption is a SUFFIX test, not a lookahead. Written as
+    # `\.env($|\.)(?!example)` it only ever cleared the exact name `.env.example`: for
+    # `.env.prod.example` the lookahead inspects `prod.example`, fails to match, and the
+    # file is reported as a tracked secret. skyphoenix-mobile-device-cloud tracks
+    # infra/compose/.env.prod.example and .env.browser.example — both headed "Every value
+    # below is a placeholder, not a secret" — so E18, and therefore `ci.sh`, failed for
+    # using the per-environment convention that initialize-project.sh itself assumes when
+    # it does `cp .env.example .env.local`. Same shape as the unanchored `/secrets/` rule
+    # fixed in v1.2.1: a coarse filename net, green here, red in a real repository.
+    #
+    # Safe because this rule is only the coarse net. The real control over content is the
+    # gitleaks job, which scans working tree and history; a file whose name claims to be a
+    # template but holds live material is caught there, not here.
+    bad = [f for f in tracked
+           if (re.search(r"(^|/)\.env($|\.)", f)
+               and not f.endswith((".example", ".sample", ".template")))
            or f.endswith("settings.local.json") or f.startswith("secrets/")
            or f.endswith((".pem", ".key"))]
     gi = read(".gitignore")

@@ -1,8 +1,8 @@
 {
   "framework_version": "1.2.4",
-  "template": "local checkout",
+  "template": "https://github.com/skyphoenix-it/skyphoenix-enterprise-template.git@release/agent-framework-v1.2.4 (23eb923cd1b3)",
   "source_url": "https://github.com/skyphoenix-it/skyphoenix-enterprise-template.git",
-  "source_commit": null,
+  "source_commit": "23eb923cd1b3527b94523c6e0d25ddf7a4b4198d",
   "files": {
     "agent-framework/README.md": "7bd4a7d37afc5f8844612b72908ec938de97dd7edafc68f1f2f36afcccc51764",
     "agent-framework/VERSION": "563a0b4eec3c77bbc34ac630d4fa5214f5c6726ae01468404fd704473110084e",
@@ -153,7 +153,7 @@
     "agent-framework/trust/framework-maintainer.asc": "c1b73942dab8b3e9b87fb6775c1bd3328a16f2641f3ecaa2307f933af1ef547b",
     "scripts/agent-framework/_lib.py": "2d0363de09d15d088ed0f71eaefc2b730e31f7e9d49bcd7147a1705217c0f577",
     "scripts/agent-framework/check-drift.py": "3c583478493eaf3c17105c34d20fbba040ffacddacd7d6491d0036328a363934",
-    "scripts/agent-framework/evals/run-evals.py": "e81eb1fb99ddb964d48ed13c2cd5a4c1244997d1e79c055a9da6ab6341039125",
+    "scripts/agent-framework/evals/run-evals.py": "9f7395a9bee4b5b8c6225bccb4310ca84f47f98f0b7172011e3bd03498d80f5c",
     "scripts/agent-framework/provider-claude.sh": "d3c61b42840c8f5d1e3b06d4ac416999091b26d1409a2cdce2d468a63723664a",
     "scripts/agent-framework/provider-codex.sh": "00a9bf8e6a96d52e2ea9c8f1e80b28604cd390659e9ecdbc69455076deceeef3",
     "scripts/agent-framework/provider-common.sh": "ce986453ea23f60d5f51930ce6496a24136b1d240b902bf0342b79fd41e8e50e",
@@ -168,7 +168,7 @@
     "scripts/validate-repository.sh": "88e2847e58b5268dcc223dcdd7ca76343422c9405332dd2b5e820595bad06add",
     "tests/agent-framework/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "tests/agent-framework/_helpers.py": "1844ea709a9b2c456eb080e3b3f5ea9163b8767f11efdd5c5ec90eac33ba060d",
-    "tests/agent-framework/test_eval_predicates.py": "be2ee66e13f2a0bc2c11a821be46c553286967eb6056d436d08a3e8dcff4ca0c",
+    "tests/agent-framework/test_eval_predicates.py": "08977f0b1865640732dcb131e105d138d89cbd471010cebd334b417bfcf64eba",
     "tests/agent-framework/test_generated_artifacts.py": "6f07b2e79fa6f5a22227644b1c0b29f95b3a9fa9b60c18c6480f5305a8e94f3e",
     "tests/agent-framework/test_provider_shims.py": "d46f657a52c806e7ca9c141d585161f56f7e5fc9dc4c8e9c20f4ee74d46b5dfe",
     "tests/agent-framework/test_render_safety.py": "848542862964bd92156606d6796969de2a6029ee774fcb39f959da11ffaa73d1",
@@ -178,6 +178,6 @@
   },
   "scaffold": {
     ".github/workflows/framework-update.yml": "80b28a33867e382088ef43b97ca80d791515abb4faf4ece9ab9a6c99cb3e1eb0",
-    ".github/workflows/quality.yml": "d65510618f3d67e8aea1be10dc23a661d68895f3edafcf54af1cfad0c7dd08f3"
+    ".github/workflows/quality.yml": "5f9809176f1e0235e4e1eef19879ebfce73337a972f3f81eeee3e73347b2fcc6"
   }
 }
