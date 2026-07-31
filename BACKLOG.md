@@ -292,3 +292,30 @@ section is implemented without explicit product-owner approval (scope-control po
   `packaging/aur/` to the AUR remote, so the two drift silently. Options: a release step
   that pushes `packaging/aur/` to the AUR remote on tag, or a CI check that fails when the
   two diverge.
+
+- **🔴 `check_ci_release_metadata_contract.py` fails on `master` and has since the v1.0.0
+  publication commits.** Surfaced 2026-07-31 by the framework-adoption PR, which is the
+  first run of these workflows since. **Pre-existing and not caused by that PR** — proved
+  by running the script against a clean worktree of unmodified `origin/master` (`5eb04c9`):
+  identical failure, `FAIL: README.md must state the unreleased release target exactly`.
+
+  It fails **two** checks, because two workflows invoke the same script: `docs.yml` →
+  "Check release documentation against build and CI truth", and `ci.yml`'s
+  `qml-test` job → "CI, toolchain, packaging, and release metadata contract".
+
+  The inconsistency: `release-metadata.toml` still carries `stage = "candidate"` with
+  `target_version = "v1.0.0"`, so the script takes its unpublished branch and requires the
+  README to state an unreleased target. But README was rewritten to *"Current public
+  status: stable. `v1.0.0` is the first stable EdgeHub"*, its badge points at the v1.0.0
+  release, and the "This checkout is unreleased and is not published or certified" marker
+  is gone (0 occurrences).
+
+  Nothing caught it because `5eb04c9`, `915b36c`, `d603bda` and `400f374` all carry
+  `[skip ci]`, so no workflow has run on `master` since 2026-07-27.
+
+  Not fixed here: resolving it means declaring this repository's actual release state, and
+  `release-metadata.toml`'s own comment says published status "is verified externally after
+  publication and is never self-declared by this file" — so the correct fix depends on that
+  external process, not on editing either file to match the other. Worth deciding at the
+  same time whether release-documentation commits should keep using `[skip ci]`, since that
+  is what let a red gate sit unnoticed on `master`.
