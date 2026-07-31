@@ -267,3 +267,28 @@ the `_data` trap. Candidate: require new guards to record their evidence (the
 sabotage tried, and that it went red) in the PR/commit body - every agent this
 session was asked to do exactly that, and it caught real defects in *their own*
 work four separate times.
+
+## Candidates
+
+Unapproved ideas, findings, and out-of-scope proposals land here. Nothing in this
+section is implemented without explicit product-owner approval (scope-control policy).
+
+- **`scripts/test.sh` is still the framework adoption scaffold stub.** Created 2026-07-31
+  when the agent framework was adopted; it echoes "No test command configured" and exits
+  0. Under the framework's evidence policy a stub proves nothing, so it must never be
+  cited as passing validation. The real suites — ctest, `cargo test`, the QML tests and
+  the enumerated-requirements job — run from `.github/workflows/ci.yml`, which installs
+  Qt 6.7. `.github/workflows/quality.yml` therefore deliberately does not invoke
+  `scripts/ci.sh` (which would end in `build.sh` + `test.sh`) and runs the framework gates
+  directly instead. Options: point `test.sh` at the existing ctest/cargo invocations, or
+  delete it and record in `project.yaml` that `ci.yml` owns testing.
+
+- **The published AUR package has drifted ~7 months from `packaging/aur/`.**
+  `aur.archlinux.org/xeneon-edge-hub` serves `pkgver=0.1.0 pkgrel=1` with
+  `url=https://github.com/skyphoenix-it/XeneonEdge_Linux` (the pre-rename name), a
+  single-entry `license=('MIT')`, and no `post_upgrade` notice. This repository's
+  canonical `packaging/aur/PKGBUILD` is `epoch=1 pkgver=1.0.0beta1 pkgrel=2` with the
+  current URL, the six-entry license list, and the upgrade notice. Nothing publishes
+  `packaging/aur/` to the AUR remote, so the two drift silently. Options: a release step
+  that pushes `packaging/aur/` to the AUR remote on tag, or a CI check that fails when the
+  two diverge.

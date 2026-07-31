@@ -115,3 +115,9 @@ build-install/
 # agent git worktrees - 37 of them once reached 26GB here. Neither is shared.
 .claude/
 captures/
+
+# agent framework
+agent-framework/runs/
+.claude/settings.local.json
+.kimi-code/local.toml
+*.bak-pre-framework
