@@ -226,12 +226,22 @@ run_one() {
   # including J=1. The memory-budget reducer can turn a requested -j8 into -j1;
   # keeping a separate sequential path there used to put KWin outside both the
   # RSS watchdog and RLIMIT_AS, recreating the exact OOM hole this runner fixes.
+  # stdbuf -oL: the slot's stdout is a FILE, so libc block-buffers it. A TIMEKILL
+  # or MEMKILL is a SIGKILL, which discards that buffer - so every timed-out file
+  # used to leave a log containing NOTHING but the kill line, and nobody could see
+  # which test it died in. Measured on run 30658588377: 11 of 16 files TIMEKILLed,
+  # all 11 logs empty apart from the kill notice, while their kwin-*.log showed the
+  # compositor had come up fine. Line buffering keeps whatever the runner had
+  # already printed, which is the only way this is diagnosable at all.
+  local t0 t1
+  t0=$(date +%s)
   run_bounded SLOT_F="$f" SLOT_N="$slot" SLOT_QT="$QT" \
     SLOT_IMPORTS="$IMPORTS" SLOT_MD="$MOUSEDELAY" SLOT_KD="$KEYDELAY" \
     SLOT_LOGDIR="$LOGDIR" SLOT_XDG="$XDG_RUNTIME_DIR" \
     SLOT_VIRTUAL="$((1 - VISIBLE))" SLOT_RECORD="$RECORD" SLOT_EVID="$EVID" \
-    bash "$SELF" __slot > "$LOGDIR/$base.log" 2>&1
+    stdbuf -oL -eL bash "$SELF" __slot > "$LOGDIR/$base.log" 2>&1
   rc=$?
+  t1=$(date +%s)
   case "$rc" in
     97) echo "!! $base was MEMKILLed (>${RUN_MEM_MAX_MB} MiB RSS)" >> "$LOGDIR/$base.log" ;;
     98) echo "!! $base was TIMEKILLed (>${RUN_TIMEOUT}s)" >> "$LOGDIR/$base.log" ;;
@@ -240,6 +250,16 @@ run_one() {
   # the real bounded-runner status must not disappear. Aggregate these status
   # files together with QtTest's textual totals below.
   printf '%s\n' "$rc" > "$LOGDIR/$base.rc"
+  # Report completion as it happens. The summary is aggregated only after `wait`,
+  # so when the suite overran its CI job limit the log showed 20 [start] lines and
+  # nothing else for the whole hour - no durations, no results, no way to tell a
+  # slow file from a wedged one.
+  case "$rc" in
+    0)  echo "==> [done]  $base ($((t1 - t0))s)" ;;
+    97) echo "==> [MEMKILL] $base after $((t1 - t0))s (>${RUN_MEM_MAX_MB} MiB RSS)" ;;
+    98) echo "==> [TIMEKILL] $base after $((t1 - t0))s (>${RUN_TIMEOUT}s)" ;;
+    *)  echo "==> [fail]  $base rc=$rc ($((t1 - t0))s)" ;;
+  esac
   return 0
 }
 
