@@ -81,7 +81,22 @@ if [ "${1:-}" = "__slot" ]; then
   # even when the QML root requests the correct height.
   slot_width="${XENEON_GUI_WIDTH:-2560}"
   slot_height="${XENEON_GUI_HEIGHT:-1800}"
-  kwin_wayland "${slot_kwin_args[@]}" --xwayland --xwayland-display "$xdisp" \
+  # Xwayland ONLY when recording. The tests are Wayland clients
+  # (QT_QPA_PLATFORM=wayland below); the X server exists solely so --record's
+  # ffmpeg can x11grab $xdisp. On the CI runner Xwayland SEGFAULTS during startup
+  # every single time - "Caught signal 11 ... Server aborting" appears in every
+  # kwin-*.log of run 30690709064, in the slots that passed as well as the ones
+  # that did not. When KWin survives it logs "Xwayland process crashed" and
+  # carries on; when it does not, its log stops dead at the crash while the
+  # Wayland socket already exists. The slot's readiness check then passes, the
+  # runner connects to a compositor that never answers, and it produces no output
+  # at all until the bound kills it. That is 21 of 22 files in that run.
+  # Starting an X server we do not use to run Wayland tests bought nothing and
+  # cost the whole suite.
+  if [ "${SLOT_RECORD:-0}" = "1" ]; then
+    slot_kwin_args+=(--xwayland --xwayland-display "$xdisp")
+  fi
+  kwin_wayland "${slot_kwin_args[@]}" \
     --width "$slot_width" --height "$slot_height" --no-lockscreen --no-global-shortcuts \
     --socket "$sock" > "$SLOT_LOGDIR/kwin-$base.log" 2>&1 &
   kpid=$!
