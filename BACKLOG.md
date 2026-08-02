@@ -268,6 +268,60 @@ sabotage tried, and that it went red) in the PR/commit body - every agent this
 session was asked to do exactly that, and it caught real defects in *their own*
 work four separate times.
 
+## Known flake: the nested compositor occasionally never exposes a window
+
+Opened 2026-08-02, on the first CI runs where the GUI suite could complete at all.
+
+A slot can lose a whole file to this, once, without any product or test cause.
+Qt prints it plainly and then does exactly what it says:
+
+```
+Test '.../tst_gui_w_media_data.qml' window was never exposed!
+If the test case was expecting windowShown, it will hang.
+```
+
+`when: windowShown` never fires, the file hangs, and `run_bounded` kills it at
+`RUN_TIMEOUT` — 540 s of a four-core runner spent on a file that produced nothing,
+which also starves the three slots sharing it. Seen once (run 30753137211,
+`tst_gui_w_media_data`, 89 s in the run immediately before and 32 s locally); the
+same commit's other 21 files were within a few seconds of their previous timings,
+so it is the exposure, not runner-wide slowness.
+
+`.github/workflows/ci.yml` already forces `LIBGL_ALWAYS_SOFTWARE` +
+`GALLIUM_DRIVER=llvmpipe` because Qt Quick's automatic Mesa selection "can still
+pick Zink and leave Wayland windows permanently unexposed" — so this is the
+residue of a hazard the workflow already knows about, not a new one.
+
+**Handled 2026-08-02, and honestly rather than silently.** `run_one` detects that
+exact Qt signature and re-runs the file ONCE, on a fresh slot number (the killed
+compositor leaves its socket file behind, so reusing the name would let the
+readiness check pass against a dead socket). The first attempt's log is kept as
+`<file>.unexposed.log`, the summary line carries `(RETRIED: …)`, and the totals
+block prints a `RETRIED (unexposed window, first attempt discarded)` list — a
+silent retry is how a suite starts lying about what it ran. Proven both ways: a
+test that emits the signature and then fails deterministically is retried AND
+still reported as FAILURE, so the retry cannot rescue a real defect.
+
+Waiting for a readiness *marker* in the compositor log was tried first and
+rejected: KWin's banner depends on its backend, and this workstation's KWin uses
+Vulkan (radv) and never prints the OpenGL line the CI runner does, so the gate
+failed every local run. There is no portable "compositor is ready" event here
+without adding a Wayland probe dependency.
+
+Still open, in order of value:
+
+- **Fail fast instead of hanging.** The retry still pays the full per-file bound
+  on the first attempt. Qt emits the message *before* it hangs, so a watcher on
+  the slot's own output could abort in seconds and turn nine wasted minutes into
+  an immediate, named result.
+- Understand why it happens at all. Both occurrences were at `-j4` on a
+  four-core runner, i.e. four compositors initialising at once. If that is the
+  trigger, the cheapest real fix may be staggering slot starts rather than
+  detecting the symptom.
+
+Not a product defect, and deliberately NOT worked around by widening the timeout:
+a file that hangs is not a slow file.
+
 ## Candidates
 
 Unapproved ideas, findings, and out-of-scope proposals land here. Nothing in this
