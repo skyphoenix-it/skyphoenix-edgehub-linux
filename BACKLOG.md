@@ -470,12 +470,27 @@ section is implemented without explicit product-owner approval (scope-control po
     | **Qt 6.11.1** | 5.66:1 pass | pass |
     | **Qt 6.7.3** | 3.81:1 FAIL | 3.76:1 FAIL |
 
-    Two follow-ups fell out of running the matrix to completion for the first time:
-    `tst_gui_backdrop_contrast` now retries a grab that comes back at the wrong size
-    (seen once in 9251 combinations under llvmpipe — judging a frame that has not been
-    presented says nothing about the product; the assertion itself is unchanged), and the
-    failing frame is still saved to `gui-evidence/` because that PNG is what turned this
-    from "a contrast number is low" into "there is a white stroke here".
+    Three follow-ups fell out of the matrix running to completion for the first time —
+    it had always aborted within seconds at the first orbs entry, so its real cost had
+    never been paid:
+
+    - **It timed out CI, and took a bystander with it.** 9251 combinations × ~11k sampled
+      pixels ran past the 540 s per-file bound, and because it then held a slot at full
+      CPU on a four-core runner it dragged `tst_gui_w_cal_weather` from 62 s to a timeout
+      as well. The measurement was doing four times the necessary work: it walked the
+      image once per foreground, and recomputed the *foreground's* luminance for every
+      pixel. One pass, both foregrounds, foreground luminance hoisted out — **186 s → 72 s**
+      locally, and proven numerically identical (220 combinations across themes, accents
+      and all 11 styles, exact `compare` of both minima against the old implementation).
+    - A grab that comes back at the wrong size is retried against a presented frame (seen
+      once in 9251 combinations under llvmpipe). Judging a frame that has not been
+      presented says nothing about the product; the assertion itself is unchanged.
+    - The failing frame is still saved to `gui-evidence/`, because that PNG is what turned
+      this from "a contrast number is low" into "there is a white stroke here".
+
+    Verified on a deliberately CI-shaped run — 4 cores (`taskset -c 0-3`), Qt 6.9.3,
+    llvmpipe, `-j4`: 22 files, `pass=2641 fail=0`, RESULT: SUCCESS, no TIMEKILLs, slowest
+    file 82 s.
   - ~~`tst_gui_shell_nav_edit`: 8 × `QML ListView: Binding loop detected for property
     "currentIndex"`~~ — **RESOLVED 2026-08-02: an upstream Qt < 6.9 defect, not ours.**
     The first guess (Qt's internal ListView fighting `Dashboard.qml`'s `_applyWant()` /

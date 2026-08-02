@@ -52,24 +52,44 @@ Item {
              + 0.0722 * linear(blue)
     }
 
-    function contrastWithPixel(foreground, image, x, y) {
-        var first = luminance(Math.round(foreground.r * 255),
-                              Math.round(foreground.g * 255),
-                              Math.round(foreground.b * 255))
-        var second = luminance(image.red(x, y), image.green(x, y), image.blue(x, y))
-        return (Math.max(first, second) + 0.05)
-             / (Math.min(first, second) + 0.05)
+    function colorLuminance(colour) {
+        return luminance(Math.round(colour.r * 255),
+                         Math.round(colour.g * 255),
+                         Math.round(colour.b * 255))
     }
 
-    function minimumPixelContrast(foreground, image) {
-        var minimum = 21.0
+    // Both foregrounds in ONE pass over the pixels.
+    //
+    // The previous shape walked the image once per foreground and, inside the
+    // loop, recomputed the FOREGROUND's luminance for every single pixel: 12
+    // pow() calls and 6 image reads per pixel where 3 and 3 suffice. Same
+    // pixels, same arithmetic, same minima - about a quarter of the work.
+    //
+    // That is not a micro-optimisation here. This matrix is 9251 combinations x
+    // ~11k sampled pixels, and it had never once run to completion: it always
+    // aborted within seconds at the first orbs entry. The moment the ShapePath
+    // hairline fix let it finish, the honest cost showed up as a 540s per-file
+    // TIMEKILL on CI - and, because it then held a slot at full CPU for the
+    // whole run on a four-core runner, it dragged tst_gui_w_cal_weather from
+    // 62s to a timeout as well.
+    function minimumPixelContrasts(firstLuminance, secondLuminance, image) {
+        var lowestFirst = 21.0
+        var lowestSecond = 21.0
         // Stay inside the rounded edge and sample densely enough to hit the
         // thin star, grid, wave, and ribbon features.
         for (var y = 14; y < image.height - 14; y += 2) {
-            for (var x = 14; x < image.width - 14; x += 2)
-                minimum = Math.min(minimum, contrastWithPixel(foreground, image, x, y))
+            for (var x = 14; x < image.width - 14; x += 2) {
+                var pixel = luminance(image.red(x, y), image.green(x, y),
+                                      image.blue(x, y))
+                var first = (Math.max(firstLuminance, pixel) + 0.05)
+                          / (Math.min(firstLuminance, pixel) + 0.05)
+                if (first < lowestFirst) lowestFirst = first
+                var second = (Math.max(secondLuminance, pixel) + 0.05)
+                           / (Math.min(secondLuminance, pixel) + 0.05)
+                if (second < lowestSecond) lowestSecond = second
+            }
         }
-        return minimum
+        return ({ primary: lowestFirst, secondary: lowestSecond })
     }
 
     TestCase {
@@ -111,8 +131,11 @@ Item {
                         }
                         verify(image.width === chrome.width && image.height === chrome.height,
                                mode + "/" + accent + "/" + style + " rendered at card size")
-                        var primary = minimumPixelContrast(scanTheme.textPrimary, image)
-                        var secondary = minimumPixelContrast(scanTheme.textSecondary, image)
+                        var minima = minimumPixelContrasts(
+                            colorLuminance(scanTheme.textPrimary),
+                            colorLuminance(scanTheme.textSecondary), image)
+                        var primary = minima.primary
+                        var secondary = minima.secondary
                         // Keep the pixels that failed. This matrix measures a
                         // rendered surface, so a shortfall that appears only on
                         // one renderer (CI runs Mesa's CPU rasteriser) cannot be
