@@ -268,6 +268,25 @@ sabotage tried, and that it went red) in the PR/commit body - every agent this
 session was asked to do exactly that, and it caught real defects in *their own*
 work four separate times.
 
+## Known flake: `test_focus_natural_goal` races the celebration banner
+
+Opened 2026-08-02. Pre-existing — it also failed on run `30717604059`, before this
+branch touched anything — and it is a DIFFERENT class from the unexposed-window
+flake below, which is why the retry there deliberately does not cover it: retrying
+an assertion failure would be masking, not repair.
+
+`tests/gui/tst_gui_w_focus_core.qml::test_focus_natural_goal` seeds an already
+expired session and waits up to 3 s for a "Goal" banner. The banner is transient
+by design (`FocusWidget.qml`: fade in → `PauseAnimation { duration: 950 }` → fade
+out), and `G.byText` requires `n.visible`. So the assertion is a 3 s window onto a
+state the product deliberately shows for about a second, on a runner where the
+widget's own tick may not fire promptly. Every ingredient of a race is present.
+
+Worth fixing at the source rather than by widening the wait: assert on the state
+that persists (`celebrateMsg`, the awarded bonus, `doneToday`) and treat the
+banner's *appearance* as a separate, motion-aware check. Passes consistently
+locally; seen twice in CI.
+
 ## Known flake: the nested compositor occasionally never exposes a window
 
 Opened 2026-08-02, on the first CI runs where the GUI suite could complete at all.
