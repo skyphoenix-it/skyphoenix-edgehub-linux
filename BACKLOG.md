@@ -421,12 +421,23 @@ section is implemented without explicit product-owner approval (scope-control po
 
   **STILL OPEN — genuinely CI-only, none reproduced on this workstation** (full local suite
   after the fixes: 22 files, `pass=2641 fail=0`, RESULT: SUCCESS):
-  - `tst_gui_backdrop_contrast`: `dark/amber/orbs secondary pixel minimum=3.76:1`. Locally
-    the same combination measures **5.66:1** with motion already frozen, and is identical
-    to the `none` backdrop — so either the orbs layer draws differently under CI's Mesa CPU
-    rasteriser, or it does not draw here at all and the local number is meaningless. The
-    test now saves the failing frame to `gui-evidence/contrast-<mode>-<accent>-<style>.png`
-    so the next CI run answers that instead of leaving it to inference.
+  - **🔴 `tst_gui_backdrop_contrast`: the orbs backdrop draws HARD-EDGED RINGS under a
+    software GL stack.** `dark/amber/orbs secondary pixel minimum=3.76:1` on CI, **5.66:1**
+    on a GPU workstation for the identical combination with motion already frozen. The
+    saved frame (added for exactly this question, `gui-evidence/contrast-dark-amber-orbs.png`,
+    PR #8 run 30740217834) answers it: on CI the card carries three crisp circle OUTLINES,
+    and those strokes are the pixels that fail. On a GPU the same card is a smooth wash
+    with no visible edge at all — which is why the local minimum matches the `none`
+    backdrop exactly.
+
+    `ui/qml/widgets/AnimatedBackground.qml` paints each orb as a `QtQuick.Shapes` `Shape`
+    with `strokeWidth: 0` and a `RadialGradient` fill. The gradient is what makes it soft;
+    when the renderer does not honour it the path edge is all that survives. So this is not
+    a colour-token shortfall and "what should `dark/amber/orbs` become to reach 4.5:1" is
+    the wrong question — the right one is whether the product should detect a software GL
+    stack and fall back to a plain backdrop there, or stop depending on `Shape` gradients.
+    It is a real defect for anyone running the hub in a VM or without a GPU driver, and it
+    is invisible to every developer who has one. Needs a decision, not a threshold change.
   - `tst_gui_shell_nav_edit`: 8 × `QML ListView: Binding loop detected for property
     "currentIndex"` from Qt's own `SwipeView.qml:15`, i.e. the internal ListView binding
     fighting `Dashboard.qml`'s imperative `_applyWant()` / `positionViewAtIndex`. Product
