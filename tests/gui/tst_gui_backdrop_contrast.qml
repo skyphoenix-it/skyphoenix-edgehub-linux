@@ -101,6 +101,16 @@ Item {
                                mode + "/" + accent + "/" + style + " rendered at card size")
                         var primary = minimumPixelContrast(scanTheme.textPrimary, image)
                         var secondary = minimumPixelContrast(scanTheme.textSecondary, image)
+                        // Keep the pixels that failed. This matrix measures a
+                        // rendered surface, so a shortfall that appears only on
+                        // one renderer (CI runs Mesa's CPU rasteriser) cannot be
+                        // diagnosed from the number alone - the saved frame is
+                        // the only way to tell "this combination really is that
+                        // low" from "this backdrop drew something different
+                        // here". Costs nothing on a passing run.
+                        if (primary < 4.5 || secondary < 4.5)
+                            image.save("gui-evidence/contrast-" + mode + "-"
+                                       + accent + "-" + style + ".png")
                         verify(primary >= 4.5,
                                mode + "/" + accent + "/" + style
                                + " primary pixel minimum=" + primary.toFixed(2)

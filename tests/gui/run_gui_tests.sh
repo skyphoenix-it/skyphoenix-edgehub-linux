@@ -183,6 +183,26 @@ if [ ! -x "$QT" ]; then
   echo "!! resource-aware $TEST_BUILD_DIR/xeneon-qmltestrunner missing; qrc pixel checks may fail"
 fi
 
+# The harness loads every widget from `qrc:/qml/` (tests/ui/WidgetHarness.qml),
+# so the product QML under test is the copy COMPILED INTO this runner, not the
+# one in the working tree. A runner older than the tree therefore validates code
+# that no longer exists - silently, and with a green result. Measured on
+# 2026-08-02: a deliberate clipping defect added to ui/qml/widgets/MetricGauge.qml
+# was invisible to this suite (0 failures) until the runner was rebuilt, after
+# which the same defect produced 96. Refuse to report on a stale runner; this is
+# the same rule as the other guards in scripts/ - a gate must not pass for the
+# state in which it did no work.
+if [ -x "$QT" ]; then
+  STALE=$(find ui/qml ui/qml.qrc manager/qml manager/manager.qrc assets \
+            -newer "$QT" -print -quit 2>/dev/null)
+  if [ -n "$STALE" ]; then
+    echo "!! $QT is OLDER than $STALE"
+    echo "!! it embeds the product QML, so this run would test the compiled-in copy"
+    echo "!! rebuild first: cmake --build $TEST_BUILD_DIR --target xeneon-qmltestrunner"
+    exit 2
+  fi
+fi
+
 EVID="$ROOT/gui-evidence"
 LOGDIR="$ROOT/build/gui-logs"
 rm -rf "$EVID" "$LOGDIR"; mkdir -p "$EVID" "$LOGDIR"

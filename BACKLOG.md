@@ -377,3 +377,81 @@ section is implemented without explicit product-owner approval (scope-control po
   accessibility gates at the exact moment they started working. The real fixes are product
   decisions: how the tiles reflow at raised text scale, what `dark/amber/orbs` becomes to
   reach 4.5:1, and what the high-contrast preset should look like.
+
+  **DIAGNOSIS CORRECTED 2026-08-02 — the clipping failures were not product defects, and
+  neither the "systemic layout rule" above nor the "fontconfig hinting" theory from the
+  font-stack fix (`541a9eb`) survives contact with the evidence.** They were a measurement
+  race in the test itself. Three independent proofs:
+
+  - **The failures are not stable.** Runs `9ab5ec7` and `d9ff376` are agent-framework
+    commits that touch no file under `ui/`, `tests/gui/`, `assets/` or `ci.yml`, yet they
+    disagree on **321 of the ~474 failing tags** (322 vs 305 failures, only 153 in common).
+    No font metric and no layout rule can move half its failures between two runs of
+    identical product code.
+  - **The signature reproduces on demand.** `tst_gui_widget_legibility` drove 1152 rows
+    through ONE harness and waited a flat `wait(32)` for each row's re-flow. Shortening
+    that to `wait(0)` on a developer machine reproduces the CI failure signature exactly —
+    487 failures, the same label strings, the same 2–4 px overflows — and restoring it
+    clears them. QQuickLayout re-flows on the polish pass, so a Text still carrying the
+    previous row's allocation while already reporting the new row's `contentHeight` reads
+    exactly like a clipped label. 32 ms is enough on an idle workstation and not enough on
+    a runner hosting four nested compositors.
+  - **The font theories are disproved by measurement.** Ubuntu's `fonts-noto-core`
+    `NotoSans-Regular.ttf` and this workstation's carry identical `hhea`/`OS/2` typo
+    metrics (1069/−293 at 1000 upem), so the resolved face is the same on both sides. And
+    installing Inter changes nothing, because `font.family` never selected it (below).
+
+  Fixed in the tests, with no assertion relaxed: the matrix now waits for the re-flow to
+  finish (signature unchanged across a presented frame, or no frame presented at all —
+  both compositor-paced, so a slower machine waits longer instead of measuring earlier)
+  and fails loudly if a row never settles. Negative control per the test-integrity rule
+  above: `Layout.maximumHeight: 12` on the MetricGauge history caption makes the fixed gate
+  report **96** genuine clipping failures, so the settle cannot mask a real defect.
+
+  The other two entries were also mis-attributed:
+  - `tst_gui_shell_wallpaper_presets::test_highcontrast_plain_gradient_grab` **never
+    entered high-contrast.** QuickTest runs a TestCase's functions in ALPHABETICAL order,
+    so it ran *before* `test_highcontrast_suppresses_backdrop`, and its "high-contrast"
+    grab was whatever the previous test left on screen. It compared two frames of the same
+    decorative theme and passed only when the animated backdrop had moved between them.
+    Now enters high-contrast itself and waits for the backdrop to respond.
+  - `tst_gui_shell_orient_settings::test_ori_b_landscape_grab_wider` asserted window
+    geometry 120 ms after requesting a resize — a compositor round-trip timed with a
+    stopwatch. Now polls the geometry.
+
+  **STILL OPEN — genuinely CI-only, none reproduced on this workstation** (full local suite
+  after the fixes: 22 files, `pass=2641 fail=0`, RESULT: SUCCESS):
+  - `tst_gui_backdrop_contrast`: `dark/amber/orbs secondary pixel minimum=3.76:1`. Locally
+    the same combination measures **5.66:1** with motion already frozen, and is identical
+    to the `none` backdrop — so either the orbs layer draws differently under CI's Mesa CPU
+    rasteriser, or it does not draw here at all and the local number is meaningless. The
+    test now saves the failing frame to `gui-evidence/contrast-<mode>-<accent>-<style>.png`
+    so the next CI run answers that instead of leaving it to inference.
+  - `tst_gui_shell_nav_edit`: 8 × `QML ListView: Binding loop detected for property
+    "currentIndex"` from Qt's own `SwipeView.qml:15`, i.e. the internal ListView binding
+    fighting `Dashboard.qml`'s imperative `_applyWant()` / `positionViewAtIndex`. Product
+    behaviour, not a test defect — but changing page navigation is not a test fix, so it
+    needs a decision.
+  - `tst_gui_widget_legibility`: 1 × `There are still "2" items in the process of being
+    created at engine destruction` — asynchronous creation still pending at teardown.
+
+- **The product's system font stack is inert — `font.family` never selects Inter.**
+  `ui/qml/Theme.qml:207` declares `_fontDisplaySystem: "Inter, Segoe UI, Roboto,
+  sans-serif"`, a CSS-style stack. Qt does not split a comma-separated `font.family`, so
+  the whole string is matched as one family name, fails, and falls back to the default
+  sans. Measured with Inter installed (Ubuntu `fonts-inter` 4.0, the exact package CI
+  installs), "CPU" at `pixelSize: 20`:
+
+  | `font.family` | contentWidth × contentHeight |
+  |---|---|
+  | `"Inter"` | 42.25 × 25 |
+  | `"Inter, sans-serif"` | 39.33 × 28 |
+  | `"Inter, Segoe UI, Roboto, sans-serif"` | 39.33 × 28 |
+  | `"sans-serif"` | 39.33 × 28 |
+
+  Every user on the "system" font choice has been getting the fallback sans, never Inter,
+  and `541a9eb` installed Inter on the runner for a stack that cannot reach it. The fix is
+  one line (`font.families: ["Inter", "Segoe UI", "Roboto", "sans-serif"]`, or resolve the
+  first available family), but it CHANGES THE PRODUCT'S TYPEFACE on any machine that has
+  Inter — including every layout the legibility matrix measures. That is a product
+  decision, not a bug fix, so it is filed here rather than applied.
