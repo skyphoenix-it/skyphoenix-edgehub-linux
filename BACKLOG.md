@@ -419,30 +419,70 @@ section is implemented without explicit product-owner approval (scope-control po
     geometry 120 ms after requesting a resize — a compositor round-trip timed with a
     stopwatch. Now polls the geometry.
 
-  **STILL OPEN — genuinely CI-only, none reproduced on this workstation** (full local suite
-  after the fixes: 22 files, `pass=2641 fail=0`, RESULT: SUCCESS):
-  - **🔴 `tst_gui_backdrop_contrast`: the orbs backdrop draws HARD-EDGED RINGS under a
-    software GL stack.** `dark/amber/orbs secondary pixel minimum=3.76:1` on CI, **5.66:1**
-    on a GPU workstation for the identical combination with motion already frozen. The
-    saved frame (added for exactly this question, `gui-evidence/contrast-dark-amber-orbs.png`,
-    PR #8 run 30740217834) answers it: on CI the card carries three crisp circle OUTLINES,
-    and those strokes are the pixels that fail. On a GPU the same card is a smooth wash
-    with no visible edge at all — which is why the local minimum matches the `none`
+  **STILL OPEN** (full local suite on Qt 6.11: 22 files, `pass=2641 fail=0`, SUCCESS; on
+  Qt 6.7.3 + llvmpipe, i.e. CI's exact environment: `pass=2640 fail=1`, the one below):
+  - **🔴 `tst_gui_backdrop_contrast`: the orbs backdrop draws HARD-EDGED RINGS on Qt 6.7.**
+    `dark/amber/orbs secondary pixel minimum=3.76:1` on CI, **5.66:1** on this workstation,
+    for the identical combination with motion already frozen. The saved frame (added for
+    exactly this question, `gui-evidence/contrast-dark-amber-orbs.png`, PR #8 run
+    30740217834) shows why: on CI the card carries three crisp circle OUTLINES, and those
+    strokes are the pixels that fail. Where it renders correctly the same card is a smooth
+    wash with no visible edge at all — which is why the passing minimum matches the `none`
     backdrop exactly.
+
+    **It is the Qt version, not the renderer** — the first reading of this ("draws
+    differently under CI's Mesa CPU rasteriser") was wrong, and the two-variable isolation
+    says so plainly:
+
+    | | real GPU | llvmpipe |
+    |---|---|---|
+    | **Qt 6.11.1** | 5.66:1 pass | pass |
+    | **Qt 6.7.3** | 3.81:1 FAIL | 3.76:1 FAIL |
 
     `ui/qml/widgets/AnimatedBackground.qml` paints each orb as a `QtQuick.Shapes` `Shape`
     with `strokeWidth: 0` and a `RadialGradient` fill. The gradient is what makes it soft;
-    when the renderer does not honour it the path edge is all that survives. So this is not
-    a colour-token shortfall and "what should `dark/amber/orbs` become to reach 4.5:1" is
-    the wrong question — the right one is whether the product should detect a software GL
-    stack and fall back to a plain backdrop there, or stop depending on `Shape` gradients.
-    It is a real defect for anyone running the hub in a VM or without a GPU driver, and it
-    is invisible to every developer who has one. Needs a decision, not a threshold change.
-  - `tst_gui_shell_nav_edit`: 8 × `QML ListView: Binding loop detected for property
-    "currentIndex"` from Qt's own `SwipeView.qml:15`, i.e. the internal ListView binding
-    fighting `Dashboard.qml`'s imperative `_applyWant()` / `positionViewAtIndex`. Product
-    behaviour, not a test defect — but changing page navigation is not a test fix, so it
-    needs a decision.
+    where it is not honoured the path edge is all that survives. So this is not
+    a colour-token shortfall, and "what should `dark/amber/orbs` become to reach 4.5:1" is
+    the wrong question. The right one is what to do about Qt 6.7, which this product still
+    supports (packaging targets Qt ≥ 6.5): raise the floor to 6.9, stop depending on
+    `Shape` gradients for the backdrop, or accept and document it. Unlike the SwipeView
+    warning below, this one is USER-VISIBLE — a real legibility loss for anyone on a
+    Qt 6.7 distro — and invisible to any developer on a newer Qt. Needs a decision, not a
+    threshold change.
+  - ~~`tst_gui_shell_nav_edit`: 8 × `QML ListView: Binding loop detected for property
+    "currentIndex"`~~ — **RESOLVED 2026-08-02: an upstream Qt < 6.9 defect, not ours.**
+    The first guess (Qt's internal ListView fighting `Dashboard.qml`'s `_applyWant()` /
+    `positionViewAtIndex`) was wrong, and so were two attempted product fixes — pinning
+    the SwipeView's implicit size, and making the `PageIndicator` one-way — neither of
+    which changed the count. Instrumenting `swipeView` showed the loops do not happen
+    during the swipe at all: they land while `count` is collapsing and growing again
+    (`3 → 1 → 2 …`, `currentIndex` passing through `-1`) as the test rebuilds its pages;
+    QtTest merely attributes the warning to whichever function was running.
+
+    Proved upstream by construction: a `SwipeView` holding four plain `Rectangle`s, with
+    no product code anywhere near it, reproduces the warning on Qt 6.7.3 as soon as its
+    `Repeater` count collapses and grows — and the identical file is clean on Qt 6.11.1.
+    Upstream fixed it by routing `Container.content{Width,Height}` through
+    `implicitContent{Width,Height}` (qtdeclarative, 2024-12-14, released in 6.9). Adding
+    a page is not something this product can stop doing, and the loop lives inside a
+    component we do not own.
+
+    `scripts/check_qml_diagnostics.sh` now dispositions that exact line as external, and
+    the disposition is **pinned to the versions that have the defect**: it is not
+    installed on Qt ≥ 6.9, it only matches Qt's own `qrc:/qt-project.org/imports/…`
+    copy of `SwipeView.qml`, and it does nothing at all if the log does not say which Qt
+    produced it. All three limits are asserted in
+    `scripts/check_release_gate_contract.sh`, so the suppression cannot outlive its cause
+    or quietly widen. The warnings stay visible in the report (`known_external=8`) rather
+    than being filtered out of existence.
+
+    Reproduction recipe, since this class will recur — CI pins Qt 6.7.3 and this
+    workstation runs 6.11: `aqt install-qt linux desktop 6.7.3 linux_gcc_64` into a
+    scratch dir, configure a second build tree with `-DCMAKE_PREFIX_PATH=<that>`, build
+    `xeneon-qmltestrunner`, then point the suite at it with `XENEON_TEST_BUILD_DIR` and
+    the matching `LD_LIBRARY_PATH` / `QT_PLUGIN_PATH` / `QML2_IMPORT_PATH`. That turned a
+    CI-only failure into a 70-second local loop; five attempts to reproduce it by making
+    the machine slower had all come back clean, because it was never about speed.
   - `tst_gui_widget_legibility`: 1 × `There are still "2" items in the process of being
     created at engine destruction` — asynchronous creation still pending at teardown.
 
