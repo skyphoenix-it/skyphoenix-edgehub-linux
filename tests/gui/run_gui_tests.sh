@@ -142,8 +142,34 @@ if [ "${1:-}" = "__slot" ]; then
   fi
   WAYLAND_DISPLAY="$sock" QT_QPA_PLATFORM=wayland QT_LOGGING_RULES="qt.qpa.*=false" \
     "$SLOT_QT" -input "$SLOT_F" $SLOT_IMPORTS -maxwarnings 0 \
-    -mousedelay "$SLOT_MD" -keydelay "$SLOT_KD"
-  qrc=$?
+    -mousedelay "$SLOT_MD" -keydelay "$SLOT_KD" &
+  qpid=$!
+  # Fail FAST when the compositor never exposes the window. Qt prints the marker
+  # BEFORE it blocks on windowShown, and this slot's stdout IS the log file the
+  # parent redirects it to, so it can be watched from right here.
+  #
+  # Without this the file burns the entire RUN_TIMEOUT doing nothing. That is not
+  # merely wasted time: on a four-core runner, two slots spinning for 540s each
+  # starved the rest badly enough that unrelated 3s tryVerify bounds began to
+  # fail (run 30759072341 lost tst_gui_shell_orient_settings and
+  # tst_gui_w_focus_core that way). Detecting the hang but waiting out the bound
+  # treated the symptom while amplifying the cause.
+  qrc=""
+  while kill -0 "$qpid" 2>/dev/null; do
+    if grep -q "window was never exposed" "$SLOT_LOGDIR/$base.log" 2>/dev/null; then
+      echo "!! nested compositor never exposed the window for $base - aborting early"
+      kill -9 "$qpid" 2>/dev/null
+      qrc=96
+      break
+    fi
+    sleep 1
+  done
+  if [ -z "$qrc" ]; then
+    wait "$qpid"
+    qrc=$?
+  else
+    wait "$qpid" 2>/dev/null || true
+  fi
   if [ -n "$slot_ffpid" ]; then
     kill -9 "$slot_ffpid" 2>/dev/null
     wait "$slot_ffpid" 2>/dev/null

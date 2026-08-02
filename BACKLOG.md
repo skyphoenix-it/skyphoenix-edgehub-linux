@@ -327,12 +327,17 @@ Vulkan (radv) and never prints the OpenGL line the CI runner does, so the gate
 failed every local run. There is no portable "compositor is ready" event here
 without adding a Wayland probe dependency.
 
-Still open, in order of value:
+**Fail-fast added the same day, and it was not optional.** Detecting the hang but
+still waiting out the 540 s bound treated the symptom while amplifying the cause:
+on run `30759072341` two slots spun for 540 s each and starved the rest badly
+enough that unrelated 3 s `tryVerify` bounds began to fail
+(`tst_gui_shell_orient_settings`, `tst_gui_w_focus_core`) — the retry was making
+the runner worse. The slot now watches its own log for the marker Qt prints
+*before* it blocks and aborts in seconds: measured end-to-end at **5 s** for a
+probe that hangs twice, against 1080 s before.
 
-- **Fail fast instead of hanging.** The retry still pays the full per-file bound
-  on the first attempt. Qt emits the message *before* it hangs, so a watcher on
-  the slot's own output could abort in seconds and turn nine wasted minutes into
-  an immediate, named result.
+Still open:
+
 - Understand why it happens at all. Both occurrences were at `-j4` on a
   four-core runner, i.e. four compositors initialising at once. If that is the
   trigger, the cheapest real fix may be staggering slot starts rather than

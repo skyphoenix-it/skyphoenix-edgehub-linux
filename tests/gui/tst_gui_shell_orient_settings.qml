@@ -303,7 +303,12 @@ Item {
             // for a reason that has nothing to do with the product. Poll the
             // geometry itself - a rotation that never happens still fails, it
             // just is not decided by a stopwatch.
-            tryVerify(function () { return cr.width === win.height }, 3000,
+            // 10s, not 3s: this is a compositor round-trip, and a poll costs
+            // nothing on a healthy run - it returns the moment the geometry
+            // lands. The 3s bound failed on a CI runner that was starved by two
+            // hung slots; a bound tight enough to fail under load is a bound
+            // that measures the runner, not the product.
+            tryVerify(function () { return cr.width === win.height }, 10000,
                       "contentRoot width takes window height in landscape")
             var img = snap(cr, "landscape")
             verify(img.width > img.height,
