@@ -21,16 +21,24 @@ Measured green: Rust 96.04%, merged 96.64%, QML behavior-matrix 99.4%. See
 [[companion-and-testing]] for the test suites themselves.
 
 GOTCHAS (each cost a red CI run the first time CI ever executed — the dev box is Qt
-**6.11.1**, CI runs Qt **6.7.3**, so version-specific issues ONLY show in CI):
+**6.11.1**, CI runs the supported FLOOR — Qt **6.9.3** since 2026-08-02, Qt 6.7.3 before
+that — so version-specific issues ONLY show in CI):
 
-1. **apt Qt on ubuntu-24.04 is 6.4.2 — too old.** The app requires Qt ≥6.5
-   (`CMakeLists.txt` `find_package(Qt6 6.5 …)`; uses `QtQuick.Effects`/MultiEffect), and
-   the minimal `qt6-declarative-dev` also lacks bundled QML modules the widgets pull in
-   (`QtQml.WorkerScript` — "module … is not installed"). FIX: install Qt via
-   `jurplel/install-qt-action@v4` `version: '6.7.3'` `modules: 'qtvirtualkeyboard'`
-   `cache: true` in the build/qml-test/cpp-test jobs (NOT apt qt6-*-dev). It ships a full
-   Qt with all QML modules + `qmltestrunner` (added to PATH, so `run_ui_tests.sh` finds
-   it). Running the OLDER 6.7.3 (not the dev 6.11) is deliberate — it catches #3/#4 below.
+1. **apt Qt on ubuntu-24.04 is 6.4.2 — too old.** The supported floor is Qt **6.9**
+   (`CMakeLists.txt` `find_package(Qt6 6.9 …)`; the hard technical minimum is 6.5 for
+   `QtQuick.Effects`/MultiEffect), and the minimal `qt6-declarative-dev` also lacks
+   bundled QML modules the widgets pull in (`QtQml.WorkerScript` — "module … is not
+   installed"). FIX: install Qt via `jurplel/install-qt-action@v4` `version: '6.9.3'`
+   `modules: 'qtvirtualkeyboard'` `cache: true` in the build/qml-test/cpp-test jobs (NOT
+   apt qt6-*-dev). It ships a full Qt with all QML modules + `qmltestrunner` (added to
+   PATH, so `run_ui_tests.sh` finds it). Pinning the FLOOR rather than the newest Qt is
+   deliberate — it catches #3/#4 below. To reproduce a CI-only failure locally, install
+   that exact Qt with `aqt install-qt linux desktop <ver> linux_gcc_64` into a scratch
+   dir, configure a second build tree with `-DCMAKE_PREFIX_PATH`, build
+   `xeneon-qmltestrunner`, and point the suite at it with `XENEON_TEST_BUILD_DIR` plus
+   the matching `LD_LIBRARY_PATH`/`QT_PLUGIN_PATH`/`QML2_IMPORT_PATH`. That is how the
+   Qt<6.9 SwipeView binding loop and the ShapePath hairline were both found — see
+   [[no-saturation-load-tests]] for what NOT to do instead.
 
 2. **gcovr MUST come from pipx, not apt.** The C++ sources mark hardware/QScreen/QProcess
    glue with in-source `// GCOVR_EXCL_START/STOP/LINE`. apt gcovr does NOT honor them, so

@@ -97,6 +97,18 @@ Item {
                         chrome.cardBackdrop = style
                         wait(0)
                         var image = grabImage(chrome)
+                        // A grab can come back before the new style has been
+                        // presented - seen once in 9251 combinations under
+                        // llvmpipe, as an image that is not the card's size.
+                        // Judging a frame that does not exist yet says nothing
+                        // about the product, so wait for a real one and grab
+                        // again. The assertion below is unchanged: a style that
+                        // never renders at card size still fails.
+                        if (image.width !== chrome.width
+                                || image.height !== chrome.height) {
+                            waitForRendering(chrome, 2000)
+                            image = grabImage(chrome)
+                        }
                         verify(image.width === chrome.width && image.height === chrome.height,
                                mode + "/" + accent + "/" + style + " rendered at card size")
                         var primary = minimumPixelContrast(scanTheme.textPrimary, image)

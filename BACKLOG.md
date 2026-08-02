@@ -419,9 +419,9 @@ section is implemented without explicit product-owner approval (scope-control po
     geometry 120 ms after requesting a resize — a compositor round-trip timed with a
     stopwatch. Now polls the geometry.
 
-  **STILL OPEN** (full local suite on Qt 6.11: 22 files, `pass=2641 fail=0`, SUCCESS; on
-  Qt 6.7.3 + llvmpipe, i.e. CI's exact environment: `pass=2640 fail=1`, the one below):
-  - **🔴 `tst_gui_backdrop_contrast`: the orbs backdrop draws HARD-EDGED RINGS on Qt 6.7.**
+  **CLOSED** (full local suite on Qt 6.11: 22 files, `pass=2641 fail=0`, SUCCESS; the two
+  entries below are both resolved):
+  - ~~**🔴 `tst_gui_backdrop_contrast`: the orbs backdrop draws HARD-EDGED RINGS on Qt 6.7.**~~
     `dark/amber/orbs secondary pixel minimum=3.76:1` on CI, **5.66:1** on this workstation,
     for the identical combination with motion already frozen. The saved frame (added for
     exactly this question, `gui-evidence/contrast-dark-amber-orbs.png`, PR #8 run
@@ -439,16 +439,43 @@ section is implemented without explicit product-owner approval (scope-control po
     | **Qt 6.11.1** | 5.66:1 pass | pass |
     | **Qt 6.7.3** | 3.81:1 FAIL | 3.76:1 FAIL |
 
-    `ui/qml/widgets/AnimatedBackground.qml` paints each orb as a `QtQuick.Shapes` `Shape`
-    with `strokeWidth: 0` and a `RadialGradient` fill. The gradient is what makes it soft;
-    where it is not honoured the path edge is all that survives. So this is not
-    a colour-token shortfall, and "what should `dark/amber/orbs` become to reach 4.5:1" is
-    the wrong question. The right one is what to do about Qt 6.7, which this product still
-    supports (packaging targets Qt ≥ 6.5): raise the floor to 6.9, stop depending on
-    `Shape` gradients for the backdrop, or accept and document it. Unlike the SwipeView
-    warning below, this one is USER-VISIBLE — a real legibility loss for anyone on a
-    Qt 6.7 distro — and invisible to any developer on a newer Qt. Needs a decision, not a
-    threshold change.
+    **ROOT CAUSE + FIXED 2026-08-02.** It was never the gradient. `ShapePath.strokeColor`
+    defaults to **white**, and Qt < 6.9 still rasterises a hairline for a zero-width
+    stroke — so `strokeWidth: 0` alone left a white outline around every orb. Naming the
+    stroke transparent removes it on every Qt version, and the same two lines were missing
+    from all three `ShapePath` backdrops: `AnimatedBackground.qml` (orbs),
+    `MeshGradientBackground.qml` (mesh) and `BokehBackground.qml` (bokeh). Verified on
+    Qt 6.7.3 + llvmpipe — the whole 9251-combination matrix passes where it previously
+    aborted at the first orbs entry — and still passes on 6.11.
+
+    Owner decision the same day: **the supported Qt floor moves 6.5 → 6.9**, so neither
+    this nor the SwipeView defect below can reach a supported user in the first place.
+    `find_package(Qt6 6.9 REQUIRED …)`, the RPM `qt6-qtbase >= 6.9` requirement, both
+    PKGBUILDs, the AppImage builder and every install/support doc now say 6.9, and CI
+    pins **6.9.3** — the floor, deliberately, so CI keeps testing the oldest Qt the
+    product claims to support. Costs nothing: Fedora 43 ships 6.10.3, Ubuntu 26.04 ships
+    6.10.2, Arch is rolling, and Ubuntu 24.04 (6.4.2) was already excluded. The floor is
+    enforced, not just documented: `find_package(Qt6 6.9 REQUIRED …)` against a 6.7.3 tree
+    with no fallback path is rejected with "Could not find a configuration file for
+    package Qt6 that is compatible", while the full project configures against 6.9.3.
+
+    Note the hard technical minimum is still 6.5 (`QtQuick.Effects`); 6.9 is a *support*
+    decision, and `docs/DISTRIBUTION.md` §1 states both so the number is not mistaken for
+    a module requirement later.
+
+    The measurement that got here, kept because it is the shape of this class of bug:
+
+    | | real GPU | llvmpipe |
+    |---|---|---|
+    | **Qt 6.11.1** | 5.66:1 pass | pass |
+    | **Qt 6.7.3** | 3.81:1 FAIL | 3.76:1 FAIL |
+
+    Two follow-ups fell out of running the matrix to completion for the first time:
+    `tst_gui_backdrop_contrast` now retries a grab that comes back at the wrong size
+    (seen once in 9251 combinations under llvmpipe — judging a frame that has not been
+    presented says nothing about the product; the assertion itself is unchanged), and the
+    failing frame is still saved to `gui-evidence/` because that PNG is what turned this
+    from "a contrast number is low" into "there is a white stroke here".
   - ~~`tst_gui_shell_nav_edit`: 8 × `QML ListView: Binding loop detected for property
     "currentIndex"`~~ — **RESOLVED 2026-08-02: an upstream Qt < 6.9 defect, not ours.**
     The first guess (Qt's internal ListView fighting `Dashboard.qml`'s `_applyWant()` /
