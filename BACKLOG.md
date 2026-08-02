@@ -602,3 +602,42 @@ section is implemented without explicit product-owner approval (scope-control po
   first available family), but it CHANGES THE PRODUCT'S TYPEFACE on any machine that has
   Inter — including every layout the legibility matrix measures. That is a product
   decision, not a bug fix, so it is filed here rather than applied.
+
+  **🔴 ESCALATED 2026-08-02 — the same defect in `fontMono` is USER-VISIBLE, and it is
+  now proven, not inferred.** `Theme.qml:159` declares
+  `fontMono: "JetBrains Mono, Fira Code, monospace"` with the comment "fontMono stays mono
+  on purpose (tabular data readouts need fixed-pitch digits)". It does not. The whole
+  string is matched as one family name, so which face you get depends entirely on what
+  fontconfig decides on that machine — and it decides differently:
+
+  - **this workstation** renders the Focus timer as real monospace: slashed zeros, uniform
+    digit widths, wide colon spacing (that is what `tests/visual/baselines/widget-focus.png`
+    contains, captured at `4c22922`);
+  - **the CI runner** renders the identical widget in a PROPORTIONAL sans: round zeros,
+    tighter digits, no fixed pitch at all.
+
+  So the promised fixed-pitch digits are a coin flip per machine. A timer counting down in
+  a proportional face jitters on every digit change, which is precisely the thing the
+  comment says the mono token exists to prevent.
+
+  Found by the visual-baseline gate the moment it could finally run in CI — it had never
+  executed there (its Pillow dependency was missing, and the step only runs when the
+  compositor suite passes, which it never had). It fails 7 of 50 cases, all rms-only
+  (0.85–2.73% of pixels changed against a 5% cap, but rms 10.7–15.2 against a 10.0 cap):
+  few pixels, large differences — the signature of glyphs, not of layout. The diff images
+  show only text lighting up.
+
+  Two decisions, both product-owner calls, which is why nothing here is applied:
+
+  1. **Make `fontMono` actually mono.** `font.families: ["JetBrains Mono", "Fira Code",
+     "monospace"]` fixes the resolution, but it does NOT make the two machines agree —
+     each still resolves `monospace` to its own face (DejaVu Sans Mono on Ubuntu, a
+     different one here). Determinism needs a bundled mono face in `assets/fonts/`,
+     exactly as Atkinson Hyperlegible and Lexend already are — which adds a font asset and
+     a licence row.
+  2. **What the reviewed baselines are a reference FOR.** They currently encode this
+     workstation's font resolution. Either re-capture them from a CI run (making the
+     runner the reference), or keep them dev-box-only and do not run the comparison in CI.
+     `scripts/visual_baselines.py` is explicit that baselines are reviewed artifacts and
+     must never be regenerated as an automatic consequence of a failed comparison, so this
+     is not a decision an agent gets to make quietly.
