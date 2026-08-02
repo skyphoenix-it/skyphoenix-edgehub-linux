@@ -368,6 +368,24 @@ the runner worse. The slot now watches its own log for the marker Qt prints
 *before* it blocks and aborts in seconds: measured end-to-end at **5 s** for a
 probe that hangs twice, against 1080 s before.
 
+**Mitigated 2026-08-02, still not root-caused.** It got worse as the suite got
+healthier — up to three files a run, a different one each time, which points at
+slot timing rather than at any test. Two timing mitigations, both stated as
+mitigations rather than fixes because the race reproduces nowhere locally:
+
+- **Compositor startup is staggered** (`XENEON_GUI_SLOT_STAGGER`, default 2 s).
+  Every slot begins by launching its own `kwin_wayland`, and launching J of them
+  in the same instant puts J compositors through initialisation simultaneously on
+  a runner with J cores. That is the one moment all of them are doing heavy work
+  at once.
+- **The post-socket settle is 3 s, not 1 s.** It is the whole margin between "the
+  socket exists" and "the compositor can expose a surface", and 1 s was not
+  covering it under four-way contention.
+
+The single retry stays as the safety net — and it is not always enough: on PR #10
+`tst_gui_w_cal_weather` hit the same failure on BOTH attempts (each aborted in
+seconds by the fail-fast, so it cost ~10 s rather than 18 min).
+
 Still open:
 
 - Understand why it happens at all. Both occurrences were at `-j4` on a
