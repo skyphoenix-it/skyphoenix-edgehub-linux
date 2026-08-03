@@ -68,8 +68,8 @@ in a new parallel suite.
 | 20 | braindump | — | — | — |
 | 21 | routine | — | — | — |
 | 22 | media | 2026-08-03 | 5 | 3 |
-| 23 | httpjson | — | — | — |
-| 24 | kpi | partial | 1 | 1 |
+| 23 | httpjson | 2026-08-03 | 1 | 1 |
+| 24 | kpi | 2026-08-03 | 2 | 2 |
 | 25 | calendar | 2026-08-03 | 2 | 2 |
 | 26 | nownext | 2026-08-03 | 1 | 1 |
 | 27 | weather | 2026-08-03 | 2 | 2 |
@@ -1079,3 +1079,75 @@ fully-understood calendar warns about nothing and does not show "Partial".
 Negative control: removing `MONTHLY` from the supported branch fails the monthly
 case with `MONTHLY is expanded, not dropped: Unsupported recurrence frequency:
 MONTHLY`.
+
+---
+
+## 23. httpjson · 24. kpi (completed)
+
+Both widgets' settings are well driven — including the security-relevant join
+the NetHub audit worried about: `test_bearer_token_becomes_auth_header` sets
+`authToken` through the store and asserts the `Authorization` header on the fake,
+so "the widget supplies what the gate consumes" is genuinely proven here.
+
+The gap was elsewhere, and a repo-wide scan found it: **user-facing strings that
+appear in no test at all**. Scanning every remaining widget for quoted sentences
+absent from `tests/` ranked httpjson and kpi near the top (20/24 and 25/28
+unasserted), and the strings turned out to be their *failure* vocabulary.
+
+### Finding 23.1 — `errorDetails()` maps nine reasons and none of its help was asserted
+
+```qml
+function errorDetails(reason) {
+    if (reason === "offline")            return { label: "Offline",  help: "Turn off Offline mode, then retry." }
+    if (reason === "blocked")            return { label: "Blocked",  help: "This host is not allowed by the network policy." }
+    if (reason === "insecure-auth")      return { label: "Blocked",  help: "Bearer credentials require an HTTPS URL." }
+    …
+}
+```
+
+This is the widget's entire "what went wrong, and what do I do about it"
+surface. Tests asserted a few **labels** and not one **help** line.
+
+Worse, two different reasons share the label `"Blocked"`. A label-only assertion
+cannot tell *"this host is not allowed by the network policy"* from *"Bearer
+credentials require an HTTPS URL"* — refusals with opposite fixes (change the
+policy vs change the URL). The help line is the only thing distinguishing them,
+and it was untested.
+
+**Fixed** with a case per reason asserting label **and** help, a case pinning
+that the two `"Blocked"` reasons do not read identically, and one end-to-end case
+proving a real refusal carries the same help rather than composing its own.
+
+Negative controls: falling every reason through to the catch-all fails 15 cases;
+giving `insecure-auth` the policy help fails 3.
+
+### Finding 24.1 — Test Connection's failure messages were entirely uncovered
+
+`KpiWidget.testConnection()` is the button a user presses **when something is
+already wrong**, so its messages are the whole feature. Only the two success
+paths were covered (`HTTP 200`, `Local file ready`). Every refusal branch —
+offline, blocked, insecure-auth, timeout, and the pass-through for an unmapped
+reason — was untested, and none of those strings appeared under `tests/`.
+
+Also uncovered: pressing Test on a file-source KPI pointed outside the approved
+directories. That path must refuse *without reaching the native reader*, and
+say which directories are acceptable.
+
+**Fixed** with a parameterised fake gate (`reasonHub`) that fires a chosen
+refusal, a case per branch asserting the exact message and that the spinner
+stops, and a case proving the unapproved-path refusal never calls the reader.
+
+Negative control: collapsing every refusal into `"Connection failed: " + reason`
+fails four cases.
+
+### Method note — the string scan is the cheapest finder in this audit
+
+Three of the last four findings came from the same question: *which sentences
+does this widget show a user that no test has ever named?* It is a one-pass grep
+and it points straight at error vocabulary, disclosures and empty states — the
+surfaces that only appear when something has gone wrong, which is exactly when
+nobody is looking at a test. Ranked across the 17 remaining widgets it also
+flags, for later passes: `MedsWidget`'s *"A mark records your tap only. It
+cannot confirm a dose was taken."* (a safety disclaimer on a medication widget),
+`AnalogClockWidget`'s two daylight-saving disclosures, and `CountdownWidget`'s
+leap-day copy.
