@@ -97,6 +97,12 @@ Item {
         return null
     }
 
+    function boxOf(t) {
+        return "box " + Math.round(t.width) + "x" + Math.round(t.height)
+             + ", content " + Math.round(t.contentWidth) + "x"
+             + Math.round(t.contentHeight) + ", truncated=" + t.truncated
+    }
+
     // ── Core config → days/valid mapping ─────────────────────────────────────
     TestCase {
         name: "CountdownConfig"
@@ -601,6 +607,34 @@ Item {
             compare(w.showProgress, true, "tall earns the progress bar")
         }
 
+        // Wait until a reflow has FINISHED instead of guessing that one event-loop
+        // turn was enough.
+        //
+        // Changing the settings, the sizeClass, the text scale AND the wrapper's
+        // width/height all re-run layout, and QQuickLayout reflows on the polish
+        // pass - so `wait(0)` measures whatever geometry happened to be there. That
+        // is the same defect the legibility matrix had (fixed 2026-08-02): on a
+        // contended CI runner it reads a half-reflowed box and reports a clipping
+        // failure that does not exist. Poll until every measured Text has stopped
+        // moving; a genuinely overflowing label is stable and still fails.
+        function settleTexts(items) {
+            var previous = ""
+            for (var attempt = 0; attempt < 60; attempt++) {
+                var now = ""
+                for (var i = 0; i < items.length; i++) {
+                    var t = items[i]
+                    if (!t) continue
+                    now += Math.round(t.width) + "x" + Math.round(t.height) + ":"
+                         + Math.round(t.contentWidth) + "x" + Math.round(t.contentHeight)
+                         + "|" + t.truncated + ";"
+                }
+                if (attempt > 0 && now === previous) return true
+                previous = now
+                wait(16)
+            }
+            return false
+        }
+
         function test_long_copy_reflows_in_constrained_micro_and_tall_tiles() {
             tryVerify(function () { return hCMicro.ready && hCTall.ready }, 3000)
             var longLabel = "Public production release and community launch"
@@ -609,13 +643,17 @@ Item {
                 { date: "2038-12-31", label: longLabel, precision: "seconds" })
             hCMicro.item.sizeClass = "compact"
             hCMicro.theme.textScale = 1.45
-            wait(0)
             var microContext = findObject(hCMicro.item, "countdownContext")
-            verify(microContext !== null)
+            verify(microContext !== null, "the micro event context exists")
+            verify(settleTexts([microContext]),
+                   "the micro tile finished reflowing before it was measured")
             verify(!microContext.truncated,
-                   "the micro event context wraps instead of silently eliding")
-            verify(microContext.contentWidth <= microContext.width + 1)
-            verify(microContext.contentHeight <= microContext.height + 1)
+                   "the micro event context wraps instead of silently eliding ("
+                   + boxOf(microContext) + ")")
+            verify(microContext.contentWidth <= microContext.width + 1,
+                   "the micro event context fits its width (" + boxOf(microContext) + ")")
+            verify(microContext.contentHeight <= microContext.height + 1,
+                   "the micro event context fits its height (" + boxOf(microContext) + ")")
 
             cTallWrap.width = 278
             cTallWrap.height = 654
@@ -623,14 +661,18 @@ Item {
                 { date: "2038-12-31", label: longLabel, precision: "seconds" })
             hCTall.item.sizeClass = "tall"
             hCTall.theme.textScale = 1.45
-            wait(0)
             var eventText = findObject(hCTall.item, "countdownEvent")
             var targetText = findObject(hCTall.item, "countdownTarget")
-            verify(eventText !== null && targetText !== null)
+            verify(eventText !== null, "the tall event heading exists")
+            verify(targetText !== null, "the tall target context exists")
+            verify(settleTexts([eventText, targetText]),
+                   "the tall tile finished reflowing before it was measured")
             verify(!eventText.truncated && eventText.contentHeight <= eventText.height + 1,
-                   "the long event heading reflows inside the narrow tall tile")
+                   "the long event heading reflows inside the narrow tall tile ("
+                   + boxOf(eventText) + ")")
             verify(!targetText.truncated && targetText.contentHeight <= targetText.height + 1,
-                   "the concise target context reflows inside the narrow tall tile")
+                   "the concise target context reflows inside the narrow tall tile ("
+                   + boxOf(targetText) + ")")
             verify(hCTall.item.Accessible.name.indexOf(longLabel) >= 0,
                    "the accessible summary retains the complete event name")
             verify(hCTall.item.Accessible.name.indexOf("Device local UTC") >= 0,
