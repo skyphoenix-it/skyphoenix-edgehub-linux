@@ -378,6 +378,34 @@ if [ "$J" -gt 1 ] && [ -r /proc/meminfo ]; then
   fi
 fi
 
+# ── CPU budget ────────────────────────────────────────────────────────────────
+# Memory was bounded above; nothing bounded CORES, and that is what the
+# unexposed-window failures turned out to be.
+#
+# Each slot is TWO CPU-hungry processes - a nested KWin compositing under
+# llvmpipe, and a Qt client rendering into it - so -j4 on a four-core runner is
+# eight of them on four cores. The post-mortem this runner now writes proved the
+# consequence (run 30768393914, tst_gui_w_cal_weather, all three attempts
+# agreeing): the socket was PRESENT, KWin was alive and only 4-5s old with
+# **7 threads** where a healthy one has 47, loadavg was 3.96-4.12 on nproc 4, and
+# four compositors were initialising at once. KWin binds its Wayland socket early
+# in startup, so the readiness check accepts it while the compositor still cannot
+# serve a surface; the client maps a window and blocks in poll_schedule_timeout
+# forever. Retrying lands in the identical condition, which is why two retries did
+# not save it.
+#
+# So: at most one slot per two cores. This only ever REDUCES a requested -jN, and
+# a single-core machine still gets one slot.
+if [ "$J" -gt 1 ]; then
+  cores=$(nproc 2>/dev/null || echo 1)
+  max_cpu_jobs=$((cores / 2))
+  [ "$max_cpu_jobs" -lt 1 ] && max_cpu_jobs=1
+  if [ "$J" -gt "$max_cpu_jobs" ]; then
+    echo "==> cpu budget: reducing -j$J to -j$max_cpu_jobs (${cores} core(s); each slot is a compositor AND a client)"
+    J=$max_cpu_jobs
+  fi
+fi
+
 # run_one <file> <slot> - runs one test file, writes $LOGDIR/<base>.log.
 # In parallel mode each file gets a private compositor so a crash in one cannot
 # take its neighbours' windows down with it.

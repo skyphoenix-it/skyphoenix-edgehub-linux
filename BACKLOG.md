@@ -414,10 +414,40 @@ alone - no session bus, no wayland-utils, nothing a bare CI container lacks:
 | loadavg, nproc, kwin elapsed | how loaded the runner was, and how long KWin had had |
 | the whole kwin log | inline, so the `.diag` is self-contained |
 
-Still open:
+**ROOT-CAUSED 2026-08-03, on the post-mortem's first real capture.** All three
+attempts of `tst_gui_w_cal_weather` on PR #12 agree exactly:
 
-- Understand why it happens at all. The next occurrence should arrive with the
-  post-mortem attached; read that before adding a fourth attempt. Both occurrences were at `-j4` on a
+| | attempt 1 | attempt 2 | attempt 3 |
+|---|---|---|---|
+| this slot's socket | **present** | present | present |
+| kwin age | 4 s | 4 s | 5 s |
+| **kwin threads** | **7** | **7** | **7** |
+| loadavg / nproc | 3.96 / 4 | 4.04 / 4 | 4.12 / 4 |
+| concurrent compositors | 4 | 4 | 4 |
+| client wchan | `poll_schedule_timeout` | same | same |
+
+A healthy `kwin_wayland` has **47** threads; these have **7**. KWin binds its
+Wayland socket EARLY in startup, so the readiness check accepts it while the
+compositor is still initialising and cannot yet serve a surface. The client
+connects, maps a window, and blocks in `poll_schedule_timeout` forever waiting
+for an exposure that cannot come. Every retry lands in the identical condition —
+which is exactly why two retries did not save it.
+
+The cause of the saturation was never bounded: the runner reduced `-j` by
+available MEMORY and nothing capped it by CORES. Each slot is TWO CPU-hungry
+processes — a nested KWin compositing under llvmpipe, and a Qt client rendering
+into it — so `-j4` on a four-core runner is eight of them on four cores.
+
+**Fixed:** the runner now caps concurrency at one slot per two cores, so a
+four-core runner runs `-j2` whatever the command line asks. Verified on a
+simulated four-core runner (`taskset -c 0-3`, `-j4` requested): the budget
+reduces it to `-j2`, the whole suite is `pass=2641 fail=0` in **7 min 09 s**, and
+the unexposed-window failure does not occur at all. It is not even slower — less
+thrashing offsets the lower parallelism. `ci.yml`'s documented wave arithmetic
+and job cap were updated to match (11 waves, cap raised 75 → 120 min).
+
+The stagger, fail-fast and two retries all stay: they are cheap, and they turn a
+recurrence into five seconds and a `.diag` rather than a lost run. Both occurrences were at `-j4` on a
   four-core runner, i.e. four compositors initialising at once. If that is the
   trigger, the cheapest real fix may be staggering slot starts rather than
   detecting the symptom.
