@@ -73,7 +73,7 @@ in a new parallel suite.
 | 25 | calendar | 2026-08-03 | 2 | 2 |
 | 26 | nownext | 2026-08-03 | 1 | 1 |
 | 27 | weather | 2026-08-03 | 2 | 2 |
-| 28 | countdown | — | — | — |
+| 28 | countdown | 2026-08-03 | 1 | 1 |
 | 29 | eod | — | — | — |
 | 30 | quote | — | — | — |
 
@@ -1219,3 +1219,53 @@ invalid, and it is now pinned as such.
 Negative controls: hiding the notice fails both disclosure cases; giving the
 invalid state the fixed-offset wording fails the case that says they must not be
 interchangeable.
+
+---
+
+## 28. countdown
+
+Well covered overall: impossible dates rejected, month out of range rejected,
+DST-safe local parsing, `feb28` and `mar1` leap policies each asserting both the
+substituted date and the disclosure.
+
+### Finding 28.1 — the DEFAULT leap policy was the one nobody drove
+
+`leapDayPolicy` offers three values and `nextLeap` is the default
+(`WidgetConfigSchema.qml:565`). Tests drove `feb28` and `mar1`. Nothing drove
+`nextLeap`, so nothing asserted the behaviour a user gets **without touching the
+setting**: a February 29 recurring date must wait for the next real leap year.
+
+The failure it admits is quiet and plausible — a Feb 29 birthday counting down to
+next February instead of four years out. Nothing on screen would look broken.
+
+**Fixed** with:
+
+- the default resolves 2024-02-29 to **2028**-02-29 from 2025, and says
+  "Only occurs in leap years";
+- the **century rule**: from 2097 it resolves to 2104, not 2100. 2100 is
+  divisible by 4 and is not a leap year;
+- three cases proving the disclosure stays silent where the policy cannot apply
+  (not recurring, an ordinary date, February 28) — showing it there would be
+  noise.
+
+### Note — the century case is defended twice, and the first control proved it
+
+Replacing the rollover detection (`new Date(year, 1, 29).getMonth() !== 1`) with
+a naive `year % 4` check did **not** fail anything. That is not a weak test: a
+second, independent guard at `CountdownWidget.qml:103`
+(`!substituted && c.getDate() !== d → continue`) catches the same rollover. The
+product is genuinely doubly defended. Breaking **both** fails the century case,
+which is what proves the test is not vacuous.
+
+Worth recording because it is the inverse of the usual audit finding: here a
+control that did not bite meant the code was *more* careful than expected, not
+that the test was empty. The distinction is only visible if you follow up.
+
+### Method note — the string scan produces false positives, and they are cheap
+
+The scan flagged "In non-leap years: February 28" and "In non-leap years:
+March 1" as unasserted. They are not: the tests assert
+`indexOf("February 28")`, a substring. Exact-match scanning cannot see that.
+Both false positives cost one grep each to dismiss, and the same pass found the
+genuinely-untested default beside them — the scan is a *prioritiser*, not a
+verdict.
