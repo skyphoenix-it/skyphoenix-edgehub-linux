@@ -59,14 +59,14 @@ in a new parallel suite.
 | 11 | moon | 2026-08-03 | 1 | 1 |
 | 12 | focus | 2026-08-03 | 1 | 1 |
 | 13 | tasks | 2026-08-03 | 1 | 1 |
-| 14 | rightnow | — | — | — |
+| 14 | rightnow | 2026-08-03 | 1 | 1 |
 | 15 | notes | — | — | — |
-| 16 | habit | — | — | — |
+| 16 | habit | 2026-08-03 | 1 | 1 |
 | 17 | hydration | — | — | — |
 | 18 | break | — | — | — |
 | 19 | meds | 2026-08-03 | 1 | 1 |
 | 20 | braindump | — | — | — |
-| 21 | routine | — | — | — |
+| 21 | routine | 2026-08-03 | 1 | 1 |
 | 22 | media | 2026-08-03 | 5 | 3 |
 | 23 | httpjson | 2026-08-03 | 1 | 1 |
 | 24 | kpi | 2026-08-03 | 2 | 2 |
@@ -74,7 +74,7 @@ in a new parallel suite.
 | 26 | nownext | 2026-08-03 | 1 | 1 |
 | 27 | weather | 2026-08-03 | 2 | 2 |
 | 28 | countdown | 2026-08-03 | 1 | 1 |
-| 29 | eod | — | — | — |
+| 29 | eod | 2026-08-03 | 1 | 1 |
 | 30 | quote | — | — | — |
 
 Plus one cross-cutting seam, swept before the widgets that sit on it:
@@ -1343,3 +1343,61 @@ Negative controls: removing the timer's `onTriggered` fails 2 cases; freezing th
 label fails 1.
 
 **Zero product changes across all three widgets** — these are test-only.
+
+---
+
+## 14. rightnow · 16. habit · 21. routine · 29. eod
+
+Four widgets, one finding each, all the same shape: **the single line the card
+shows about its own current state was never asserted.** These are the lines a
+user reads at a glance, and each is a small ladder where the branches are easy
+to reorder and impossible to notice.
+
+| widget | line | branches | covered before |
+|---|---|---|---|
+| habit | `todayFeedbackShort` | 4 | **0 mentions anywhere** |
+| rightnow | `elapsedLabel()` / `startedLabel()` | 4 + 2 | 1 mention / **0** |
+| routine | `routineSummaryText` | 3 | located only to check its font size |
+| eod | `stateLabel` | 6 | 2 of 6 |
+
+### 16.1 — habit
+
+`todayFeedbackShort` is a priority ladder: paused beats everything, then a rest
+day, then whether the check-in has happened. Nothing referenced it. A paused
+habit still nagging "Today: Ready", or a rest day reported as a missed check-in,
+would have shipped green. Now a case per state, including that **paused wins even
+when the habit is already done**, plus one asserting a rest day says neither
+"Ready" nor "Checked in" — the point of a cadence is that some days are meant to
+be empty.
+
+### 14.1 — rightnow
+
+`elapsedLabel()` has four branches and `startedLabel()` two. Driving `startedAt`
+directly pins each without waiting out real minutes: under a minute, exactly one
+minute, under an hour, exactly an hour, hours-and-minutes, and whole hours —
+which must read "Focused for 3h", not "3h 0m". `startedLabel()` must say "Not
+started" rather than formatting epoch 0 into a confident `01:00`.
+
+### 21.1 — routine
+
+The suite located `routineSummaryText` only to check its font size against the
+type floor. Its content was never read, so a rest day could have shown
+"0 of 3 done" — a nag on a day nothing was scheduled — with nothing to catch it.
+Now a case per branch plus one asserting a rest day reports no progress against
+steps that were never due.
+
+### 29.1 — eod
+
+`stateLabel` is the header's whole vocabulary: six phases, one line each. Two
+were asserted ("Schedule paused", "Invalid schedule"); the four a user sees on an
+ordinary configured day were not. The clock is driven through `nowOverride` so
+each phase is reached deterministically rather than depending on when the suite
+runs. A second case asserts **no two phases share a label** — a header that says
+the same thing in two different situations tells the user nothing.
+
+Negative controls, each failing its own cases: removing habit's paused branch
+(2); rendering whole hours as "3h 0m" (2); formatting epoch 0 as a start time
+(1); making a rest day report progress (2); dropping eod's "Off day" so it falls
+through to "Working" (2); giving "before" the "Complete" label (2).
+
+**Zero product changes across all four.**
