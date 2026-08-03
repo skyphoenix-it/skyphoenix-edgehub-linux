@@ -547,6 +547,49 @@ instead; the diff should be one PNG and its three manifest fields.
 
 ## Candidates
 
+- **`"Artwork unavailable"` in MediaWidget can never render, and the case it
+  was for is unhandled (audit 2026-08-03).** `MediaWidget.qml:55` reaches that
+  string only when `avail && artUrl && !artworkSource.length` *and*
+  `remoteArtworkBlocked` is false — but those three conjuncts are the definition
+  of `remoteArtworkBlocked` (`:53`). Dead by algebra, which is why no test ever
+  named it.
+
+  The real gap it was presumably meant to cover is live: a `file://` artwork that
+  passes the policy but fails to **load** (deleted, unreadable, corrupt) leaves
+  `artworkSource` non-empty, shows no notice, and draws a silently blank art box.
+  Wiring the rung to the `Image`'s `status === Image.Error` (`artC` / `artE`)
+  makes it both reachable and correct. Small, user-visible, and testable — the
+  artwork policy now has ten cases to extend. See
+  `docs/testing/widget-audit-2026-08-03.md` finding 10.4.
+
+- **Delete the dead `notificationBridge.send` fallback in three widgets
+  (audit 2026-08-03).** `FocusWidget.qml:241`, `BreakWidget.qml:194` and
+  `MedsWidget.qml:297` each fall back to `send()` when the bridge has no
+  `sendPriority()`. There is exactly one real bridge
+  (`app/src/notification_bridge.h`) and it implements `sendPriority`; nothing
+  outside tests assigns the property; both test doubles implement it too. So the
+  `else` is unreachable in production **and** in tests, three times over.
+
+  Unlike a version-skew fallback it cannot become reachable: the QML and the C++
+  bridge ship in one binary from one `qrc`, so there is no older host to degrade
+  to. Either delete all three (and keep the outer `&& .send` guard, which still
+  usefully covers "no bridge injected"), or keep them and give one of the three
+  a double without `sendPriority`. Wants a single decision, not three.
+  Not urgent — dead code, not a defect. See
+  `docs/testing/widget-audit-2026-08-03.md` finding N.5.
+
+- ~~**Auto-cycle through screens (owner-raised 2026-08-03).**~~ **APPROVED by the
+  owner and BUILT 2026-08-03** — see "Auto-cycle through screens" under shipped
+  work above. Built to the recommended shape: idle-gated, one global dwell,
+  default off, empty screens skipped. Two of the five recommendations were
+  changed on contact with the code and are recorded there.
+
+  The open questions this entry raised are answered by what shipped: **off** by
+  default, a **global** dwell, rotation follows **page order** over the
+  non-empty pages, and a Manager live-push while rotating is handled — the
+  cyclable set recomputes on the store revision, and a page that drops out from
+  under the rotation does not trap it (both are pinned by tests).
+
 - **Surface a screen when something ON it becomes noteworthy (raised alongside
   the auto-cycle work, 2026-08-03).** The shipped rotation takes turns on a
   clock. The more interesting version reacts to content: a threshold crossed, a
