@@ -71,7 +71,7 @@ in a new parallel suite.
 | 23 | httpjson | — | — | — |
 | 24 | kpi | — | — | — |
 | 25 | calendar | — | — | — |
-| 26 | nownext | — | — | — |
+| 26 | nownext | 2026-08-03 | 1 | 1 |
 | 27 | weather | 2026-08-03 | 2 | 2 |
 | 28 | countdown | — | — | — |
 | 29 | eod | — | — | — |
@@ -867,3 +867,52 @@ The same stale runner briefly made the clock test committed in `0c5c2dc` look
 red on re-run. **A negative control is only evidence after a rebuild.** Both
 failure modes are silent and both point the wrong way — one hides a vacuous test,
 the other invents a regression.
+
+---
+
+## 26. nownext
+
+Two schema keys: `url` and `bufferMin`.
+
+`url` is well covered — it reaches the nested agenda, a missing one asks for a
+URL rather than inventing events, and the egress gate governs the fetch.
+
+### Finding 26.1 — `bufferMin` was the least-covered setting in the audit
+
+Its **only** appearance anywhere under `tests/`:
+
+```qml
+tests/ui/tst_schema_completeness.qml:63
+    verify(field("nownext", "bufferMin") !== null, "bufferMin")
+```
+
+An existence check. Not a type, not a default, not a behaviour — weaker than the
+`shape-only` grade this audit defined, which at least asserts type and default.
+
+`test_buffer_window_and_meeting_link_are_useful` does produce the "starts soon"
+copy, which is what makes this easy to miss: it builds an event 5 minutes out and
+relies on the **default** buffer of 10. So the string was covered and the setting
+was not. A widget that hardcoded `10` in place of `cfg.bufferMin` passed the
+entire suite.
+
+What it governs (`NowNextWidget.qml:59-60`, `:163`):
+
+```qml
+readonly property int bufferMin: Math.max(0, Math.min(120,
+    Number(cfg.bufferMin !== undefined ? cfg.bufferMin : 10)))
+…
++ (mins > 0 && mins <= w.bufferMin ? "starts soon" : w.humanDelta(mins))
+```
+
+**Fixed** with nine cases:
+
+- four buffers (5 / 10 / 30 / 120), each asserting the boundary in both
+  directions — exactly `bufferMin` minutes out **is** "starts soon", one minute
+  further out is not and still reports the delta;
+- four clamp cases (500 → 120, −5 → 0, and both endpoints held);
+- a zero buffer disables the copy entirely, including for an event starting this
+  very minute — the `mins > 0` half of the guard, which `0 <= 0` would otherwise
+  let back in.
+
+Negative controls: hardcoding `bufferMin: 10` fails six cases; dropping the clamp
+fails both out-of-range cases; dropping `mins > 0` fails the zero-buffer case.
