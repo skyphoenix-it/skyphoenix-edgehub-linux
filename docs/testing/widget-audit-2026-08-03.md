@@ -82,6 +82,7 @@ Plus one cross-cutting seam, swept before the widgets that sit on it:
 | Seam | Audited | Findings | Fixed |
 |---|---|---|---|
 | NetHub (calendar, weather, nownext, httpjson, kpi, update-checker) | 2026-08-03 | 5 | 4 |
+| Open-defect gate (`check_no_open_bug_notes.sh`) | 2026-08-03 | 1 | 1 |
 
 ---
 
@@ -916,3 +917,57 @@ readonly property int bufferMin: Math.max(0, Math.min(120,
 
 Negative controls: hardcoding `bufferMin: 10` fails six cases; dropping the clamp
 fails both out-of-range cases; dropping `mins > 0` fails the zero-buffer case.
+
+---
+
+## Interlude — the open-defect gate was case-sensitive
+
+Found while classifying nownext, not while looking for it.
+
+`scripts/check_no_open_bug_notes.sh` exists to stop a test comment from carrying
+a known defect that `BACKLOG.md` should carry instead. Its pattern spelled the
+case variants out by hand:
+
+```sh
+PATTERN='BUG \(audit|…|expected to FAIL|expected to fail'
+```
+
+Two files said **`EXPECTED to fail`**, which is neither variant, and `grep -E`
+without `-i` is case-sensitive. Both slipped the gate from the day it landed:
+
+| file | claim |
+|---|---|
+| `tests/ui/tst_gen_break.qml:13` | "Some assertions … are EXPECTED to fail until the code under test is fixed" |
+| `tests/ui/tst_gen_shared_WidgetConfigSchema.qml:20` | "several assertions here are EXPECTED to fail … Those failures are the point; do not 'fix' the test to make them green" |
+
+Both claims were **false at the time they were read**. Both suites are green
+(72/72 and 60/60), so nothing in either file fails. Verified per claim rather
+than in bulk: all four defects the second header names (eod hour fields with no
+min/max clamp, countdown accepting `2026-02-30`, `catalog.defaults()` aliasing
+its own internals, stale weather/sensors blurbs) have assertions that state the
+**correct** behaviour — `test_impossible_day_is_rejected`,
+`test_eod_hours_declare_0_to_23`, `test_defaults_returns_fresh_deep_copy`,
+`test_weather_desc_not_hardcoded_to_4_days` — and all of them pass. The bugs were
+fixed; the headers were never updated.
+
+That is the precise failure this gate was built for, and it is worse than a
+missing test: a header telling the next reader "these failures are the point; do
+not fix the test to make them green" invites them to ignore a real regression in
+that file.
+
+**Fixed** by matching case-insensitively (`grep -EIi`) instead of enumerating
+capitalisations — a gate that has to guess how a human shifted a word will always
+lose that race. Proof the hole was real: with `-i` added and nothing else
+changed, the gate fails and names exactly those two files.
+
+The 8 stale `// BUG:` comments in `tst_gen_shared_WidgetConfigSchema.qml` and the
+4 `"REAL BUG: …"` assertion messages in `tst_gen_break.qml` were rewritten as the
+past-tense provenance the gate's own error message prescribes. Same treatment as
+the 38 `BUG (audit)` notes triaged earlier in this audit, and the same root
+cause: a note about a defect outlives the defect, because nothing re-reads it
+when the fix lands.
+
+Note that the four `REAL BUG` markers live in **assertion messages**, which this
+gate does not scan (it reads comment lines only, so a test may legitimately
+assert on a string containing "fixme"). Widening it to cover message strings is
+not obviously right and is not done here.
