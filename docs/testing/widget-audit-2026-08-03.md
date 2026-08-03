@@ -49,7 +49,7 @@ in a new parallel suite.
 | 1 | cpu | 2026-08-03 | 2 | 2 |
 | 2 | gpu | 2026-08-03 | 1 | 1 |
 | 3 | ram | 2026-08-03 | 1 | 1 |
-| 4 | net | — | — | — |
+| 4 | net | 2026-08-03 | 1 | 1 |
 | 5 | disk | — | — | — |
 | 6 | sensors | — | — | — |
 | 7 | packages | — | — | — |
@@ -248,3 +248,43 @@ is tested and whose *effect* is not:
 | ram | `showDetails` | property only |
 
 Worth carrying into the remaining 27 as the first thing to check.
+
+---
+
+## 4. net
+
+Schema keys: `unit`, `showHistory`, `historyWindow`, `showDetails`, `scaleMode`,
+`fixedScaleMbps`, `interfaceName`, plus the universal three.
+
+Strong on the hard parts: `scaleMode` + `fixedScaleMbps` are proven through
+`graphScaleLabel` ("Fixed ceiling…"), `interfaceName` through the selected-vs-
+aggregate counters, and `unit` / `showHistory` / `historyWindow` all have real
+behaviour coverage.
+
+### Finding 4.1 — `showDetails` was the weakest instance of the family yet
+
+Not property-only like gpu and ram — **default-only**. The single assertion was
+`compare(w.showDetails, true)` inside `test_defaults_when_settings_empty`, and no
+test ever turned it off. Three `Text` rows are gated on it
+(`NetWidget.qml:388/402/411`): the link/source line, the session totals, and the
+drops/errors line. A widget that stopped honouring it entirely would have shipped
+green.
+
+**Fixed 2026-08-03.** `test_show_details_toggle_gates_the_detail_rows` feeds a
+live rate (the rows need `rateAvailable`), asserts the totals and drops rows are
+present and visible, turns the toggle off and asserts both hide, then turns it
+back on. Negative control: making `showDetails` ignore `cfg` fails the test;
+reverted, it passes.
+
+### The pattern is now four for four
+
+| widget | key(s) | strongest coverage before | grade |
+|---|---|---|---|
+| cpu | `showFrequency`, `showLoadAverage`, `showPerCore`, `showTopProcess` | schema shape | weakest |
+| gpu | `showDetails` | property round-trip | |
+| ram | `showDetails` | property round-trip | |
+| net | `showDetails` | default value only | weakest |
+
+Every metric widget shipped at least one display toggle whose *effect* nothing
+asserted, and in three of the four it is the same key. Worth checking
+`showDetails` first on `disk` and `sensors`.
