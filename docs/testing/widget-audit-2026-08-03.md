@@ -67,7 +67,7 @@ in a new parallel suite.
 | 19 | meds | — | — | — |
 | 20 | braindump | — | — | — |
 | 21 | routine | — | — | — |
-| 22 | media | — | — | — |
+| 22 | media | 2026-08-03 | 5 | 3 |
 | 23 | httpjson | — | — | — |
 | 24 | kpi | — | — | — |
 | 25 | calendar | — | — | — |
@@ -650,3 +650,123 @@ Unlike a version-skew fallback this cannot come back: the QML and the C++ bridge
 ship in one binary from one `qrc`, so there is no "older host" to degrade to.
 Filed as a candidate rather than fixed — deleting product code is not this
 audit's remit, and the three copies want one decision, not three.
+
+---
+
+## 10. media
+
+One own schema key — `preferredPlayer` — and it is genuinely `behaviour`-covered
+(the trimmed value reaches the bridge, and clearing it reaches the bridge too).
+So the schema surface was not the interesting part here. The widget's `about()`
+text makes four further promises, and those are what the audit graded:
+
+| promise | strongest coverage before |
+|---|---|
+| "reports discovery, connection and empty-track states separately" | behaviour — 4 of 5 rungs |
+| "shows elapsed and total time" | behaviour |
+| "only enables transport or seeking when the player supports them" | **property-only** |
+| "Remote artwork remains blocked until it can use the shared network policy" | **absent** |
+
+### Finding 10.1 — the transport test asserted properties, not controls
+
+`test_player_capabilities_disable_unsupported_actions` sets the bridge
+capabilities false and then asserts only that the widget's *own* mirror
+properties went false:
+
+```qml
+h.mediaCtl.canPlayPause = false
+compare(h.item.canPlayPause, false)      // ← the widget's property, not a button
+```
+
+No control is touched. A regression binding `enabled: true` on every transport
+button passes it — the test's own name is the thing it does not check.
+`canGoPrevious` was additionally never set false by any test; it was set to
+`true` inside the very test that exists to check disabling.
+
+**Fixed** with a data-driven case per control (previous / play-pause / next) that
+looks the button up by `objectName` in both the tile and expanded transports and
+asserts `enabled` follows the bridge in both directions.
+
+Negative control: binding `enabled: true` in place of `enabled: w.canGoPrevious`
+fails the `previous` case.
+
+### Finding 10.2 — the artwork policy had no QML coverage at all
+
+`MediaWidget.localArtworkSource()` decides whether artwork the media player
+advertised may be loaded:
+
+```qml
+if (/^(file|qrc):/i.test(u)) return u
+if (/^data:image\/(png|jpeg|jpg|webp|gif);base64,/i.test(u)) return u
+if (!/^[a-z][a-z0-9+.-]*:/i.test(u) && u.indexOf("//") !== 0) return u
+return ""
+```
+
+This is defence in depth behind `MprisState`, which already suppresses remote
+`artUrl`s in C++ — and that C++ layer *is* tested
+(`tests/cpp/tst_mpris_state.cpp:238 artUrlRemoteIsSuppressed`). But that suite
+proves the **bridge** suppresses them. Nothing proved the **widget** does, so the
+two layers could regress independently, and the widget is the layer that decides
+what an `Image.source` actually points at. `remoteArtworkBlocked` was named once
+in the whole suite; `artworkNotice` and both of its strings, never.
+
+`MockMedia` can hand the widget a remote `artUrl` the real bridge would never
+emit — which is precisely what makes the second layer testable at all.
+
+**Fixed** with ten cases: `file:`, `qrc:`, `data:image/png`, `data:image/jpeg`
+and a bare relative path are kept; `http:`, `https:`, the protocol-relative
+`//host/x.png`, `data:text/html` and `data:image/svg+xml` are blocked, set
+`remoteArtworkBlocked`, and produce the user-facing reason.
+
+Negative control: making the filter return every URL unchanged fails all five
+blocked cases.
+
+### Finding 10.3 — the notice renders on two surfaces; a text sweep covers one
+
+The first version of the render test swept the item tree for the notice string.
+It passed, and it still passed with the tile notice's `visible` forced false —
+the harness runs expanded, so the sweep kept finding the *expanded* copy. Same
+shape as findings 7.1 and 8.1: N surfaces, one covered, and the test cannot tell
+you which.
+
+**Fixed** by giving the two `Text` elements the `objectName`s the rest of the
+widget already uses (`mediaArtworkNotice`, `mediaArtworkNoticeExpanded`) and
+asserting each by name in the mode that shows it.
+
+Negative controls: hiding either notice alone now fails exactly its own case.
+
+### Finding 10.4 — `"Artwork unavailable"` is unreachable, by algebra (not fixed)
+
+```qml
+readonly property bool remoteArtworkBlocked: w.avail && !!media.artUrl
+                                              && !w.artworkSource.length
+readonly property string artworkNotice: !w.avail || !media.artUrl ? ""
+    : w.remoteArtworkBlocked ? "Artwork blocked by network policy"
+    : !w.artworkSource.length ? "Artwork unavailable" : ""
+```
+
+Reaching the third rung requires `avail && artUrl && !artworkSource.length` while
+`remoteArtworkBlocked` is false — but those three conjuncts *are* the definition
+of `remoteArtworkBlocked`. The string can never render. That is why it had zero
+mentions anywhere: not an oversight, an impossibility.
+
+The gap it was presumably meant to fill is real and is currently unhandled: a
+`file://` artwork that passes the policy but fails to *load* (deleted, unreadable,
+corrupt) produces `artworkSource` non-empty, no notice, and a silently blank art
+box. Wiring the rung to `Image.status === Image.Error` would make it reachable
+and correct. Product change beyond this audit's remit — filed as a candidate.
+
+### Finding 10.5 — the "no bridge at all" rung is unreachable in both hosts
+
+`emptyStateLabel`'s first rung, `"Media service unavailable"`, needs
+`typeof media === "undefined" || !media`. `media` is not a widget property — the
+widget reads it 43 times off the scope chain. The hub sets it as a context
+property that is never null (`app/src/main.cpp:636`), the Manager satisfies it
+with `MockMedia { id: media }` (`manager/qml/Manager.qml:493`), and the test
+harness does the same. So no host can produce it and no test can reach it.
+
+Noted rather than fixed. Unlike 10.4 this one is cheap insurance against a future
+host that forgets the bridge, and MediaWidget is the only bridge-backed widget
+without the injectable-property seam its siblings have (`CalendarWidget._hub()`,
+`ClockWidget._tz()`); giving it one would make the rung reachable but touches 43
+call sites, which is its own change.

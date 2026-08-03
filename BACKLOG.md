@@ -488,6 +488,21 @@ instead; the diff should be one PNG and its three manifest fields.
 
 ## Candidates
 
+- **`"Artwork unavailable"` in MediaWidget can never render, and the case it
+  was for is unhandled (audit 2026-08-03).** `MediaWidget.qml:55` reaches that
+  string only when `avail && artUrl && !artworkSource.length` *and*
+  `remoteArtworkBlocked` is false — but those three conjuncts are the definition
+  of `remoteArtworkBlocked` (`:53`). Dead by algebra, which is why no test ever
+  named it.
+
+  The real gap it was presumably meant to cover is live: a `file://` artwork that
+  passes the policy but fails to **load** (deleted, unreadable, corrupt) leaves
+  `artworkSource` non-empty, shows no notice, and draws a silently blank art box.
+  Wiring the rung to the `Image`'s `status === Image.Error` (`artC` / `artE`)
+  makes it both reachable and correct. Small, user-visible, and testable — the
+  artwork policy now has ten cases to extend. See
+  `docs/testing/widget-audit-2026-08-03.md` finding 10.4.
+
 - **Delete the dead `notificationBridge.send` fallback in three widgets
   (audit 2026-08-03).** `FocusWidget.qml:241`, `BreakWidget.qml:194` and
   `MedsWidget.qml:297` each fall back to `send()` when the bridge has no
