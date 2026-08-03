@@ -69,7 +69,7 @@ in a new parallel suite.
 | 21 | routine | — | — | — |
 | 22 | media | 2026-08-03 | 5 | 3 |
 | 23 | httpjson | — | — | — |
-| 24 | kpi | — | — | — |
+| 24 | kpi | partial | 1 | 1 |
 | 25 | calendar | — | — | — |
 | 26 | nownext | 2026-08-03 | 1 | 1 |
 | 27 | weather | 2026-08-03 | 2 | 2 |
@@ -971,3 +971,44 @@ Note that the four `REAL BUG` markers live in **assertion messages**, which this
 gate does not scan (it reads comment lines only, so a test may legitimately
 assert on a string containing "fixme"). Widening it to cover message strings is
 not obviously right and is not done here.
+
+---
+
+## 24. kpi (partial — the file-source seam)
+
+Full schema pass still pending; this records the one finding from the
+bridge-backed sweep. `source`, `url`, `filePath`, `jsonPath`, `label`, `prefix`,
+`target`, `invert`, `unit`, `decimals`, `warnAt`, `critAt` and `pollSec` all have
+behaviour coverage — `prefix` and `target` in
+`test_number_format_prefix_target_and_freshness`, which asserts the composed
+`deltaText`, not just the property.
+
+### Finding 24.1 — the "no native reader" branch was unreachable
+
+`KpiWidget._fileReader()` picks a reader by **capability**, in three steps:
+
+```qml
+if (w.fileReader && w.fileReader.readMetricFile) return w.fileReader
+if (typeof configBridge !== "undefined" && configBridge
+        && configBridge.readMetricFile) return configBridge
+return null
+```
+
+`tst_kpi_net.qml`'s `init()` injects a working `fileReader` into **every** test,
+so the third step never returned `null` and the branch it feeds
+(`KpiWidget.qml:225-229`) never ran. The double was too capable — the same shape
+as MockMedia defaulting every transport capability to `true`.
+
+That branch is not hypothetical. Its own help text says *"Start this widget in
+the Hub to read a local metric file"*, which names exactly where it fires: a
+file-source KPI previewed in the **Manager**, which has no `MetricFileReader`.
+The string `"Local reader unavailable"` appeared nowhere under `tests/`.
+
+**Fixed** with two cases: clearing the reader produces that message plus help
+that points at the Hub rather than blaming the file, and reads nothing; and an
+object *without* `readMetricFile` is not mistaken for a reader.
+
+Negative controls: relaxing the guard to `if (w.fileReader)` fails the second
+case; removing the `if (!reader)` guard fails the first — with
+`Cannot read property 'readMetricFile' of null`, which is what that branch is
+actually preventing.

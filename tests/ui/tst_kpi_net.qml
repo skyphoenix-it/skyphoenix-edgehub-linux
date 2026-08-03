@@ -266,6 +266,35 @@ Item {
             verify(h.item.errText.indexOf("approved metric directories") >= 0)
         }
 
+        // init() injects a fileReader into every test, so _fileReader() never
+        // returned null and the "no native reader here" branch
+        // (KpiWidget.qml:225-229) was unreachable by construction - the double
+        // was too capable. That branch is not hypothetical: its own help text
+        // says "Start this widget in the Hub", i.e. it is what a file-source KPI
+        // shows in the Manager's preview, where there is no MetricFileReader.
+        function test_without_a_native_reader_the_widget_says_so() {
+            h.item.fileReader = null
+            verify(h.item._fileReader() === null,
+                   "precondition: neither an injected reader nor a configBridge "
+                   + "that can read metric files")
+            h.storeCtl.patchSettings(iid(), { source: "file", filePath: "/run/x", jsonPath: "" })
+            compare(h.item.localPathApproved, true, "precondition: the path itself is fine")
+            var before = metricReader.calls
+            h.item.refresh()
+            compare(metricReader.calls, before, "nothing was read")
+            compare(h.item.errText, "Local reader unavailable")
+            verify(h.item.errorHelp.indexOf("Hub") >= 0,
+                   "and the help says where it WILL work, rather than blaming the file")
+        }
+
+        // The reader is selected by capability, not by presence: an object that
+        // is not a metric reader must not be mistaken for one.
+        function test_an_object_without_readMetricFile_is_not_a_reader() {
+            h.item.fileReader = { somethingElse: function () { return 1 } }
+            verify(h.item._fileReader() === null,
+                   "a reader is anything WITH readMetricFile - not anything at all")
+        }
+
         function test_native_file_reader_success_is_applied() {
             h.storeCtl.patchSettings(iid(), { source: "file", filePath: "/run/x", jsonPath: "" })
             metricReader.nextResult = { ok: true, body: "7", error: "", message: "" }
