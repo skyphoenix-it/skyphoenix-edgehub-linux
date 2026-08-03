@@ -70,7 +70,7 @@ in a new parallel suite.
 | 22 | media | 2026-08-03 | 5 | 3 |
 | 23 | httpjson | — | — | — |
 | 24 | kpi | partial | 1 | 1 |
-| 25 | calendar | — | — | — |
+| 25 | calendar | 2026-08-03 | 2 | 2 |
 | 26 | nownext | 2026-08-03 | 1 | 1 |
 | 27 | weather | 2026-08-03 | 2 | 2 |
 | 28 | countdown | — | — | — |
@@ -1012,3 +1012,70 @@ Negative controls: relaxing the guard to `if (w.fileReader)` fails the second
 case; removing the `if (!reader)` guard fails the first — with
 `Cannot read property 'readMetricFile' of null`, which is what that branch is
 actually preventing.
+
+---
+
+## 25. calendar
+
+Two schema keys. `url` is well covered (the egress gate governs it, webcal is
+normalised, a secret ref resolves) and `maxEvents` is driven through the store in
+seven tests with a documented "it is a MAXIMUM, not a target" decision.
+
+So the interesting surface is the `about()` promise:
+
+> The active widget reports freshness and any unsupported timezone or recurrence
+> rules **instead of silently claiming complete coverage**.
+
+### Finding 25.1 — one assertion covered three warnings and could not tell them apart
+
+The widget emits three distinct warnings, all sharing an `"Unsupported"` prefix:
+
+| line | warning |
+|---|---|
+| `CalendarWidget.qml:172` | `"Unsupported timezone: " + tz` |
+| `:296` | `"Unsupported recurrence rule: " + partName` |
+| `:343` | `"Unsupported recurrence frequency: " + freq` |
+
+One test covered them, with:
+
+```qml
+verify(h.item.parseWarnings.join(" ").indexOf("Unsupported") >= 0)
+```
+
+Its payload — `RRULE:FREQ=HOURLY;BYMINUTE=30` — fires **two** of the three at
+once (`BYMINUTE` is not a supported part, `HOURLY` is not a supported
+frequency), and the assertion matches their shared prefix. So either emit site
+could be deleted and the test still passed. The **timezone** warning was never
+triggered by anything: it needs a `TZID=` the offset table cannot resolve, and no
+fixture supplied one — half the widget's headline promise was unproven.
+
+**Fixed** with a case per warning, each asserting the specific string including
+what it names, because a bare "Unsupported" leaves a user guessing which rule was
+dropped:
+
+- `RRULE:FREQ=DAILY;BYSETPOS=2` → `"Unsupported recurrence rule: BYSETPOS"`
+- `RRULE:FREQ=HOURLY` → `"Unsupported recurrence frequency: HOURLY"`
+- `DTSTART;TZID=Mars/Olympus:…` → `"Unsupported timezone: Mars/Olympus"`
+
+Negative controls: deleting any one emit site fails exactly its own case.
+
+### Finding 25.2 — nothing asserted which frequencies are actually supported
+
+Writing 25.1 surfaced this. `FREQ=MONTHLY` was the obvious "unsupported
+frequency" test payload — and it produced no warning, because MONTHLY and YEARLY
+**are** supported (`CalendarWidget.qml:304` steps by calendar month/year, for
+birthdays and monthly bills). The `supportedParts` list two lines above does not
+mention them, so the source reads as though they are not.
+
+Nothing asserted the supported set. A regression routing MONTHLY or YEARLY into
+the `stepDays === 0` branch would silently degrade every recurring birthday and
+monthly bill to a **single instance** while still rendering something entirely
+plausible — the failure would look like a calendar that simply had one event.
+
+**Fixed** with a case per supported frequency (DAILY, WEEKLY, MONTHLY, YEARLY)
+asserting no warning and at least one expanded occurrence, plus a case that a
+fully-understood calendar warns about nothing and does not show "Partial".
+
+Negative control: removing `MONTHLY` from the supported branch fails the monthly
+case with `MONTHLY is expanded, not dropped: Unsupported recurrence frequency:
+MONTHLY`.
