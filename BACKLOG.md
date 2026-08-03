@@ -45,6 +45,65 @@ Open (needs Simon's content call, not code): whether to also gate a **premium
 PRESET pack** and **custom user widgets** - the flag infrastructure is the same
 one line; just needs the "which items" decision.
 
+## Auto-cycle through screens - BUILT 2026-08-03
+
+Owner-raised and owner-approved. *"I am staying on a single screen most of the
+time, even though I have lots of things on the other screens that would be really
+nice to see regularly."*
+
+Built to the recommended shape rather than the originally suggested fixed
+rotation: the screens go unseen **precisely when nobody is touching the panel**,
+so rotation is idle-gated. A timer that rotates unconditionally also rotates out
+from under a hand mid-read, and every fix for that is another pause/resume case.
+
+- **One setting**, `appearance.pageCycleSec`: off (default) - 15s - 30s - 60s -
+  90s - 120s - 5min. Off by default: a display that starts moving by itself
+  after an update is a surprise, and this ships B2B. The 45/75/105 steps from
+  the original suggestion were dropped - they add choice without adding a
+  decision anyone can make.
+- **The same number drives both halves**: the dwell between screens, and the
+  grace after an interaction before rotation resumes. Two numbers could drift
+  apart and neither would be explainable.
+- **Idle-gated.** A passive `PointHandler` + `HoverHandler` + root key handler
+  observe input without consuming it (a `MouseArea` overlay would have had to
+  consume-and-replay, which is how input eaters get written).
+- **Never rotates** while editing, with a widget expanded, or with fewer than
+  two non-empty screens.
+- **Empty screens are skipped** - but never the one being looked at, because
+  rotating away from the page the user just emptied is its own surprise.
+- **Where:** `DashboardStore` (validate on write AND on load),
+  `Dashboard.qml` (the engine), `SettingsPanel.qml` (the Hub control) and
+  `Manager.qml` (the same control - with the navigation bar off, the Hub's own
+  panel is unreachable, and an immersive wall display is exactly the one that
+  wants to cycle).
+
+Two recommendations from the candidate entry were **not** built as written:
+
+1. *"Never rotates ... with any dialog or the settings sheet open, during the
+   first-run wizard"* - unnecessary. The wizard is a separate `StackView` item,
+   so the Dashboard's timers are not running behind it; and any dialog or sheet
+   interaction goes through the activity probes, which reset the grace period on
+   every press and hover. Adding explicit suppression for those would have been
+   dead conditions that no test could reach.
+2. *"Cross-fade under reduce-motion; the `calm` behaviour profile should force
+   it off"* - the transition is `SwipeView.goToPage()`, which is the product's
+   existing page-change animation and already honours the global motion
+   settings; a bespoke cross-fade would diverge from what a manual swipe does.
+   `calm` turned out to be a **per-widget** `behaviorProfile`, not a global
+   mode, so there is nothing global to key off. Left as-is.
+
+Covered by 22 cases in `tests/ui/tst_dashboard.qml` (`DashboardAutoCycle`) and 2
+in `tests/ui/tst_settings_panel.qml`. Four negative controls: rotating regardless
+of idle, dropping suppression, not skipping empty pages, and removing the store's
+ladder validation each fail their own cases. The Manager's copy of the control
+has no test - `tst_manager.qml` does not instantiate the Manager window (it
+documents a 20 GB blowup when it did), and the neighbouring
+`managerHubBarSwitch` is uncovered for the same reason.
+
+**Not built, still open:** surfacing a screen when something ON it becomes
+noteworthy (threshold crossed, event imminent, break due) rather than on a clock.
+That is the product direction; this was the cheap half. See Candidates.
+
 ## Beta workstreams (`docs/BETA_PLAN.md`)
 
 - **W1 - sizing part 2. DONE.** Waves 1–3 landed; 31 widgets carry a `sizes:`
@@ -487,6 +546,15 @@ the single case through `write_normalized` and patch that one manifest entry
 instead; the diff should be one PNG and its three manifest fields.
 
 ## Candidates
+
+- **Surface a screen when something ON it becomes noteworthy (raised alongside
+  the auto-cycle work, 2026-08-03).** The shipped rotation takes turns on a
+  clock. The more interesting version reacts to content: a threshold crossed, a
+  calendar event imminent, a break due, a countdown expiring. The repository
+  already has the vocabulary for it (widget `state` / `Warning` / `Critical`,
+  and a priority-alert GUI suite). That would make the other screens earn their
+  attention instead of merely taking turns; the idle rotation was the cheap
+  half. Needs a product decision, not a setting.
 
 Unapproved ideas, findings, and out-of-scope proposals land here. Nothing in this
 section is implemented without explicit product-owner approval (scope-control policy).
