@@ -506,9 +506,10 @@ Item {
             compare(findGauge().history.length, 0, "but the sparkline is fed an empty history")
         }
 
-        // BUG (audit, low): `active` is declared and bound by the host to pause
-        // sampling while expanded / off-page, but onMetricsChanged never checks it.
-        // Intended: an inactive instance stops accumulating.
+        // FIXED, and this test pins it (audit low). The defect was: `active` is
+        // declared and bound by the host to pause sampling while expanded / off-
+        // page, but onMetricsChanged never checks it. Intended: an inactive
+        // instance stops accumulating.
         function test_inactive_instance_pauses_sampling() {
             var w = h.item
             h.active = false
@@ -807,8 +808,9 @@ Item {
         when: windowShown
         function init() { tryVerify(function () { return h.ready }, 3000); reset() }
 
-        // BUG (audit, low): header amber threshold is warnTemp-17 but the ring's
-        // is warnTemp-12 - a 5°C band where the number is amber inside a calm ring.
+        // FIXED, and this test pins it (audit low). The defect was: header amber
+        // threshold is warnTemp-17 but the ring's is warnTemp-12 - a 5°C band
+        // where the number is amber inside a calm ring.
         function test_header_and_ring_amber_thresholds_agree() {
             var w = h.item
             h.storeCtl.setSetting("test-instance", "warnTemp", 90)
@@ -819,8 +821,9 @@ Item {
                     "the ring must agree with the header's amber threshold")
         }
 
-        // BUG (audit, low): showTemp=false disables ALL thermal ring colouring, so
-        // an overheating GPU renders a calm accent ring with no red anywhere.
+        // FIXED, and this test pins it (audit low). The defect was:
+        // showTemp=false disables ALL thermal ring colouring, so an overheating
+        // GPU renders a calm accent ring with no red anywhere.
         function test_thermal_warning_survives_showTemp_off() {
             var w = h.item
             h.storeCtl.patchSettings("test-instance", { showTemp: false, warnTemp: 90 })

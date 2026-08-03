@@ -172,3 +172,42 @@ gpu, cpu and net is fixed in all three (`GpuWidget.qml:205`,
 `CpuWidget.qml:256`, `NetWidget.qml:217` all check it now). Triaging all 36
 against current code, discarding the stale ones and filing the live ones, is
 tracked separately.
+
+---
+
+## Interlude: the 36 unfiled bug notes, triaged
+
+Auditing gpu surfaced `BUG (audit ...)` comments in its test file, and a sweep
+found **36 of them** across nine widget test files, none in `BACKLOG.md`. Five
+ended with *"This assertion is expected to FAIL"*.
+
+**Every single one is already fixed.** Each note sits above a test whose
+assertions state the INTENDED behaviour, and the whole suite is green — so the
+defects were repaired after the notes were written and the comments were left
+behind. Spot-checked against the product rather than inferred from the tests
+alone: `DiskWidget.human()` now labels `TiB`/`GiB` with a comment explaining
+why, `DiskWidget.col()` rounds before banding so critical can no longer sit
+below the warn line, and `active` is honoured in cpu, gpu, net and analog.
+
+So the correct action was **not** to file 36 backlog items. Filing from the
+comments would have imported 36 phantom defects into a backlog whose value is
+that it is trusted.
+
+The notes were rewritten as what they actually are — provenance for a regression
+guard: *"FIXED, and this test pins it (audit high). The defect was: …"*. The
+`tst_gen_break.qml` "AUDITED BUGS" block and the `tst_gen_habit.qml` file header
+got the same treatment, both found by the new guard rather than by the original
+grep.
+
+### The real finding: a comment cannot go stale silently if it may not exist
+
+`scripts/check_no_open_bug_notes.sh` fails on `BUG (audit`, `FIXME`, `XXX`,
+`HACK` and "expected to fail" **in test comments**. A known defect belongs in
+`BACKLOG.md`, where it is tracked and closed; a test states what it pins.
+Past-tense provenance is explicitly allowed. It carries the same anti-vacuity
+floor as its siblings — scanning zero files is a failure, not an OK — and it is
+wired into both `run_all_tests.sh` and `ci.yml`.
+
+It earned its place before it was even committed: the first run found two
+annotations the original `BUG (audit` grep had missed, in `tst_gen_break.qml`
+and `tst_gen_habit.qml`. Negative control: reinserting a marker fails the gate.

@@ -344,8 +344,9 @@ Item {
             compare(w.historyLimit, 150, "five minutes retains 150 samples")
         }
 
-        // BUG (audit): history is a plain instance property, not shared through the
-        // store, so the expanded overlay (a separate instance) starts blank.
+        // FIXED, and this test pins it (audit). The defect was: history is a
+        // plain instance property, not shared through the store, so the expanded
+        // overlay (a separate instance) starts blank.
         function test_history_persisted_to_shared_store() {
             var w = h.item
             w.hist = []
@@ -356,7 +357,8 @@ Item {
                    "history should live in the shared store so tile + expanded overlay share it")
         }
 
-        // BUG (audit): `active` is declared but never read; hidden instances churn.
+        // FIXED, and this test pins it (audit). The defect was: `active` is
+        // declared but never read; hidden instances churn.
         function test_inactive_instance_pauses_accumulation() {
             var w = h.item
             w.hist = []
@@ -390,8 +392,9 @@ Item {
                    "55°C is amber once warnTemp drops to 60 (boundary 48)")
         }
 
-        // BUG (audit): header text turns amber at warnTemp-17 but the ring only at
-        // warnTemp-12 - a 5°C band where the two temperature signals disagree.
+        // FIXED, and this test pins it (audit). The defect was: header text
+        // turns amber at warnTemp-17 but the ring only at warnTemp-12 - a 5°C
+        // band where the two temperature signals disagree.
         function test_header_and_ring_agree_at_same_threshold() {
             var w = h.item
             // warnTemp 85. 70°C is below the ring's amber threshold (73) but above
@@ -429,7 +432,8 @@ Item {
             verify(w.accessibleSummary.indexOf("degrees Celsius") >= 0)
         }
 
-        // BUG (audit): a genuine 0°C reading is treated as missing (temp>0 gate).
+        // FIXED, and this test pins it (audit). The defect was: a genuine 0°C
+        // reading is treated as missing (temp>0 gate).
         function test_zero_celsius_is_displayed() {
             var w = h.item
             feed({ cpu_usage_percent: 20, cpu_temp_celsius: 0 })
@@ -560,7 +564,8 @@ Item {
             compare(g.sub, "", "collapsed tile hides the core-count sub-line")
         }
 
-        // BUG (audit testCase): 0/absent core count should hide, but renders "0 cores".
+        // FIXED, and this test pins it (audit testCase). The defect was:
+        // 0/absent core count should hide, but renders "0 cores".
         function test_core_count_hidden_when_absent() {
             var w = h.item
             h.expanded = true
@@ -626,7 +631,8 @@ Item {
             verify(findRing(w).value >= 0.0, "negative usage clamps the ring to empty")
         }
 
-        // BUG (audit testCase): the sparkline sample is w.v/100 unclamped.
+        // FIXED, and this test pins it (audit testCase). The defect was: the
+        // sparkline sample is w.v/100 unclamped.
         function test_history_sample_is_clamped() {
             var w = h.item
             w.hist = []
