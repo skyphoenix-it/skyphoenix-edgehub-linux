@@ -397,9 +397,27 @@ against a deliberately tiny `XENEON_GUI_WIDTH=640 XENEON_GUI_HEIGHT=480` output
 produced **zero** exposure failures and a clean 114/114. The correlation is real
 but the mechanism is not this, at least not on this KWin.
 
+**Instrumented 2026-08-03.** Three rounds of mitigation without a root cause, and
+every post-mortem had only the kwin log to work from - which always looks
+healthy. The slot now captures the compositor's state at the moment of the failed
+exposure, BEFORE killing anything, to
+`build/gui-logs/unexposed-<file>-slot<N>.diag` (one per attempt, uploaded with
+the rest of the evidence). Everything in it is answerable from `/proc` and `ps`
+alone - no session bus, no wayland-utils, nothing a bare CI container lacks:
+
+| field | question it answers |
+|---|---|
+| kwin State / wchan / Threads | is the compositor alive, running, or blocked - and on what? |
+| client State / wchan | is the client blocked in a Wayland roundtrip? |
+| socket present / MISSING | did the socket vanish, or is it there and unanswered? |
+| concurrent `kwin_wayland` count | how many compositors were initialising at once - the contention hypothesis, measured rather than assumed |
+| loadavg, nproc, kwin elapsed | how loaded the runner was, and how long KWin had had |
+| the whole kwin log | inline, so the `.diag` is self-contained |
+
 Still open:
 
-- Understand why it happens at all. Both occurrences were at `-j4` on a
+- Understand why it happens at all. The next occurrence should arrive with the
+  post-mortem attached; read that before adding a fourth attempt. Both occurrences were at `-j4` on a
   four-core runner, i.e. four compositors initialising at once. If that is the
   trigger, the cheapest real fix may be staggering slot starts rather than
   detecting the symptom.
