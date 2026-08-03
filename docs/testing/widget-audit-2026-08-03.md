@@ -53,7 +53,7 @@ in a new parallel suite.
 | 5 | disk | 2026-08-03 | 1 | 1 |
 | 6 | sensors | 2026-08-03 | 2 | 2 |
 | 7 | packages | 2026-08-03 | 1 | 1 |
-| 8 | sinceinstall | — | — | — |
+| 8 | sinceinstall | 2026-08-03 | 1 | 1 |
 | 9 | clock | — | — | — |
 | 10 | analog | — | — | — |
 | 11 | moon | — | — | — |
@@ -381,3 +381,42 @@ detail card.
 
 Per the lesson from sensors, the new test was confirmed present in
 `tst_packages.log` **by name** before it was believed.
+
+---
+
+## 8. sinceinstall
+
+Schema keys: `ageUnit`, `showDate`.
+
+`ageUnit` is the **best-covered key in the audit so far** and needed nothing: the
+automatic mode is walked across all four promotion bands (days → completed
+calendar months → years, with the 60-day and 730-day boundaries pinned), and each
+explicit unit is proven to stop the promotion — including the deliberate case
+that 1461 days stays "1461 days" because that IS the flex for some people.
+
+### Finding 8.1 — `showDate` gates four surfaces; one was covered
+
+| line | surface | was covered |
+|---|---|---|
+| `SinceInstallWidget.qml:139` | chrome header `status` | yes |
+| `:26` | the **accessible summary** | no |
+| `:172` | the rich tile's `systemAgeDetailCard` | no |
+| `:255` | the expanded exact-date line | no |
+
+The accessible-summary one is the most interesting: `showDate` is presented as a
+display option, but it also removes the date from `Accessible.name`. That is
+arguably correct — a screen-reader user asked for less, not for a different
+amount — but nothing asserted it either way, so it was free to drift.
+
+**Fixed 2026-08-03.** The new case drives all three uncovered surfaces on and
+off, and states the accessible-summary behaviour explicitly rather than leaving
+it implied. Needed a `findObjectName` and a `findTextStarting` helper, since the
+expanded line carries no `objectName`. Negative control: making `showDate` ignore
+`cfg` fails on the detail card. Confirmed in `tst_sinceinstall.log` by name.
+
+### The pattern, eight in
+
+The metric widgets hid *whole keys*; the info widgets (packages, sinceinstall)
+hide *surfaces of a covered key*. Same defect, smaller blast radius — and it
+suggests the check for the remaining 22 is not only "is this key exercised?" but
+"how many places does it reach, and does the test know about all of them?"
