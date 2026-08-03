@@ -72,7 +72,7 @@ in a new parallel suite.
 | 24 | kpi | — | — | — |
 | 25 | calendar | — | — | — |
 | 26 | nownext | — | — | — |
-| 27 | weather | — | — | — |
+| 27 | weather | 2026-08-03 | 2 | 2 |
 | 28 | countdown | — | — | — |
 | 29 | eod | — | — | — |
 | 30 | quote | — | — | — |
@@ -770,3 +770,100 @@ host that forgets the bridge, and MediaWidget is the only bridge-backed widget
 without the injectable-property seam its siblings have (`CalendarWidget._hub()`,
 `ClockWidget._tz()`); giving it one would make the rung reachable but touches 43
 call sites, which is its own change.
+
+---
+
+## 27. weather
+
+Schema keys: `locationMode`, `place`, `lat`, `lon`, `units`, `windUnits`,
+`precipitationUnits`, `forecastDays`, plus the universal three.
+
+`place`, `lat`, `lon`, `units` and `forecastDays` are the best-covered settings
+of any widget audited so far — driven through the store in a dozen tests each,
+across the geocode flow, the forecast URL, the shared-provider cache key and the
+rendered headline. The two that were not:
+
+| key | coverage before |
+|---|---|
+| `windUnits` | reaches the provider URL and re-keys the cache — **never reaches the screen** |
+| `precipitationUnits` | same |
+
+### Finding 27.1 — the forecast fixture omitted five fields the widget asks for
+
+`WeatherWidget.refresh()` requests these (`WeatherWidget.qml:287-288`):
+
+```
+&current=temperature_2m,apparent_temperature,weather_code,
+         relative_humidity_2m,wind_speed_10m,precipitation
+&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset
+```
+
+`fixtures.js:FORECAST_VALID` supplied the first three and the first three, and
+nothing else — no `relative_humidity_2m`, no `wind_speed_10m`, no
+`precipitation`, no `sunrise`, no `sunset`. Five of the eleven requested fields.
+
+So `parseForecast` ran against `undefined` for all five in **every** test
+(`WeatherWidget.qml:246-250`):
+
+```qml
+w.humidity      = Number(d.current.relative_humidity_2m)   // NaN, always
+w.windSpeed     = Number(d.current.wind_speed_10m)         // NaN, always
+w.precipitation = Number(d.current.precipitation)          // NaN, always
+w.sunrise = d.daily.sunrise && d.daily.sunrise.length ? String(d.daily.sunrise[0]).slice(11, 16) : ""
+w.sunset  = d.daily.sunset  && d.daily.sunset.length  ? String(d.daily.sunset[0]).slice(11, 16)  : ""
+```
+
+Every consumer of those five therefore rendered its placeholder: the entire
+`weatherConditionSummary` row is `isFinite(x) ? … : "-"`, so HUMIDITY / WIND /
+RAIN were three dashes in every test that has ever run, and the composed detail
+line dropped all five clauses. The `.slice(11, 16)` that turns Open-Meteo's
+`"2026-07-13T05:12"` into `"05:12"` had never executed.
+
+The one place those properties appear in the suite is
+`tst_gui_widget_legibility.qml:564-566`, which assigns them **directly on the
+item** — bypassing the parse entirely. That is a legibility test doing exactly
+its job; it just cannot say anything about where the numbers come from.
+
+This is the mirror of the clock finding: not a double missing an API, but a
+payload missing the fields the product asks the provider for. Same consequence —
+a branch no test can reach.
+
+**Fixed** by completing the fixture, plus three tests: the three current-condition
+values parse from the payload; sunrise/sunset slice to `HH:MM`; and a provider
+that omits them yields `""` rather than the string `"undefined"`.
+
+### Finding 27.2 — the unit settings reached the provider but not the screen
+
+Open-Meteo converts server-side: the widget sends `&wind_speed_unit=mph` and
+receives numbers already in mph. The widget's only remaining job is to **label**
+them, via `windSym` (three-way) and `precipitationSym` (two-way).
+
+That labelling had no coverage at all. `windSym` and `precipitationSym` were
+named in zero tests, and the strings `"km/h"`, `"m/s"` and `"in"` appeared
+nowhere in `tests/`. What existed asserted only that the setting reached the
+URL and changed the shared-provider cache key.
+
+The failure this admits is the nastiest kind: the number is right and the label
+is wrong. A user who picks m/s sees a correct m/s figure labelled `km/h` — a
+4× misread with nothing anywhere to catch it.
+
+**Fixed** with four cases (`kmh` → km/h, `mph` → mph, `ms` → m/s, `inch` → in)
+asserting both the symbol properties and the string the user actually reads.
+
+Negative controls: pinning `windSym` to `"km/h"` fails the mph and ms cases;
+pinning `precipitationSym` to `"mm"` fails the inch case; changing the sunrise
+slice to `[11,15]` fails the sun-times case; reading humidity from
+`d.current.humidity` fails the parse case.
+
+### Method note — a negative control that does not bite may be lying to you
+
+All four controls above passed on the first attempt, which would have "proved"
+the new tests were vacuous. They were not: the widget harness loads widgets from
+`qrc:/qml/`, so editing `ui/qml/widgets/WeatherWidget.qml` changes nothing until
+`xeneon-qmltestrunner` is rebuilt and re-embeds the resource. `run_ui_tests.sh`
+always rebuilds first, which is exactly why it does.
+
+The same stale runner briefly made the clock test committed in `0c5c2dc` look
+red on re-run. **A negative control is only evidence after a rebuild.** Both
+failure modes are silent and both point the wrong way — one hides a vacuous test,
+the other invents a regression.
