@@ -54,7 +54,7 @@ in a new parallel suite.
 | 6 | sensors | 2026-08-03 | 2 | 2 |
 | 7 | packages | 2026-08-03 | 1 | 1 |
 | 8 | sinceinstall | 2026-08-03 | 1 | 1 |
-| 9 | clock | — | — | — |
+| 9 | clock | 2026-08-03 | 1 | 1 |
 | 10 | analog | — | — | — |
 | 11 | moon | — | — | — |
 | 12 | focus | — | — | — |
@@ -420,3 +420,55 @@ The metric widgets hid *whole keys*; the info widgets (packages, sinceinstall)
 hide *surfaces of a covered key*. Same defect, smaller blast radius — and it
 suggests the check for the remaining 22 is not only "is this key exercised?" but
 "how many places does it reach, and does the test know about all of them?"
+
+---
+
+## 9. clock
+
+Schema keys: `format24`, `showSeconds`, `showDate`, `dateStyle`, `datePattern`,
+`localeName`, `customZone`, `zoneId`, `zoneLabel`, `utcOffset`, `secondaryZones`.
+
+The most heavily tested widget in the audit — every key appears in both
+`tst_clock.qml` and `tst_gen_clock.qml`, `utcOffset` alone 21 times. The
+"unexercised key" check finds nothing here, which is why the reach-vs-coverage
+question from sinceinstall mattered.
+
+### Finding 9.1 — `localeName` never reached `formatAt`
+
+It is read in **eight** places and set by exactly two tests, and both assert only
+`dateFmt` — the date *pattern*, via `localeShortDatePattern()`. Its three
+branches inside `formatAt()` had no coverage at all:
+
+| branch | condition | covered |
+|---|---|---|
+| `at.toLocaleString(Qt.locale(name), fmt)` | no custom zone | no |
+| `tz.formatLocale(zoneId, ms, fmt, name)` | custom zone, bridge can localise | no |
+| `shifted.toLocaleString(...)` / `tz.format(...)` | fallbacks | partly |
+
+`formatLocale` appeared **nowhere outside the widget**. The reason is neat: the
+tests' `fakeTz` bridge does not implement it, and the widget only takes that path
+when the bridge offers it (`ClockWidget.qml:127`) — so the branch was unreachable
+by construction, not merely unvisited.
+
+Concretely, "New York time, displayed in German" — a real configuration the
+schema invites — had no test.
+
+**Fixed 2026-08-03** with three cases and a `fakeTzWithLocale` variant of the
+bridge:
+
+- the chosen locale reaches the rendered *text*, not just the pattern —
+  `dddd` on a known Monday renders differently under `en_US` and `de_DE`, and
+  matches that locale's own rendering (Qt ships its own CLDR data, so this does
+  not depend on host locales being installed);
+- a zone **and** a locale go to `formatLocale`, carrying the locale;
+- a bridge that cannot localise falls back to the plain zone formatter and still
+  goes through the bridge, rather than dropping to a locally-shifted `Date`.
+
+Negative control: collapsing the branch to `tz.format(...)` fails the second case.
+
+### Note
+
+`utcOffset`, `zoneId` and the DST-following offset lookup are genuinely well
+covered — including a zone from a newer build that this box cannot resolve
+falling back to the stored offset rather than rendering a confidently wrong time.
+Nothing to add there.
