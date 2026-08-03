@@ -56,9 +56,9 @@ in a new parallel suite.
 | 8 | sinceinstall | 2026-08-03 | 1 | 1 |
 | 9 | clock | 2026-08-03 | 1 | 1 |
 | 10 | analog | 2026-08-03 | 1 | 1 |
-| 11 | moon | — | — | — |
-| 12 | focus | — | — | — |
-| 13 | tasks | — | — | — |
+| 11 | moon | 2026-08-03 | 1 | 1 |
+| 12 | focus | 2026-08-03 | 1 | 1 |
+| 13 | tasks | 2026-08-03 | 1 | 1 |
 | 14 | rightnow | — | — | — |
 | 15 | notes | — | — | — |
 | 16 | habit | — | — | — |
@@ -1269,3 +1269,77 @@ March 1" as unasserted. They are not: the tests assert
 Both false positives cost one grep each to dismiss, and the same pass found the
 genuinely-untested default beside them — the scan is a *prioritiser*, not a
 verdict.
+
+---
+
+## 11. moon · 12. focus · 13. tasks
+
+### Finding 11.1 — the eight phase names were never asserted
+
+`MoonWidget` has good numeric coverage: `_cyclePos` in `[0,1)`, `idx` in range,
+`idx` matching its own formula, `illum` matching its own formula. None of that
+says which **name** a point in the cycle produces, and not one of the eight names
+appeared anywhere under `tests/`.
+
+So a rotated or reordered `names` array passed every existing test — while
+labelling a full moon "New Moon". That is the single defect this widget exists
+to avoid.
+
+**Fixed** by pinning the cycle deterministically (`_cyclePos` is an ordinary
+property, so assigning it severs the live-clock binding) and asserting:
+
+- each of the eight eighths yields its own name **and** its illumination
+  (new = 0%, quarters = 50%, full = 100%);
+- the buckets round to the **nearest** eighth, including the wrap where the last
+  eighth rounds forward into New Moon rather than out of the array — an
+  off-by-one here names every phase one step early for most of the month, always
+  plausible and never right;
+- `phaseDirection` agrees with the name, so "Waxing Gibbous" can never be
+  reported while the widget calls the direction "Waning".
+
+Negative controls: rotating the array by one fails **18** cases; replacing
+round-to-nearest with `floor` fails 3; inverting waxing/waning fails 4.
+
+Note: the boundary is exactly `0.4375` (`pos*8 + 0.5 === 4`). The first draft
+asserted `0.438` was still Waxing Gibbous and failed — the test was wrong, not
+the widget.
+
+### Finding 12.1 — one cell of a 2×3 notification matrix was covered
+
+`FocusWidget.notifyCompletion(completedPhase, nextPhase)` composes an alert from
+two axes: which phase **ended** decides the eyebrow, summary and accent; which
+phase is **next** decides the body. Exactly one cell was tested
+(`"work"` → `"short"`), asserting the title only.
+
+Neither `eyebrow` nor `body` appeared in any assertion, so a break ending could
+have announced **"FOCUS COMPLETE"** and nothing would have caught it, and a long
+break could have been announced as a short one.
+
+**Fixed** with a case per phase-ended (eyebrow + title), a case per phase-next
+(body), and one asserting every alert stays actionable — `openWidget`, "Open
+timer", the detail line, and `widgetType: "focus"` so the alert is attributable.
+
+Negative controls: hardcoding the eyebrow fails 1; making long and short breaks
+read identically fails 1.
+
+### Finding 13.1 — the destructive-clear confirm never expired under test
+
+The two-tap confirm on "Clear completed" was covered. Its **expiry** was not.
+`clearArmTimer` (4 s) disarms it; nothing asserted that it does. An arm that
+never expires turns a stray second tap minutes later into a silent bulk delete —
+the confirm still "works", it just stops meaning anything.
+
+Also untested: the button **label** changing once armed, which is the only signal
+the user gets that the next tap is destructive.
+
+**Fixed** with a case that finds the timer (a resource, so it needs a `data`
+walk, not a `children` walk), asserts the window is a deliberate few seconds
+rather than a flicker or a minute, shortens the interval to drive expiry
+deterministically instead of waiting out the real one, and asserts expiring
+deletes **nothing**; plus a case that the label changes and still names the
+action while asking for a second deliberate tap.
+
+Negative controls: removing the timer's `onTriggered` fails 2 cases; freezing the
+label fails 1.
+
+**Zero product changes across all three widgets** — these are test-only.
