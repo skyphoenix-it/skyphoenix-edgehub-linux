@@ -50,8 +50,8 @@ in a new parallel suite.
 | 2 | gpu | 2026-08-03 | 1 | 1 |
 | 3 | ram | 2026-08-03 | 1 | 1 |
 | 4 | net | 2026-08-03 | 1 | 1 |
-| 5 | disk | — | — | — |
-| 6 | sensors | — | — | — |
+| 5 | disk | 2026-08-03 | 1 | 1 |
+| 6 | sensors | 2026-08-03 | 2 | 2 |
 | 7 | packages | — | — | — |
 | 8 | sinceinstall | — | — | — |
 | 9 | clock | — | — | — |
@@ -288,3 +288,62 @@ reverted, it passes.
 Every metric widget shipped at least one display toggle whose *effect* nothing
 asserted, and in three of the four it is the same key. Worth checking
 `showDetails` first on `disk` and `sensors`.
+
+---
+
+## 5. disk
+
+Schema keys: `mountPath`, `showActivity`, `warnPercent`, plus the universal three.
+
+`warnPercent` is the best-covered key in the whole audit so far (eleven cases,
+including the band-ordering and rounding-boundary regressions), and `mountPath`
+covers selection and the offline-mount path.
+
+### Finding 5.1 — `showActivity` was only ever set to `true`
+
+The on-path was proven — `test_activity_has_non_color_direction_labels_and_real_rates`
+sets it true and asserts the read/write rows render — and the off-path never was.
+The whole `diskActivity` column is gated on it (`DiskWidget.qml:406`).
+
+**Fixed 2026-08-03.** The new case asserts the column visible with the toggle on,
+hidden with it off, and — the part worth having — that `ioAvailable` and
+`readRate` are *unchanged* underneath: the toggle governs the display, not the
+sampling. Negative control: making `showActivity` ignore `cfg` fails the test.
+
+---
+
+## 6. sensors
+
+Schema keys: `gpuDevice`, `rowOrder`, `showCpu`, `showGpu`, `showRam`, `showDisk`,
+`showTemps`, `showGpuPower`, `showGpuFan`, `warnCpu`, `warnGpu`, `warnRam`,
+`warnDisk`, `warnCpuTemp`, `warnGpuTemp` — the largest surface of any widget so
+far.
+
+### Finding 6.1 — five of the six thresholds were never set by any test
+
+`warnCpu`, `warnGpu`, `warnRam`, `warnDisk` and `warnGpuTemp` appeared only in a
+schema key-list assertion. Only `warnCpuTemp` was ever driven. Each one feeds
+`stateFor()` for its row (`SensorsWidget.qml:163-175`: warning at the value,
+critical ten points above), so the widget could have ignored any of the five and
+every existing case would still have passed.
+
+**Fixed 2026-08-03** with one data-driven case over all five, asserting the full
+band walk per row — Normal below the line, Warning at it, Critical ten above —
+and then that the line is *genuinely the config value*: raising it to 90 returns
+the same 71 reading to Normal. Negative control: pinning `warnRam` to a constant
+fails the ram row.
+
+### Finding 6.2 — the first attempt at that test silently did not run
+
+Worth recording because the suite stayed green while it happened. The insertion
+landed **inside** `test_temp_colour_thresholds`, nesting both new functions where
+QtTest cannot see them — legal JavaScript, zero test functions added, suite green.
+`check_live_tests.sh` did not catch it: that guard is for a `_data` provider with
+no matching test, and here both halves existed, just out of reach.
+
+The lesson is a procedural one for the rest of this audit: **after adding a test,
+confirm it appears in the run log by name.** A green suite is not evidence that a
+new test ran. Re-inserted at TestCase level; all five data rows now appear
+individually, and the disk row failed first time on a missing availability
+companion (`disk_metrics_available`), which is exactly the kind of honest failure
+a test that actually runs produces.

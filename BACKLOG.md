@@ -488,6 +488,59 @@ instead; the diff should be one PNG and its three manifest fields.
 
 ## Candidates
 
+- **Auto-cycle through screens (owner-raised 2026-08-03).** *"I am staying on a
+  single screen most of the time, even though I have lots of things on the other
+  screens that would be really nice to see regularly."*
+
+  The suggestion was a fixed rotation with a 15 s ladder up to 120 s. That solves
+  the stated problem, but the problem statement contains a better lever: the
+  screens go unseen **precisely when nobody is touching the panel**. A timer that
+  rotates unconditionally also rotates out from under a hand mid-read, mid-scroll
+  and mid-config, and the fix for that is a pile of pause/resume special cases.
+  Gating on idle removes the whole class instead of handling it.
+
+  Recommended shape, smallest thing that solves it:
+
+  1. **Idle-gated, not unconditional.** Rotation starts after N seconds with no
+     touch/key input and stops on the first interaction, resuming after the idle
+     window passes again. On a desk-side panel this reads as "it shows me things
+     when I am not using it" rather than "it moves while I read".
+  2. **One dwell interval to begin with**, global rather than per-page. Suggested
+     ladder: `off` (default) · 15 s · 30 s · 60 s · 90 s · 120 s · 5 min. The
+     even 15 s steps in the original list (45/75/105) add choice without adding a
+     decision anyone can make; 5 min is worth having for a slow ambient rotation.
+     **Default off** — a display that starts moving by itself after an update is
+     a surprise, and this is sold B2B.
+  3. **Never rotates** in edit mode, with an expanded widget open, with any dialog
+     or the settings sheet open, during the first-run wizard, or on a
+     single-screen layout.
+  4. **Respects the existing motion tokens.** Cross-fade under reduce-motion
+     rather than the swipe transition; the `calm` behaviour profile should
+     probably force it off.
+  5. Skips a screen with nothing on it (an empty page is not worth 60 s).
+
+  The mechanism already exists: `Dashboard.goToPage()` with its hold-timer is
+  exactly the "land on a page and stay there" primitive this needs, so the work
+  is a timer, an idle watcher, the settings, and the suppression rules — not new
+  navigation.
+
+  **The more interesting alternative, if the real want is "show me what matters":**
+  surface a screen when something ON it becomes noteworthy — a threshold crossed,
+  a calendar event imminent, a break due, a countdown expiring — rather than on a
+  clock. The repository already has the vocabulary for this (widget `state` /
+  `Warning` / `Critical`, and a priority-alert GUI suite). That is a much larger
+  piece and a genuine product direction rather than a setting, but it is the one
+  that would make the other screens earn their attention instead of merely taking
+  turns. Worth deciding which of the two is actually wanted before either is
+  built; they are not mutually exclusive, and the idle rotation is the cheap half.
+
+  Open questions for the product owner: default on or off; global dwell or
+  per-page; does the rotation follow page order or a chosen subset; and does it
+  interact with the Manager's live-push (a rotating hub while someone edits the
+  layout from the desktop).
+
+
+
 Unapproved ideas, findings, and out-of-scope proposals land here. Nothing in this
 section is implemented without explicit product-owner approval (scope-control policy).
 
