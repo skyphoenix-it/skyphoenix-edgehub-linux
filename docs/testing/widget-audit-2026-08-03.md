@@ -52,7 +52,7 @@ in a new parallel suite.
 | 4 | net | 2026-08-03 | 1 | 1 |
 | 5 | disk | 2026-08-03 | 1 | 1 |
 | 6 | sensors | 2026-08-03 | 2 | 2 |
-| 7 | packages | — | — | — |
+| 7 | packages | 2026-08-03 | 1 | 1 |
 | 8 | sinceinstall | — | — | — |
 | 9 | clock | — | — | — |
 | 10 | analog | — | — | — |
@@ -347,3 +347,37 @@ new test ran. Re-inserted at TestCase level; all five data rows now appear
 individually, and the disk row failed first time on a missing availability
 companion (`disk_metrics_available`), which is exactly the kind of honest failure
 a test that actually runs produces.
+
+---
+
+## 7. packages
+
+One schema key: `showDistro`. The smallest surface audited so far, and the first
+widget whose key already had genuine **behaviour** coverage —
+`test_showDistro_controls_the_header_status` asserts `w.status` becomes the
+distro name and empties again.
+
+### Finding 7.1 — one of three surfaces was covered
+
+`showDistro` gates three things, not one:
+
+| line | surface |
+|---|---|
+| `PackagesWidget.qml:123` | the chrome header `status` — **covered** |
+| `:158` | the shaped tile's `packageDetailCard` — uncovered |
+| `:287` | the expanded view's large distro name — uncovered |
+
+A narrower miss than the earlier widgets, but the same shape: the toggle could
+have stopped governing either of the other two without a test noticing.
+
+**Fixed 2026-08-03.** The new case drives both — a shaped wide tile for the
+detail card, then the expanded view for the distro name — on and off. It needed a
+`findText` helper, because the expanded name has no `objectName`; resolving it by
+its exact text keeps the assertion pointed at the real surface rather than a
+shape-alike. Negative control: making `showDistro` ignore `cfg` fails on the
+detail card.
+
+### Method note
+
+Per the lesson from sensors, the new test was confirmed present in
+`tst_packages.log` **by name** before it was believed.
