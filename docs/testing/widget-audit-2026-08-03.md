@@ -47,7 +47,7 @@ in a new parallel suite.
 | # | Widget | Audited | Findings | Fixed |
 |---|---|---|---|---|
 | 1 | cpu | 2026-08-03 | 2 | 2 |
-| 2 | gpu | — | — | — |
+| 2 | gpu | 2026-08-03 | 1 | 1 |
 | 3 | ram | — | — | — |
 | 4 | net | — | — | — |
 | 5 | disk | — | — | — |
@@ -136,3 +136,39 @@ not apply there.
 - **1.2** — both help strings now name every surface they govern:
   *"…in the expanded view and on a large tile"* and *"…on the tile and in the
   expanded view"*.
+
+---
+
+## 2. gpu
+
+Schema keys: `gpuDevice`, `showTemp`, `showHistory`, `showDetails`, `warnTemp`,
+plus the universal three.
+
+Better shape than cpu: `showTemp` (header temperature disappears), `showHistory`
+(sparkline is fed an empty history while sampling continues), `warnTemp`
+(thermal state) and `gpuDevice` (selection, and the not-connected path) all have
+real behaviour coverage.
+
+### Finding 2.1 — `showDetails` had property-level coverage only
+
+Tests proved the setting REACHED the widget (`compare(w.showDetails, false)`) but
+never asserted either surface it governs: the `MetricGauge` `sub:` line
+(`GpuWidget.qml:244`) and the `gpuDetailPanel` visibility (`:271`). A widget that
+read the property and then ignored it would have passed.
+
+**Fixed 2026-08-03.** `test_show_details_toggle_gates_both_surfaces` feeds a real
+device (so there IS a hardware detail to show — the point of the toggle) and
+asserts both surfaces on and off. Needed a `findObjectName` helper in that file,
+so an assertion can name the exact item a setting governs instead of a
+shape-alike. Negative control: making `showDetails` ignore `cfg` fails the test;
+reverted, it passes.
+
+### Note — this widget's own test file carries three unfiled bug notes
+
+`tst_gen_gpu.qml` contains three `BUG (audit, low)` comments. They are part of a
+larger seam: **36 such notes across the widget tests**, none of them in
+`BACKLOG.md`. Several are already stale — the `active`-is-never-read note in
+gpu, cpu and net is fixed in all three (`GpuWidget.qml:205`,
+`CpuWidget.qml:256`, `NetWidget.qml:217` all check it now). Triaging all 36
+against current code, discarding the stale ones and filing the live ones, is
+tracked separately.
