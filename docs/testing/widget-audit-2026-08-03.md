@@ -55,7 +55,7 @@ in a new parallel suite.
 | 7 | packages | 2026-08-03 | 1 | 1 |
 | 8 | sinceinstall | 2026-08-03 | 1 | 1 |
 | 9 | clock | 2026-08-03 | 1 | 1 |
-| 10 | analog | — | — | — |
+| 10 | analog | 2026-08-03 | 1 | 1 |
 | 11 | moon | — | — | — |
 | 12 | focus | — | — | — |
 | 13 | tasks | — | — | — |
@@ -64,7 +64,7 @@ in a new parallel suite.
 | 16 | habit | — | — | — |
 | 17 | hydration | — | — | — |
 | 18 | break | — | — | — |
-| 19 | meds | — | — | — |
+| 19 | meds | 2026-08-03 | 1 | 1 |
 | 20 | braindump | — | — | — |
 | 21 | routine | — | — | — |
 | 22 | media | 2026-08-03 | 5 | 3 |
@@ -1151,3 +1151,71 @@ flags, for later passes: `MedsWidget`'s *"A mark records your tap only. It
 cannot confirm a dose was taken."* (a safety disclaimer on a medication widget),
 `AnalogClockWidget`'s two daylight-saving disclosures, and `CountdownWidget`'s
 leap-day copy.
+
+---
+
+## 19. meds · 10. analog
+
+Both found by the string scan described above, and both are the same defect
+class: a **disclosure whose words are pinned but whose presence on screen is
+not**.
+
+### Finding 19.1 — the medication limits notice could vanish silently
+
+`MedsWidget` shows one line combining two disclaimers:
+
+```qml
+readonly property string recordMeaningText: "A mark records your tap only. It cannot confirm a dose was taken."
+readonly property string privacyText: "Medication names and marks are stored locally in plaintext. …"
+```
+
+`test_active_surface_explains_record_and_plaintext_limits` asserted the
+**properties**: that the concatenated copy contains "tap", "cannot confirm" and
+"plaintext", and does not imply clinical guidance. All good, and all satisfied
+without the string ever reaching a pixel. The notice is a single `Text` bound to
+`visible: w.expanded`; a broken binding removes a medication safety disclaimer
+while every keyword assertion still passes.
+
+**Fixed** by naming the element (`medsLimitsNotice`) and asserting it is visible,
+has real geometry, and contains **both** source strings verbatim — a hardcoded
+duplicate in the test would keep passing after the real copy changed.
+
+Note on scope: the notice lives on the *active* surface, hidden until a schedule
+exists. That is correct — no doses, nothing to caveat — so the test seeds a
+schedule first. The invariant is "if you are tracking medication, you see the
+limits."
+
+Negative controls: `visible: false` fails the render case; dropping the privacy
+half fails two cases.
+
+### Finding 10.1 — two daylight-saving disclosures, neither asserted
+
+`AnalogClockWidget` can render a face that is **an hour wrong for half the
+year**, and these two lines are the only thing that says so:
+
+| condition | line |
+|---|---|
+| `invalidZone` | "Unknown IANA zone. Using the fixed offset without daylight saving." |
+| unresolvable, not invalid | "Fixed offset. Daylight-saving changes are not applied." |
+
+Tests asserted the *properties* (`invalidZone`, `zoneResolvable()`) and the
+header status. Neither sentence appeared anywhere under `tests/`, and the
+`visible` gate was untested.
+
+They are also not interchangeable: one says *you typed a zone I do not know*, the
+other says *you chose a fixed offset, which is working as configured*. Different
+causes, different user responses.
+
+**Fixed** with three cases: each state shows its own exact sentence, and a
+fully-resolvable zone shows **no** notice at all (claiming inaccuracy when the
+clock is accurate would be its own defect).
+
+Writing them clarified something the source does not make obvious:
+`invalidZone` is *defined* as `customZone && zoneId.length && !zoneResolvable()`,
+so the second message is reachable only with an **empty** `zoneId` — a pure
+UTC-offset zone. That is the single state that is unresolvable without being
+invalid, and it is now pinned as such.
+
+Negative controls: hiding the notice fails both disclosure cases; giving the
+invalid state the fixed-offset wording fails the case that says they must not be
+interchangeable.
