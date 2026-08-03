@@ -77,6 +77,12 @@ in a new parallel suite.
 | 29 | eod | — | — | — |
 | 30 | quote | — | — | — |
 
+Plus one cross-cutting seam, swept before the widgets that sit on it:
+
+| Seam | Audited | Findings | Fixed |
+|---|---|---|---|
+| NetHub (calendar, weather, nownext, httpjson, kpi, update-checker) | 2026-08-03 | 5 | 4 |
+
 ---
 
 ## 1. cpu
@@ -472,3 +478,175 @@ Negative control: collapsing the branch to `tz.format(...)` fails the second cas
 covered — including a zone from a newer build that this box cannot resolve
 falling back to the stored offset rather than rendering a confidently wrong time.
 Nothing to add there.
+
+---
+
+## Interlude — the shared NetHub seam
+
+The clock finding (`tz.formatLocale`) was a *branch keyed on a capability the
+test double did not implement*. Before auditing the six bridge-backed widgets
+one at a time, the whole family was swept for that shape at once: every place
+the product tests a member's existence before calling it.
+
+```
+$ # guards of the form `&& obj.member`, `obj.member ?`, typeof === "function",
+$ # where the same obj.member is called within the next few lines
+ClockWidget.qml:127     tz.formatLocale              ← fixed above
+FocusWidget.qml:220     priorityAlerts.showPriorityAlert
+FocusWidget.qml:238     notificationBridge.sendPriority
+MediaWidget.qml:121     media.setPreferredPlayer
+NetHub.qml:169          r.resolveSecret
+NetHub.qml:318          xhr.abort
+NetHub.qml:359          xhr.setRequestHeader
+… plus Dashboard/main.qml configBridge probes
+```
+
+Every one of those doubles **does** implement its method, so the clock's exact
+shape does not repeat. But that inverts the question, and the inverted form
+turned out to be worse: **which branch can no test reach because the double is
+*too* capable, or because the product itself excludes tests from the branch?**
+
+### Finding N.1 — the request watchdog was unreachable by construction
+
+`NetHub.request()` created its timeout watchdog only when no test factory was
+injected:
+
+```qml
+var mk = opts.xhrFactory ? opts.xhrFactory : (hub.xhrFactory ? hub.xhrFactory : null)
+…
+if (!mk && !settled) {                     // ← `!mk` = "no injected XHR factory"
+    watchdog = hub._timeoutTimerFactory.createObject(hub, …)
+    watchdog.triggered.connect(function () { fail("timeout", true) })
+    watchdog.start()
+}
+```
+
+`mk` is the injected factory. Every offline test injects one, so `!mk` was false
+in every test and true only in production — the guard is a direct "tests must not
+enter here". That made the entire mechanism unreachable: creation, firing,
+the abort, and `clearWatchdog()`'s teardown.
+
+This matters because the watchdog is not a duplicate of the transport timeout.
+`NetHub.qml` says so itself: *"Qt's QML XMLHttpRequest accepts a `timeout`
+property but does not emit `ontimeout` reliably on every supported runtime."*
+The watchdog is the **only** defence against a connection that hangs without
+`ontimeout` — and it is the only caller that passes `abortRequest=true`, so it is
+also the only path that reaches `xhr.abort()` inside `fail()`. The existing
+`test_timeout_surfaces` drives `ontimeout` by hand, which is precisely the case
+the watchdog exists to cover for.
+
+Measured, not argued — deleting the whole block:
+
+| control | result |
+|---|---|
+| gut `clearWatchdog()`'s body | 213/213 still green |
+| delete the watchdog creation block entirely | 213/213 still green |
+
+across `tst_nethub`, `tst_calendar_net`, `tst_weather_net`, `tst_kpi_net`,
+`tst_httpjson_net`, `tst_update_checker`.
+
+`tst_nethub.qml:135` carried a comment standing in for the missing test — *"The
+real-XHR watchdog follows the same fail() path and is destroyed by
+clearWatchdog() during the first settlement."* Both halves are reasoning, not
+coverage, and the first half is not quite true: the watchdog passes
+`abortRequest=true` where `ontimeout` passes `false`, so the paths differ in
+exactly the abort. The second half asserted `clearWatchdog` while `watchdog` was
+always `null` — the function early-returned, so a `// COVERS: fn:NetHub.clearWatchdog`
+claim was satisfied entirely by the no-op path.
+
+**Fixed** by dropping `!mk` from the creation guard. This is production-neutral
+by construction: in production `mk` is null, so `!mk` was already true and
+nothing about shipped behaviour changes. It only widens what a test can reach.
+
+### Finding N.2 — asserting on callbacks does not recover that coverage
+
+The first repair attempt asserted the *observable* consequence of a surviving
+watchdog: settle a request, wait past the deadline, assert no late timeout. It
+passed — and it still passed with `stop()`+`destroy()` gutted.
+
+The reason is that `fail()` and `succeed()` both open with `if (settled) return`,
+and `settled = true` is set *before* `clearWatchdog()`. A watchdog that outlives
+its request is therefore behaviourally silent. Its only consequence is a leaked
+QML `Timer`, one per request, parented to the hub for the hub's lifetime — and
+`NetHub` is a `QtObject`, which exposes no `children`/`data` to count from QML.
+
+Recovered by injecting a fake timer through NetHub's **existing**
+`_timeoutTimerFactory` seam (no test-only product API added) that records
+`start`/`stop`/`Component.onDestruction`. That also makes the timeout
+deterministic instead of wall-clock dependent.
+
+### Finding N.3 — the response-cap header was excluded from tests the same way
+
+```qml
+if (!mk && !local && xhr.setRequestHeader)
+    xhr.setRequestHeader("X-Xeneon-Max-Response-Bytes", String(maxResponseBytes))
+```
+
+Same `!mk`, same effect. This header is how a widget's own — tighter — cap
+reaches the enforcing layer: `XeneonNetworkAccessManager::responseByteLimit()`
+(`app/src/network_access_policy.h:170`) widens an **absent** header back to the
+2 MiB maximum. So a regression dropping this line does not fail closed; it
+silently restores the loosest cap for every widget.
+
+Nothing on either side of the seam covered it. `tests/cpp/tst_network_access_policy.cpp`
+hand-builds requests and asserts the limit *given* a header; no test asserted
+that anything ever sends one. Fixed the same way, with the same
+production-neutrality.
+
+### Finding N.4 — the shared fake XHR silently swallowed every header
+
+`tests/ui/fixtures.js:makeFakeXHR()` implemented `open`, `send` and `abort` but
+**not** `setRequestHeader`. Because NetHub guards each header write with
+`xhr.setRequestHeader` before calling it, the missing method did not raise —
+it made the guard false. Header writes were skipped, silently, for every suite
+built on that fixture: calendar, weather, nownext, moon, and the cal+weather GUI
+test.
+
+No live defect today (those widgets pass no auth headers; calendar's credential
+travels as `urlIsSecretRef`), but it is a trap primed to fire: adding an auth
+header to the calendar feed would have looked tested and would not have been.
+The fixture now records headers, like the per-suite fakes already did.
+
+### Tests added (`tst_nethub.qml`, 37 → 41)
+
+| test | proves |
+|---|---|
+| `test_watchdog_settles_a_request_the_transport_never_finishes` | a hang with no `ontimeout` still settles, reports `timeout`, never reports success, and **aborts** the request |
+| `test_watchdog_is_torn_down_when_the_request_settles_first` | settling stops **and destroys** the timer |
+| `test_response_cap_is_advertised_to_the_transport` | the widget's own cap is what the transport is told to enforce |
+| `test_local_reads_carry_no_transport_header` | a `file://` read has no HTTP header layer |
+
+`test_timeout_surfaces` also gained an assertion that the transport's own timeout
+does **not** abort — that request has already finished, and it is what
+distinguishes the two paths.
+
+Negative controls, each run individually:
+
+| control | expected failure | result |
+|---|---|---|
+| remove `watchdog.start()` | hung request never settles | FAIL ✓ |
+| remove `watchdog.destroy()` | timer leaks | FAIL ✓ |
+| remove `watchdog.stop()` | timer left armed | FAIL ✓ |
+| remove the cap header write | cap never advertised | FAIL ✓ |
+
+### Finding N.5 — a dead notification fallback in three widgets (not fixed)
+
+`FocusWidget.qml:237`, `BreakWidget.qml:187` and `MedsWidget.qml:293` each
+carry the same shape:
+
+```qml
+if (notificationBridge && notificationBridge.send) {
+    if (notificationBridge.sendPriority) sent = notificationBridge.sendPriority(…)
+    else                                 sent = notificationBridge.send(…)   // ← dead
+}
+```
+
+There is exactly one real bridge (`app/src/notification_bridge.h`) and it
+implements `sendPriority`; nothing outside tests assigns the property. Both test
+doubles implement `sendPriority` too. So the `else` is reachable neither in
+production nor in tests, in all three copies.
+
+Unlike a version-skew fallback this cannot come back: the QML and the C++ bridge
+ship in one binary from one `qrc`, so there is no "older host" to degrade to.
+Filed as a candidate rather than fixed — deleting product code is not this
+audit's remit, and the three copies want one decision, not three.

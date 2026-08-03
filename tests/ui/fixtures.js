@@ -81,6 +81,14 @@ function makeFakeXHR() {
         method: "", url: "", sent: false, aborted: false,
         readyState: 0, status: 0, responseText: "",
         timeout: 0, ontimeout: null, onreadystatechange: null,
+        // NetHub guards every header write with `xhr.setRequestHeader` before
+        // calling it. Without this method the fake did not fail those writes -
+        // it made the guard false, so the response-cap header and any auth
+        // header were silently skipped for every suite using this fixture
+        // (calendar, weather, nownext, moon, the cal+weather GUI test). A
+        // regression dropping headers would have passed all of them.
+        headers: {},
+        setRequestHeader: function (k, v) { this.headers[k] = v; },
         open: function (m, u) { this.method = m; this.url = u; this.readyState = 1; },
         send: function () { this.sent = true; },
         abort: function () { this.aborted = true; },

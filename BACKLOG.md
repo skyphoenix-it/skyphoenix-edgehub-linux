@@ -488,6 +488,22 @@ instead; the diff should be one PNG and its three manifest fields.
 
 ## Candidates
 
+- **Delete the dead `notificationBridge.send` fallback in three widgets
+  (audit 2026-08-03).** `FocusWidget.qml:241`, `BreakWidget.qml:194` and
+  `MedsWidget.qml:297` each fall back to `send()` when the bridge has no
+  `sendPriority()`. There is exactly one real bridge
+  (`app/src/notification_bridge.h`) and it implements `sendPriority`; nothing
+  outside tests assigns the property; both test doubles implement it too. So the
+  `else` is unreachable in production **and** in tests, three times over.
+
+  Unlike a version-skew fallback it cannot become reachable: the QML and the C++
+  bridge ship in one binary from one `qrc`, so there is no older host to degrade
+  to. Either delete all three (and keep the outer `&& .send` guard, which still
+  usefully covers "no bridge injected"), or keep them and give one of the three
+  a double without `sendPriority`. Wants a single decision, not three.
+  Not urgent — dead code, not a defect. See
+  `docs/testing/widget-audit-2026-08-03.md` finding N.5.
+
 - **Auto-cycle through screens (owner-raised 2026-08-03).** *"I am staying on a
   single screen most of the time, even though I have lots of things on the other
   screens that would be really nice to see regularly."*
