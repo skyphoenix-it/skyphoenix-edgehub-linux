@@ -60,12 +60,12 @@ in a new parallel suite.
 | 12 | focus | 2026-08-03 | 1 | 1 |
 | 13 | tasks | 2026-08-03 | 1 | 1 |
 | 14 | rightnow | 2026-08-03 | 1 | 1 |
-| 15 | notes | — | — | — |
+| 15 | notes | 2026-08-03 | 1 | 1 |
 | 16 | habit | 2026-08-03 | 1 | 1 |
-| 17 | hydration | — | — | — |
-| 18 | break | — | — | — |
+| 17 | hydration | 2026-08-03 | 1 | 1 |
+| 18 | break | 2026-08-03 | 0 | 0 |
 | 19 | meds | 2026-08-03 | 1 | 1 |
-| 20 | braindump | — | — | — |
+| 20 | braindump | 2026-08-03 | 1 | 1 |
 | 21 | routine | 2026-08-03 | 1 | 1 |
 | 22 | media | 2026-08-03 | 5 | 3 |
 | 23 | httpjson | 2026-08-03 | 1 | 1 |
@@ -75,7 +75,7 @@ in a new parallel suite.
 | 27 | weather | 2026-08-03 | 2 | 2 |
 | 28 | countdown | 2026-08-03 | 1 | 1 |
 | 29 | eod | 2026-08-03 | 1 | 1 |
-| 30 | quote | — | — | — |
+| 30 | quote | 2026-08-03 | 0 | 0 |
 
 Plus one cross-cutting seam, swept before the widgets that sit on it:
 
@@ -1401,3 +1401,87 @@ Negative controls, each failing its own cases: removing habit's paused branch
 through to "Working" (2); giving "before" the "Complete" label (2).
 
 **Zero product changes across all four.**
+
+---
+
+## 15. notes · 17. hydration · 20. braindump — and 18. break · 30. quote
+
+### 15.1 — the same destructive-confirm gap as tasks
+
+`NotesWidget`'s two-tap clear was covered; its **expiry** was not, exactly as in
+finding 13.1. Here the stakes are higher: notes holds one note, so the clear
+destroys it outright rather than removing completed rows. An arm that never
+expires turns a stray second tap minutes later into a silent wipe.
+
+Fixed the same way — find the timer through a `data` walk, assert the window is
+a deliberate few seconds, shorten it to drive expiry deterministically, and
+assert expiring leaves the note **intact** because the user never confirmed —
+plus the "Clear" → "Confirm clear" label change, the only signal that the next
+tap destroys something.
+
+Two widgets with the identical gap is the useful part: it is a pattern in how
+destructive confirms get written here, not a one-off.
+
+### 17.1 — the goal line had no branch coverage
+
+`HydrationWidget`'s summary is a three-way ladder around the goal and none of its
+branches were asserted. Exactly-at-goal matters most: it is the moment the widget
+exists for, and it is the easiest to lose to an off-by-one (`>` for `>=`), which
+would leave someone who just hit their goal reading "glasses of water today" as
+if nothing had happened.
+
+Three cases (under / at / over) plus one asserting that reaching the goal is not
+reported as exceeding it. Negative control: changing `>` to `>=` fails 2.
+
+### 20.1 — the save-failure path was entirely uncovered
+
+`BraindumpWidget.reportSaveFailure()` and its message had zero coverage. This is
+the widget's **data-loss** path: the capture did not persist, and the notice is
+the only thing telling the user to keep the widget open rather than navigate away
+and lose the thought. Every persist route funnels through `persistMutation()`, so
+a store that refuses a write exercises all of them.
+
+Two cases: a store that returns `false`, and a store that throws — both must
+report the same thing, and neither may also claim the entry was truncated or
+evicted. Negative control: swallowing the refused write fails **12** cases; that
+guard is load-bearing.
+
+Not added: a `store = null` case. Assigning null did not take effect (the capture
+still succeeded) and left the widget in a state that broke four later tests, so
+it was dropped rather than left as a flaky or misleading assertion. The two
+failure modes above cover `reportSaveFailure` on their own.
+
+### 18 break · 30 quote — audited, no finding
+
+The string scan ranks these highest by raw count (32 unasserted strings in
+quote), and both are **deliberate non-findings**. What is unasserted is editorial
+*content* — individual break ideas and quote texts. Their **selection logic** is
+covered: break pins the `breakIdeas[breaksToday % length]` index math and its
+wrap; quote pins category selection, the unknown-category fallback, custom
+libraries (empty, whitespace, valid), that every bundled quote carries provenance
+and rights, and that each category is large enough to avoid repetition.
+
+Asserting the copy itself would pin editorial text, which produces churn on every
+wording change and catches nothing. Recorded explicitly so the next reader does
+not "fix" it.
+
+---
+
+## All 30 widgets audited
+
+Closing note on what the audit actually found. Almost nothing was a broken
+feature — the widgets do what their settings say. What was missing, repeatedly,
+was coverage of what a widget says when something is **wrong, absent, refused, or
+merely unusual**:
+
+- refusal vocabulary (httpjson, kpi)
+- safety and accuracy disclosures (meds, analog)
+- state ladders (habit, rightnow, routine, eod, hydration, moon, focus)
+- defaults nobody drives (countdown's `nextLeap`, nownext's `bufferMin`)
+- destructive-confirm expiry (tasks, notes — the same gap twice)
+- data-loss paths (braindump)
+- branches unreachable because a test double was too capable, or because the
+  product excluded tests from them (the NetHub seam, media, kpi, clock)
+
+Those surfaces share one property: they only appear when something has gone
+wrong, which is exactly when nobody is looking at a test.
