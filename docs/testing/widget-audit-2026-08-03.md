@@ -48,7 +48,7 @@ in a new parallel suite.
 |---|---|---|---|---|
 | 1 | cpu | 2026-08-03 | 2 | 2 |
 | 2 | gpu | 2026-08-03 | 1 | 1 |
-| 3 | ram | — | — | — |
+| 3 | ram | 2026-08-03 | 1 | 1 |
 | 4 | net | — | — | — |
 | 5 | disk | — | — | — |
 | 6 | sensors | — | — | — |
@@ -211,3 +211,40 @@ wired into both `run_all_tests.sh` and `ci.yml`.
 It earned its place before it was even committed: the first run found two
 annotations the original `BUG (audit` grep had missed, in `tst_gen_break.qml`
 and `tst_gen_habit.qml`. Negative control: reinserting a marker fails the gate.
+
+---
+
+## 3. ram
+
+Schema keys: `unit`, `showHistory`, `historyWindow`, `showDetails`,
+`warnPercent`, plus the universal three.
+
+The best-covered of the three metric widgets so far: `unit` (percent vs GiB in
+the gauge centre), `showHistory` (gauge history emptied live), `historyWindow`
+(limit, label and buffer cap) and `warnPercent` (the colour bands) all have real
+behaviour coverage.
+
+### Finding 3.1 — `showDetails` had property-level coverage only
+
+Identical in shape to gpu's finding 2.1: `test_showDetails_reacts_live` set the
+setting and asserted `w.showDetails === false`, and stopped there. A widget that
+read the property and then ignored it would have passed.
+
+**Fixed 2026-08-03.** The test now asserts the `ramDetailPanel` item's visibility
+on and off. The gauge sub-line is the toggle's other surface, but every branch
+that fills it needs live byte counts this case does not feed, so it is left to
+the cases that have that data rather than pinned to `""` here. Negative control:
+making `showDetails` ignore `cfg` fails the test; reverted, it passes.
+
+### Pattern across the three metric widgets
+
+Three audited, three found the same class of hole — a config key whose *plumbing*
+is tested and whose *effect* is not:
+
+| widget | key(s) | strongest coverage before |
+|---|---|---|
+| cpu | `showFrequency`, `showLoadAverage`, `showPerCore`, `showTopProcess` | schema shape only |
+| gpu | `showDetails` | property only |
+| ram | `showDetails` | property only |
+
+Worth carrying into the remaining 27 as the first thing to check.
