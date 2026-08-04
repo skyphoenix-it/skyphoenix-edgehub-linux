@@ -18,14 +18,21 @@ Companion documents, all still current:
 
 ## 1. Where things stand in one paragraph
 
-`master` is green and carries a working v1.0-alpha product: 30 widgets, a
-Dashboard with pages and an idle-gated auto-cycle, a companion Manager app that
-live-pushes over a control socket, a Rust core behind a hand-written C FFI, and a
-CI pipeline of ~30 checks including a nested-compositor GUI suite and reviewed
-visual baselines. The widget feature audit is **complete for all 30 widgets**.
-What blocks v1.0 is now mostly **decisions**, not code — and one real class of
-engineering debt (test integrity) that has been productive enough to be worth
-continuing.
+**v1.0.0 is RELEASED** — published 2026-07-28 with signed `.deb`, `.rpm`,
+`.AppImage` and `.zsync` assets, after alpha.1, alpha.2, beta.1 and rc.1. The
+current release target is **v1.0.1**; the metadata contract reports
+`stage=development, target=v1.0.1, published=v1.0.0`. `master` is green and
+carries 30 widgets, a Dashboard with pages and an idle-gated auto-cycle, a
+companion Manager that live-pushes over a control socket, a Rust core behind a
+hand-written C FFI, and ~30 CI checks including a nested-compositor GUI suite and
+reviewed visual baselines. The widget feature audit is **complete for all 30
+widgets**. Nothing is release-blocking; what remains is v1.0.1/v1.1 backlog plus
+a small number of genuine product decisions.
+
+> **Read §6 before trusting any `BACKLOG.md` entry.** Large parts of it still use
+> pre-release language ("RC exit criterion", "no release has ever shipped an
+> AppImage") that was true when written and is not true now. Six stale entries
+> were closed on 2026-08-04 alone.
 
 ---
 
@@ -152,26 +159,35 @@ every header, which is why nobody noticed.
    still usefully covers "no bridge injected"), or keep them and give one double
    no `sendPriority`. **Wants a single decision, not three.** Audit finding N.5.
 
-### 4b. Blocked on Simon
+### 4b. The "Blocked on Simon" table is now CLOSED
+
+All four decisions are resolved. **Verified against the tree on 2026-08-04, not
+taken from the backlog** — which still listed several of these as open.
 
 | # | Decision | Status |
 |---|---|---|
-| D1 | Calm default theme | **DECIDED 2026-08-04 — already shipped.** Default is `nord`, the calm palette. See §6. |
-| D2 | Default font | **DECIDED 2026-08-04 — already shipped.** Atkinson Hyperlegible. |
-| D3 | Lawyer pass on distro theme naming | **OPEN.** Partly de-risked: `Theme.qml:334` keeps distro modes colour-only, no logos or wordmarks. The *naming* is the residual exposure. This is sold B2B. |
-| D4 | Payment provider | Decided (Lemon Squeezy / Gumroad). **Two Simon-only steps remain** — see below. |
+| D1 | Calm default theme | **DECIDED — already shipped.** Default is `nord`, the calm palette (`core/src/config.rs:173`, `ui/qml/Theme.qml:362`). |
+| D2 | Default font | **DECIDED — already shipped.** Atkinson Hyperlegible (`Theme.qml:235`). |
+| D3 | Lawyer pass on distro theme naming | **DECIDED 2026-08-04: the naming stays as it is.** Already de-risked by `Theme.qml:334` keeping distro modes colour-only — no logos, no wordmarks. |
+| D4 | Payment provider | **DECIDED (Lemon Squeezy / Gumroad) and the code half is DONE.** |
 
-**Licensing, remaining Simon steps** (the system is built and CI-verified):
-1. Run `cargo run --manifest-path tools/license-tool/Cargo.toml -- keygen` once;
-   paste the public key into `core/src/license.rs`; store the private seed in
-   Bitwarden. **Until this is done, every key verifies as free.**
-2. Create the Lemon Squeezy / Gumroad product and wire key delivery.
+**Licensing — the keygen step is DONE, contrary to the backlog.** `core/src/license.rs:77`
+shows the zero placeholder commented out and `:78` carries a real
+`ISSUER_PUBLIC_KEY`; `:739` notes the "still a placeholder" release guard was
+retired. Verification is armed. `tools/license-tool` and `tools/license-webhook`
+are both built, with `scripts/setup-lemonsqueezy.py` to register the webhook.
 
-**New question raised 2026-08-04, not yet answered:** should the per-widget
-`behaviorProfile` default to `calm` instead of `custom` — i.e. no celebrations,
-reward points or nudges out of the box? This is the *other* plausible reading of
-"calm by default", it is a real behaviour change rather than a palette, and it
-was never asked. Only `focus` and `tasks` have this key.
+**The only licensing item that cannot be verified from the repository** is
+whether the Lemon Squeezy/Gumroad *store product* has actually been created and
+the webhook registered — that is an action in an external account, not in code.
+See `docs/LICENSING.md` §"Selling". If purchases are not yet minting keys, that
+is the step.
+
+**One genuinely new question, raised 2026-08-04, never asked before:** should the
+per-widget `behaviorProfile` default to `calm` instead of `custom` — i.e. no
+celebrations, reward points or nudges out of the box? This is the *other*
+plausible reading of "calm by default"; it is a real behaviour change rather than
+a palette. Only `focus` and `tasks` carry the key.
 
 ### 4c. Open engineering gaps (no decision needed, just work)
 
@@ -184,13 +200,20 @@ was never asked. Only `focus` and `tasks` have this key.
 - **`backup_config()` is still only reached via `--reset`.** `config.toml.bak`
   is never written by a normal save, so the "canonical good-config backup" is not
   a routine safety net. Worth deciding whether a save should ever produce one.
-- **AppImage zsync update path has never worked and has never run.** Still an
-  **RC exit criterion**. No release has ever shipped an AppImage or a `.zsync`.
-  Two fixes landed (version-from-CMake trap, `fetch-depth: 0` so `git describe`
-  can produce a SemVer-comparable version). **Still open and needing a product
-  decision:** the AppImage embeds no `X-AppImage-UpdateInformation`, so
-  `AppImageUpdate`/`appimaged` cannot update it at all and there is no discovery
-  path from an installed AppImage to the next `.zsync`.
+- ~~**AppImage zsync update path has never worked and has never run.**~~
+  **STALE — resolved before v1.0.0.** That entry was audited 2026-07-17 and says
+  "no release has ever shipped an AppImage or a `.zsync`". v1.0.0 (2026-07-28)
+  shipped **both**: `xeneon-edge-hub-1.0.0-x86_64.AppImage` (56 MB) and
+  `…AppImage.zsync` (329 KB), alongside signed `.deb`/`.rpm` and `SHA256SUMS.asc`.
+  The `X-AppImage-UpdateInformation` the entry called an open product decision is
+  wired at `packaging/appimage/build-appimage.sh:91`
+  (`LDAI_UPDATE_INFORMATION=gh-releases-zsync|…|latest|…`, with the older
+  `UPDATE_INFORMATION` name also exported for tool-vintage safety).
+  **What is still genuinely unproven:** a true download-and-patch round trip. The
+  cross-file invariants are guarded offline by
+  `scripts/check_appimage_update_contract.sh`, which is not a substitute. The
+  first real test is whether a v1.0.0 AppImage self-updates to v1.0.1 — worth
+  watching on the next release rather than treating as open work now.
 - **Wallpaper/theme name collision — it is FIVE names, not three.** Measured
   overlap: `aurora`, `ember`, `midnight`, `nebula`, `sunset`. The nuance before
   anyone "fixes" it: `WallpaperCatalog.qml`'s header says the wallpapers are
@@ -359,6 +382,39 @@ Sections are load-bearing under the scope-control policy:
    forces the fail-on-violation proof for new guards*. The proposed fix — require
    a guard's sabotage evidence in the PR body — is currently convention, not a
    gate. Making it enforceable is a scoped, valuable next item.
-5. If Simon is available: D3, the two licensing steps, the `behaviorProfile`
-   question, and the AppImage update-information call unblock more than any
-   amount of further hardening.
+5. See §11 for the only things that still need Simon.
+
+---
+
+## 11. What still needs Simon — the complete list
+
+Compiled 2026-08-04 by checking each candidate **against the tree**, after the
+"blocked on Simon" table turned out to be entirely resolved. **Nothing here is
+release-blocking**; v1.0.0 is out and none of it is a defect in shipped
+behaviour.
+
+### Needs a decision before an agent may act (scope-control policy)
+
+| # | Question | Why it needs you |
+|---|---|---|
+| 1 | Should `behaviorProfile` default to `calm` rather than `custom`? | A real behaviour change — celebrations, reward points and nudges off by default. The other reading of "calm by default". Affects `focus` and `tasks`. |
+| 2 | Media artwork error state (audit 10.4) | A `file://` artwork that passes policy but fails to load draws a **silently blank art box**. The fix is small and testable, but it is a Candidate — user-visible behaviour, so it wants approval. |
+| 3 | The dead `notificationBridge.send` fallback in 3 widgets (audit N.5) | Delete all three, or keep them and give one test double no `sendPriority`. **One decision, not three.** Dead code, not a defect. |
+| 4 | Should a normal save ever write `config.toml.bak`? | Today the backup exists only on `--reset`, so the "canonical good-config backup" is not a routine safety net. |
+| 5 | Wallpaper/theme name collision (5 shared names) | Purely a **copy/intent** question: is Midnight-the-wallpaper *meant* to pair with Midnight-the-theme? Renaming needs a config migration, so the cheap fix is UI disambiguation. Decide intent first. |
+| 6 | "Surface a screen when something on it becomes noteworthy" | Product direction. The shipped auto-cycle takes turns on a clock; the interesting version reacts to content. Needs a decision, not a setting. |
+| 7 | May `build-release/` be deleted from git? | 196 files of build output are **tracked**. Removing them is a large deletion, so it wants explicit approval. |
+
+### Needs you to do something outside the repository
+
+| # | Action |
+|---|---|
+| 8 | **Confirm the Lemon Squeezy / Gumroad store product exists and the mint webhook is registered.** The code half is done and the issuer key is armed; this is the one licensing step that cannot be verified from the tree. If purchases are not minting keys, this is why. |
+| 9 | **Look at the panel for W3 (widget smoothness).** All the motion work landed but none is verified on the real device — the offscreen harness cannot instantiate `qrc:` widgets, so delegate survival is asserted via the Loader, not the widget. This is the one item no amount of test work can close. |
+
+### Nice to have, entirely optional
+
+| # | Item |
+|---|---|
+| 10 | Whether to Pro-gate a **preset pack** and/or **custom user widgets**. The flag infrastructure is one line; it needs a "which items" answer. Pro currently gates a theme pack only. |
+| 11 | Whether online research is wanted (§5) — no web research has been done in any of these sessions. |
