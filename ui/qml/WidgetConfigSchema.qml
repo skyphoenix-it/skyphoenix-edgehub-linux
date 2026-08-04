@@ -483,7 +483,7 @@ QtObject {
                 { key: "longBreakEvery", label: "Long break after", type: "number", min: 2, max: 12, step: 1, suffix: " sessions", dflt: 4,
                   visibleWhen: { key: "preset", equals: "custom", dflt: "classic" } } ] },
             { title: "Behaviour", cols: 1, fields: [
-                { key: "behaviorProfile", label: "Profile", type: "segmented", dflt: "custom", options: [
+                { key: "behaviorProfile", label: "Profile", type: "segmented", dflt: "calm", options: [
                     { value: "calm", label: "Calm" }, { value: "momentum", label: "Momentum" },
                     { value: "custom", label: "Custom" } ],
                   help: "Calm removes points, nudges and celebrations. Custom uses the switches below." },
@@ -510,7 +510,7 @@ QtObject {
                 { key: "displayMode", label: "Show", type: "segmented", dflt: "all", options: [
                     { value: "all", label: "All" }, { value: "top3", label: "First 3" } ],
                   help: "First 3 shows the first three items in your current ordering." },
-                { key: "behaviorProfile", label: "Completion style", type: "segmented", dflt: "custom", options: [
+                { key: "behaviorProfile", label: "Completion style", type: "segmented", dflt: "calm", options: [
                     { value: "calm", label: "Calm" }, { value: "momentum", label: "Celebrate" },
                     { value: "custom", label: "Custom" } ] },
                 { key: "celebrate", label: "Celebrate clearing the list", type: "toggle", dflt: true,

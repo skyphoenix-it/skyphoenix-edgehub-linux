@@ -9,11 +9,21 @@ Item {
     WidgetHarness { id: h; anchors.fill: parent; widgetFile: "BreakWidget.qml"; expanded: true }
     property int priorityAlertCount: 0
     property var lastPriorityAlert: null
+    property int desktopPriorityCount: 0
     QtObject {
         id: prioritySink
         function showPriorityAlert(request) {
             root.priorityAlertCount++
             root.lastPriorityAlert = request
+            return true
+        }
+    }
+    QtObject {
+        id: desktopPrioritySink
+        // Deliberately no ordinary send(): a priority-capable bridge must not be
+        // rejected merely because the compatibility fallback is absent.
+        function sendPriority(summary, body) {
+            root.desktopPriorityCount++
             return true
         }
     }
@@ -32,7 +42,9 @@ Item {
                 scheduleSuspended: false, priorityAlertEnabled: true
             })
             h.item.priorityAlerts = prioritySink
+            h.item.notificationBridge = desktopPrioritySink
             root.priorityAlertCount = 0
+            root.desktopPriorityCount = 0
             root.lastPriorityAlert = null
         }
         function cfg() { return h.storeCtl.settingsFor("test-instance") }
@@ -106,6 +118,16 @@ Item {
             w.takeBreak()
             compare(cfg().due, false, "the primary alert action acknowledges the break")
             verify(cfg().endEpoch > 0, "acknowledgement starts a fresh interval")
+        }
+
+        function test_hidden_due_uses_priority_only_desktop_bridge() {
+            var w = h.item
+            h.storeCtl.patchSettings("test-instance", {
+                notifyWhenHidden: true, message: "", due: false
+            })
+            w.foreground = false
+            verify(w.notifyDue())
+            compare(root.desktopPriorityCount, 1)
         }
 
         function test_full_screen_alert_can_be_disabled_without_disabling_due_state() {

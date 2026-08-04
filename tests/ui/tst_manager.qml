@@ -1540,6 +1540,83 @@ Item {
             verify(heading, "the Manager-window style control is present in Appearance")
         }
 
+        function test_look_workspace_shows_one_decision_area_at_a_time() {
+            _nav.currentIndex = 1
+            var areaSelector = findPred(win, function (x) { return x && x.objectName === "managerLookArea" })
+            var themeArea = findPred(win, function (x) { return x && x.objectName === "managerThemeArea" })
+            var accentArea = findPred(win, function (x) { return x && x.objectName === "managerAccentArea" })
+            var backgroundArea = findPred(win, function (x) { return x && x.objectName === "managerBackgroundArea" })
+            var effectsArea = findPred(win, function (x) { return x && x.objectName === "managerEffectsArea" })
+            verify(areaSelector && themeArea && accentArea && backgroundArea && effectsArea)
+
+            for (var area = 0; area < 4; area++) {
+                win.lookArea = area
+                compare(themeArea.visible, area === 0)
+                compare(accentArea.visible, area === 1)
+                compare(backgroundArea.visible, area === 2)
+                compare(effectsArea.visible, area === 3)
+            }
+
+            var backgroundChoice = findPred(areaSelector, function (x) {
+                return x && x.modelData && x.modelData.value === 2
+                       && x.activeFocusOnTab !== undefined
+            })
+            verify(backgroundChoice && backgroundChoice.activeFocusOnTab,
+                   "the Look area selector participates in keyboard focus")
+            backgroundChoice.forceActiveFocus()
+            keyClick(Qt.Key_Space)
+            compare(win.lookArea, 2, "Space activates the focused Look area")
+            compare(backgroundArea.visible, true)
+            win.lookArea = 0
+        }
+
+        function test_look_workspace_visual_evidence() {
+            _confirm.close()
+            _nav.currentIndex = 1
+            win.lookArea = 0
+            win.width = 1400
+            win.height = 1100
+            wait(800)
+            var themeImage = grabImage(win.contentItem)
+            verify(themeImage.width >= 1300 && themeImage.height >= 1000,
+                   "the Manager Look workspace rendered at its desktop breakpoint ("
+                   + themeImage.width + "x" + themeImage.height + ")")
+            themeImage.save("gui-evidence/manager_look_theme.png")
+
+            win.lookArea = 2
+            wait(800)
+            var backgroundImage = grabImage(win.contentItem)
+            verify(backgroundImage.width === themeImage.width
+                   && backgroundImage.height === themeImage.height)
+            backgroundImage.save("gui-evidence/manager_look_background.png")
+            win.lookArea = 0
+        }
+
+        function test_images_is_a_library_not_a_second_wallpaper_picker() {
+            backend.imagesList = ["library-only.png"]
+            win.refreshImages()
+            _nav.currentIndex = 2
+            var card = null
+            tryVerify(function () {
+                card = findPred(win, function (x) {
+                    return x && x.hasOwnProperty("fullPath")
+                           && x.fullPath === backend.imageUrl("library-only.png")
+                })
+                return card !== null
+            }, 2000, "the imported image is rendered in the library")
+            _store.setAppearance("wallpaper", card.fullPath)
+            compare(card.border.width, 1,
+                    "a library card does not masquerade as the global wallpaper selector")
+            verify(!card.hasOwnProperty("isWall"),
+                   "wallpaper selection state lives only in Look/Screens")
+
+            var choose = findButton("Choose a background")
+            verify(choose, "the library links to the single background chooser")
+            choose.clicked()
+            compare(_nav.currentIndex, 1)
+            compare(win.lookArea, 2)
+        }
+
         // ── E: the Edge-theme grid is collapsed by default and expands on demand,
         // so the tab is not dominated by 29 swatches.
         // The Edge theme is a compact dropdown whose model lists every theme; the

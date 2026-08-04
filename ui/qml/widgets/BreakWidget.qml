@@ -184,14 +184,15 @@ WidgetChrome {
         return (mm < 10 ? "0" : "") + mm + ":" + (ss < 10 ? "0" : "") + ss
     }
     function notifyDue() {
-        if (!w.notifyWhenHidden || w.foreground || !w.notificationBridge
-                || !w.notificationBridge.send)
+        if (!w.notifyWhenHidden || w.foreground || !w.notificationBridge)
             return false
         var body = w.message.length ? w.message
             : "Time to stand up, reset, and take a short break."
-        if (w.notificationBridge.sendPriority)
+        if (typeof w.notificationBridge.sendPriority === "function")
             return w.notificationBridge.sendPriority("Break reminder", body)
-        return w.notificationBridge.send("Break reminder", body)
+        if (typeof w.notificationBridge.send === "function")
+            return w.notificationBridge.send("Break reminder", body)
+        return false
     }
     function showPriorityAlert() {
         if (!w.priorityAlertEnabled || !w.priorityAlerts

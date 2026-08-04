@@ -172,7 +172,7 @@ Item {
             return [
                 { tag: "file", url: "file:///home/u/cover.png", kept: true },
                 { tag: "qrc", url: "qrc:/img/cover.png", kept: true },
-                { tag: "data-png", url: "data:image/png;base64,iVBORw0KGgo=", kept: true },
+                { tag: "data-png", url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", kept: true },
                                 // A REAL 1x1 JPEG, not a truncated header. A header alone is
                 // accepted by the policy (correctly - it is image/jpeg), and Qt
                 // then tries to DECODE it and warns "JPEG datastream contains
@@ -248,6 +248,31 @@ Item {
             compare(h.item.artworkSource, "")
             compare(h.item.remoteArtworkBlocked, false)
             compare(h.item.artworkNotice, "")
+        }
+
+        function test_allowed_but_broken_artwork_is_rendered_data() {
+            return [
+                { tag: "expanded", expanded: true, name: "mediaArtworkNoticeExpanded" },
+                { tag: "tile", expanded: false, name: "mediaArtworkNotice" }
+            ]
+        }
+        function test_allowed_but_broken_artwork_is_rendered(data) {
+            h.expanded = data.expanded
+            h.mediaCtl.loadTrack("Test Song", "Test Artist")
+            // Both live Image instances reject the same deliberately missing
+            // fixture. Declare those two exact expected diagnostics so the
+            // repository's warning gate still catches every unrelated warning.
+            ignoreWarning(/QML Image: Cannot open: file:\/\/\/definitely-not-present\/xeneon-cover\.png/)
+            ignoreWarning(/QML Image: Cannot open: file:\/\/\/definitely-not-present\/xeneon-cover\.png/)
+            h.mediaCtl.artUrl = "file:///definitely-not-present/xeneon-cover.png"
+            tryVerify(function () { return h.item.artworkLoadFailed }, 2000,
+                      "the allowed local source reached an Image and failed")
+            compare(h.item.artworkNotice, "Artwork unavailable")
+            var notice = requireObject(data.name)
+            verify(notice.visible, data.name + " is visible on the " + data.tag + " surface")
+            compare("" + notice.text, "Artwork unavailable")
+            h.mediaCtl.artUrl = ""
+            h.expanded = true
         }
     }
 }

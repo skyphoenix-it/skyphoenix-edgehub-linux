@@ -193,12 +193,12 @@ Item {
 
         function test_focus_momentum_config_data() {
             return [
-                { tag: "dailyGoal-6", seed: { dailyGoal: 6 }, sub: "/ 6 today", present: true },
-                { tag: "dailyGoal-3", seed: { dailyGoal: 3 }, sub: "/ 3 today", present: true },
-                { tag: "rewardPoints-on", seed: { rewardPoints: true, points: 7 }, sub: "7 pts", present: true },
-                { tag: "rewardPoints-off", seed: { rewardPoints: false, points: 7 }, sub: "pts", present: false },
-                { tag: "nudges-on", seed: { showNudges: true, phase: "work" }, sub: "One small step", present: true },
-                { tag: "nudges-off", seed: { showNudges: false, phase: "work" }, sub: "One small step", present: false },
+                { tag: "dailyGoal-6", seed: { behaviorProfile: "custom", dailyGoal: 6 }, sub: "/ 6 today", present: true },
+                { tag: "dailyGoal-3", seed: { behaviorProfile: "custom", dailyGoal: 3 }, sub: "/ 3 today", present: true },
+                { tag: "rewardPoints-on", seed: { behaviorProfile: "custom", rewardPoints: true, points: 7 }, sub: "7 pts", present: true },
+                { tag: "rewardPoints-off", seed: { behaviorProfile: "custom", rewardPoints: false, points: 7 }, sub: "pts", present: false },
+                { tag: "nudges-on", seed: { behaviorProfile: "custom", showNudges: true, phase: "work" }, sub: "One small step", present: true },
+                { tag: "nudges-off", seed: { behaviorProfile: "custom", showNudges: false, phase: "work" }, sub: "One small step", present: false },
                 { tag: "breakSug-on", seed: { breakSuggestions: true, phase: "short" }, sub: "Break idea", present: true },
                 { tag: "breakSug-off", seed: { breakSuggestions: false, phase: "short" }, sub: "Break idea", present: false }
             ]
@@ -350,7 +350,7 @@ Item {
         }
         function test_focus_natural_goal() {
             prep("FocusWidget.qml", "tall", 696, 1229, false,
-                 { preset: "classic", phase: "work", running: true, doneToday: 1, dailyGoal: 2,
+                 { preset: "classic", behaviorProfile: "custom", phase: "work", running: true, doneToday: 1, dailyGoal: 2,
                    celebrate: true, day: todayKey(), endEpoch: Date.now() - 3000 })
             // Wait for the STATE the completion produces, not for a frame.
             //
@@ -794,7 +794,8 @@ Item {
         }
         function test_tasks_celebrate_all_done() {
             prep("TasksWidget.qml", "compact", 846, 612, false,
-                 { items: [{ text: "last one", done: false }], celebrate: true })
+                 { behaviorProfile: "custom",
+                   items: [{ text: "last one", done: false }], celebrate: true })
             wait(120)
             verify(G.byText(wh.item, "last one"), "row present")
             var toggle = G.byObjName(wh.item, "taskToggle-0"); verify(toggle, "explicit task toggle present")

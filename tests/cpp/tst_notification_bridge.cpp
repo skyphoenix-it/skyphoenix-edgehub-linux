@@ -141,6 +141,34 @@ private slots:
         bus.unregisterObject(QStringLiteral("/org/freedesktop/Notifications"));
         bus.unregisterService(QStringLiteral("org.freedesktop.Notifications"));
     }
+
+    void dispatchesPriorityProfileToARealPrivateBusService() {
+        auto bus = QDBusConnection::sessionBus();
+        QVERIFY(bus.isConnected());
+        NotificationService service;
+        QVERIFY(bus.registerService(QStringLiteral("org.freedesktop.Notifications")));
+        QVERIFY(bus.registerObject(QStringLiteral("/org/freedesktop/Notifications"),
+                                   &service, QDBusConnection::ExportAllSlots));
+
+        NotificationBridge bridge;
+        QSignalSpy confirmed(&bridge, &NotificationBridge::deliveryConfirmed);
+        QSignalSpy failed(&bridge, &NotificationBridge::deliveryFailed);
+        QVERIFY(bridge.sendPriority(QStringLiteral("Break reminder"),
+                                    QStringLiteral("Time to stand up and reset.")));
+        QTRY_COMPARE_WITH_TIMEOUT(service.calls, 1, 2000);
+        QTRY_COMPARE_WITH_TIMEOUT(confirmed.count(), 1, 2000);
+        QCOMPARE(failed.count(), 0);
+        QCOMPARE(service.seen.timeoutMs, 0);
+        QCOMPARE(service.seen.hints.value(QStringLiteral("urgency")).value<uchar>(),
+                 static_cast<uchar>(2));
+        QCOMPARE(service.seen.hints.value(QStringLiteral("resident")).toBool(), true);
+        QCOMPARE(service.seen.hints.value(QStringLiteral("transient")).toBool(), false);
+        QCOMPARE(service.seen.hints.value(QStringLiteral("category")).toString(),
+                 QStringLiteral("x-edgehub.reminder"));
+
+        bus.unregisterObject(QStringLiteral("/org/freedesktop/Notifications"));
+        bus.unregisterService(QStringLiteral("org.freedesktop.Notifications"));
+    }
 };
 
 QTEST_GUILESS_MAIN(NotificationBridgeTest)

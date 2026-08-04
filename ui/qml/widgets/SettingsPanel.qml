@@ -21,6 +21,15 @@ Rectangle {
     // entry is then ABSENT, not greyed - a managed device must not advertise
     // a choice its user cannot make. Injected by the Dashboard.
     property bool presetsLocked: false
+    // Theme, accent and background are separate decisions. Showing only one at
+    // a time prevents the panel from becoming one undifferentiated wall of
+    // swatches while preserving every existing persisted identifier.
+    property int appearanceArea: 0       // 0 theme, 1 accent, 2 background
+    property int accentCollection: 0     // 0 standard, 1 colour-blind safe
+    onShownChanged: if (shown) {
+        appearanceArea = 0
+        accentCollection = String(root.accentName).indexOf("oi_") === 0 ? 1 : 0
+    }
 
     // E10: the app-global UpdateChecker service (injected by Dashboard; null in
     // a standalone harness). The panel only renders its result line and writes
@@ -37,7 +46,10 @@ Rectangle {
     // Colour tokens for the shared BackgroundPicker.
     readonly property var pickerCol: ({ textPrimary: theme.textPrimary, textSecondary: theme.textSecondary,
         panel: theme.cardBackground, panelAlt: theme.cardBackgroundAlt, border: theme.cardBorder,
-        accent: theme.accent, radius: theme.radiusMd, ctlH: theme.touchSecondary,
+        accent: theme.accent,
+        textOnAccent: (0.299 * theme.accent.r + 0.587 * theme.accent.g
+                       + 0.114 * theme.accent.b) > 0.46 ? "#0D1117" : "#FFFFFF",
+        radius: theme.radiusMd, ctlH: theme.touchSecondary,
         fontBase: theme.fontLabel })
 
     // scrim click closes
@@ -58,6 +70,10 @@ Rectangle {
             border.color: active ? theme.textPrimary : theme.cardBorder
             scale: active ? 1.08 : 1.0
             Behavior on scale { NumberAnimation { duration: theme.motionFast } }
+            activeFocusOnTab: true
+            Accessible.role: Accessible.RadioButton
+            Accessible.name: modelData.replace("oi_", "").replace(/_/g, " ") + " accent"
+            Accessible.checked: active
             // The check sits ON the swatch, so it must contrast with the swatch,
             // not with the sheet: the palette spans near-black (oi_black) to
             // near-white (oi_yellow). Rec. 601 luma picks the readable ink.
@@ -67,8 +83,10 @@ Rectangle {
                 color: (0.299 * parent.color.r + 0.587 * parent.color.g
                         + 0.114 * parent.color.b) > 0.55 ? "#000000" : "#FFFFFF"
             }
+            Keys.onReturnPressed: theme.applyAccent(modelData)
+            Keys.onSpacePressed: theme.applyAccent(modelData)
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                onClicked: theme.applyAccent(modelData) }
+                onClicked: { parent.forceActiveFocus(); theme.applyAccent(modelData) } }
         }
     }
 
@@ -109,6 +127,7 @@ Rectangle {
             }
 
             Flickable {
+                objectName: "settingsScroll"
                 Layout.fillWidth: true; Layout.fillHeight: true
                 contentHeight: form.implicitHeight; clip: true
                 ColumnLayout {
@@ -153,11 +172,75 @@ Rectangle {
                         }
                     }
 
-                    // --- Theme (compact, grouped, Pro-gated) ---
+                    ColumnLayout {
+                        Layout.fillWidth: true; spacing: theme.spacingSm
+                        Text {
+                            text: "Choose what to change"
+                            font.pixelSize: theme.fontLabel; font.bold: true
+                            color: theme.textSecondary
+                        }
+                        Flow {
+                            Layout.fillWidth: true; spacing: theme.spacingSm
+                            Repeater {
+                                model: [ { v: 0, l: "Theme" }, { v: 1, l: "Accent" },
+                                         { v: 2, l: "Background" } ]
+                                delegate: Rectangle {
+                                    required property var modelData
+                                    objectName: "appearanceArea-" + modelData.v
+                                    width: areaLabel.implicitWidth + theme.spacingXl
+                                    height: theme.touchSecondary
+                                    radius: theme.radiusMd
+                                    readonly property bool active: panel.appearanceArea === modelData.v
+                                    color: active ? theme.accent : theme.cardBackground
+                                    border.width: active ? 2 : 1
+                                    border.color: active ? theme.accent : theme.cardBorder
+                                    activeFocusOnTab: true
+                                    Accessible.role: Accessible.Button
+                                    Accessible.name: modelData.l + " appearance choices"
+                                    Text {
+                                        id: areaLabel; anchors.centerIn: parent
+                                        text: modelData.l
+                                        color: parent.active ? panel.pickerCol.textOnAccent
+                                                             : theme.textPrimary
+                                        font.pixelSize: theme.fontLabel; font.bold: parent.active
+                                    }
+                                    Keys.onReturnPressed: {
+                                        panel.appearanceArea = modelData.v
+                                        if (modelData.v === 1)
+                                            panel.accentCollection = String(root.accentName).indexOf("oi_") === 0 ? 1 : 0
+                                    }
+                                    Keys.onSpacePressed: {
+                                        panel.appearanceArea = modelData.v
+                                        if (modelData.v === 1)
+                                            panel.accentCollection = String(root.accentName).indexOf("oi_") === 0 ? 1 : 0
+                                    }
+                                    MouseArea {
+                                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            parent.forceActiveFocus()
+                                            panel.appearanceArea = modelData.v
+                                            if (modelData.v === 1)
+                                                panel.accentCollection = String(root.accentName).indexOf("oi_") === 0 ? 1 : 0
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Text {
+                            Layout.fillWidth: true; wrapMode: Text.WordWrap
+                            text: panel.appearanceArea === 0
+                                ? "Choose the overall palette. Your accent and background stay unchanged."
+                                : panel.appearanceArea === 1
+                                  ? "Choose the highlight used for controls, rings and charts."
+                                  : "Choose an animation or a wallpaper. Paired wallpapers are shown first."
+                            color: theme.textTertiary; font.pixelSize: theme.fontCaption
+                        }
+                    }
+
+                    // --- Theme (compact, Pro-gated) ---
                     // Reads the SHARED catalogue in Theme.qml (same list the Manager's
-                    // dropdown shows), grouped into Standard / Premium / Distro /
-                    // Accessibility. A 29-tile grid was a long scroll on the panel; these
-                    // compact swatch chips scan faster and match the Manager.
+                    // dropdown shows). The former 29-tile wall is now one searchable-by-
+                    // typing native selector while preserving the complete catalogue.
                     //
                     // Pro gating: a Pro theme is locked unless `license.isPro`. The
                     // `license` bridge is a context property on the device; it is absent
@@ -166,86 +249,53 @@ Rectangle {
                     // of silently applying - the leak this fixes.
                     ColumnLayout {
                         id: themeSection
+                        objectName: "hubThemeArea"
+                        visible: panel.appearanceArea === 0
                         Layout.fillWidth: true; spacing: theme.spacingSm
                         property bool userIsPro: (typeof license !== "undefined") && license && license.isPro === true
                         property string lockHint: ""
-                        function groupLabel(g) {
-                            // "Inspired", never "Distro-inspired": see the naming
-                            // policy in ui/qml/Theme.qml. No project name - and no
-                            // phrase that re-asserts the association - appears in a
-                            // user-visible string.
-                            return g === "Premium" ? "Premium (Pro)"
-                                 : g === "Inspired" ? "Inspired (Pro)"
-                                 : g === "Accessibility" ? "Accessibility" : "Standard"
-                        }
                         Text { text: "Theme"; font.pixelSize: theme.fontLabel; font.bold: true; color: theme.textSecondary }
                         Text {
                             visible: themeSection.lockHint !== ""
                             text: themeSection.lockHint; color: theme.accent
                             font.pixelSize: theme.fontCaption; wrapMode: Text.WordWrap; Layout.fillWidth: true
                         }
-                        Repeater {
-                            model: theme.themeGroupOrder
-                            delegate: ColumnLayout {
-                                required property string modelData
-                                readonly property var groupThemes: theme.themesInGroup(modelData)
-                                visible: groupThemes.length > 0
-                                Layout.fillWidth: true; spacing: theme.spacingSm
-                                Layout.topMargin: theme.spacingSm
-                                Text { text: themeSection.groupLabel(modelData); font.pixelSize: theme.fontCaption
-                                    font.bold: true; color: theme.textTertiary }
-                                Flow {
-                                    Layout.fillWidth: true; spacing: theme.spacingSm
-                                    Repeater {
-                                        model: groupThemes
-                                        delegate: Rectangle {
-                                            required property var modelData
-                                            readonly property bool active: root.themeMode === modelData.k
-                                            readonly property bool locked: (modelData.pro === true) && !themeSection.userIsPro
-                                            implicitWidth: chipRow.implicitWidth + 20; height: theme.touchTertiary
-                                            radius: theme.radiusMd
-                                            color: active ? Qt.rgba(theme.accent.r, theme.accent.g, theme.accent.b, 0.14)
-                                                          : theme.cardBackgroundAlt
-                                            border.width: active ? 2 : 1
-                                            border.color: active ? theme.accent : theme.cardBorder
-                                            opacity: locked ? 0.55 : 1.0
-                                            scale: chipMA.pressed ? 0.97 : 1.0
-                                            Behavior on scale { NumberAnimation { duration: theme.motionFast } }
-                                            RowLayout {
-                                                id: chipRow; anchors.centerIn: parent; spacing: 8
-                                                Rectangle {
-                                                    width: 22; height: 22; radius: 5; border.width: 1; border.color: theme.cardBorder
-                                                    gradient: Gradient {
-                                                        GradientStop { position: 0.0; color: modelData.c1 }
-                                                        GradientStop { position: 1.0; color: modelData.c2 } }
-                                                }
-                                                Text { text: modelData.n; color: theme.textPrimary; font.pixelSize: theme.fontLabel }
-                                                Rectangle {
-                                                    visible: modelData.pro === true
-                                                    implicitWidth: proBadge.implicitWidth + 12
-                                                    implicitHeight: 24; radius: 12
-                                                    color: locked ? Qt.rgba(theme.textSecondary.r, theme.textSecondary.g, theme.textSecondary.b, 0.25)
-                                                                  : Qt.rgba(theme.accent.r, theme.accent.g, theme.accent.b, 0.22)
-                                                    Text { id: proBadge; anchors.centerIn: parent; text: "PRO"
-                                                        color: locked ? theme.textSecondary : theme.accent
-                                                        font.pixelSize: theme.fontMinimum; font.bold: true }
-                                                }
-                                                AppIcon { visible: active; name: "ui-check"; size: 16; color: theme.accent }
-                                            }
-                                            MouseArea {
-                                                id: chipMA; anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                                onClicked: {
-                                                    if (locked) {
-                                                        themeSection.lockHint = "“" + modelData.n + "” is a Pro theme - add your licence in the EdgeHub Manager to use it."
-                                                        return
-                                                    }
-                                                    themeSection.lockHint = ""
-                                                    root.themeMode = modelData.k; theme.applyTheme(modelData.k)
-                                                }
-                                            }
-                                        }
-                                    }
+                        ComboBox {
+                            id: hubThemePicker
+                            objectName: "hubThemePicker"
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: theme.touchSecondary
+                            model: theme.themeCatalog
+                            textRole: "n"
+                            currentIndex: {
+                                for (var i = 0; i < model.length; i++)
+                                    if (model[i].k === root.themeMode) return i
+                                return 0
+                            }
+                            Accessible.name: "Edge theme"
+                            delegate: ItemDelegate {
+                                required property var modelData
+                                required property int index
+                                width: hubThemePicker.width
+                                height: theme.touchSecondary
+                                text: modelData.n + (modelData.pro === true ? "  ·  Pro" : "")
+                                font.bold: root.themeMode === modelData.k
+                                highlighted: hubThemePicker.highlightedIndex === index
+                            }
+                            onActivated: function (index) {
+                                var choice = model[index]
+                                if (choice.pro === true && !themeSection.userIsPro) {
+                                    themeSection.lockHint = "“" + choice.n + "” is a Pro theme - add your licence in the EdgeHub Manager to use it."
+                                } else {
+                                    themeSection.lockHint = ""
+                                    root.themeMode = choice.k
+                                    theme.applyTheme(choice.k)
                                 }
+                                currentIndex = Qt.binding(function () {
+                                    for (var i = 0; i < hubThemePicker.model.length; i++)
+                                        if (hubThemePicker.model[i].k === root.themeMode) return i
+                                    return 0
+                                })
                             }
                         }
                     }
@@ -333,6 +383,8 @@ Rectangle {
 
                     // --- Background (one unified picker: animated style OR wallpaper) ---
                     ColumnLayout {
+                        objectName: "hubBackgroundArea"
+                        visible: panel.appearanceArea === 2
                         Layout.fillWidth: true; spacing: theme.spacingSm
                         Text { text: "Background"; font.pixelSize: theme.fontLabel; font.bold: true; color: theme.textSecondary }
                         Text { text: "Pick a living animation OR a wallpaper - they show through the frosted widgets."
@@ -353,6 +405,13 @@ Rectangle {
                             opacity: theme.decorative ? 1.0 : 0.4
                             st: store; pageIndex: -1; col: panel.pickerCol
                             bgCatalog: bgCatalog; wpCatalog: wallpapers
+                            themeKey: root.themeMode
+                            themeLabel: {
+                                for (var i = 0; i < theme.themeCatalog.length; i++)
+                                    if (theme.themeCatalog[i].k === root.themeMode)
+                                        return theme.themeCatalog[i].n
+                                return "current theme"
+                            }
                         }
                     }
 
@@ -365,9 +424,39 @@ Rectangle {
 
                     // --- Accent color ---
                     ColumnLayout {
+                        objectName: "hubAccentArea"
+                        visible: panel.appearanceArea === 1
                         Layout.fillWidth: true; spacing: theme.spacingSm
                         Text { text: "Accent Color"; font.pixelSize: theme.fontLabel; font.bold: true; color: theme.textSecondary }
                         Flow {
+                            Layout.fillWidth: true; spacing: theme.spacingSm
+                            Repeater {
+                                model: [ { v: 0, l: "Standard" },
+                                         { v: 1, l: "Colour-blind safe" } ]
+                                delegate: Rectangle {
+                                    required property var modelData
+                                    width: accentGroupLabel.implicitWidth + theme.spacingXl
+                                    height: theme.touchTertiary; radius: theme.radiusMd
+                                    readonly property bool active: panel.accentCollection === modelData.v
+                                    color: active ? Qt.rgba(theme.accent.r, theme.accent.g, theme.accent.b, 0.18)
+                                                  : theme.cardBackground
+                                    border.width: active ? 2 : 1
+                                    border.color: active ? theme.accent : theme.cardBorder
+                                    activeFocusOnTab: true
+                                    Accessible.role: Accessible.Button
+                                    Accessible.name: modelData.l + " accent collection"
+                                    Text { id: accentGroupLabel; anchors.centerIn: parent
+                                        text: modelData.l; color: theme.textPrimary
+                                        font.pixelSize: theme.fontCaption; font.bold: parent.active }
+                                    Keys.onReturnPressed: panel.accentCollection = modelData.v
+                                    Keys.onSpacePressed: panel.accentCollection = modelData.v
+                                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                        onClicked: { parent.forceActiveFocus(); panel.accentCollection = modelData.v } }
+                                }
+                            }
+                        }
+                        Flow {
+                            visible: panel.accentCollection === 0
                             Layout.fillWidth: true; spacing: theme.spacingMd
                             Repeater {
                                 model: ["blue","purple","green","orange","pink","teal","red","gold",
@@ -381,11 +470,13 @@ Rectangle {
                         // under its own heading so it reads as a deliberate choice
                         // rather than eight more decorative tones.
                         Text {
+                            visible: panel.accentCollection === 1
                             text: "Colour-blind safe (Okabe–Ito)"
                             font.pixelSize: theme.fontLabel; font.bold: true; color: theme.textSecondary
                             Layout.topMargin: theme.spacingSm
                         }
                         Flow {
+                            visible: panel.accentCollection === 1
                             Layout.fillWidth: true; spacing: theme.spacingMd
                             Repeater {
                                 model: ["oi_blue","oi_sky_blue","oi_bluish_green","oi_yellow",

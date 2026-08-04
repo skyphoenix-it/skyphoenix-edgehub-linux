@@ -149,7 +149,11 @@ state or reinterpret configuration.
 Current controls:
 
 - Normal saves are serialized across processes, atomic, symlink-safe, and
-  include file and directory fsync.
+  include file and directory fsync. Before replacing a valid supported config,
+  they atomically preserve its exact bytes as owner-only `config.toml.bak`; a
+  backup failure leaves the live config unchanged. A first save after reset and
+  a save over corrupt/unsupported input never overwrite the last known-good
+  canonical backup.
 - Corrupt input must be copied byte-for-byte to a unique owner-only backup
   before best-effort scalar salvage is returned. A backup failure aborts the
   load, so callers never receive writable salvaged/default state while the

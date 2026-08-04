@@ -38,10 +38,9 @@ check turned up. Two things this row asserted were false:
   `mode = "dark"` at `config.rs:1847` that looks like a default is a **legacy
   test fixture**.
 - **"Calm" is not a theme.** There is no `calm` theme mode; `calm` is a
-  per-widget `behaviorProfile` (calm | momentum | celebrate) on Focus and Tasks,
-  defaulting to `custom`. `BACKLOG.md` already recorded this discovery from the
-  auto-cycle work and the D1 row was never reconciled with it. So "calm as the
-  default theme" resolves to **nord, the calm palette** - which is what ships.
+  per-widget `behaviorProfile` on Focus and Tasks. The owner separately decided
+  on 2026-08-04 that missing profiles should default to `calm`; explicit saved
+  `custom` and `momentum` values remain authoritative.
 
 Gaps found while verifying, all fixed:
 
@@ -65,11 +64,10 @@ Gaps found while verifying, all fixed:
   every assertion green (measured). The claim is corrected in place; the qrc side
   is covered by `scripts/check_bundled_fonts.py` instead.
 
-**Still open, and a genuine product question rather than a stale row:** whether
-the per-widget `behaviorProfile` should also default to `calm` instead of
-`custom` - i.e. no celebrations, reward points or nudges out of the box. That is
-the other thing "calm by default" could reasonably mean, it is a real behaviour
-change rather than a palette, and it was never asked. Needs Simon.
+**Resolved 2026-08-04:** Focus and Tasks now default a missing
+`behaviorProfile` to `calm`, so celebrations, points and nudges are off for new
+or legacy-missing instances. Tests pin both the quiet default and preservation
+of an explicit `custom` profile.
 
 ## Licensing / Pro tier - BUILT 2026-07-17 (see docs/LICENSING.md)
 
@@ -197,12 +195,11 @@ That is the product direction; this was the cheap half. See Candidates.
   discards the layout and points at `--reset-wizard`; success names the backup
   path. **If you disagree** - i.e. `--reset` should mean "destroy it, I'm sure" -
   say so and I'll revert; that is the only part of this that was ever a decision.
-- **`backup_config()` is still only reached via reset.** The public wrapper had
-  ZERO production callers before `dcdc003`; `config.toml.bak` was never written,
-  and the corrupt path's careful "never clobber the good .bak" guarded a file that
-  did not exist. Reset now writes it, but nothing else does - so the "canonical
-  good-config backup" is still not a routine safety net. Worth deciding whether a
-  save should ever produce one.
+- ~~**`backup_config()` is only reached via reset.**~~ **RESOLVED 2026-08-04.**
+  Before a normal save replaces a valid supported `config.toml`, it now writes
+  the exact prior bytes to a private, fsynced, atomic `config.toml.bak`. Backup
+  failure leaves the live file unchanged; a first save after reset and a save
+  over corrupt/unsupported input preserve the last known-good `.bak`.
 - ~~The Manager half of the single-writer rule is unproven~~ - it is proven, the
   entry was stale. `tst_manager_backend_sync.cpp::connectedSaveIsIpcOnlyNoFileWrite`
   drives the real `ManagerBackend` against a `FakeHub` over the actual control
@@ -303,21 +300,20 @@ That is the product direction; this was the cheap half. See Candidates.
   which is what the countdown-jitter bug needed, but a user forcing a different
   family would still be unmeasured. That is now a much smaller hole than the
   entry claimed.
-- **Wallpaper/theme name collision - it is FIVE names, not three.** Measured
-  2026-07-17: the overlap between `Theme.qml`'s modes and `WallpaperCatalog.qml`'s
-  items is **aurora, ember, midnight, nebula, sunset**. The W2 audit reported
-  Midnight/Nebula/Aurora, which understates it.
-  The nuance that matters before anyone "fixes" this: `WallpaperCatalog.qml`'s
-  header says the wallpapers are "tuned to the built-in themes", so a shared name
-  may be a deliberate PAIRING, not an accident. But the correspondence is partial
-  - only 5 of 12 wallpapers match a theme, and 19 of 24 themes have no wallpaper -
-  so it reads as a systematic pairing that is not one. There are also THREE
-  concepts in play, not two: themes (palettes), `WallpaperCatalog` (bundled
-  images) and `BackgroundCatalog` (colour/animated tokens).
-  Renaming either set rewrites persisted config values and needs a migration, so
-  the cheap fix is UI disambiguation + honest copy about the pairing. **Decide the
-  intent first** (is Midnight-the-wallpaper meant to go with Midnight-the-theme?);
-  it is a copy question, not an engineering one.
+- ~~**Wallpaper/theme name collision - it is FIVE names, not three.**~~
+  **DECIDED AND RESOLVED 2026-08-04:** the shared names are deliberate pairings;
+  persisted keys were preserved. Every one of the 29 theme keys now has at least
+  one recommendation among the 18 bundled wallpapers, while a selected
+  non-recommended wallpaper remains visible and “Browse all” remains available.
+  Hub and Manager now expose Theme, Accent, Background and Effects as one decision
+  area at a time; the Manager Images area is the image library rather than a
+  second global-wallpaper selector. Pair integrity, selection preservation,
+  area exclusivity, keyboard operation and stable screenshots are guarded.
+- ~~**`build-release/` contains 196 tracked generated build files.**~~ **RESOLVED
+  2026-08-04:** all tracked contents were verified as CMake/compiler probes,
+  generated resources or binaries, removed from version control, and the exact
+  top-level `/build-release/` path is ignored. The directory is absent after
+  cleanup; `git check-ignore` is guarded by a fail-on-violation negative control.
 - ~~`Theme.qml:209` `motionRemove` is unused~~ - now driving the Dashboard exit
   fade (`Dashboard.qml:764`) since the W3 exit-fade work landed.
 - ~~**AppImage zsync update path: audited 2026-07-17. It does not work today, and
@@ -715,7 +711,7 @@ instead; the diff should be one PNG and its three manifest fields.
 
 ## Candidates
 
-- **`"Artwork unavailable"` in MediaWidget can never render, and the case it
+- ~~**`"Artwork unavailable"` in MediaWidget can never render, and the case it
   was for is unhandled (audit 2026-08-03).** `MediaWidget.qml:55` reaches that
   string only when `avail && artUrl && !artworkSource.length` *and*
   `remoteArtworkBlocked` is false — but those three conjuncts are the definition
@@ -728,9 +724,13 @@ instead; the diff should be one PNG and its three manifest fields.
   Wiring the rung to the `Image`'s `status === Image.Error` (`artC` / `artE`)
   makes it both reachable and correct. Small, user-visible, and testable — the
   artwork policy now has ten cases to extend. See
-  `docs/testing/widget-audit-2026-08-03.md` finding 10.4.
+  `docs/testing/widget-audit-2026-08-03.md` finding 10.4.~~ **FIXED 2026-08-04:**
+  the compact and expanded artwork loaders now surface `Image.Error` as
+  “Artwork unavailable”; policy-blocked artwork keeps precedence. A valid PNG,
+  compact failure and expanded failure are covered, with a proven negative
+  control that disables the error state.
 
-- **Delete the dead `notificationBridge.send` fallback in three widgets
+- ~~**Delete the dead `notificationBridge.send` fallback in three widgets
   (audit 2026-08-03).** `FocusWidget.qml:241`, `BreakWidget.qml:194` and
   `MedsWidget.qml:297` each fall back to `send()` when the bridge has no
   `sendPriority()`. There is exactly one real bridge
@@ -744,7 +744,10 @@ instead; the diff should be one PNG and its three manifest fields.
   usefully covers "no bridge injected"), or keep them and give one of the three
   a double without `sendPriority`. Wants a single decision, not three.
   Not urgent — dead code, not a defect. See
-  `docs/testing/widget-audit-2026-08-03.md` finding N.5.
+  `docs/testing/widget-audit-2026-08-03.md` finding N.5.~~ **DECIDED AND FIXED
+  2026-08-04:** keep the compatibility fallback, but select `sendPriority()`
+  independently of `send()`. Priority-only doubles now prove all three widgets
+  reach the urgent persistent path; ordinary `send()` remains the fallback.
 
 - ~~**Auto-cycle through screens (owner-raised 2026-08-03).**~~ **APPROVED by the
   owner and BUILT 2026-08-03** — see "Auto-cycle through screens" under shipped
@@ -765,10 +768,40 @@ instead; the diff should be one PNG and its three manifest fields.
   already has the vocabulary for it (widget `state` / `Warning` / `Critical`,
   and a priority-alert GUI suite). That would make the other screens earn their
   attention instead of merely taking turns; the idle rotation was the cheap
-  half. Needs a product decision, not a setting.
+  half. **Design approved first, implementation not yet approved:**
+  `docs/adr/0003-noteworthy-screen-routing.md` is Proposed and defines the event
+  contract, suppression, bounded routing, privacy, validation and rollback.
 
 Unapproved ideas, findings, and out-of-scope proposals land here. Nothing in this
 section is implemented without explicit product-owner approval (scope-control policy).
+
+- **Environment alerts from Open-Meteo — RESEARCHED 2026-08-04, NOT APPROVED.**
+  Candidate slice: current locally appropriate AQI plus next-hour precipitation;
+  pollen stays later and region/season-aware. Before implementation, decide the
+  commercial API licence, attribution placement, counted-call budget, and the new
+  `air-quality-api.open-meteo.com` trust boundary. Full evidence and acceptance
+  gates: `docs/research/2026-08-04-opportunity-scan.md` §A.
+
+- **Published AppImage update rehearsal — RESEARCHED 2026-08-04, NOT APPROVED.**
+  Keep the existing check-only application and external updater model. Before
+  v1.0.1 stable promotion, prove the public v1.0.0 AppImage reaches the exact
+  candidate through both embedded discovery and the versioned `.zsync` URL,
+  retaining redirect/range, interruption, permission, signature, launch and
+  rollback evidence. See the research report §B.
+
+- **MPRIS real-player compatibility matrix — RESEARCHED 2026-08-04, NOT
+  APPROVED.** Exercise the existing session-bus evidence against recorded
+  Spotify desktop, VLC, Firefox native/Flatpak and mpv/plugin versions. Include
+  multiple simultaneous players, multiple Firefox instances, changing stream
+  metadata, missing/broken artwork, capabilities and seek/position behavior.
+  See the research report §C.
+
+- **Noteworthy-screen ADR review gate — RESEARCHED 2026-08-04, NOT APPROVED.**
+  The competitive scan supports bounded typed events, suppression, queueing and
+  manual control; it does not support arbitrary screen stealing. Before approving
+  ADR 0003, add an acceptance criterion that explains/previews what would route,
+  why it was suppressed/queued and which screen it targets, then validate the
+  prototype on-device behind an off-by-default setting. See the report §D.
 
 - **`scripts/test.sh` is still the framework adoption scaffold stub.** Created 2026-07-31
   when the agent framework was adopted; it echoes "No test command configured" and exits

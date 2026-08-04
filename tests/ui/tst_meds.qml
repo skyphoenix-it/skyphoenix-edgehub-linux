@@ -34,15 +34,14 @@ Item {
 
     QtObject {
         id: fakeNotifications
-        function send(summary, body) {
+        // Priority-only on purpose. The production path must prefer this API
+        // without requiring the legacy ordinary-send fallback to coexist.
+        function sendPriority(summary, body) {
             root.notificationCalls++
             root.notificationSummary = summary
             root.notificationBody = body
-            return true
-        }
-        function sendPriority(summary, body) {
             root.notificationWasPriority = true
-            return send(summary, body)
+            return true
         }
     }
     QtObject {
