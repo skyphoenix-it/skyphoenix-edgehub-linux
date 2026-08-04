@@ -123,6 +123,23 @@ Item {
             return x && x.pickStyle !== undefined && x.selStyle !== undefined
         })
     }
+    function themePicker() { return findObj(sheet(), "hubThemePicker") }
+    function themeIndex(key) {
+        var control = themePicker()
+        if (!control) return -1
+        for (var i = 0; i < control.model.length; i++)
+            if (control.model[i].k === key) return i
+        return -1
+    }
+    function chooseTheme(key) {
+        var control = themePicker()
+        if (!control) return false
+        var index = themeIndex(key)
+        if (index < 0) return false
+        control.currentIndex = index
+        control.activated(index)
+        return true
+    }
     // Theme/orientation/background chips all carry a modelData; scope by shape.
     function chipWhere(scope, pred) {
         return findPred(scope, function (x) { return x.modelData !== undefined && pred(x) })
@@ -281,19 +298,21 @@ Item {
         // A theme picked on the DEVICE must (a) repaint and (b) survive a restart:
         // the standalone panel test can only see (a), because there is no store
         // behind it. This asserts the Dashboard's persistence link too.
-        function test_theme_chip_repaints_and_persists_to_the_store() {
+        function test_theme_picker_repaints_and_persists_to_the_store() {
             var p = openSheet()
             compare(root.store().appearance().themeMode === "midnight", false,
                     "precondition: midnight is not the persisted theme")
-            var chip = chipWhere(p, function (x) { return x.modelData.k === "midnight" })
-            verify(chip !== null, "the midnight theme chip is on the sheet")
-            clickInSheet(chip)
+            p.appearanceArea = 0
+            var midnightIndex = themeIndex("midnight")
+            verify(midnightIndex >= 0, "Midnight is in the compact shared catalogue")
+            verify(chooseTheme("midnight"), "the compact picker accepted Midnight")
             compare(root.themeMode, "midnight", "the shell's theme mode changed")
             verify(Qt.colorEqual(_theme.backgroundColor, "#0B1026"),
                    "…the theme repainted to the midnight tone (got " + _theme.backgroundColor + ")")
             compare(root.store().appearance().themeMode, "midnight",
                     "…and the hub PERSISTED it to appearance.themeMode")
-            verify(chip.active, "the chip now reads as the active theme")
+            compare(themePicker().currentIndex, midnightIndex,
+                    "the compact picker now reflects the active theme")
         }
 
         // High Contrast is not just a palette: it turns decoration OFF. Two things
@@ -301,6 +320,8 @@ Item {
         // background picker DISABLES itself instead of accepting taps that no-op.
         function test_high_contrast_kills_the_backdrop_and_disables_the_background_picker() {
             var p = openSheet()
+            p.appearanceArea = 2
+            wait(60)
             var bd = root.backdrop()
             var bp = root.picker()
             verify(bd !== null, "found the live BackdropLayer")
@@ -308,10 +329,14 @@ Item {
             verify(bd.visible, "precondition: the backdrop renders under a decorative theme")
             compare(bp.enabled, true, "precondition: the picker accepts taps")
 
-            var hc = chipWhere(p, function (x) { return x.modelData.k === "high_contrast"; })
-            verify(hc !== null, "the accessibility theme is offered on the sheet")
-            verify(!hc.locked, "…and it is NOT Pro-gated (accessibility must never be paywalled)")
-            clickInSheet(hc)
+            p.appearanceArea = 0
+            var hcIndex = themeIndex("high_contrast")
+            verify(hcIndex >= 0, "the accessibility theme is offered in the picker")
+            verify(themePicker().model[hcIndex].pro !== true,
+                   "…and it is NOT Pro-gated (accessibility must never be paywalled)")
+            verify(chooseTheme("high_contrast"), "the compact picker accepted Contrast")
+            p.appearanceArea = 2
+            wait(60)
 
             compare(_theme.decorative, false, "High Contrast turns decoration off")
             compare(bd.visible, false, "…so the animated backdrop stops rendering")
@@ -322,8 +347,10 @@ Item {
             compare(root.store().appearance().themeMode, "high_contrast", "persisted")
 
             // Reversible: going back to a decorative theme restores all three.
-            var dark = chipWhere(p, function (x) { return x.modelData.k === "dark" })
-            clickInSheet(dark)
+            p.appearanceArea = 0
+            verify(chooseTheme("dark"), "the compact picker accepted Dark")
+            p.appearanceArea = 2
+            wait(60)
             compare(_theme.decorative, true, "back to a decorative theme")
             compare(bp.enabled, true, "the picker is usable again")
             compare(bd.visible, true, "and the backdrop is back")
@@ -369,6 +396,8 @@ Item {
         // ═══════════════════════════════════════════════════════════════════
         function test_background_style_writes_global_appearance_and_restyles_the_live_backdrop() {
             var p = openSheet()
+            p.appearanceArea = 2
+            wait(60)
             var bd = root.backdrop()
             verify(bd !== null, "found the live BackdropLayer")
             compare(bd.style, "orbs", "precondition: the default backdrop style")
@@ -433,6 +462,9 @@ Item {
         // backdrop takes its accent from the theme.
         function test_accent_swatch_recolours_the_sheet_and_the_backdrop() {
             var p = openSheet()
+            p.appearanceArea = 1
+            p.accentCollection = 0
+            wait(60)
             var bd = root.backdrop()
             var pct = findPred(p, function (x) {
                 return x.text !== undefined && typeof x.text === "string" && /^\d+%$/.test(x.text)

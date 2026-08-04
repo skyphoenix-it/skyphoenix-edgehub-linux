@@ -5,7 +5,7 @@ import QtQuick.Layouts
 // "animated style" / "wallpaper" / "set as wallpaper" options collapse into a
 // single, obvious, mutually-exclusive choice. Works for the GLOBAL default
 // (pageIndex < 0) or a PER-PAGE override (pageIndex >= 0), which makes the
-// precedence explicit ("Use global" vs a specific pick for this page).
+// precedence explicit ("Use Edge-wide" vs a specific pick for this page).
 //
 // Required: st, col (tokens: textPrimary/textSecondary/panel/panelAlt/border/
 // accent/radius), bgCatalog (BackgroundCatalog), wpCatalog (WallpaperCatalog).
@@ -25,6 +25,9 @@ Item {
     property var bgCatalog
     property var wpCatalog
     property var uploadedImages: []
+    property string themeKey: ""
+    property string themeLabel: "Current theme"
+    property bool showAllWallpapers: false
     readonly property real controlHeight: col && col.ctlH ? col.ctlH : 52
     readonly property real fontBase: col && col.fontBase ? col.fontBase : 16
 
@@ -59,6 +62,33 @@ Item {
     function selWall(s) { var c = current(); return c.kind === "wallpaper" && c.val === s }
     function selGlobal() { return current().kind === "global" }
 
+    readonly property var recommendedWallpapers: {
+        var all = bp.wpCatalog ? bp.wpCatalog.items : []
+        var result = []
+        for (var i = 0; i < all.length; i++) {
+            var themes = all[i].recommendedThemes || []
+            if (themes.indexOf(bp.themeKey) >= 0) result.push(all[i])
+        }
+        return result.length ? result : all.slice(0, Math.min(4, all.length))
+    }
+    readonly property var visibleWallpapers: {
+        var all = bp.wpCatalog ? bp.wpCatalog.items : []
+        if (bp.showAllWallpapers) return all.concat(bp.uploadedImages)
+        var result = bp.recommendedWallpapers.slice()
+        var selected = bp.current()
+        var extras = all.concat(bp.uploadedImages)
+        if (selected.kind === "wallpaper") {
+            for (var i = 0; i < extras.length; i++) {
+                if (extras[i].source === selected.val
+                        && result.every(function (entry) { return entry.source !== selected.val })) {
+                    result.push(extras[i])
+                    break
+                }
+            }
+        }
+        return result
+    }
+
     // ── Mutually-exclusive writes ──
     function pickStyle(v) {
         if (pageIndex < 0) { st.setAppearance("bgStyle", v); st.setAppearance("wallpaper", "") }
@@ -78,10 +108,10 @@ Item {
         width: bp.width
         spacing: 10
 
-        // Animated styles (+ "Use global" for pages).
+        // Animated styles (+ "Use Edge-wide" for pages).
         Flow {
             Layout.fillWidth: true; spacing: 8
-            // "Use global" - only meaningful for a page override.
+            // "Use Edge-wide" - only meaningful for a page override.
             Rectangle {
                 id: globalChip
                 visible: bp.pageIndex >= 0
@@ -92,9 +122,15 @@ Item {
                 // Reference the chip's `sel` via its id - this Rectangle is NOT a
                 // delegate/component root, so a bare `sel` in the child Text doesn't
                 // resolve (it threw "sel is not defined").
-                Text { id: gLbl; anchors.centerIn: parent; text: "Use global"
+                activeFocusOnTab: true
+                Accessible.role: Accessible.Button
+                Accessible.name: "Use Edge-wide background"
+                Text { id: gLbl; anchors.centerIn: parent; text: "Use Edge-wide"
                     color: globalChip.sel ? bp.onAccent() : bp.col.textPrimary; font.pixelSize: bp.fontBase }
-                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: bp.useGlobal() }
+                Keys.onReturnPressed: bp.useGlobal()
+                Keys.onSpacePressed: bp.useGlobal()
+                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                    onClicked: { parent.forceActiveFocus(); bp.useGlobal() } }
             }
             Repeater {
                 model: bp.bgCatalog ? bp.bgCatalog.styles : []
@@ -106,23 +142,33 @@ Item {
                     border.width: sel ? 2 : 1; border.color: sel ? bp.col.accent : bp.col.border
                     Text { id: sLbl; anchors.centerIn: parent; text: modelData.l
                         color: sel ? bp.onAccent() : bp.col.textPrimary; font.pixelSize: bp.fontBase }
+                    activeFocusOnTab: true
+                    Accessible.role: Accessible.Button
+                    Accessible.name: "Use " + modelData.l + " background style"
+                    Keys.onReturnPressed: { bp.pickStyle(modelData.v); bp.previewEnded() }
+                    Keys.onSpacePressed: { bp.pickStyle(modelData.v); bp.previewEnded() }
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                         hoverEnabled: true
                         onContainsMouseChanged: containsMouse ? bp.previewStyle(modelData.v) : bp.previewEnded()
-                        onClicked: { bp.pickStyle(modelData.v); bp.previewEnded() } }
+                        onClicked: { parent.forceActiveFocus(); bp.pickStyle(modelData.v); bp.previewEnded() } }
                 }
             }
         }
 
-        Text { text: "…or a wallpaper (replaces the animation):"; color: bp.col.textSecondary
+        Text {
+            text: bp.showAllWallpapers
+                ? "All wallpapers (a wallpaper replaces the animation):"
+                : "Recommended with " + bp.themeLabel + ":"
+            color: bp.col.textSecondary
             font.pixelSize: bp.fontBase; wrapMode: Text.WordWrap; Layout.fillWidth: true }
 
         // Wallpaper thumbnails: bundled + the user's uploaded images.
         Flow {
             Layout.fillWidth: true; spacing: 8
             Repeater {
-                model: (bp.wpCatalog ? bp.wpCatalog.items : []).concat(bp.uploadedImages)
+                model: bp.visibleWallpapers
                 delegate: Rectangle {
+                    objectName: "wallpaperChoice"
                     required property var modelData
                     width: 88; height: 116; radius: bp.col.radius; clip: true
                     property bool sel: bp.selWall(modelData.source)
@@ -145,9 +191,36 @@ Item {
                         width: 26; height: 26; radius: 13; color: bp.col.accent
                         AppIcon { anchors.centerIn: parent; name: "ui-check"; size: 16; color: "#FFFFFF" }
                     }
+                    activeFocusOnTab: true
+                    Accessible.role: Accessible.Button
+                    Accessible.name: "Use " + modelData.label + " wallpaper"
+                    Keys.onReturnPressed: bp.pickWallpaper(modelData.source)
+                    Keys.onSpacePressed: bp.pickWallpaper(modelData.source)
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                        onClicked: bp.pickWallpaper(modelData.source) }
+                        onClicked: { parent.forceActiveFocus(); bp.pickWallpaper(modelData.source) } }
                 }
+            }
+        }
+        Rectangle {
+            objectName: "wallpaperBrowseToggle"
+            Layout.fillWidth: true
+            Layout.preferredHeight: bp.controlHeight
+            radius: bp.col.radius
+            color: browseMA.pressed ? bp.col.panel : bp.col.panelAlt
+            border.width: 1; border.color: bp.col.border
+            activeFocusOnTab: true
+            Accessible.role: Accessible.Button
+            Accessible.name: bp.showAllWallpapers ? "Show recommended wallpapers" : "Browse all wallpapers"
+            Text {
+                anchors.centerIn: parent
+                text: bp.showAllWallpapers ? "Show recommendations" : "Browse all wallpapers"
+                color: bp.col.textPrimary; font.pixelSize: bp.fontBase
+            }
+            Keys.onReturnPressed: bp.showAllWallpapers = !bp.showAllWallpapers
+            Keys.onSpacePressed: bp.showAllWallpapers = !bp.showAllWallpapers
+            MouseArea {
+                id: browseMA; anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                onClicked: { parent.forceActiveFocus(); bp.showAllWallpapers = !bp.showAllWallpapers }
             }
         }
     }

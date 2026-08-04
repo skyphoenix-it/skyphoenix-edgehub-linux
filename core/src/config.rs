@@ -1547,8 +1547,54 @@ fn save_config_to_if_generation_with_sync(
     // lock can still replace the file in that final comparison-to-rename
     // window. This guard prevents accidental stale writes; it is not a security
     // boundary against a malicious process running as the same user.
+    let current_snapshot = match read_config_snapshot(path) {
+        Ok(snapshot) => snapshot,
+        Err(error) => {
+            let _ = fs::remove_file(&tmp_path);
+            return Err(error);
+        }
+    };
     if expected != ConfigGeneration::Untracked {
-        let observed = generation_for(read_config_snapshot(path)?.as_ref());
+        let observed = generation_for(current_snapshot.as_ref());
+        if observed != expected {
+            let _ = fs::remove_file(&tmp_path);
+            return Err(ConfigError::ConcurrentModification);
+        }
+    }
+
+    // Preserve the exact previous bytes before every normal replacement. This
+    // uses the same private, fsynced, atomic canonical-backup primitive as reset.
+    // Missing files deliberately do nothing so a first save after reset cannot
+    // erase the recovery copy reset just created. Likewise, unparseable content
+    // is never promoted over the last known-good .bak; corruption has its own
+    // timestamped preservation path in load_config_from_with_generation().
+    if let Some(snapshot) = current_snapshot.as_ref() {
+        let known_good = snapshot_text(snapshot, path)
+            .ok()
+            .and_then(|text| toml::from_str::<AppConfig>(&text).ok())
+            .is_some_and(|previous| {
+                previous.schema_version <= CURRENT_SCHEMA_VERSION
+                    && validate_config_ui_state(&previous).is_ok()
+            });
+        if known_good {
+            if let Err(error) = replace_canonical_backup(path, &snapshot.bytes) {
+                let _ = fs::remove_file(&tmp_path);
+                return Err(error);
+            }
+        }
+    }
+
+    // Backing up adds work between the compare and rename. Re-check a tracked
+    // save once more so a non-cooperating editor that replaced the pathname in
+    // that interval is still rejected rather than overwritten.
+    if expected != ConfigGeneration::Untracked {
+        let observed = match read_config_snapshot(path) {
+            Ok(snapshot) => generation_for(snapshot.as_ref()),
+            Err(error) => {
+                let _ = fs::remove_file(&tmp_path);
+                return Err(error);
+            }
+        };
         if observed != expected {
             let _ = fs::remove_file(&tmp_path);
             return Err(ConfigError::ConcurrentModification);
@@ -3131,6 +3177,107 @@ broken = = toml
         assert_eq!(load_config().unwrap().theme.mode, "nord");
 
         std::env::remove_var("XDG_CONFIG_HOME");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn normal_save_preserves_exact_previous_bytes_in_private_canonical_backup() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        let mut original = AppConfig::default();
+        original.first_run_complete = true;
+        original.ui_state = Some(
+            r#"{"version":1,"pages":[],"settings":{"http":{"authToken":"PRIVATE"}}}"#.to_string(),
+        );
+        let original_bytes = format!(
+            "# preserve this formatting and comment exactly\n{}",
+            toml::to_string_pretty(&original).unwrap()
+        )
+        .into_bytes();
+        fs::write(&path, &original_bytes).unwrap();
+
+        let mut updated = original;
+        updated.theme.mode = "light".to_string();
+        save_config_to(&path, &updated).unwrap();
+
+        let backup = path.with_extension("toml.bak");
+        assert_eq!(fs::read(&backup).unwrap(), original_bytes);
+        assert_eq!(
+            fs::metadata(&backup).unwrap().permissions().mode() & 0o777,
+            0o600,
+            "normal-save recovery backups can contain secrets and must be owner-only"
+        );
+        assert_eq!(load_config_from(&path).unwrap().theme.mode, "light");
+    }
+
+    #[test]
+    fn first_save_preserves_an_existing_reset_backup() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        let backup = path.with_extension("toml.bak");
+        let recovery = b"exact reset recovery bytes";
+        fs::write(&backup, recovery).unwrap();
+
+        save_config_to(&path, &AppConfig::default()).unwrap();
+
+        assert!(path.exists());
+        assert_eq!(fs::read(backup).unwrap(), recovery);
+    }
+
+    #[test]
+    fn normal_save_backup_failure_leaves_live_config_unchanged() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        let mut original = AppConfig::default();
+        original.theme.mode = "nord".to_string();
+        let original_bytes = toml::to_string_pretty(&original).unwrap().into_bytes();
+        fs::write(&path, &original_bytes).unwrap();
+        fs::create_dir(path.with_extension("toml.bak")).unwrap();
+
+        let mut updated = original;
+        updated.theme.mode = "light".to_string();
+        let error = save_config_to(&path, &updated).unwrap_err();
+
+        assert!(matches!(error, ConfigError::Io { .. }));
+        assert_eq!(fs::read(&path).unwrap(), original_bytes);
+        assert!(fs::read_dir(dir.path())
+            .unwrap()
+            .filter_map(Result::ok)
+            .all(|entry| !entry.file_name().to_string_lossy().ends_with(".tmp")));
+    }
+
+    #[test]
+    fn corrupt_source_never_replaces_the_last_known_good_backup_on_save() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        let backup = path.with_extension("toml.bak");
+        let last_good = b"last known good recovery bytes";
+        fs::write(&path, b"schema_version = = corrupt").unwrap();
+        fs::write(&backup, last_good).unwrap();
+
+        save_config_to(&path, &AppConfig::default()).unwrap();
+
+        assert_eq!(fs::read(backup).unwrap(), last_good);
+        assert!(load_config_from(&path).is_ok());
+    }
+
+    #[test]
+    fn unsupported_source_never_replaces_the_last_known_good_backup_on_save() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        let backup = path.with_extension("toml.bak");
+        let last_good = b"last known good recovery bytes";
+        let mut future = AppConfig::default();
+        future.schema_version = CURRENT_SCHEMA_VERSION + 1;
+        fs::write(&path, toml::to_string_pretty(&future).unwrap()).unwrap();
+        fs::write(&backup, last_good).unwrap();
+
+        save_config_to(&path, &AppConfig::default()).unwrap();
+
+        assert_eq!(fs::read(backup).unwrap(), last_good);
+        assert!(load_config_from(&path).is_ok());
     }
 
     #[test]

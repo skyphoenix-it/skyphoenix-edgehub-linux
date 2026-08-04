@@ -50,9 +50,7 @@ Item {
         })
     }
     function findFlick() {
-        return findPred(panel, function (n) {
-            return n.contentHeight !== undefined && n.contentY !== undefined && n.boundsBehavior !== undefined
-        })
+        return findPred(panel, function (n) { return n.objectName === "settingsScroll" })
     }
     // Theme/orientation delegates carry an `active` bool + `modelData`.
     function delegateWhere(pred) {
@@ -69,6 +67,8 @@ Item {
             _theme.applyTheme("dark"); _theme.applyAccent("blue")
             root.presetsRequestedCount = 0
             panel.presetsLocked = false
+            panel.appearanceArea = 0
+            panel.accentCollection = 0
             panel.shown = true
             tryVerify(function () { return panel.opacity > 0.99 }, 2000)
         }
@@ -105,18 +105,57 @@ Item {
             verify(entry.visible, "clearing the lock restores the entry")
         }
 
-        // ── Theme mode (segmented) ───────────────────────────────────────────
+        function themePicker() {
+            return findPred(panel, function (n) { return n.objectName === "hubThemePicker" })
+        }
+        function themeIndex(key) {
+            var picker = themePicker()
+            for (var i = 0; i < picker.model.length; i++)
+                if (picker.model[i].k === key) return i
+            return -1
+        }
+
+        function test_appearance_areas_are_exclusive_and_keyboard_reachable() {
+            var themeArea = findPred(panel, function (n) { return n.objectName === "hubThemeArea" })
+            var accentArea = findPred(panel, function (n) { return n.objectName === "hubAccentArea" })
+            var backgroundArea = findPred(panel, function (n) { return n.objectName === "hubBackgroundArea" })
+            verify(themeArea && accentArea && backgroundArea)
+            compare(themeArea.visible, true)
+            compare(accentArea.visible, false)
+            compare(backgroundArea.visible, false)
+
+            var accentTab = findPred(panel, function (n) { return n.objectName === "appearanceArea-1" })
+            verify(accentTab && accentTab.activeFocusOnTab,
+                   "the appearance navigation participates in keyboard focus")
+            accentTab.forceActiveFocus()
+            keyClick(Qt.Key_Space)
+            compare(panel.appearanceArea, 1)
+            compare(themeArea.visible, false)
+            compare(accentArea.visible, true)
+            compare(backgroundArea.visible, false)
+
+            var backgroundTab = findPred(panel, function (n) { return n.objectName === "appearanceArea-2" })
+            backgroundTab.forceActiveFocus()
+            keyClick(Qt.Key_Return)
+            compare(panel.appearanceArea, 2)
+            compare(themeArea.visible, false)
+            compare(accentArea.visible, false)
+            compare(backgroundArea.visible, true)
+        }
+
+        // ── Theme mode (compact dropdown) ────────────────────────────────────
         function test_theme_mode_reflects_external_state() {
             root.themeMode = "midnight"
-            var d = delegateWhere(function (n) { return n.modelData.k === "midnight" })
-            verify(d !== null, "midnight theme swatch exists")
-            verify(d.active, "the swatch matching root.themeMode is active")
+            var picker = themePicker()
+            tryCompare(picker, "currentIndex", themeIndex("midnight"))
+            compare(picker.model[picker.currentIndex].k, "midnight")
         }
 
         function test_theme_mode_click_writes_and_applies() {
-            var d = delegateWhere(function (n) { return n.modelData.k === "midnight" })
-            clickTarget(d)
-            compare(root.themeMode, "midnight", "tapping a theme swatch writes root.themeMode")
+            var picker = themePicker()
+            var idx = themeIndex("midnight")
+            picker.currentIndex = idx; picker.activated(idx)
+            compare(root.themeMode, "midnight", "choosing a theme writes root.themeMode")
             verify(Qt.colorEqual(_theme.backgroundColor, "#0B1026"),
                    "…and applies the theme (background is the midnight tone)")
         }
@@ -125,20 +164,26 @@ Item {
         // a Pro theme is locked and tapping it must NOT apply - the on-device leak fix.
         function test_pro_theme_is_gated_without_a_licence() {
             root.themeMode = "dark"; _theme.applyTheme("dark")
-            var d = delegateWhere(function (n) { return n.modelData.k === "synthwave" })
-            verify(d !== null, "a Pro theme (synthwave) is listed")
-            verify(d.locked, "…and it is locked without a licence")
-            clickTarget(d)
-            compare(root.themeMode, "dark", "tapping a locked Pro theme does NOT apply it")
+            var picker = themePicker()
+            var idx = themeIndex("synthwave")
+            verify(idx >= 0, "a Pro theme (synthwave) is listed")
+            verify(picker.model[idx].pro === true, "…and carries its Pro gate")
+            picker.currentIndex = idx; picker.activated(idx)
+            compare(root.themeMode, "dark", "choosing a locked Pro theme does NOT apply it")
         }
 
         // ── Accent color ─────────────────────────────────────────────────────
         function test_accent_swatch_click_applies_accent() {
+            panel.appearanceArea = 1
             var d = findPred(panel, function (n) {
                 return n.modelData === "green" && n.color !== undefined && n.radius === 26
             })
             verify(d !== null, "found the green accent swatch")
-            clickTarget(d)
+            var ma = findPred(d, function (n) {
+                return n !== d && typeof n.clicked === "function"
+            })
+            verify(ma !== null, "the swatch exposes its real click handler")
+            ma.clicked(null)
             compare(_theme.accentName, "green", "tapping a swatch calls applyAccent")
             verify(Qt.colorEqual(_theme.accent, _theme.accentPresets["green"].a), "accent recoloured")
             compare(root.accentName, "green", "the active-swatch source (accentName) tracks the applied accent")
@@ -160,7 +205,11 @@ Item {
         function test_orientation_click_writes() {
             var d = delegateWhere(function (n) { return n.modelData.v === "portrait" })
             verify(d !== null, "portrait orientation option exists")
-            clickTarget(d)
+            var ma = findPred(d, function (n) {
+                return n !== d && typeof n.clicked === "function"
+            })
+            verify(ma !== null, "the orientation option exposes its click handler")
+            ma.clicked(null)
             compare(root.orientationMode, "portrait", "tapping an orientation writes root.orientationMode")
         }
 

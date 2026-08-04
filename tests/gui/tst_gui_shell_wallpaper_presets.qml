@@ -286,6 +286,7 @@ Item {
         // SHELL's theme. Assert against the object the product actually binds to.
         function init() {
             bpick.pageIndex = -1
+            bpick.showAllWallpapers = true
             // Drive the SHELL's Theme directly. Setting win.themeMode does NOT
             // reach it: the store->root->theme sync only runs inside
             // applyAppearance() at load (see baselineBackdrop below), so the
@@ -445,19 +446,19 @@ Item {
             bpick.useGlobal()
             wait(80)
             verify(!store.pageBackground(1).style && !store.pageBackground(1).wallpaper,
-                   "Use global dropped the per-page override")
+                   "Use Edge-wide dropped the per-page override")
             bpick.pageIndex = -1
         }
         function test_global_chip_only_for_pages() {
             bpick.pageIndex = -1; wait(60)
             var gGlobal = G.findPred(bpick, function (n) {
-                try { return n && n.text === "Use global" } catch (e) { return false } })
-            // For the global picker the "Use global" chip is collapsed (visible false).
-            verify(gGlobal === null || !gGlobal.parent.visible, "no Use-global chip in the global picker")
+                try { return n && n.text === "Use Edge-wide" } catch (e) { return false } })
+            // For the global picker the inheritance chip is collapsed (visible false).
+            verify(gGlobal === null || !gGlobal.parent.visible, "no Edge-wide chip in the global picker")
             bpick.pageIndex = 1; wait(60)
             gGlobal = G.findPred(bpick, function (n) {
-                try { return n && n.text === "Use global" } catch (e) { return false } })
-            verify(gGlobal !== null && gGlobal.parent.visible, "Use-global chip present for a page")
+                try { return n && n.text === "Use Edge-wide" } catch (e) { return false } })
+            verify(gGlobal !== null && gGlobal.parent.visible, "Edge-wide inheritance chip present for a page")
             bpick.pageIndex = -1
         }
         function test_fresh_page_selGlobal() {

@@ -52,9 +52,15 @@ WidgetChrome {
         ? w.localArtworkSource(media.artUrl) : ""
     readonly property bool remoteArtworkBlocked: w.avail && !!media.artUrl
                                                   && !w.artworkSource.length
+    // The policy can allow a local/file/data source that still fails to decode
+    // or no longer exists. Both tile and expanded Images are alive together, so
+    // either reporting Error is enough to expose one honest shared state.
+    readonly property bool artworkLoadFailed: w.artworkSource.length > 0
+                                               && (artC.status === Image.Error
+                                                   || artE.status === Image.Error)
     readonly property string artworkNotice: !w.avail || !media.artUrl ? ""
         : w.remoteArtworkBlocked ? "Artwork blocked by network policy"
-        : !w.artworkSource.length ? "Artwork unavailable" : ""
+        : w.artworkLoadFailed ? "Artwork unavailable" : ""
 
     // accentColor MUST be a concrete colour: effAccent falls back to accentColor
     // (WidgetChrome), so `accentColor: effAccent` was a binding loop → the play

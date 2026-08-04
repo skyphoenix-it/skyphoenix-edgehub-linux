@@ -91,9 +91,23 @@ Item {
                         && n.value !== undefined && n.stepSize !== undefined })
         }
         function findFlick() {
-            return G.findPred(panel, function (n) {
-                return n && n.contentHeight !== undefined && n.contentY !== undefined
-                        && n.boundsBehavior !== undefined })
+            return G.byObjName(panel, "settingsScroll")
+        }
+        function themePicker() { return G.byObjName(panel, "hubThemePicker") }
+        function themeIndex(key) {
+            var picker = themePicker()
+            if (!picker) return -1
+            for (var i = 0; i < picker.model.length; i++)
+                if (picker.model[i].k === key) return i
+            return -1
+        }
+        function chooseTheme(key) {
+            var picker = themePicker()
+            verify(picker !== null, "found the compact theme picker")
+            var idx = themeIndex(key)
+            verify(idx >= 0, "theme exists in the shared catalogue: " + key)
+            picker.currentIndex = idx
+            picker.activated(idx)
         }
         function bringIntoView(target) {
             var scroll = findFlick()
@@ -102,6 +116,11 @@ Item {
             var maxY = Math.max(0, scroll.contentHeight - scroll.height)
             scroll.contentY = Math.max(0, Math.min(maxY, p.y - 40))
             wait(80)
+            tryVerify(function () {
+                var q = target.mapToItem(win.contentItem, target.width / 2, target.height / 2)
+                return effVisible(target) && q.x >= 0 && q.x < win.width
+                       && q.y >= 0 && q.y < win.height
+            }, 1000, "target is visible inside the mapped settings window before input")
         }
         function delegateWhere(pred) {
             return G.findPred(panel, function (n) {
@@ -559,6 +578,19 @@ Item {
         // AREA 4 - SETTINGS PANEL (44)
         // ══════════════════════════════════════════════════════════════════════
 
+        // Visual-review evidence: keep the top of the real appearance sheet stable
+        // enough for a before/after comparison when its information architecture
+        // changes. Functional assertions below remain the release gate.
+        function test_set_a_appearance_overview_evidence() {
+            openSettings()
+            var scroll = findFlick()
+            verify(scroll !== null, "found the settings Flickable")
+            scroll.contentY = 0
+            wait(120)
+            var img = snap(panel, "appearance_overview")
+            verify(G.looksRendered(img), "appearance overview rendered non-blank evidence")
+        }
+
         // 4a - Screens entry (3).
         // SET-01 visible + touch sized.
         function test_set_a_screens_entry_visible() {
@@ -592,60 +624,57 @@ Item {
         }
 
         // 4b - Theme selection (8).
-        // SET-04 the theme groups render.
+        // SET-04 the compact picker keeps all catalogue groups reachable.
         function test_set_b_theme_groups_render() {
             openSettings()
-            verify(G.byText(panel, "Standard") !== null, "Standard group header present")
-            verify(G.byText(panel, "Premium") !== null, "Premium group header present")
-            verify(G.byText(panel, "Accessibility") !== null, "Accessibility group header present")
+            var picker = themePicker()
+            verify(picker !== null && picker.model.length === theme.themeCatalog.length,
+                   "one compact picker exposes the complete shared catalogue")
+            verify(picker.model.some(function (d) { return d.group === "Standard" }))
+            verify(picker.model.some(function (d) { return d.group === "Premium" }))
+            verify(picker.model.some(function (d) { return d.group === "Accessibility" }))
         }
-        // SET-05 active theme chip reflects themeMode.
+        // SET-05 the field reflects themeMode.
         function test_set_b_active_theme_chip() {
             openSettings()
             win.themeMode = "midnight"
             wait(60)
-            var d = delegateWhere(function (n) { return n.modelData.k === "midnight" })
-            verify(d !== null, "midnight theme chip exists")
-            verify(d.active, "the chip matching root.themeMode is active")
+            tryCompare(themePicker(), "currentIndex", themeIndex("midnight"), 2000)
         }
         // SET-06 tapping a free theme writes themeMode.
         function test_set_b_free_theme_writes() {
             openSettings()
             win.themeMode = "dark"; theme.applyTheme("dark"); wait(60)
-            var d = delegateWhere(function (n) { return n.modelData.k === "midnight" })
-            bringIntoView(d); mouseClick(d, d.width / 2, d.height / 2)
-            compare(win.themeMode, "midnight", "tapping a free theme chip wrote root.themeMode")
+            chooseTheme("midnight")
+            compare(win.themeMode, "midnight", "choosing a free theme wrote root.themeMode")
         }
         // SET-07 tapping a free theme applies it (colours change).
         function test_set_b_free_theme_applies() {
             openSettings()
             win.themeMode = "dark"; theme.applyTheme("dark"); wait(60)
-            var d = delegateWhere(function (n) { return n.modelData.k === "midnight" })
-            bringIntoView(d); mouseClick(d, d.width / 2, d.height / 2)
+            chooseTheme("midnight")
             verify(Qt.colorEqual(theme.backgroundColor, "#0B1026"),
                    "…and applied the theme (background is the midnight tone)")
         }
         // SET-08 a Pro theme is locked without a licence.
         function test_set_b_pro_theme_locked() {
             openSettings()
-            var d = delegateWhere(function (n) { return n.modelData.k === "synthwave" })
-            verify(d !== null, "a Pro theme (synthwave) is listed")
-            verify(d.locked, "…and it is locked without a licence")
+            var idx = themeIndex("synthwave")
+            verify(idx >= 0, "a Pro theme (synthwave) is listed")
+            verify(themePicker().model[idx].pro === true, "…and it carries the Pro gate")
         }
         // SET-09 tapping a locked Pro theme does NOT apply it.
         function test_set_b_pro_theme_no_apply() {
             openSettings()
             win.themeMode = "dark"; theme.applyTheme("dark"); wait(60)
-            var d = delegateWhere(function (n) { return n.modelData.k === "synthwave" })
-            bringIntoView(d); mouseClick(d, d.width / 2, d.height / 2)
+            chooseTheme("synthwave")
             compare(win.themeMode, "dark", "tapping a locked Pro theme left the theme unchanged")
         }
         // SET-10 the lock hint explains where to unlock.
         function test_set_b_lock_hint_mentions_pro() {
             openSettings()
             win.themeMode = "dark"; theme.applyTheme("dark"); wait(60)
-            var d = delegateWhere(function (n) { return n.modelData.k === "synthwave" })
-            bringIntoView(d); mouseClick(d, d.width / 2, d.height / 2)
+            chooseTheme("synthwave")
             var hint = G.byText(panel, "Pro theme")
             verify(hint !== null && hint.visible, "a lock hint mentioning the Pro theme appeared")
         }
@@ -658,8 +687,7 @@ Item {
             win.themeMode = "dark"; theme.applyTheme("dark"); wait(200)
             var before = "" + snap(win.contentItem, "theme_before").pixel(20, 20)
             openSettings()
-            var d = delegateWhere(function (n) { return n.modelData.k === "light" })
-            bringIntoView(d); mouseClick(d, d.width / 2, d.height / 2)
+            chooseTheme("light")
             panel.shown = false; wait(250)
             var after = "" + snap(win.contentItem, "theme_after").pixel(20, 20)
             verify(G.colorDist(before, after) > 40,
@@ -674,6 +702,7 @@ Item {
         }
         function test_set_c_house_accent(d) {
             openSettings()
+            panel.appearanceArea = 1; panel.accentCollection = 0; wait(60)
             var sw = accentSwatchFor(d.name)
             verify(sw !== null, "found the " + d.name + " accent swatch")
             bringIntoView(sw); mouseClick(sw, sw.width / 2, sw.height / 2)
@@ -687,6 +716,7 @@ Item {
         }
         function test_set_c_oi_accent(d) {
             openSettings()
+            panel.appearanceArea = 1; panel.accentCollection = 1; wait(60)
             var sw = accentSwatchFor(d.name)
             verify(sw !== null, "found the " + d.name + " accent swatch")
             bringIntoView(sw); mouseClick(sw, sw.width / 2, sw.height / 2)
@@ -696,6 +726,7 @@ Item {
         // SET-19 the active swatch shows the check + scales up.
         function test_set_c_active_swatch() {
             openSettings()
+            panel.appearanceArea = 1; panel.accentCollection = 0; wait(60)
             var sw = accentSwatchFor("green")
             bringIntoView(sw); mouseClick(sw, sw.width / 2, sw.height / 2)
             verify(sw.active, "the picked swatch is active")

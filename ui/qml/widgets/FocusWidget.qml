@@ -75,7 +75,9 @@ WidgetChrome {
                                                ? cfg.notifyWhenHidden : false
 
     // ADHD-friendly "momentum" options (all honoured below).
-    readonly property string behaviorProfile: cfg.behaviorProfile || "custom"
+    // New widgets begin quietly. An explicitly saved custom/momentum profile is
+    // still authoritative, so this changes no existing configured instance.
+    readonly property string behaviorProfile: cfg.behaviorProfile || "calm"
     readonly property int dailyGoal: cfg.dailyGoal !== undefined ? cfg.dailyGoal : 4
     readonly property bool celebrate: behaviorProfile === "calm" ? false
         : behaviorProfile === "momentum" ? true : (cfg.celebrate !== undefined ? cfg.celebrate : true)
@@ -234,10 +236,10 @@ WidgetChrome {
                 primaryAction: "openWidget"
             })
         var sent = false
-        if (notificationBridge && notificationBridge.send) {
-            if (notificationBridge.sendPriority)
+        if (notificationBridge) {
+            if (typeof notificationBridge.sendPriority === "function")
                 sent = notificationBridge.sendPriority(summary, body)
-            else
+            else if (typeof notificationBridge.send === "function")
                 sent = notificationBridge.send(summary, body)
         }
         return shown || sent

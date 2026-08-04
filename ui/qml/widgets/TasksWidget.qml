@@ -60,7 +60,9 @@ WidgetChrome {
     readonly property var items: _boundedItems(rawItems)
     readonly property bool taskLimitReached: items.length >= maxTasks
     readonly property bool hideCompleted: cfg.hideCompleted !== undefined ? cfg.hideCompleted : false
-    readonly property string behaviorProfile: cfg.behaviorProfile || "custom"
+    // Missing means the low-stimulation default; explicit legacy/custom values
+    // keep their previous behaviour.
+    readonly property string behaviorProfile: cfg.behaviorProfile || "calm"
     readonly property bool celebrate: behaviorProfile === "calm" ? false
         : behaviorProfile === "momentum" ? true : (cfg.celebrate !== undefined ? cfg.celebrate : true)
     readonly property string displayMode: cfg.displayMode || "all"

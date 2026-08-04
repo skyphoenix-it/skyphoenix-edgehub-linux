@@ -290,10 +290,10 @@ WidgetChrome {
                 primaryAction: "openWidget"
             })
         var sent = false
-        if (w.notificationBridge && w.notificationBridge.send) {
-            if (w.notificationBridge.sendPriority)
+        if (w.notificationBridge) {
+            if (typeof w.notificationBridge.sendPriority === "function")
                 sent = w.notificationBridge.sendPriority("Medication reminder", body)
-            else
+            else if (typeof w.notificationBridge.send === "function")
                 sent = w.notificationBridge.send("Medication reminder", body)
         }
         var handled = shown || sent

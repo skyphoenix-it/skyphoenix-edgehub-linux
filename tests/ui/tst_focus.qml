@@ -13,6 +13,7 @@ Item {
     property int priorityAlertCalls: 0
     property var lastPriorityAlert: null
     property int desktopPriorityCalls: 0
+    property int desktopFallbackCalls: 0
     QtObject {
         id: prioritySink
         function showPriorityAlert(request) {
@@ -23,9 +24,17 @@ Item {
     }
     QtObject {
         id: notificationSink
-        function send(summary, body) { return true }
         function sendPriority(summary, body) {
             root.desktopPriorityCalls++
+            return true
+        }
+    }
+    QtObject {
+        id: fallbackNotificationSink
+        // Deliberately no sendPriority(): old/alternate hosts still get an
+        // ordinary notification through the compatibility path.
+        function send(summary, body) {
+            root.desktopFallbackCalls++
             return true
         }
     }
@@ -47,9 +56,27 @@ Item {
             root.priorityAlertCalls = 0
             root.lastPriorityAlert = null
             root.desktopPriorityCalls = 0
+            root.desktopFallbackCalls = 0
         }
 
         function cfg() { return h.storeCtl.settingsFor("test-instance") }
+
+        function test_missing_profile_defaults_to_calm_but_explicit_custom_is_preserved() {
+            var w = h.item
+            compare(w.behaviorProfile, "calm")
+            compare(w.celebrate, false)
+            compare(w.rewardPoints, false)
+            compare(w.showNudges, false)
+
+            h.storeCtl.patchSettings("test-instance", {
+                behaviorProfile: "custom", celebrate: true,
+                rewardPoints: true, showNudges: true
+            })
+            compare(w.behaviorProfile, "custom")
+            compare(w.celebrate, true)
+            compare(w.rewardPoints, true)
+            compare(w.showNudges, true)
+        }
 
         function test_reset_preserves_done_today() {
             var w = h.item
@@ -154,7 +181,9 @@ Item {
         function test_reward_points_and_goal_bonus() {
             var w = h.item
             w.reset()
-            h.storeCtl.patchSettings("test-instance", { points: 0, dailyGoal: 2 })
+            h.storeCtl.patchSettings("test-instance", {
+                behaviorProfile: "custom", points: 0, dailyGoal: 2
+            })
             w.advance(true)              // work #1 → +10, done=1, → break
             compare(cfg().doneToday, 1)
             compare(cfg().points, 10, "10 points per completed session")
@@ -168,6 +197,9 @@ Item {
         function test_celebrate_message_on_session() {
             var w = h.item
             w.reset()
+            h.storeCtl.patchSettings("test-instance", {
+                behaviorProfile: "custom", celebrate: true
+            })
             w.celebrateMsg = ""
             w.advance(true)              // a natural (timer-driven) completion celebrates
             verify(w.celebrateMsg.length > 0, "a celebration message pops on a completed session")
@@ -195,7 +227,9 @@ Item {
         function test_points_off_when_disabled() {
             var w = h.item
             w.reset()
-            h.storeCtl.patchSettings("test-instance", { points: 0, rewardPoints: false })
+            h.storeCtl.patchSettings("test-instance", {
+                behaviorProfile: "custom", points: 0, rewardPoints: false
+            })
             w.advance(true)
             compare(cfg().points, 0, "no points accrue when rewards are disabled")
         }
@@ -210,6 +244,16 @@ Item {
             compare(root.lastPriorityAlert.title, "Focus session complete")
             compare(root.lastPriorityAlert.primaryAction, "openWidget")
             compare(root.lastPriorityAlert.sourceId, "test-instance")
+        }
+
+        function test_ordinary_desktop_notification_remains_a_compatibility_fallback() {
+            var w = h.item
+            h.storeCtl.patchSettings("test-instance", { notifyWhenHidden: true })
+            w.notificationBridge = fallbackNotificationSink
+            w.foreground = false
+            verify(w.notifyCompletion("work", "short"))
+            compare(root.desktopPriorityCalls, 0)
+            compare(root.desktopFallbackCalls, 1)
         }
 
         // notifyCompletion() is a 2x3 matrix - which phase ENDED decides the

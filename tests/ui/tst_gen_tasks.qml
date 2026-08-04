@@ -90,15 +90,18 @@ Item {
         function test_defaults_match_schema() {
             var w = hTasks.item
             // With no config the widget uses schema defaults: items [], hideCompleted
-            // false, celebrate true.
+            // false, and the quiet completion profile.
             compare(w.items.length, 0, "no items by default")
             compare(w.hideCompleted, false, "hideCompleted defaults false")
-            compare(w.celebrate, true, "celebrate defaults true")
+            compare(w.behaviorProfile, "calm", "new task lists default to calm")
+            compare(w.celebrate, false, "calm suppresses the raw celebrate default")
             compare(w.doneCount, 0)
             compare(w.status, "", "no status string when list empty")
 
             var s = sc.schemaFor("tasks")
             compare(fieldByKey(s, "hideCompleted").dflt, false, "schema hideCompleted dflt false")
+            compare(fieldByKey(s, "behaviorProfile").dflt, "calm",
+                    "schema and widget agree on the calm default")
             compare(fieldByKey(s, "celebrate").dflt, true, "schema celebrate dflt true")
             compare(fieldByKey(s, "items"), null,
                     "content editing is not duplicated in the settings form")
@@ -510,6 +513,9 @@ Item {
         // ---- celebration -------------------------------------------------
         function test_celebrate_fires_when_list_becomes_all_done() {
             var w = hTasks.item
+            hTasks.storeCtl.patchSettings("test-instance", {
+                behaviorProfile: "custom", celebrate: true
+            })
             setItems([{ text: "a", done: false }, { text: "b", done: false }])
             w.celebrateMsg = ""
             w.toggle(0)
@@ -520,6 +526,7 @@ Item {
         function test_celebrate_false_suppresses_burst() {
             var w = hTasks.item
             hTasks.storeCtl.patchSettings("test-instance", {
+                behaviorProfile: "custom",
                 celebrate: false,
                 items: [{ text: "a", done: false }] })
             w.celebrateMsg = ""
@@ -530,6 +537,9 @@ Item {
         // (audit: 'All done' celebration re-fires every time)
         function test_celebrate_does_not_refire_on_recomplete() {
             var w = hTasks.item
+            hTasks.storeCtl.patchSettings("test-instance", {
+                behaviorProfile: "custom", celebrate: true
+            })
             setItems([{ text: "a", done: false }])
             w.toggle(0)                    // completes → fires once (expected)
             w.toggle(0)                    // un-complete

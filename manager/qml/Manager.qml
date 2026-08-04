@@ -81,7 +81,11 @@ ApplicationWindow {
         readonly property color textSecondary: _p.textSecondary
         // Default uses the corporate orange; Dark/Light follow the chosen Edge accent.
         readonly property color accent: appSettings.chromeTheme === "default" ? "#ED6D1F" : theme.accent
-        readonly property color textOnAccent: appSettings.chromeTheme === "default" ? "#241407" : "#0D1117"
+        // Choose readable ink for every Edge accent, including the colour-blind-
+        // safe black swatch. The former fixed dark ink disappeared on dark accents.
+        readonly property color textOnAccent:
+            (0.299 * accent.r + 0.587 * accent.g + 0.114 * accent.b) > 0.46
+                ? "#0D1117" : "#FFFFFF"
         readonly property color success: _p.success
         readonly property color danger: _p.danger
         readonly property int radius: 12
@@ -226,9 +230,15 @@ ApplicationWindow {
                     radius: Math.max(2, m.radius - 3)
                     property bool active: mseg._val(modelData) === mseg.currentValue
                     color: active ? m.accent : (segMA.containsMouse ? m.panelAlt : "transparent")
+                    border.width: activeFocus ? 2 : 0
+                    border.color: m.textPrimary
                     Behavior on color { ColorAnimation { duration: 120 } }
                     scale: segMA.pressed ? 0.97 : 1.0
                     Behavior on scale { NumberAnimation { duration: 90 } }
+                    activeFocusOnTab: true
+                    Accessible.role: Accessible.RadioButton
+                    Accessible.name: String(mseg._lab(modelData))
+                    Accessible.checked: active
                     Text {
                         anchors.centerIn: parent; text: mseg._lab(modelData)
                         font.pixelSize: m.fontLabel; font.bold: parent.active
@@ -236,9 +246,11 @@ ApplicationWindow {
                         elide: Text.ElideRight; width: parent.width - 12
                         horizontalAlignment: Text.AlignHCenter
                     }
+                    Keys.onReturnPressed: mseg.selected(mseg._val(modelData))
+                    Keys.onSpacePressed: mseg.selected(mseg._val(modelData))
                     MouseArea { id: segMA; anchors.fill: parent; hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: mseg.selected(mseg._val(modelData)) }
+                        onClicked: { parent.forceActiveFocus(); mseg.selected(mseg._val(modelData)) } }
                 }
             }
         }
@@ -546,6 +558,9 @@ ApplicationWindow {
     }
 
     property int currentPageIndex: 0
+    // The Look workspace presents one decision at a time. This is navigation
+    // state only; it does not alter the persisted appearance document.
+    property int lookArea: 0             // 0 theme, 1 accent, 2 background, 3 effects
     property bool _adoptingHubPage: false
     // Appearance: the Edge theme is chosen from a compact dropdown (Hybrid design)
     // instead of a 29-swatch grid that dominated the tab. The list itself is the
@@ -1194,12 +1209,17 @@ ApplicationWindow {
                                         font.pixelSize: m.fontSection; font.bold: true }
                                     ScopeTag { label: win.scopeLabels.page }
                                 }
-                                Text { text: "Optional. Overrides the global background from Look, for this screen alone. “Use global” returns to the shared one."
+                                Text { text: "Optional. Overrides the Edge-wide background from Look for this screen alone. “Use Edge-wide” removes the override."
                                     color: m.textSecondary; font.pixelSize: m.fontMinimum; Layout.fillWidth: true; wrapMode: Text.WordWrap }
                                 BackgroundPicker {
                                     Layout.fillWidth: true
                                     st: store; pageIndex: win.currentPageIndex; col: win.mCol
                                     bgCatalog: bgCatalog; wpCatalog: bundledWallpapers; uploadedImages: win.uploadedWallpapers
+                                    themeKey: store.appearance().themeMode || theme.defaultThemeKey
+                                    themeLabel: {
+                                        var d = win._themeDef(themeKey)
+                                        return d ? d.n : "Edge-wide theme"
+                                    }
                                 }
                                 Item { Layout.preferredHeight: 8 }
                             }
@@ -1256,8 +1276,22 @@ ApplicationWindow {
                     // true of. (Giving the background chips a real hover preview would
                     // be the better fix - it needs BackgroundPicker, which this
                     // workstream does not own. Recorded in the audit.)
-                    Text { text: "Step 1 - the look for EVERY screen: theme, accent, background and effects. A single screen can override its background in Screens. Hover a theme or accent to try it in the preview (those apply on click); everything else applies as you change it."
+                    Text { text: "Set the look for every screen one area at a time. A single screen can override only its background in Screens."
                         color: m.textSecondary; font.pixelSize: m.fontCaption; Layout.fillWidth: true; wrapMode: Text.WordWrap }
+
+                    MSegment {
+                        objectName: "managerLookArea"
+                        Layout.fillWidth: true
+                        options: [ { label: "Theme", value: 0 }, { label: "Accent", value: 1 },
+                                   { label: "Background", value: 2 }, { label: "Effects", value: 3 } ]
+                        currentValue: win.lookArea
+                        onSelected: (v) => win.lookArea = v
+                    }
+
+                    ColumnLayout {
+                        objectName: "managerThemeArea"
+                        visible: win.lookArea === 0
+                        Layout.fillWidth: true; spacing: 18
 
                     RowLayout {
                         Layout.topMargin: 4; spacing: 8
@@ -1424,6 +1458,12 @@ ApplicationWindow {
                         onSelected: (v) => store.setAppearance("fontChoice", v)
                     }
 
+                    }
+
+                    ColumnLayout {
+                        objectName: "managerAccentArea"
+                        visible: win.lookArea === 1
+                        Layout.fillWidth: true; spacing: 18
                     MDivider {}
                     RowLayout {
                         Layout.topMargin: 4; spacing: 8
@@ -1480,6 +1520,12 @@ ApplicationWindow {
                         Repeater { model: m.a11yAccents; delegate: mAccentSwatch }
                     }
 
+                    }
+
+                    ColumnLayout {
+                        objectName: "managerBackgroundArea"
+                        visible: win.lookArea === 2
+                        Layout.fillWidth: true; spacing: 18
                     MDivider {}
                     RowLayout {
                         Layout.topMargin: 4; spacing: 8
@@ -1496,6 +1542,8 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         st: store; pageIndex: -1; col: win.mCol
                         bgCatalog: bgCatalog; wpCatalog: bundledWallpapers; uploadedImages: win.uploadedWallpapers
+                        themeKey: (store.revision, store.appearance().themeMode || theme.defaultThemeKey)
+                        themeLabel: themeField.curDef ? themeField.curDef.n : "current theme"
                         // Hover a style chip → preview it live in the clone without
                         // committing (finally makes the tab's "hover to try" true for
                         // backgrounds too - audit F2).
@@ -1503,11 +1551,17 @@ ApplicationWindow {
                         onPreviewEnded: theme.previewBgStyle = ""
                     }
 
+                    }
+
                     // A default "Layout columns" picker stood here, alongside the
                     // per-page override. Both are gone for the same reason: the grid
                     // is fixed at WidgetSizes.shortHalves across the short axis, so
                     // `1x1` means one third of the screen on every page.
 
+                    ColumnLayout {
+                        objectName: "managerEffectsArea"
+                        visible: win.lookArea === 3
+                        Layout.fillWidth: true; spacing: 18
                     MDivider {}
                     RowLayout {
                         Layout.topMargin: 4; spacing: 8
@@ -1706,6 +1760,7 @@ ApplicationWindow {
                                 Layout.fillWidth: true; wrapMode: Text.WordWrap }
                         }
                     }
+                    }
                     Item { Layout.preferredHeight: 12 }   // bottom padding
                 }
                }
@@ -1786,55 +1841,31 @@ ApplicationWindow {
                         Item { Layout.fillWidth: true }
                     }
 
-                    // Bundled backgrounds - the sleek graphics that ship with EdgeHub,
-                    // browsable and pickable right here (the user asked for the images to
-                    // live in this section). Clicking sets it as the Edge-wide wallpaper.
-                    RowLayout {
-                        Layout.fillWidth: true; Layout.topMargin: 4; spacing: 8
-                        Text { text: "Bundled backgrounds"; color: m.textSecondary; font.pixelSize: m.fontSection; font.bold: true }
-                        ScopeTag { label: win.scopeLabels.pages }
-                        Item { Layout.fillWidth: true }
-                    }
-                    Text { text: "Graphics that ship with EdgeHub - click one to use it on every screen (a single screen can override it in Screens)."
-                        color: m.textSecondary; font.pixelSize: m.fontMinimum; Layout.fillWidth: true; wrapMode: Text.WordWrap }
-                    Flow {
-                        Layout.fillWidth: true; spacing: 8
-                        Repeater {
-                            model: bundledWallpapers.items
-                            delegate: Rectangle {
-                                required property var modelData
-                                width: 160; height: 108; radius: m.radius; clip: true
-                                property bool bw: (store.revision, store.appearance().wallpaper === modelData.source)
-                                color: m.panel; border.width: bw ? 2 : 1
-                                border.color: bw ? m.accent : m.border
-                                Image { anchors.fill: parent; anchors.margins: 2; source: modelData.source
-                                    fillMode: Image.PreserveAspectCrop; asynchronous: true; mipmap: true }
-                                Rectangle { anchors.bottom: parent.bottom; anchors.left: parent.left
-                                    anchors.right: parent.right; height: 30; color: Qt.rgba(0, 0, 0, 0.62)
-                                    Text { anchors.centerIn: parent; text: modelData.label; color: "#fff"
-                                        font.pixelSize: m.fontMinimum; elide: Text.ElideRight; width: parent.width - 8
-                                        horizontalAlignment: Text.AlignHCenter } }
-                                Rectangle { visible: parent.bw; anchors.top: parent.top; anchors.right: parent.right
-                                    anchors.margins: 4; width: 26; height: 26; radius: 13; color: m.accent
-                                    AppIcon { anchors.centerIn: parent; name: "ui-check"; size: 16; color: "#FFFFFF" } }
-                                MouseArea { anchors.fill: parent; hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: store.setAppearance("wallpaper", modelData.source) }
+                    Rectangle {
+                        Layout.fillWidth: true; implicitHeight: imageChoiceRow.implicitHeight + 24
+                        radius: m.radius; color: m.panel; border.width: 1; border.color: m.border
+                        RowLayout {
+                            id: imageChoiceRow
+                            anchors.fill: parent; anchors.margins: 12; spacing: 12
+                            AppIcon { name: "ui-palette"; size: 20; color: m.accent }
+                            Text {
+                                Layout.fillWidth: true; wrapMode: Text.WordWrap
+                                text: "Choose bundled or imported wallpapers in Look → Background, where the scope and live preview stay visible."
+                                color: m.textSecondary; font.pixelSize: m.fontMinimum
+                            }
+                            MButton {
+                                text: "Choose a background"
+                                onClicked: { nav.currentIndex = 1; win.lookArea = 2 }
                             }
                         }
                     }
 
-                    // Audit F6: clicking a card writes appearance.wallpaper - the
-                    // biggest unlabelled scope jump in the app. The tab had no pill,
-                    // no preview, and copy ("use it as the wallpaper") that never said
-                    // every page changes. Say the scope, and say where to undo it.
                     RowLayout {
                         Layout.fillWidth: true; spacing: 8
                         Text { text: "Your images"; color: m.textSecondary; font.pixelSize: m.fontSection; font.bold: true }
-                        ScopeTag { visible: imagesModel.count > 0; label: win.scopeLabels.pages }
                         Item { Layout.fillWidth: true }
                     }
-                    Text { text: "Click an image to make it the wallpaper on every screen. To use one on a single screen instead, go to Screens → “This screen's look”."
+                    Text { text: "This is your image library. Import or delete files here; choose where to use them from Look or Screens."
                         color: m.textSecondary; font.pixelSize: m.fontMinimum; visible: imagesModel.count > 0
                         Layout.fillWidth: true; wrapMode: Text.WordWrap }
                     // Empty state. The trailing filler keeps the column top-packed while the
@@ -1873,9 +1904,8 @@ ApplicationWindow {
                                 // Wallpapers are stored as file:// URLs (matching the
                                 // BackgroundPicker), so compare against that form.
                                 property string fullPath: backend.imageUrl(modelData)
-                                property bool isWall: (store.revision, store.appearance().wallpaper) === fullPath
-                                color: cardMA.containsMouse ? m.panelAlt : m.panel
-                                border.width: isWall ? 3 : 1; border.color: isWall ? m.accent : m.border
+                                color: m.panel
+                                border.width: 1; border.color: m.border
                                 ColumnLayout {
                                     anchors.fill: parent; anchors.margins: 8; spacing: 4
                                     Image {
@@ -1885,9 +1915,8 @@ ApplicationWindow {
                                     }
                                     RowLayout {
                                         Layout.fillWidth: true; spacing: 4
-                                        AppIcon { visible: imgCard.isWall; name: "ui-check"; size: 14; color: m.accent }
-                                        Text { text: imgCard.isWall ? "wallpaper" : imgCard.modelData
-                                            color: imgCard.isWall ? m.accent : m.textSecondary; font.pixelSize: m.fontMinimum
+                                        Text { text: imgCard.modelData
+                                            color: m.textSecondary; font.pixelSize: m.fontMinimum
                                             elide: Text.ElideRight; Layout.fillWidth: true }
                                         // Bigger, padded delete hit target.
                                         Rectangle { Layout.preferredWidth: 48; Layout.preferredHeight: 48; radius: 10
@@ -1898,12 +1927,6 @@ ApplicationWindow {
                                                 onClicked: win.confirmDeleteImage(imgCard.modelData, imgCard.fullPath) } }
                                     }
                                 }
-                                // Click the card body → set as wallpaper.
-                                MouseArea { id: cardMA; anchors.fill: parent; hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    // Let the trash button win.
-                                    onClicked: (mouse) => store.setAppearance("wallpaper", imgCard.fullPath)
-                                    z: -1 }
                             }
                         }
                     }
